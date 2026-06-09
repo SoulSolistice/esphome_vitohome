@@ -1,0 +1,46 @@
+# Shared config, pulled in via `packages:` by each board file.
+# Never compiled directly — only included.
+esphome:
+  name: vitohome-test
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [vitohome]
+
+logger:
+
+uart:
+  id: optolink_uart
+  tx_pin: GPIO17
+  rx_pin: GPIO16
+  baud_rate: 4800
+  data_bits: 8
+  parity: EVEN
+  stop_bits: 2
+
+vitohome:
+  id: vito
+  uart_id: optolink_uart
+  update_interval: 30s
+
+# Placeholder addresses — exercise codegen/validator paths, not real datapoints.
+sensor:
+  - platform: vitohome
+    name: "Outside Temperature"
+    address: 0x0800
+    length: 2
+    converter: div10        # float branch in vito_sensor.cpp
+  - platform: vitohome
+    name: "Pump Speed"
+    address: 0x0a3c
+    length: 1               # noconv integer branch
+
+binary_sensor:
+  - platform: vitohome
+    name: "Burner Active"
+    address: 0x0842
+    length: 1
+    byte_offset: 0
+    bit_mask: 0x01

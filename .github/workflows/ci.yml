@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  compile:
+    name: ${{ matrix.config }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false   # let idf and arduino report independently
+      matrix:
+        config:
+          - test.esp32-arduino.yaml
+          - test.esp32-idf.yaml
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache PlatformIO + pip
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            ~/.cache/pip
+          key: pio-${{ runner.os }}-${{ matrix.config }}-${{ hashFiles('tests/*.yaml', 'components/vitohome/**') }}
+          restore-keys: pio-${{ runner.os }}-${{ matrix.config }}-
+
+      - name: Install ESPHome
+        run: pip install esphome   # pin (esphome==2025.x.y) for reproducible CI
+
+      - name: Validate config
+        run: esphome config tests/${{ matrix.config }}
+
+      - name: Compile
+        run: esphome compile tests/${{ matrix.config }}
