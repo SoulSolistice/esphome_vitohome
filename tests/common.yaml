@@ -1,0 +1,180 @@
+# Shared test config: exercises EVERY vitohome platform and option so the CI
+# `esphome compile` covers all codegen paths under both frameworks. The
+# per-framework wrappers (test.esp32-arduino.yaml / test.esp32-idf.yaml) set
+# substitutions + the esp32 block, then `<<: !include` this file.
+#
+# No network stack here on purpose: a compile test does not need wifi/api/ota,
+# and leaving them out keeps the build fast and dependency-light.
+
+esphome:
+  name: ${name}
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [vitohome]
+
+logger:
+  level: DEBUG
+
+uart:
+  - id: uart_optolink
+    rx_pin: GPIO16
+    tx_pin: GPIO17
+    baud_rate: 4800
+    data_bits: 8
+    parity: EVEN
+    stop_bits: 2
+
+vitohome:
+  id: vito
+  uart_id: uart_optolink
+  protocol: P300
+  update_interval: 60s
+  identify_device: true
+
+sensor:
+  # div10 SIGNED via converter default
+  - platform: vitohome
+    name: "Test Temp Div10"
+    address: 0x0800
+    length: 2
+    converter: div10
+    unit_of_measurement: "C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+  # sec2hour counter (read-only, double-precision decode) + per-entity interval
+  - platform: vitohome
+    name: "Test Hours"
+    address: 0x08A7
+    length: 4
+    converter: sec2hour
+    unit_of_measurement: "h"
+    state_class: total_increasing
+    accuracy_decimals: 1
+    update_interval: 600s
+  # noconv with byte_offset (extract byte 1 of a 2-byte read)
+  - platform: vitohome
+    name: "Test Pump Speed"
+    address: 0x7660
+    length: 2
+    converter: noconv
+    byte_offset: 1
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    state_class: measurement
+  # div1000
+  - platform: vitohome
+    name: "Test Consumption"
+    address: 0x7574
+    length: 4
+    converter: div1000
+    unit_of_measurement: "l"
+    state_class: total_increasing
+    accuracy_decimals: 1
+  # explicit signed override on a noconv sensor
+  - platform: vitohome
+    name: "Test Signed Offset"
+    address: 0x3000
+    length: 1
+    converter: noconv
+    signed: true
+    state_class: measurement
+
+binary_sensor:
+  # default bit_mask (0xFF: any nonzero byte is active)
+  - platform: vitohome
+    name: "Test Problem"
+    address: 0x0A82
+    length: 1
+    device_class: problem
+  # explicit byte_offset + bit_mask
+  - platform: vitohome
+    name: "Test Bit"
+    address: 0x0A10
+    length: 2
+    byte_offset: 1
+    bit_mask: 0x04
+    device_class: running
+    update_interval: 120s
+
+number:
+  # noconv unsigned, mode box, read_back default (true)
+  - platform: vitohome
+    name: "Test Setpoint"
+    address: 0x6300
+    length: 1
+    converter: noconv
+    min_value: 10
+    max_value: 60
+    step: 1
+    unit_of_measurement: "C"
+    mode: box
+    update_interval: 3600s
+  # div10 (signed by converter), natural units
+  - platform: vitohome
+    name: "Test Slope"
+    address: 0x27D3
+    length: 1
+    converter: div10
+    min_value: 0.2
+    max_value: 3.5
+    step: 0.1
+    mode: slider
+  # noconv signed override, optimistic (read_back false)
+  - platform: vitohome
+    name: "Test Niveau"
+    address: 0x27D4
+    length: 1
+    converter: noconv
+    signed: true
+    min_value: -13
+    max_value: 40
+    step: 1
+    read_back: false
+
+select:
+  - platform: vitohome
+    name: "Test Mode"
+    address: 0x2301
+    length: 1
+    icon: "mdi:radiator"
+    options:
+      0x00: "Standby"
+      0x01: "Reduced"
+      0x02: "Normal"
+      0x03: "Heating + DHW"
+
+text_sensor:
+  # device identity (hub-fed, no address)
+  - platform: vitohome
+    type: device_id
+    name: "Test Device Id"
+    entity_category: diagnostic
+  # raw hex dump
+  - platform: vitohome
+    type: raw
+    name: "Test Raw"
+    address: 0x00F8
+    length: 4
+  # enum text sensor
+  - platform: vitohome
+    type: enum
+    name: "Test Enum"
+    address: 0x0A20
+    length: 1
+    options:
+      0x00: "Off"
+      0x01: "On"
+  # error history (9-byte block, full timestamp) with a small code map
+  - platform: vitohome
+    type: error_history
+    name: "Test Error"
+    address: 0x7507
+    length: 9
+    update_interval: 300s
+    codes:
+      0x00: "No error"
+      0x0F: "EMV / internal error"
