@@ -1,0 +1,9 @@
+substitutions:
+  name: vitohome-test-arduino
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+<<: !include common.yaml

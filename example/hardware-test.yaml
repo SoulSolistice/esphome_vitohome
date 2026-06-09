@@ -1,0 +1,91 @@
+# ---------------------------------------------------------------------------
+# First-hardware test config for the `vitohome` external component.
+#
+# Purpose: confirm real Optolink traffic decodes on actual hardware. NOT a
+# production config — logging is intentionally verbose and only a couple of
+# read-only datapoints are wired.
+#
+# BEFORE FLASHING, you must edit:
+#   1. wifi ssid/password           -> see secrets.yaml below
+#   2. api / ota keys               -> generate, see secrets.yaml below
+#   3. sensor/binary_sensor address -> the addresses here are PLACEHOLDERS.
+#      The correct ones depend on your Vitotronic model. The openv wiki is the
+#      canonical source for per-device datapoint addresses.
+#
+# Framework note: this uses arduino for the very first flash (longest track
+# record on real hardware). Once you confirm traffic decodes, switch
+#   framework: type: esp-idf
+# since esp-idf is the real target for this component.
+# ---------------------------------------------------------------------------
+
+esphome:
+  name: vitohome-hwtest
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+external_components:
+  - source:
+      type: local
+      path: components          # adjust if this file is not at repo root
+    components: [vitohome]
+
+# Verbose so the first-light run shows every dispatched read, raw bytes, and
+# decoded value. Per-tag levels keep the noise on the component itself.
+logger:
+  level: DEBUG
+  logs:
+    vitohome: VERBOSE
+    vitohome.sensor: VERBOSE
+    vitohome.binary_sensor: VERBOSE
+
+# Network access so you can iterate over OTA instead of reflashing via USB
+# after the first cable flash. Remove both blocks for a pure offline bench test.
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+api:
+  encryption:
+    key: !secret api_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+# Optolink bus — 4800 8E2 is mandatory; the component hard-fails otherwise.
+uart:
+  id: optolink_uart
+  tx_pin: GPIO17
+  rx_pin: GPIO16
+  baud_rate: 4800
+  data_bits: 8
+  parity: EVEN
+  stop_bits: 2
+
+vitohome:
+  id: vito
+  uart_id: optolink_uart
+  update_interval: 30s
+
+# PLACEHOLDER addresses — replace with the real datapoints for your heater.
+# Start with one or two well-known, read-only values (e.g. outside temp) to
+# confirm decode before adding more.
+sensor:
+  - platform: vitohome
+    name: "Outside Temperature"
+    address: 0x5525          # PLACEHOLDER — verify against openv for your model
+    length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+
+binary_sensor:
+  - platform: vitohome
+    name: "Burner Active"
+    address: 0x0842          # PLACEHOLDER — verify against openv for your model
+    length: 1
+    byte_offset: 0
+    bit_mask: 0x01
