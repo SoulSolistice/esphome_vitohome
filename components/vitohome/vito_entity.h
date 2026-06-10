@@ -27,6 +27,12 @@ class VitoEntityBase {
   // For logging / dump_config.
   virtual const char *entity_kind() const = 0;
 
+  // Each concrete entity logs its own config; the component fans out to
+  // these from its own dump_config(). Concrete subclasses also inherit a
+  // dump_config() from ESPHome's Component, so a single `override` in each
+  // satisfies both declarations.
+  virtual void dump_config() = 0;
+
  protected:
   // Default-constructed Datapoint until set_datapoint runs from codegen.
   VitoWiFi::Datapoint datapoint_{"uninitialized", 0, 1, VitoWiFi::noconv};
