@@ -1,14 +1,14 @@
 #pragma once
-#include "esphome/core/component.h"
-#include "esphome/components/uart/uart.h"
-#include "vito_uart_interface.h"
-#include "vito_entity.h"
-
 #include <VitoWiFi.h>
 
 #include <deque>
 #include <memory>
 #include <vector>
+
+#include "esphome/components/uart/uart.h"
+#include "esphome/core/component.h"
+#include "vito_entity.h"
+#include "vito_uart_interface.h"
 
 namespace esphome {
 namespace vitohome {
@@ -34,10 +34,8 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   // them through a static instance pointer. Stage 1 enforces a single
   // VitoHomeComponent per device; setup() will mark_failed() if a
   // second one is constructed.
-  static void on_response_(const VitoWiFi::PacketVS2 &response,
-                           const VitoWiFi::Datapoint &request);
-  static void on_error_(VitoWiFi::OptolinkResult error,
-                        const VitoWiFi::Datapoint &request);
+  static void on_response_(const VitoWiFi::PacketVS2 &response, const VitoWiFi::Datapoint &request);
+  static void on_error_(VitoWiFi::OptolinkResult error, const VitoWiFi::Datapoint &request);
   static VitoHomeComponent *instance_;
 
   void validate_uart_();

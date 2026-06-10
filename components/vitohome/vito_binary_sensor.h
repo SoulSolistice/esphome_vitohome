@@ -1,17 +1,15 @@
 #pragma once
-#include "esphome/core/component.h"
 #include "esphome/components/binary_sensor/binary_sensor.h"
+#include "esphome/core/component.h"
 #include "vito_entity.h"
 
 namespace esphome {
 namespace vitohome {
 
-class VitoBinarySensor : public binary_sensor::BinarySensor,
-                         public Component,
-                         public VitoEntityBase {
+class VitoBinarySensor : public binary_sensor::BinarySensor, public Component, public VitoEntityBase {
  public:
   void set_byte_offset(uint8_t v) { byte_offset_ = v; }
-  void set_bit_mask(uint8_t v)    { bit_mask_ = v; }
+  void set_bit_mask(uint8_t v) { bit_mask_ = v; }
 
   void dump_config() override;
   void handle_response(const VitoWiFi::PacketVS2 &response) override;

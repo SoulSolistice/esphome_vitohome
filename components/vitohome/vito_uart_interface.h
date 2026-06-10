@@ -1,7 +1,8 @@
 #pragma once
-#include "esphome/components/uart/uart.h"
 #include <cstddef>
 #include <cstdint>
+
+#include "esphome/components/uart/uart.h"
 
 namespace esphome {
 namespace vitohome {

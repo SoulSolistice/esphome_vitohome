@@ -4,6 +4,7 @@ Stage 1: P300 (VS2) protocol, read-only sensor and binary_sensor platforms,
 bidirectional converters from VitoWiFi (used here for decode; encode wired
 in Stage 2 alongside number/select platforms).
 """
+
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import uart
@@ -19,9 +20,7 @@ CONF_PROTOCOL = "protocol"
 vitohome_ns = cg.esphome_ns.namespace("vitohome")
 vito_wifi_ns = cg.global_ns.namespace("VitoWiFi")
 
-VitoHomeComponent = vitohome_ns.class_(
-    "VitoHomeComponent", cg.PollingComponent, uart.UARTDevice
-)
+VitoHomeComponent = vitohome_ns.class_("VitoHomeComponent", cg.PollingComponent, uart.UARTDevice)
 
 # Stage 1 supports P300 (VS2) only. KW and GWG require separate template
 # instantiations and different callback signatures; deferred to Stage 2.
@@ -35,8 +34,8 @@ PROTOCOLS = {
 # Add new converters here as needed; the value is the C++ symbol name.
 CONVERTERS = {
     "noconv": "VitoWiFi::noconv",
-    "div10":  "VitoWiFi::div10",
-    "div2":   "VitoWiFi::div2",
+    "div10": "VitoWiFi::div10",
+    "div2": "VitoWiFi::div2",
 }
 
 # Valid payload lengths per converter, mirroring VitoWiFi's own constraints

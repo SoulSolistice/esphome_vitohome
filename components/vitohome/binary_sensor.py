@@ -16,9 +16,7 @@ CONF_LENGTH = "length"
 CONF_BYTE_OFFSET = "byte_offset"
 CONF_BIT_MASK = "bit_mask"
 
-VitoBinarySensor = vitohome_ns.class_(
-    "VitoBinarySensor", binary_sensor.BinarySensor, cg.Component
-)
+VitoBinarySensor = vitohome_ns.class_("VitoBinarySensor", binary_sensor.BinarySensor, cg.Component)
 
 
 def _validate_length(value):

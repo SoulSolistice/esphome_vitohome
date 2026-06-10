@@ -1,6 +1,8 @@
 #include "vito_sensor.h"
-#include "esphome/core/log.h"
+
 #include <cmath>
+
+#include "esphome/core/log.h"
 
 namespace esphome {
 namespace vitohome {
@@ -9,8 +11,7 @@ static const char *const TAG = "vitohome.sensor";
 
 void VitoSensor::dump_config() {
   LOG_SENSOR("  ", "Vitoconnect Sensor", this);
-  ESP_LOGCONFIG(TAG, "    Address: 0x%04X  Length: %u",
-                this->datapoint_.address(), this->datapoint_.length());
+  ESP_LOGCONFIG(TAG, "    Address: 0x%04X  Length: %u", this->datapoint_.address(), this->datapoint_.length());
 }
 
 void VitoSensor::handle_response(const VitoWiFi::PacketVS2 &response) {
@@ -25,10 +26,18 @@ void VitoSensor::handle_response(const VitoWiFi::PacketVS2 &response) {
   float value;
   if (dp.converter() == VitoWiFi::noconv) {
     switch (dp.length()) {
-      case 1: value = static_cast<float>(static_cast<uint8_t>(v)); break;
-      case 2: value = static_cast<float>(static_cast<uint16_t>(v)); break;
-      case 4: value = static_cast<float>(static_cast<uint32_t>(v)); break;
-      default: value = NAN; break;  // schema restricts length to 1/2/4
+      case 1:
+        value = static_cast<float>(static_cast<uint8_t>(v));
+        break;
+      case 2:
+        value = static_cast<float>(static_cast<uint16_t>(v));
+        break;
+      case 4:
+        value = static_cast<float>(static_cast<uint32_t>(v));
+        break;
+      default:
+        value = NAN;
+        break;  // schema restricts length to 1/2/4
     }
   } else {
     value = static_cast<float>(v);  // div10 / div2 / div3600 -> float member

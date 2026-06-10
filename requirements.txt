@@ -1,0 +1,2 @@
+# Pin for reproducible CI, e.g. esphome==2025.5.0
+esphome

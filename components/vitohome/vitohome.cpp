@@ -1,6 +1,7 @@
 #include "vitohome.h"
-#include "esphome/core/log.h"
+
 #include "esphome/core/hal.h"
+#include "esphome/core/log.h"
 
 namespace esphome {
 namespace vitohome {
@@ -24,8 +25,7 @@ void VitoHomeComponent::setup() {
 
   // VitoWiFi<VS2> takes the protocol version only; the constructor deduces
   // the interface type and wraps &iface_ in a GenericInterface internally.
-  this->vito_ =
-      std::make_unique<VitoWiFi::VitoWiFi<VitoWiFi::VS2>>(&this->iface_);
+  this->vito_ = std::make_unique<VitoWiFi::VitoWiFi<VitoWiFi::VS2>>(&this->iface_);
 
   this->vito_->onResponse(&VitoHomeComponent::on_response_);
   this->vito_->onError(&VitoHomeComponent::on_error_);
@@ -35,8 +35,7 @@ void VitoHomeComponent::setup() {
     this->mark_failed();
     return;
   }
-  ESP_LOGI(TAG, "VitoHome ready, %zu entities registered",
-           this->entities_.size());
+  ESP_LOGI(TAG, "VitoHome ready, %zu entities registered", this->entities_.size());
 }
 
 void VitoHomeComponent::validate_uart_() {
@@ -60,8 +59,7 @@ void VitoHomeComponent::validate_uart_() {
     ok = false;
   }
   if (bus->get_parity() != uart::UART_CONFIG_PARITY_EVEN) {
-    ESP_LOGE(TAG, "UART parity must be EVEN (8E2), got %d",
-             static_cast<int>(bus->get_parity()));
+    ESP_LOGE(TAG, "UART parity must be EVEN (8E2), got %d", static_cast<int>(bus->get_parity()));
     ok = false;
   }
   if (!ok) {
@@ -80,10 +78,8 @@ void VitoHomeComponent::loop() {
   if (this->in_flight_ != nullptr) {
     uint32_t now = millis();
     if (now - this->in_flight_started_ms_ > IN_FLIGHT_WATCHDOG_MS) {
-      ESP_LOGW(TAG,
-               "In-flight request to %s exceeded watchdog (%u ms). Clearing.",
-               this->in_flight_->get_datapoint().name(),
-               IN_FLIGHT_WATCHDOG_MS);
+      ESP_LOGW(TAG, "In-flight request to %s exceeded watchdog (%u ms). Clearing.",
+               this->in_flight_->get_datapoint().name(), IN_FLIGHT_WATCHDOG_MS);
       this->in_flight_->handle_error(VitoWiFi::OptolinkResult::TIMEOUT);
       this->in_flight_ = nullptr;
     }
@@ -102,8 +98,7 @@ void VitoHomeComponent::dispatch_next_() {
     this->in_flight_ = entity;
     this->in_flight_started_ms_ = millis();
     this->queue_.pop_front();
-    ESP_LOGV(TAG, "Dispatched read for %s",
-             entity->get_datapoint().name());
+    ESP_LOGV(TAG, "Dispatched read for %s", entity->get_datapoint().name());
   }
   // else: VitoWiFi engine is busy with internal state; retry next loop().
 }
@@ -116,9 +111,7 @@ void VitoHomeComponent::update() {
   // ~10 entities at ~100 ms each the cycle takes ~1 s, which is far
   // below typical update_interval values, so this should be rare.
   if (!this->queue_.empty() || this->in_flight_ != nullptr) {
-    ESP_LOGW(TAG,
-             "Skipping poll cycle: %zu still queued, %s in flight",
-             this->queue_.size(),
+    ESP_LOGW(TAG, "Skipping poll cycle: %zu still queued, %s in flight", this->queue_.size(),
              this->in_flight_ != nullptr ? "request" : "none");
     return;
   }
@@ -143,28 +136,23 @@ void VitoHomeComponent::dump_config() {
   }
 }
 
-void VitoHomeComponent::on_response_(const VitoWiFi::PacketVS2 &response,
-                                        const VitoWiFi::Datapoint &request) {
+void VitoHomeComponent::on_response_(const VitoWiFi::PacketVS2 &response, const VitoWiFi::Datapoint &request) {
   if (instance_ == nullptr) return;
   VitoEntityBase *entity = instance_->in_flight_;
   instance_->in_flight_ = nullptr;
   if (entity == nullptr) {
-    ESP_LOGW(TAG,
-             "Response received for 0x%04X but no in-flight request",
-             request.address());
+    ESP_LOGW(TAG, "Response received for 0x%04X but no in-flight request", request.address());
     return;
   }
   if (entity->get_datapoint().address() != request.address()) {
-    ESP_LOGW(TAG,
-             "Response address 0x%04X does not match in-flight 0x%04X; dropping",
-             request.address(), entity->get_datapoint().address());
+    ESP_LOGW(TAG, "Response address 0x%04X does not match in-flight 0x%04X; dropping", request.address(),
+             entity->get_datapoint().address());
     return;
   }
   entity->handle_response(response);
 }
 
-void VitoHomeComponent::on_error_(VitoWiFi::OptolinkResult error,
-                                     const VitoWiFi::Datapoint &request) {
+void VitoHomeComponent::on_error_(VitoWiFi::OptolinkResult error, const VitoWiFi::Datapoint &request) {
   if (instance_ == nullptr) return;
   VitoEntityBase *entity = instance_->in_flight_;
   instance_->in_flight_ = nullptr;
@@ -172,17 +160,24 @@ void VitoHomeComponent::on_error_(VitoWiFi::OptolinkResult error,
   const char *name = request.name();
   switch (error) {
     case VitoWiFi::OptolinkResult::TIMEOUT:
-      ESP_LOGE(TAG, "[TIMEOUT] %s — Optolink not responding", name); break;
+      ESP_LOGE(TAG, "[TIMEOUT] %s — Optolink not responding", name);
+      break;
     case VitoWiFi::OptolinkResult::LENGTH:
-      ESP_LOGE(TAG, "[LENGTH]  %s — invalid payload length", name); break;
+      ESP_LOGE(TAG, "[LENGTH]  %s — invalid payload length", name);
+      break;
     case VitoWiFi::OptolinkResult::NACK:
-      ESP_LOGW(TAG, "[NACK]    %s — heater rejected request "
-                    "(unsupported address?)", name); break;
+      ESP_LOGW(TAG,
+               "[NACK]    %s — heater rejected request "
+               "(unsupported address?)",
+               name);
+      break;
     case VitoWiFi::OptolinkResult::CRC:
-      ESP_LOGE(TAG, "[CRC]     %s — checksum mismatch (wiring?)", name); break;
+      ESP_LOGE(TAG, "[CRC]     %s — checksum mismatch (wiring?)", name);
+      break;
     case VitoWiFi::OptolinkResult::ERROR:
     default:
-      ESP_LOGE(TAG, "[ERROR]   %s — protocol error", name); break;
+      ESP_LOGE(TAG, "[ERROR]   %s — protocol error", name);
+      break;
   }
   if (entity != nullptr) entity->handle_error(error);
 }

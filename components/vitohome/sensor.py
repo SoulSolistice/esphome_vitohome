@@ -1,12 +1,12 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import sensor
-from esphome.const import CONF_NAME, CONF_ADDRESS
+from esphome.const import CONF_ADDRESS, CONF_NAME
 
 from . import (
     CONF_VITOCONNECT_ID,
-    CONVERTERS,
     CONVERTER_LENGTHS,
+    CONVERTERS,
     VitoHomeComponent,
     cpp_string_literal,
     vitohome_ns,
@@ -50,9 +50,7 @@ CONFIG_SCHEMA = cv.All(
             cv.GenerateID(CONF_VITOCONNECT_ID): cv.use_id(VitoHomeComponent),
             cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
             cv.Required(CONF_LENGTH): _validate_length,
-            cv.Optional(CONF_CONVERTER, default="noconv"): cv.enum(
-                CONVERTERS, lower=True
-            ),
+            cv.Optional(CONF_CONVERTER, default="noconv"): cv.enum(CONVERTERS, lower=True),
         }
     )
     .extend(cv.COMPONENT_SCHEMA),
