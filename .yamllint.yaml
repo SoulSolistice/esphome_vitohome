@@ -1,0 +1,31 @@
+# yamllint config tuned for ESPHome.
+#
+# ESPHome YAML uses custom tags (!include, !secret, !lambda, !extend, !remove)
+# and tends toward long device-address / lambda lines, so a few stock rules
+# are relaxed. The authoritative schema check is `esphome config` (CI +
+# the manual pre-commit hook), NOT yamllint — this only enforces hygiene.
+
+extends: default
+
+yaml-files:
+  - "*.yaml"
+  - "*.yml"
+
+rules:
+  # ESPHome lines (addresses, lambdas, URLs) routinely exceed 80 cols.
+  line-length:
+    max: 120
+    level: warning
+  # `on:` blocks in GH workflows and ESPHome automations read as truthy keys.
+  truthy:
+    check-keys: false
+  # ESPHome configs commonly omit the document start marker.
+  document-start: disable
+  # Comments don't always have the two-space prefix ESPHome examples use.
+  comments:
+    min-spaces-from-content: 1
+
+ignore: |
+  .pioenvs/
+  .esphome/
+  secrets.yaml

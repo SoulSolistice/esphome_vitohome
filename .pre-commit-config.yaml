@@ -21,3 +21,28 @@ repos:
     hooks:
       - id: clang-format
         files: \.(c|h|cpp|hpp)$
+
+  # YAML hygiene (style/whitespace/key duplication). Custom-tag tolerance and
+  # line-length come from .yamllint.yaml. This is NOT schema validation.
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: [-c, .yamllint.yaml]
+
+  # Authoritative ESPHome schema validation. There is no offline ESPHome
+  # linter — the schema lives in the esphome package — so this shells out to
+  # `esphome config`. It imports the whole framework (slow) and needs esphome
+  # installed in the hook env, so it is MANUAL-STAGE: it does not run on every
+  # commit. Run on demand with:
+  #     pre-commit run esphome-config --hook-stage manual --all-files
+  # CI runs the same check on every push via the `compile` job.
+  - repo: local
+    hooks:
+      - id: esphome-config
+        name: esphome config (schema validation)
+        entry: esphome config
+        language: system
+        files: ^tests/.*\.ya?ml$
+        stages: [manual]
+        pass_filenames: true
