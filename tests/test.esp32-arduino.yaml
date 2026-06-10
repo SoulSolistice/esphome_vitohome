@@ -1,5 +1,5 @@
 packages:
-  common: !include common.yaml
+  - !include common.yaml
 
 esp32:
   board: esp32dev
