@@ -165,7 +165,65 @@ the source of truth; do not infer the constraints. The Python unit tests
 
 ---
 
-## 7. Open items / Stage-2 touchpoints
+## 7. The 2026 Vitosoft export, empirically verified
+
+Validated against a full 2026 dataset. Concrete shape, recorded in case it shifts
+again:
+
+- **DPDefinitions.xml**: ~203 MB, UTF-8 with BOM. A single `ImportExportDataHolder`
+  containing one `ECNDataSet` (~589k rows across 20 tables — `ecnEventType`
+  11,582, `ecnEventValueType` 14,613, `ecnEventTypeGroup` 18,018,
+  `ecnDataPointTypeEventTypeLink` 104k, `ecnEventTypeEventTypeGroupLink` 148k,
+  `ecnDisplayCondition`/`…Group`, `ecnTableExtensionValue` 249k, …) **plus** a
+  `DocumentServerDataSet` (mobile-client / error-code extensions:
+  `vsmEventTypeExtension`, `vsmErrorCodeMapping`, …). Parses in ~27 s at ~1.6 GB
+  peak via a DOM; on a low-RAM target prefer a streaming parse.
+- **Standalone files retained, old format**: `ecnEventType.xml` (11,582 rows, root
+  `<EventTypes>`), `ecnDataPointType.xml` (399 rows), `ecnEventTypeGroup.xml`.
+  These are what `PrintEventTypes.py` / `PrintDatapoints.py` consume directly.
+- **Textresource.xml**: UTF-16 LE, consolidated multi-culture (15 cultures,
+  `de` = CultureId 1) — but **UI strings only** (~356 per culture).
+  `Textresource_de.xml` is a byte-identical copy of it, not a German subset.
+
+### Display names are not in the offline export
+
+The operational catch for any datapoint→entity generation. Every event, value,
+and group references its display name via an `@@viessmann.*.name.*` label, but the
+strings those labels resolve to are **absent from the 2026 export**: Textresource
+carries none of them, and there is no text/localization table anywhere in
+DPDefinitions (only `ecnCulture`, the language list). The DocumentServerDataSet's
+own names are themselves more `@@` labels. The old large per-language Textresource
+files held these strings; 2026 moved them out — most likely fetched from
+Viessmann's cloud/DocumentServer at runtime. Only ~125 system/RPC events
+(`rpc.xml`, parts of `sysEventType.xml`) carry real localized names.
+
+What every datapoint *does* still carry: a stable **technical identifier**
+(`Outside_Temp`, `K00_KonfiAnlagenschemaV300_V333`, …; 10,781 of 11,582 are clean
+ASCII tokens) plus address, length, conversion, FCRead, access mode, the
+value/enum structure, units, and borders — the full technical spec the component
+needs. The display condition (`HIDDEN:(…)`) is a Vitosoft-UI relevance hint, not
+a protocol concern, and does not feed the component.
+
+### Naming strategy: entity `id` vs friendly `name`
+
+Drive the two ESPHome fields independently:
+
+- **`id:` ← technical identifier.** Deterministic, ASCII, stable across firmware —
+  exactly what a C++/entity id wants. It is the join key back to the Viessmann
+  data and should always be carried, even when a friendly name exists.
+- **`name:` ← friendly name.** Use the translation when one is available;
+  otherwise derive it from the technical id by turning `_` into spaces. The
+  derivation is deliberately light: it cleans snake_case (`Outside_Temp` →
+  "Outside Temp") but leaves camelCase / coding-prefix compounds (`…A1M1`,
+  `K00_…`, `WW`, `RT`) largely intact, so a real translation source (the openv
+  wiki, or a recovered/cloud localization) is still preferable where clean German
+  labels matter. `PrintEventsForDatapoint.py` implements this fallback
+  (`_friendly()`) and always prints the technical id in brackets next to the
+  friendly name, so the id is never lost.
+
+---
+
+## 8. Open items / Stage-2 touchpoints
 
 - `CODEOWNERS` still holds the `@yourhandle` placeholder.
 - `README.md` is a stub.
