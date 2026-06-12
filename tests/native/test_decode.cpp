@@ -1,7 +1,8 @@
-#include "../../components/vitohome/decode.h"
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
+
+#include "../../components/vitohome/decode.h"
 
 using esphome::vitohome::decode_masked_bit;
 

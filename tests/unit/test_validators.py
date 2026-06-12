@@ -1,17 +1,18 @@
-import pytest
 import esphome.config_validation as cv
-
+import pytest
 from vitohome import cpp_string_literal
-from vitohome.sensor import (
-    _validate_length,
-    _validate_converter_length,
-    CONF_CONVERTER,
-    CONF_LENGTH,
+from vitohome.binary_sensor import (
+    CONF_BYTE_OFFSET,
+    _validate_offset_within_length,
 )
 from vitohome.binary_sensor import (
-    _validate_offset_within_length,
-    CONF_BYTE_OFFSET,
     CONF_LENGTH as BIN_CONF_LENGTH,
+)
+from vitohome.sensor import (
+    CONF_CONVERTER,
+    CONF_LENGTH,
+    _validate_converter_length,
+    _validate_length,
 )
 
 
