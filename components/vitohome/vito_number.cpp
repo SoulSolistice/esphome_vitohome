@@ -25,8 +25,8 @@ void VitoNumber::control(float value) {
     // Out-of-range for the wire representation. The Python schema already
     // cross-checks min/max against the encodable range, so reaching this
     // means a runtime caller bypassed the traits — refuse to transmit.
-    ESP_LOGE(TAG, "%s: value %.3f not encodable (scale %g, %s, %u bytes) — not written", this->datapoint_.name(),
-             value, this->scale_, this->signed_ ? "signed" : "unsigned", len);
+    ESP_LOGE(TAG, "%s: value %.3f not encodable (scale %g, %s, %u bytes) — not written", this->datapoint_.name(), value,
+             this->scale_, this->signed_ ? "signed" : "unsigned", len);
     return;
   }
   if (!this->set_write_payload_(buf, len)) {

@@ -68,9 +68,7 @@ CONFIG_SCHEMA = cv.All(
             cv.GenerateID(CONF_VITOCONNECT_ID): cv.use_id(VitoHomeComponent),
             cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
             cv.Optional(CONF_LENGTH, default=1): validate_length_in(1, 4),
-            cv.Optional(CONF_CONVERTER, default="noconv"): cv.enum(
-                _WRITABLE_CONVERTERS, lower=True
-            ),
+            cv.Optional(CONF_CONVERTER, default="noconv"): cv.enum(_WRITABLE_CONVERTERS, lower=True),
             cv.Optional(CONF_SIGNED): cv.boolean,
             cv.Required(CONF_MIN_VALUE): cv.float_,
             cv.Required(CONF_MAX_VALUE): cv.float_,
@@ -95,13 +93,7 @@ async def to_code(config):
     )
     await cg.register_component(var, config)
 
-    cg.add(
-        var.set_datapoint(
-            datapoint_expression(
-                config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH]
-            )
-        )
-    )
+    cg.add(var.set_datapoint(datapoint_expression(config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH])))
     cg.add(var.set_scale(converter_scale(config[CONF_CONVERTER])))
     cg.add(var.set_signed(resolve_signed(config)))
     cg.add(var.set_read_back(config[CONF_READ_BACK]))

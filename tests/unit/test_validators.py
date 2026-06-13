@@ -138,9 +138,7 @@ def test_converter_length_rejects_invalid():
 def _encodable_bounds(min_v, max_v, converter, length, signed_override=None):
     """Replicate number.py::_validate_encodable_range's core decision."""
     scale = converter_scale(converter)
-    is_signed = (
-        signed_override if signed_override is not None else converter_default_signed(converter)
-    )
+    is_signed = signed_override if signed_override is not None else converter_default_signed(converter)
     for value in (min_v, max_v):
         raw = round(value / scale)
         if not raw_fits(raw, length, is_signed):

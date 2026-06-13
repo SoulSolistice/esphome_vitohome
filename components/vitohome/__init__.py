@@ -186,12 +186,7 @@ def datapoint_expression(name: str, address: int, length: int) -> cg.RawExpressi
     escaped; ``address`` is emitted as a 0x-prefixed 16-bit literal.
     """
     return cg.RawExpression(
-        f"VitoWiFi::Datapoint("
-        f"{cpp_string_literal(name)}, "
-        f"{address:#06x}, "
-        f"{length}, "
-        f"VitoWiFi::noconv"
-        f")"
+        f"VitoWiFi::Datapoint(" f"{cpp_string_literal(name)}, " f"{address:#06x}, " f"{length}, " f"VitoWiFi::noconv" f")"
     )
 
 

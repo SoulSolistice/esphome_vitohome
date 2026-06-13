@@ -68,11 +68,7 @@ async def to_code(config):
     var = await sensor.new_sensor(config)
     await cg.register_component(var, config)
 
-    cg.add(
-        var.set_datapoint(
-            datapoint_expression(config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH])
-        )
-    )
+    cg.add(var.set_datapoint(datapoint_expression(config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH])))
     cg.add(var.set_scale(converter_scale(config[CONF_CONVERTER])))
     cg.add(var.set_signed(resolve_signed(config)))
     if CONF_BYTE_OFFSET in config:

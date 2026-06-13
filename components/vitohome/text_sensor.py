@@ -26,9 +26,7 @@ CONF_CODES = "codes"
 # fixed by the on-wire layout, so it is validated rather than configurable.
 ERROR_HISTORY_LENGTH = 9
 
-VitoTextSensor = vitohome_ns.class_(
-    "VitoTextSensor", text_sensor.TextSensor, cg.Component
-)
+VitoTextSensor = vitohome_ns.class_("VitoTextSensor", text_sensor.TextSensor, cg.Component)
 TextSensorType = vitohome_ns.enum("TextSensorType", is_class=True)
 
 TEXT_SENSOR_TYPES = {
@@ -80,17 +78,13 @@ CONFIG_SCHEMA = cv.typed_schema(
             {
                 # Fixed by the wire layout; accept it explicitly so a typo is a
                 # config error, not a silent wrong read.
-                cv.Optional(
-                    CONF_LENGTH, default=ERROR_HISTORY_LENGTH
-                ): cv.int_range(min=ERROR_HISTORY_LENGTH, max=ERROR_HISTORY_LENGTH),
+                cv.Optional(CONF_LENGTH, default=ERROR_HISTORY_LENGTH): cv.int_range(
+                    min=ERROR_HISTORY_LENGTH, max=ERROR_HISTORY_LENGTH
+                ),
                 cv.Optional(CONF_CODES, default={}): _VALUE_MAP,
             }
         ),
-        "device_id": (
-            text_sensor.text_sensor_schema(VitoTextSensor)
-            .extend(_BASE)
-            .extend(cv.COMPONENT_SCHEMA)
-        ),
+        "device_id": (text_sensor.text_sensor_schema(VitoTextSensor).extend(_BASE).extend(cv.COMPONENT_SCHEMA)),
     },
     key=CONF_TYPE,
     default_type="raw",
@@ -109,13 +103,7 @@ async def to_code(config):
         cg.add(parent.register_device_id_sensor(var))
         return
 
-    cg.add(
-        var.set_datapoint(
-            datapoint_expression(
-                config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH]
-            )
-        )
-    )
+    cg.add(var.set_datapoint(datapoint_expression(config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH])))
 
     # add_option(value, label) takes (uint32_t, const char*); ESPHome emits the
     # label as a properly-escaped C++ string literal, so no manual escaping here.

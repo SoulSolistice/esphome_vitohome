@@ -83,10 +83,10 @@ NON_NUMERIC_CONVERSIONS = {
 }
 
 # Poll tiers (seconds).
-POLL_FAST = 60     # live temperatures / measurements
-POLL_SLOW = 600    # monotonic counters (hours, starts, consumption)
+POLL_FAST = 60  # live temperatures / measurements
+POLL_SLOW = 600  # monotonic counters (hours, starts, consumption)
 POLL_CODING = 3600  # writable coding values / setpoints (rarely change)
-POLL_ERROR = 300   # error history
+POLL_ERROR = 300  # error history
 
 PROFILES = ("minimal", "standard", "full")
 
@@ -284,6 +284,7 @@ def load_catalog(data_dir: str) -> Catalog:
 
 
 # --- entity emission -------------------------------------------------------
+
 
 def _friendly(name: str) -> str:
     """Turn an event id into a human-ish entity name.
@@ -487,13 +488,11 @@ def _profile_keep(ev: Event, profile: str) -> bool:
     return True
 
 
-def generate(catalog: Catalog, device: str, profile: str,
-             include_re: str | None, exclude_re: str | None) -> str:
+def generate(catalog: Catalog, device: str, profile: str, include_re: str | None, exclude_re: str | None) -> str:
     events = catalog.events_for(device)
     if not events:
         raise SystemExit(
-            f"device {device!r} not found or has no events. "
-            "Run with --list-devices to see available device tokens."
+            f"device {device!r} not found or has no events. " "Run with --list-devices to see available device tokens."
         )
 
     inc = re.compile(include_re) if include_re else None
@@ -567,10 +566,19 @@ def generate(catalog: Catalog, device: str, profile: str,
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--data", required=True, help="directory containing the Vitosoft XML export (DPDefinitions*.xml)")
+    p.add_argument(
+        "--data",
+        required=True,
+        help="directory containing the Vitosoft XML export (DPDefinitions*.xml)",
+    )
     p.add_argument("--device", help="device token (Address) to generate for, e.g. VScotHO1_72")
     p.add_argument("--list-devices", action="store_true", help="list device tokens in the export and exit")
-    p.add_argument("--profile", choices=PROFILES, default="standard", help="how many datapoints to emit (default: standard)")
+    p.add_argument(
+        "--profile",
+        choices=PROFILES,
+        default="standard",
+        help="how many datapoints to emit (default: standard)",
+    )
     p.add_argument("--include", help="regex; only emit events whose name matches")
     p.add_argument("--exclude", help="regex; drop events whose name matches")
     p.add_argument("--out", help="output file (default: stdout)")

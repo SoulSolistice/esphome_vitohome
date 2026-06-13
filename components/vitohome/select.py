@@ -36,8 +36,7 @@ def _validate_options(config):
     for value in options:
         if not raw_fits(value, config[CONF_LENGTH], is_signed=False):
             raise cv.Invalid(
-                f"option value {value} does not fit {config[CONF_LENGTH]} "
-                f"unsigned byte(s)",
+                f"option value {value} does not fit {config[CONF_LENGTH]} " f"unsigned byte(s)",
                 path=[CONF_OPTIONS],
             )
     labels = list(options.values())
@@ -75,13 +74,7 @@ async def to_code(config):
     for value in options:
         cg.add(var.add_raw_value(value))
 
-    cg.add(
-        var.set_datapoint(
-            datapoint_expression(
-                config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH]
-            )
-        )
-    )
+    cg.add(var.set_datapoint(datapoint_expression(config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH])))
     cg.add(var.set_read_back(config[CONF_READ_BACK]))
     if CONF_UPDATE_INTERVAL in config:
         cg.add(var.set_poll_interval(int(config[CONF_UPDATE_INTERVAL].total_milliseconds)))

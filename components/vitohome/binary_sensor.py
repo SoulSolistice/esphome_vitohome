@@ -58,11 +58,7 @@ async def to_code(config):
     # Raw-bit read: index the payload directly via byte_offset/bit_mask, so the
     # datapoint converter is irrelevant (always noconv). Length still drives how
     # many bytes are requested.
-    cg.add(
-        var.set_datapoint(
-            datapoint_expression(config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH])
-        )
-    )
+    cg.add(var.set_datapoint(datapoint_expression(config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH])))
     cg.add(var.set_byte_offset(config[CONF_BYTE_OFFSET]))
     cg.add(var.set_bit_mask(config[CONF_BIT_MASK]))
     if CONF_UPDATE_INTERVAL in config:

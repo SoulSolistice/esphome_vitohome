@@ -28,6 +28,7 @@ def catalog():
 
 # --- parsing ----------------------------------------------------------------
 
+
 def test_devices_discovered(catalog):
     assert "VTestHO1_99" in catalog.devices
     assert "VOther_01" in catalog.devices
@@ -64,6 +65,7 @@ def test_enum_values_attached(catalog):
 
 # --- platform routing -------------------------------------------------------
 
+
 def _platform_of(catalog, event_id, profile="full"):
     ev = {e.id: e for e in catalog.events_for("VTestHO1_99")}[event_id]
     result = gc.emit_entity(ev, profile)
@@ -71,14 +73,14 @@ def _platform_of(catalog, event_id, profile="full"):
 
 
 def test_routing(catalog):
-    assert _platform_of(catalog, "1") == "sensor"          # div10 temp
-    assert _platform_of(catalog, "2") == "sensor"          # sec2hour counter
-    assert _platform_of(catalog, "3") == "binary_sensor"   # bit field
-    assert _platform_of(catalog, "4") == "text_sensor"     # read-only enum
-    assert _platform_of(catalog, "5") == "select"          # writable enum
-    assert _platform_of(catalog, "6") == "number"          # writable + borders
-    assert _platform_of(catalog, "7") == "number"          # writable, no borders
-    assert _platform_of(catalog, "8") == "comment"         # DateTimeBCD
+    assert _platform_of(catalog, "1") == "sensor"  # div10 temp
+    assert _platform_of(catalog, "2") == "sensor"  # sec2hour counter
+    assert _platform_of(catalog, "3") == "binary_sensor"  # bit field
+    assert _platform_of(catalog, "4") == "text_sensor"  # read-only enum
+    assert _platform_of(catalog, "5") == "select"  # writable enum
+    assert _platform_of(catalog, "6") == "number"  # writable + borders
+    assert _platform_of(catalog, "7") == "number"  # writable, no borders
+    assert _platform_of(catalog, "8") == "comment"  # DateTimeBCD
 
 
 def test_bit_mask_from_bit_position(catalog):
@@ -113,6 +115,7 @@ def test_sec2minute_emits_note(catalog):
 
 # --- profiles & filters -----------------------------------------------------
 
+
 def test_full_profile_emits_more_than_minimal(catalog):
     full = gc.generate(catalog, "VTestHO1_99", "full", None, None)
     minimal = gc.generate(catalog, "VTestHO1_99", "minimal", None, None)
@@ -122,15 +125,15 @@ def test_full_profile_emits_more_than_minimal(catalog):
 def test_minimal_keeps_writables_and_measurements(catalog):
     minimal = gc.generate(catalog, "VTestHO1_99", "minimal", None, None)
     # div10 temp (measurement) and the writable select/number survive minimal.
-    assert "0x0800" in minimal   # Outside_Temp
-    assert "0x2301" in minimal   # Operating_Mode (writable)
-    assert "0x6300" in minimal   # DHW_Setpoint (writable)
+    assert "0x0800" in minimal  # Outside_Temp
+    assert "0x2301" in minimal  # Operating_Mode (writable)
+    assert "0x6300" in minimal  # DHW_Setpoint (writable)
 
 
 def test_include_filter(catalog):
     out = gc.generate(catalog, "VTestHO1_99", "full", r"Temp", None)
-    assert "0x0800" in out         # Outside_Temp matches
-    assert "0x2301" not in out     # Operating_Mode filtered out
+    assert "0x0800" in out  # Outside_Temp matches
+    assert "0x2301" not in out  # Operating_Mode filtered out
 
 
 def test_exclude_filter(catalog):
@@ -140,6 +143,7 @@ def test_exclude_filter(catalog):
 
 
 # --- emission shape ---------------------------------------------------------
+
 
 def test_generate_has_platform_sections(catalog):
     out = gc.generate(catalog, "VTestHO1_99", "full", None, None)
@@ -161,6 +165,7 @@ def test_generated_yaml_parses(catalog):
 
 
 # --- _friendly --------------------------------------------------------------
+
 
 @pytest.mark.parametrize(
     "raw,expected",
