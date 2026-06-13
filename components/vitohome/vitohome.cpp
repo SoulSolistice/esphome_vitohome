@@ -1,5 +1,8 @@
 #include "vitohome.h"
 
+#include <cinttypes>
+#include <cstdio>
+
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
 
@@ -8,18 +11,26 @@ namespace vitohome {
 
 static const char *const TAG = "vitohome";
 
-VitoHomeComponent *VitoHomeComponent::instance_ = nullptr;
+// Known device families (Identification at 0xF8/0xF9). Deliberately small:
+// it covers the units this project has seen on the wire; everything else is
+// reported as raw hex, and the catalogue tooling (scripts/gen_catalog.py)
+// does the authoritative matching against the Vitosoft data.
+static const char *ident_family_name(uint16_t ident) {
+  switch (ident) {
+    case 0x20CB:
+      return "VScotHO1";
+    case 0x2098:
+      return "V200KW2";
+    case 0x2094:
+      return "V200KW1";
+    case 0x2053:
+      return "GWG_VBEM";
+    default:
+      return nullptr;
+  }
+}
 
 void VitoHomeComponent::setup() {
-  if (instance_ != nullptr) {
-    ESP_LOGE(TAG,
-             "Only one VitoHome component is supported per device. "
-             "Remove the duplicate vitohome: block.");
-    this->mark_failed();
-    return;
-  }
-  instance_ = this;
-
   this->validate_uart_();
   if (this->is_failed()) return;
 
@@ -27,23 +38,43 @@ void VitoHomeComponent::setup() {
   // the interface type and wraps &iface_ in a GenericInterface internally.
   this->vito_ = std::make_unique<VitoWiFi::VitoWiFi<VitoWiFi::VS2>>(&this->iface_);
 
-  this->vito_->onResponse(&VitoHomeComponent::on_response_);
-  this->vito_->onError(&VitoHomeComponent::on_error_);
+  // VS2 callbacks are std::function (verified at the pinned SHA), so they
+  // can capture `this` directly — no static-instance indirection needed.
+  this->vito_->onResponse([this](const VitoWiFi::PacketVS2 &response, const VitoWiFi::Datapoint &request) {
+    this->on_response_(response, request);
+  });
+  this->vito_->onError(
+      [this](VitoWiFi::OptolinkResult error, const VitoWiFi::Datapoint &request) { this->on_error_(error, request); });
 
   if (!this->vito_->begin()) {
     ESP_LOGE(TAG, "VitoWiFi::begin() failed");
     this->mark_failed();
     return;
   }
+
+  // Per-entity intervals are scheduled at hub-tick granularity, so anything
+  // shorter than the hub interval silently degrades to the hub interval.
+  // Surface that at setup instead of letting the user chase phantom lag.
+  const uint32_t hub_interval = this->get_update_interval();
+  for (auto *e : this->entities_) {
+    if (e->poll_interval() != 0 && e->poll_interval() < hub_interval) {
+      ESP_LOGW(TAG,
+               "%s '%s': update_interval %" PRIu32 " ms is shorter than the hub's %" PRIu32
+               " ms; effective rate is the hub interval",
+               e->entity_kind(), e->get_datapoint().name(), e->poll_interval(), hub_interval);
+    }
+  }
+
+  if (this->identify_device_) {
+    this->ident_start_();
+  }
+
   ESP_LOGI(TAG, "VitoHome ready, %zu entities registered", this->entities_.size());
 }
 
 void VitoHomeComponent::validate_uart_() {
   // The Optolink requires 4800 8E2. Fail loudly here rather than spend an
-  // hour debugging silent bus errors. get_baud_rate/get_data_bits/
-  // get_stop_bits/get_parity are stable accessors in current ESPHome
-  // (uart_component.h); dump_config() additionally emits the standard
-  // check_uart_settings log line.
+  // hour debugging silent bus errors.
   auto *bus = this->parent_;
   bool ok = true;
   if (bus->get_baud_rate() != 4800) {
@@ -73,15 +104,28 @@ void VitoHomeComponent::loop() {
 
   this->vito_->loop();
 
-  // Watchdog: if a request has been in flight too long, surface that
-  // and free the slot.
-  if (this->in_flight_ != nullptr) {
+  // Watchdog: if a request has been in flight too long, surface that and
+  // free the slot.
+  if (this->in_flight_ != nullptr || this->ident_in_flight_) {
     uint32_t now = millis();
     if (now - this->in_flight_started_ms_ > IN_FLIGHT_WATCHDOG_MS) {
-      ESP_LOGW(TAG, "In-flight request to %s exceeded watchdog (%u ms). Clearing.",
-               this->in_flight_->get_datapoint().name(), IN_FLIGHT_WATCHDOG_MS);
-      this->in_flight_->handle_error(VitoWiFi::OptolinkResult::TIMEOUT);
-      this->in_flight_ = nullptr;
+      if (this->ident_in_flight_) {
+        ESP_LOGW(TAG, "Identification read exceeded watchdog (%" PRIu32 " ms)", IN_FLIGHT_WATCHDOG_MS);
+        this->ident_in_flight_ = false;
+        this->ident_handle_error_();
+      } else {
+        ESP_LOGW(TAG, "In-flight %s to %s exceeded watchdog (%" PRIu32 " ms). Clearing.",
+                 this->in_flight_op_ == OpType::WRITE ? "write" : "read", this->in_flight_->get_datapoint().name(),
+                 IN_FLIGHT_WATCHDOG_MS);
+        this->in_flight_->handle_error(VitoWiFi::OptolinkResult::TIMEOUT);
+        if (this->in_flight_op_ == OpType::READ) {
+          this->in_flight_->read_queued_ = false;
+        } else {
+          this->in_flight_->write_queued_ = false;
+        }
+        this->in_flight_ = nullptr;
+        this->in_flight_op_ = OpType::NONE;
+      }
     }
   }
 
@@ -90,42 +134,82 @@ void VitoHomeComponent::loop() {
 }
 
 void VitoHomeComponent::dispatch_next_() {
-  if (this->in_flight_ != nullptr) return;
-  if (this->queue_.empty()) return;
+  if (this->in_flight_ != nullptr || this->ident_in_flight_) return;
 
-  VitoEntityBase *entity = this->queue_.front();
+  // Identification runs before regular traffic so the user sees the device
+  // tuple in the first seconds of the log.
+  if (this->ident_state_ != IdentState::IDLE && this->ident_state_ != IdentState::DONE) {
+    if (this->vito_->read(this->ident_dp_)) {
+      this->ident_in_flight_ = true;
+      this->in_flight_started_ms_ = millis();
+      ESP_LOGV(TAG, "Dispatched identification read 0x%04X len %u", this->ident_dp_.address(),
+               this->ident_dp_.length());
+    }
+    return;
+  }
+
+  // Writes preempt reads: a user-initiated setpoint change should not wait
+  // behind a full poll cycle.
+  if (!this->write_queue_.empty()) {
+    VitoEntityBase *entity = this->write_queue_.front();
+    if (this->vito_->write(entity->get_datapoint(), entity->write_data(), entity->write_length())) {
+      this->in_flight_ = entity;
+      this->in_flight_op_ = OpType::WRITE;
+      this->in_flight_started_ms_ = millis();
+      this->write_queue_.pop_front();
+      ESP_LOGV(TAG, "Dispatched write for %s (%u bytes)", entity->get_datapoint().name(), entity->write_length());
+    }
+    return;  // engine busy: retry next loop()
+  }
+
+  if (this->read_queue_.empty()) return;
+  VitoEntityBase *entity = this->read_queue_.front();
   if (this->vito_->read(entity->get_datapoint())) {
     this->in_flight_ = entity;
+    this->in_flight_op_ = OpType::READ;
     this->in_flight_started_ms_ = millis();
-    this->queue_.pop_front();
+    this->read_queue_.pop_front();
     ESP_LOGV(TAG, "Dispatched read for %s", entity->get_datapoint().name());
   }
   // else: VitoWiFi engine is busy with internal state; retry next loop().
 }
 
+void VitoHomeComponent::schedule_due_entities_() {
+  const uint32_t now = millis();
+  size_t queued = 0, skipped = 0;
+  for (auto *entity : this->entities_) {
+    if (entity->read_queued_) {
+      skipped++;
+      continue;  // still waiting from a previous cycle — don't double-queue
+    }
+    if (entity->poll_interval() != 0) {
+      // next_due_ms_ == 0 means "never polled": due immediately.
+      if (entity->next_due_ms_ != 0 && static_cast<int32_t>(now - entity->next_due_ms_) < 0) continue;
+      entity->next_due_ms_ = now + entity->poll_interval();
+    }
+    entity->read_queued_ = true;
+    this->read_queue_.push_back(entity);
+    queued++;
+  }
+  if (skipped > 0) {
+    ESP_LOGW(TAG, "Poll cycle: %zu entities still queued from the previous cycle (bus saturated?)", skipped);
+  }
+  ESP_LOGV(TAG, "Queued %zu reads", queued);
+}
+
 void VitoHomeComponent::update() {
   if (this->vito_ == nullptr) return;
   if (this->entities_.empty()) return;
-
-  // If the previous cycle hasn't drained, log and skip this tick. With
-  // ~10 entities at ~100 ms each the cycle takes ~1 s, which is far
-  // below typical update_interval values, so this should be rare.
-  if (!this->queue_.empty() || this->in_flight_ != nullptr) {
-    ESP_LOGW(TAG, "Skipping poll cycle: %zu still queued, %s in flight", this->queue_.size(),
-             this->in_flight_ != nullptr ? "request" : "none");
-    return;
-  }
-
-  for (auto *entity : this->entities_) {
-    this->queue_.push_back(entity);
-  }
-  ESP_LOGV(TAG, "Queued %zu reads", this->queue_.size());
+  this->schedule_due_entities_();
 }
 
 void VitoHomeComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "VitoHome:");
   ESP_LOGCONFIG(TAG, "  Protocol: P300 (VS2)");
   ESP_LOGCONFIG(TAG, "  Entities: %zu", this->entities_.size());
+  if (this->ident_state_ == IdentState::DONE) {
+    ESP_LOGCONFIG(TAG, "  Device: %s", this->ident_string_().c_str());
+  }
   this->check_uart_settings(4800, 2, uart::UART_CONFIG_PARITY_EVEN, 8);
   if (this->is_failed()) {
     ESP_LOGE(TAG, "  Setup FAILED");
@@ -136,10 +220,29 @@ void VitoHomeComponent::dump_config() {
   }
 }
 
+bool VitoHomeComponent::request_write(VitoEntityBase *entity) {
+  if (entity == nullptr || entity->write_length() == 0) return false;
+  if (entity->write_queued_) {
+    // Already queued: the entity's buffer now holds the newest payload, so
+    // the pending dispatch will transmit the latest value. Nothing to do.
+    return true;
+  }
+  entity->write_queued_ = true;
+  this->write_queue_.push_back(entity);
+  return true;
+}
+
 void VitoHomeComponent::on_response_(const VitoWiFi::PacketVS2 &response, const VitoWiFi::Datapoint &request) {
-  if (instance_ == nullptr) return;
-  VitoEntityBase *entity = instance_->in_flight_;
-  instance_->in_flight_ = nullptr;
+  if (this->ident_in_flight_) {
+    this->ident_in_flight_ = false;
+    this->ident_handle_response_(response);
+    return;
+  }
+
+  VitoEntityBase *entity = this->in_flight_;
+  OpType op = this->in_flight_op_;
+  this->in_flight_ = nullptr;
+  this->in_flight_op_ = OpType::NONE;
   if (entity == nullptr) {
     ESP_LOGW(TAG, "Response received for 0x%04X but no in-flight request", request.address());
     return;
@@ -147,15 +250,41 @@ void VitoHomeComponent::on_response_(const VitoWiFi::PacketVS2 &response, const 
   if (entity->get_datapoint().address() != request.address()) {
     ESP_LOGW(TAG, "Response address 0x%04X does not match in-flight 0x%04X; dropping", request.address(),
              entity->get_datapoint().address());
+    entity->read_queued_ = false;
+    entity->write_queued_ = false;
     return;
   }
+
+  if (op == OpType::WRITE) {
+    entity->write_queued_ = false;
+    ESP_LOGD(TAG, "Write to %s acknowledged", entity->get_datapoint().name());
+    entity->handle_write_response(response);
+    if (entity->wants_read_back() && !entity->read_queued_) {
+      // Confirm by reading the device's view of the value, ahead of the
+      // regular poll queue.
+      entity->read_queued_ = true;
+      this->read_queue_.push_front(entity);
+    }
+    return;
+  }
+
+  entity->read_queued_ = false;
   entity->handle_response(response);
 }
 
 void VitoHomeComponent::on_error_(VitoWiFi::OptolinkResult error, const VitoWiFi::Datapoint &request) {
-  if (instance_ == nullptr) return;
-  VitoEntityBase *entity = instance_->in_flight_;
-  instance_->in_flight_ = nullptr;
+  if (this->ident_in_flight_) {
+    this->ident_in_flight_ = false;
+    ESP_LOGD(TAG, "Identification read 0x%04X len %u failed (%s)", request.address(), request.length(),
+             VitoWiFi::errorToString(error));
+    this->ident_handle_error_();
+    return;
+  }
+
+  VitoEntityBase *entity = this->in_flight_;
+  OpType op = this->in_flight_op_;
+  this->in_flight_ = nullptr;
+  this->in_flight_op_ = OpType::NONE;
 
   const char *name = request.name();
   switch (error) {
@@ -179,7 +308,140 @@ void VitoHomeComponent::on_error_(VitoWiFi::OptolinkResult error, const VitoWiFi
       ESP_LOGE(TAG, "[ERROR]   %s — protocol error", name);
       break;
   }
-  if (entity != nullptr) entity->handle_error(error);
+  if (entity != nullptr) {
+    if (op == OpType::READ) {
+      entity->read_queued_ = false;
+    } else {
+      entity->write_queued_ = false;
+    }
+    entity->handle_error(error);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Identification
+// ---------------------------------------------------------------------------
+
+void VitoHomeComponent::ident_start_() {
+  this->ident_state_ = IdentState::READ4;
+  this->ident_dispatch_(IdentState::READ4);
+}
+
+void VitoHomeComponent::ident_dispatch_(IdentState state) {
+  this->ident_state_ = state;
+  switch (state) {
+    case IdentState::READ4:
+      this->ident_dp_ = VitoWiFi::Datapoint("ident", 0x00F8, 4, VitoWiFi::noconv);
+      break;
+    case IdentState::READ_F8:
+      this->ident_dp_ = VitoWiFi::Datapoint("ident", 0x00F8, 1, VitoWiFi::noconv);
+      break;
+    case IdentState::READ_F9:
+      this->ident_dp_ = VitoWiFi::Datapoint("ident", 0x00F9, 1, VitoWiFi::noconv);
+      break;
+    case IdentState::READ_FA:
+      this->ident_dp_ = VitoWiFi::Datapoint("ident", 0x00FA, 1, VitoWiFi::noconv);
+      break;
+    case IdentState::READ_FB:
+      this->ident_dp_ = VitoWiFi::Datapoint("ident", 0x00FB, 1, VitoWiFi::noconv);
+      break;
+    default:
+      break;
+  }
+  // The actual bus dispatch happens from dispatch_next_() when idle.
+}
+
+void VitoHomeComponent::ident_handle_response_(const VitoWiFi::PacketVS2 &response) {
+  const uint8_t *d = response.data();
+  const uint8_t n = response.dataLength();
+  switch (this->ident_state_) {
+    case IdentState::READ4:
+      // 0xF8..0xFB in one transaction. Wire order is the register order:
+      // F8 = group, F9 = controller, FA = HW index, FB = SW index.
+      if (n >= 4) {
+        this->ident_group_ = d[0];
+        this->ident_controller_ = d[1];
+        this->ident_hw_ = d[2];
+        this->ident_sw_ = d[3];
+        this->ident_finish_();
+        return;
+      }
+      // Short response: fall back to single-byte reads.
+      this->ident_dispatch_(IdentState::READ_F8);
+      return;
+    case IdentState::READ_F8:
+      if (n >= 1) this->ident_group_ = d[0];
+      this->ident_dispatch_(IdentState::READ_F9);
+      return;
+    case IdentState::READ_F9:
+      if (n >= 1) this->ident_controller_ = d[0];
+      this->ident_dispatch_(IdentState::READ_FA);
+      return;
+    case IdentState::READ_FA:
+      if (n >= 1) this->ident_hw_ = d[0];
+      this->ident_dispatch_(IdentState::READ_FB);
+      return;
+    case IdentState::READ_FB:
+      if (n >= 1) this->ident_sw_ = d[0];
+      this->ident_finish_();
+      return;
+    default:
+      return;
+  }
+}
+
+void VitoHomeComponent::ident_handle_error_() {
+  // Fail-soft per step: the multi-byte read degrades to single-byte reads
+  // (length-1 reads at F8/F9 are wire-confirmed on the reference unit), and
+  // each single-byte failure just leaves that field unknown.
+  switch (this->ident_state_) {
+    case IdentState::READ4:
+      this->ident_dispatch_(IdentState::READ_F8);
+      return;
+    case IdentState::READ_F8:
+      this->ident_dispatch_(IdentState::READ_F9);
+      return;
+    case IdentState::READ_F9:
+      this->ident_dispatch_(IdentState::READ_FA);
+      return;
+    case IdentState::READ_FA:
+      this->ident_dispatch_(IdentState::READ_FB);
+      return;
+    case IdentState::READ_FB:
+      this->ident_finish_();
+      return;
+    default:
+      return;
+  }
+}
+
+std::string VitoHomeComponent::ident_string_() const {
+  char buf[96];
+  if (this->ident_group_ >= 0 && this->ident_controller_ >= 0) {
+    const uint16_t ident = static_cast<uint16_t>((this->ident_group_ << 8) | this->ident_controller_);
+    const char *family = ident_family_name(ident);
+    int off = snprintf(buf, sizeof(buf), "0x%04X%s%s%s", ident, family != nullptr ? " (" : "",
+                       family != nullptr ? family : "", family != nullptr ? ")" : "");
+    if (this->ident_hw_ >= 0 && this->ident_sw_ >= 0 && off > 0 && off < static_cast<int>(sizeof(buf))) {
+      snprintf(buf + off, sizeof(buf) - off, " HW=0x%02X SW=0x%02X", this->ident_hw_, this->ident_sw_);
+    }
+    return std::string(buf);
+  }
+  return std::string("unknown (identification reads failed)");
+}
+
+void VitoHomeComponent::ident_finish_() {
+  this->ident_state_ = IdentState::DONE;
+  const std::string s = this->ident_string_();
+  ESP_LOGI(TAG, "Device identification: %s", s.c_str());
+  if (this->ident_sw_ < 0 && this->ident_group_ >= 0) {
+    ESP_LOGI(TAG,
+             "Software index (0xFB) unavailable — when picking datapoints from the "
+             "Vitosoft data, match on the family only and verify on the wire.");
+  }
+  for (auto *ts : this->device_id_sensors_) {
+    ts->publish_state(s);
+  }
 }
 
 }  // namespace vitohome

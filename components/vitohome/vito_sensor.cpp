@@ -2,6 +2,7 @@
 
 #include <cmath>
 
+#include "decode.h"
 #include "esphome/core/log.h"
 
 namespace esphome {
@@ -10,45 +11,41 @@ namespace vitohome {
 static const char *const TAG = "vitohome.sensor";
 
 void VitoSensor::dump_config() {
-  LOG_SENSOR("  ", "Vitoconnect Sensor", this);
-  ESP_LOGCONFIG(TAG, "    Address: 0x%04X  Length: %u", this->datapoint_.address(), this->datapoint_.length());
+  LOG_SENSOR("  ", "VitoHome Sensor", this);
+  ESP_LOGCONFIG(TAG, "    Address: 0x%04X  Length: %u  scale: %g  signed: %s", this->datapoint_.address(),
+                this->datapoint_.length(), this->scale_, this->signed_ ? "yes" : "no");
+  if (this->extract_byte_ >= 0) {
+    ESP_LOGCONFIG(TAG, "    Extract byte: %d", this->extract_byte_);
+  }
 }
 
 void VitoSensor::handle_response(const VitoWiFi::PacketVS2 &response) {
-  // VitoWiFi's VariantValue is a non-discriminated union with type-specific
-  // out-operators. The div* converters store a float, but noconv stores an
-  // *unsigned integer* member sized by length. Calling operator float() on a
-  // noconv value would read the float member of the union over integer bytes
-  // and yield garbage, so select the operator that matches the converter.
-  const auto &dp = this->datapoint_;
-  const VitoWiFi::VariantValue v = dp.decode(response);
-
-  float value;
-  if (dp.converter() == VitoWiFi::noconv) {
-    switch (dp.length()) {
-      case 1:
-        value = static_cast<float>(static_cast<uint8_t>(v));
-        break;
-      case 2:
-        value = static_cast<float>(static_cast<uint16_t>(v));
-        break;
-      case 4:
-        value = static_cast<float>(static_cast<uint32_t>(v));
-        break;
-      default:
-        value = NAN;
-        break;  // schema restricts length to 1/2/4
-    }
+  // Stage-2 decode path: vitohome bypasses VitoWiFi's converters entirely
+  // (their VariantValue is a tagless union and their math is float32 — see
+  // decode.h and docs/stage2_design.md) and decodes the raw payload itself.
+  const uint8_t *data = response.data();
+  const uint8_t have = response.dataLength();
+  double value = NAN;
+  bool ok;
+  if (this->extract_byte_ >= 0) {
+    ok = static_cast<uint8_t>(this->extract_byte_) < have &&
+         decode_scaled(data + this->extract_byte_, 1, 1, this->signed_, this->scale_, &value);
   } else {
-    value = static_cast<float>(v);  // div10 / div2 / div3600 -> float member
+    ok = decode_scaled(data, have, this->datapoint_.length(), this->signed_, this->scale_, &value);
   }
-
-  if (std::isnan(value) || std::isinf(value)) {
-    ESP_LOGW(TAG, "%s: decoded non-finite value, skipping", dp.name());
+  if (!ok) {
+    ESP_LOGW(TAG, "%s: response too short (have %u bytes, need %u)", this->datapoint_.name(), have,
+             this->extract_byte_ >= 0 ? this->extract_byte_ + 1 : this->datapoint_.length());
     return;
   }
-  ESP_LOGD(TAG, "%s = %.3f", dp.name(), value);
-  this->publish_state(value);
+
+  const float out = static_cast<float>(value);
+  if (std::isnan(out) || std::isinf(out)) {
+    ESP_LOGW(TAG, "%s: decoded non-finite value, skipping", this->datapoint_.name());
+    return;
+  }
+  ESP_LOGD(TAG, "%s = %.3f", this->datapoint_.name(), out);
+  this->publish_state(out);
 }
 
 void VitoSensor::handle_error(VitoWiFi::OptolinkResult /*error*/) {

@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Miniature synthetic DPDefinitions fixture for gen_catalog.py tests.
+     Not real Viessmann data: hand-built to exercise every emission path
+     (sensor / binary_sensor / number / select / text_sensor / comment / note).
+     Structure mirrors the real .NET DataSet diffgram (tables as repeated
+     elements); gen_catalog matches on local tag names, namespaces optional. -->
+<ImportExportDataHolder>
+  <diffgr:diffgram xmlns:msdata="urn:schemas-microsoft-com:xml-msdata"
+                   xmlns:diffgr="urn:schemas-microsoft-com:xml-diffgram-v1">
+    <ECNDataSet>
+
+      <!-- Two device types so the device listing has something to choose. -->
+      <ecnDatapointType>
+        <Id>101</Id>
+        <Name>VTestHO1</Name>
+        <Address>VTestHO1_99</Address>
+        <Description>Synthetic test boiler</Description>
+      </ecnDatapointType>
+      <ecnDatapointType>
+        <Id>102</Id>
+        <Name>VOther</Name>
+        <Address>VOther_01</Address>
+        <Description>Another device (no events)</Description>
+      </ecnDatapointType>
+
+      <!-- Link the events below to device 101 -->
+      <ecnDataPointTypeEventTypeLink><DataPointTypeId>101</DataPointTypeId><EventTypeId>1</EventTypeId></ecnDataPointTypeEventTypeLink>
+      <ecnDataPointTypeEventTypeLink><DataPointTypeId>101</DataPointTypeId><EventTypeId>2</EventTypeId></ecnDataPointTypeEventTypeLink>
+      <ecnDataPointTypeEventTypeLink><DataPointTypeId>101</DataPointTypeId><EventTypeId>3</EventTypeId></ecnDataPointTypeEventTypeLink>
+      <ecnDataPointTypeEventTypeLink><DataPointTypeId>101</DataPointTypeId><EventTypeId>4</EventTypeId></ecnDataPointTypeEventTypeLink>
+      <ecnDataPointTypeEventTypeLink><DataPointTypeId>101</DataPointTypeId><EventTypeId>5</EventTypeId></ecnDataPointTypeEventTypeLink>
+      <ecnDataPointTypeEventTypeLink><DataPointTypeId>101</DataPointTypeId><EventTypeId>6</EventTypeId></ecnDataPointTypeEventTypeLink>
+      <ecnDataPointTypeEventTypeLink><DataPointTypeId>101</DataPointTypeId><EventTypeId>7</EventTypeId></ecnDataPointTypeEventTypeLink>
+      <ecnDataPointTypeEventTypeLink><DataPointTypeId>101</DataPointTypeId><EventTypeId>8</EventTypeId></ecnDataPointTypeEventTypeLink>
+      <ecnDataPointTypeEventTypeLink><DataPointTypeId>101</DataPointTypeId><EventTypeId>9</EventTypeId></ecnDataPointTypeEventTypeLink>
+
+      <!-- 1: read-only div10 SIGNED temperature -> sensor -->
+      <ecnEventType>
+        <Id>1</Id>
+        <Name>Outside_Temp~0x0800</Name>
+        <Conversion>Div10</Conversion>
+        <Type>1</Type>
+        <BlockLength>2</BlockLength>
+        <ByteLength>2</ByteLength>
+      </ecnEventType>
+
+      <!-- 2: read-only Sec2Hour counter -> sensor total_increasing, slow poll -->
+      <ecnEventType>
+        <Id>2</Id>
+        <Name>Burner_Hours~0x08A7</Name>
+        <Conversion>Sec2Hour</Conversion>
+        <Type>1</Type>
+        <BlockLength>4</BlockLength>
+        <ByteLength>4</ByteLength>
+      </ecnEventType>
+
+      <!-- 3: read-only bit field -> binary_sensor -->
+      <ecnEventType>
+        <Id>3</Id>
+        <Name>Pump_On~0x0A10</Name>
+        <Conversion>NoConversion</Conversion>
+        <Type>1</Type>
+        <BlockLength>1</BlockLength>
+        <ByteLength>1</ByteLength>
+        <BytePosition>0</BytePosition>
+        <BitLength>1</BitLength>
+        <BitPosition>2</BitPosition>
+      </ecnEventType>
+
+      <!-- 4: read-only enum -> text_sensor type: enum -->
+      <ecnEventType>
+        <Id>4</Id>
+        <Name>Status~0x0A20</Name>
+        <Conversion>NoConversion</Conversion>
+        <Type>1</Type>
+        <BlockLength>1</BlockLength>
+        <ByteLength>1</ByteLength>
+      </ecnEventType>
+      <ecnEventTypeEventValueTypeLink><EventTypeId>4</EventTypeId><EventValueTypeId>41</EventValueTypeId></ecnEventTypeEventValueTypeLink>
+      <ecnEventTypeEventValueTypeLink><EventTypeId>4</EventTypeId><EventValueTypeId>42</EventValueTypeId></ecnEventTypeEventValueTypeLink>
+      <ecnEventValueType><Id>41</Id><Name>off</Name><EnumAddressValue>0</EnumAddressValue><EnumReplaceValue>Aus</EnumReplaceValue></ecnEventValueType>
+      <ecnEventValueType><Id>42</Id><Name>on</Name><EnumAddressValue>1</EnumAddressValue><EnumReplaceValue>Ein</EnumReplaceValue></ecnEventValueType>
+
+      <!-- 5: writable enum (Type 2, length 1) -> select -->
+      <ecnEventType>
+        <Id>5</Id>
+        <Name>Operating_Mode~0x2301</Name>
+        <Conversion>NoConversion</Conversion>
+        <Type>2</Type>
+        <BlockLength>1</BlockLength>
+        <ByteLength>1</ByteLength>
+      </ecnEventType>
+      <ecnEventTypeEventValueTypeLink><EventTypeId>5</EventTypeId><EventValueTypeId>51</EventValueTypeId></ecnEventTypeEventValueTypeLink>
+      <ecnEventTypeEventValueTypeLink><EventTypeId>5</EventTypeId><EventValueTypeId>52</EventValueTypeId></ecnEventTypeEventValueTypeLink>
+      <ecnEventValueType><Id>51</Id><Name>standby</Name><EnumAddressValue>0</EnumAddressValue><EnumReplaceValue>Standby</EnumReplaceValue></ecnEventValueType>
+      <ecnEventValueType><Id>52</Id><Name>heating</Name><EnumAddressValue>2</EnumAddressValue><EnumReplaceValue>Heizen</EnumReplaceValue></ecnEventValueType>
+
+      <!-- 6: writable number WITH borders -> number with min/max/step -->
+      <ecnEventType>
+        <Id>6</Id>
+        <Name>DHW_Setpoint~0x6300</Name>
+        <Conversion>NoConversion</Conversion>
+        <Type>2</Type>
+        <BlockLength>1</BlockLength>
+        <ByteLength>1</ByteLength>
+        <LowerBorder>10</LowerBorder>
+        <UpperBorder>60</UpperBorder>
+        <Stepping>1</Stepping>
+      </ecnEventType>
+      <ecnEventTypeEventValueTypeLink><EventTypeId>6</EventTypeId><EventValueTypeId>61</EventValueTypeId></ecnEventTypeEventValueTypeLink>
+      <ecnEventValueType><Id>61</Id><Name>celsius</Name><Unit>&#176;C</Unit><LowerBorder>10</LowerBorder><UpperBorder>60</UpperBorder><Stepping>1</Stepping></ecnEventValueType>
+
+      <!-- 7: writable number WITHOUT borders -> placeholder min/max/step path -->
+      <ecnEventType>
+        <Id>7</Id>
+        <Name>Slope~0x27D3</Name>
+        <Conversion>Div10</Conversion>
+        <Type>2</Type>
+        <BlockLength>1</BlockLength>
+        <ByteLength>1</ByteLength>
+      </ecnEventType>
+
+      <!-- 8: DateTimeBCD -> non-numeric, emitted as a comment hint -->
+      <ecnEventType>
+        <Id>8</Id>
+        <Name>Error_Time~0x7507</Name>
+        <Conversion>DateTimeBCD</Conversion>
+        <Type>1</Type>
+        <BlockLength>8</BlockLength>
+        <ByteLength>8</ByteLength>
+      </ecnEventType>
+
+      <!-- 9: Sec2Minute -> no preset, emits noconv + NOTE -->
+      <ecnEventType>
+        <Id>9</Id>
+        <Name>Some_Minutes~0x0900</Name>
+        <Conversion>Sec2Minute</Conversion>
+        <Type>1</Type>
+        <BlockLength>4</BlockLength>
+        <ByteLength>4</ByteLength>
+      </ecnEventType>
+
+    </ECNDataSet>
+  </diffgr:diffgram>
+</ImportExportDataHolder>

@@ -1,7 +1,9 @@
-packages:
-  - !include common.yaml
+substitutions:
+  name: vitohome-test-idf
 
 esp32:
   board: esp32dev
   framework:
     type: esp-idf
+
+<<: !include common.yaml

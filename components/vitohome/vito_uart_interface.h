@@ -7,23 +7,22 @@
 namespace esphome {
 namespace vitohome {
 
-// Adapter satisfying VitoWiFi's generic-interface contract (5 methods)
-// against ESPHome's uart::UARTDevice.
+// Adapter satisfying VitoWiFi's generic-interface contract against ESPHome's
+// uart::UARTDevice.
 //
 // VitoWiFi calls these from inside its own loop(), so we must remain
-// non-blocking. ESPHome's UART API is already non-blocking, so each
-// method is a thin forward.
+// non-blocking. ESPHome's UART API is already non-blocking, so each method is
+// a thin forward.
 //
-// Lifetime: ESPHomeUARTInterface stores a non-owning pointer to a
-// UARTDevice that outlives it. The component holds both as members
-// in the correct order.
+// Lifetime: ESPHomeUARTInterface stores a non-owning pointer to a UARTDevice
+// that outlives it. The component holds both as members in the correct order.
 class ESPHomeUARTInterface {
  public:
   explicit ESPHomeUARTInterface(uart::UARTDevice *dev) : dev_(dev) {}
 
   bool begin() {
-    // ESPHome configures and opens the UART from YAML; nothing for us
-    // to do beyond a sanity check.
+    // ESPHome configures and opens the UART from YAML; nothing for us to do
+    // beyond a sanity check.
     return dev_ != nullptr;
   }
 

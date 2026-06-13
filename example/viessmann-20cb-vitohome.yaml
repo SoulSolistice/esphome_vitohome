@@ -1,0 +1,433 @@
+# ============================================================================
+# vitohome — full device config for the reference unit (device 0x20CB / VScotHO1)
+# ----------------------------------------------------------------------------
+# Stage-2 port of the original esphome_vitoconnect config. Every datapoint that
+# was log-confirmed on this unit is carried over, now using the native vitohome
+# platforms (sensor / binary_sensor / number / select / text_sensor) and the
+# in-component decode/encode path.
+#
+# Key improvements over the old config (see docs/stage2_design.md):
+#   * Temperatures use `converter: div10` (SIGNED) instead of length-2 +
+#     `multiply: 0.1`. The old unsigned decode would have read a sub-zero
+#     temperature (raw 0xFFD8 = -40) as 6549.6 C; div10 is signed and correct.
+#   * Burner hours use `converter: sec2hour` decoded in double precision,
+#     instead of `multiply: 0.000277778` over a float32 (the raw seconds value
+#     of a 4-byte counter exceeds float32's exact integer range).
+#   * Pump speeds use `byte_offset: 1` instead of a `>> 8 & 0xFF` lambda.
+#   * The three writable coding values and the operating-mode select are native
+#     number/select entities (no template + raw helper + set_action lambda).
+#   * Error history is read as a 9-byte block and decoded with the FULL
+#     timestamp (year-month-day hour:minute:second), per the corrected layout.
+#
+# Final gate (project guidelines section 0 / standing practice): a live
+#   esphome compile && esphome run
+# on the repo checkout. This file was schema-validated with `esphome config`.
+# ============================================================================
+
+substitutions:
+  device_name: viessmann-optolink
+  friendly_name: "Viessmann Optolink"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  variant: esp32c3
+  board: esp32-c3-devkitm-1
+  framework:
+    type: esp-idf
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/SoulSolistice/esphome_vitohome
+      ref: main
+    components: [ vitohome ]
+    refresh: 0s        # re-pull main on every build
+
+api:
+  encryption:
+    key: !secret esphome-api
+
+ota:
+  - platform: esphome
+    password: !secret esphome-ota
+
+ethernet:
+  type: DM9051
+  clk_pin: GPIO07
+  mosi_pin: GPIO10
+  miso_pin: GPIO03
+  cs_pin: GPIO09
+  interrupt_pin: GPIO08
+  reset_pin: GPIO06
+  clock_speed: 8MHz
+
+safe_mode:
+  boot_is_good_after: 60s
+  num_attempts: 10
+  reboot_timeout: 5min
+
+logger:
+  level: DEBUG
+  logs:
+    vitohome: DEBUG
+    vitohome.sensor: DEBUG
+    vitohome.number: DEBUG
+    vitohome.select: DEBUG
+    vitohome.text_sensor: DEBUG
+
+button:
+  - platform: restart
+    name: "Restart"
+    entity_category: diagnostic
+  - platform: safe_mode
+    name: "Safe Mode"
+    entity_category: diagnostic
+
+# 4800 8E2 is MANDATORY: vitohome hard-fails in validate_uart_() on any
+# mismatch of baud / data-bits / stop-bits / parity.
+uart:
+  - id: uart_optolink
+    rx_pin: GPIO05
+    tx_pin: GPIO02
+    baud_rate: 4800
+    data_bits: 8
+    parity: EVEN
+    stop_bits: 2
+
+# --- vitohome hub -----------------------------------------------------------
+# update_interval is the base poll tick; per-entity `update_interval` below
+# slows individual datapoints to a multiple of this tick. identify_device reads
+# 0xF8..0xFB once at boot and logs the device tuple.
+vitohome:
+  id: vito
+  uart_id: uart_optolink
+  protocol: P300
+  update_interval: 60s
+  identify_device: true
+
+# ============================================================================
+# Sensors
+# ============================================================================
+sensor:
+  # Temperatures: div10 (SIGNED). The single most important correctness fix
+  # vs. the old unsigned multiply-0.1.
+  - platform: vitohome
+    name: "Aussentemperatur"
+    address: 0x0800
+    length: 2
+    converter: div10
+    unit_of_measurement: "C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: vitohome
+    name: "Kesseltemperatur"
+    address: 0x0802
+    length: 2
+    converter: div10
+    unit_of_measurement: "C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: vitohome
+    name: "Kesselsolltemperatur"
+    address: 0x555A
+    length: 2
+    converter: div10
+    unit_of_measurement: "C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: vitohome
+    name: "Warmwassertemperatur"
+    address: 0x0804
+    length: 2
+    converter: div10
+    unit_of_measurement: "C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: vitohome
+    name: "Abgastemperatur"
+    address: 0x0808
+    length: 2
+    converter: div10
+    unit_of_measurement: "C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: vitohome
+    name: "Vorlauftemperatur M1"
+    address: 0x2900
+    length: 2
+    converter: div10
+    unit_of_measurement: "C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: vitohome
+    name: "Vorlauftemperatur M2"
+    address: 0x3900
+    length: 2
+    converter: div10
+    unit_of_measurement: "C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  # Counters: poll slowly (10 min). Brennerstarts is a raw uint32.
+  - platform: vitohome
+    name: "Brennerstarts"
+    address: 0x088A
+    length: 4
+    converter: noconv
+    unit_of_measurement: "starts"
+    accuracy_decimals: 0
+    state_class: total_increasing
+    update_interval: 600s
+
+  # Sec2Hour decoded in double precision (precision-loss fix).
+  - platform: vitohome
+    name: "Brennerstunden Stufe 1"
+    address: 0x08A7
+    length: 4
+    converter: sec2hour
+    unit_of_measurement: "h"
+    device_class: duration
+    state_class: total_increasing
+    accuracy_decimals: 1
+    update_interval: 600s
+
+  - platform: vitohome
+    name: "Oelverbrauch"
+    address: 0x7574
+    length: 4
+    converter: div1000
+    unit_of_measurement: "l"
+    state_class: total_increasing
+    accuracy_decimals: 1
+    update_interval: 600s
+
+  # Modulation / pump speeds
+  - platform: vitohome
+    name: "Brenner Modulation"
+    address: 0x55D3
+    length: 1
+    converter: noconv
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    state_class: measurement
+
+  # PR2 unit: the percentage is in byte 1 of a 2-byte read (was a >>8&0xFF
+  # lambda). byte_offset extracts that byte natively.
+  - platform: vitohome
+    name: "Pumpendrehzahl Intern"
+    address: 0x7660
+    length: 2
+    converter: noconv
+    byte_offset: 1
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    state_class: measurement
+
+  - platform: vitohome
+    name: "Pumpendrehzahl M1"
+    address: 0x7663
+    length: 2
+    converter: noconv
+    byte_offset: 1
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    state_class: measurement
+
+  - platform: vitohome
+    name: "Pumpendrehzahl M2"
+    address: 0x7665
+    length: 2
+    converter: noconv
+    byte_offset: 1
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    state_class: measurement
+
+# ============================================================================
+# Binary sensors  (nonzero byte = active; default bit_mask 0xFF)
+# ============================================================================
+binary_sensor:
+  - platform: vitohome
+    name: "Sammelstoerung"
+    address: 0x0A82
+    length: 1
+    device_class: problem
+
+  - platform: vitohome
+    name: "Speicherladepumpe"
+    address: 0x6513
+    length: 1
+    device_class: running
+
+  - platform: vitohome
+    name: "Zirkulationspumpe"
+    address: 0x6515
+    length: 1
+    device_class: running
+
+# ============================================================================
+# Numbers (writable coding values) — poll slowly (1 h); they rarely change.
+# ============================================================================
+number:
+  - platform: vitohome
+    name: "Warmwassersolltemperatur"
+    address: 0x6300
+    length: 1
+    converter: noconv
+    min_value: 10
+    max_value: 60
+    step: 1
+    unit_of_measurement: "C"
+    mode: box
+    update_interval: 3600s
+
+  # Vitosoft conversion is Div10, so this is now a NATURAL slope value
+  # (0.2 .. 3.5 in 0.1 steps) instead of the old raw integer 2..35.
+  - platform: vitohome
+    name: "Heizkennlinie Neigung M1"
+    address: 0x27D3
+    length: 1
+    converter: div10
+    min_value: 0.2
+    max_value: 3.5
+    step: 0.1
+    mode: box
+    update_interval: 3600s
+
+  # Niveau is a SIGNED integer offset in C (-13 .. 40).
+  - platform: vitohome
+    name: "Heizkennlinie Niveau M1"
+    address: 0x27D4
+    length: 1
+    converter: noconv
+    signed: true
+    min_value: -13
+    max_value: 40
+    step: 1
+    unit_of_measurement: "C"
+    mode: box
+    update_interval: 3600s
+
+# ============================================================================
+# Select (writable enum)
+# ============================================================================
+select:
+  - platform: vitohome
+    name: "Betriebsart"
+    address: 0x2301
+    length: 1
+    icon: "mdi:radiator"
+    update_interval: 3600s
+    options:
+      0x00: "Warmwasser"
+      0x01: "Reduziert"
+      0x02: "Normal"
+      0x03: "Heizen + WW"
+      0x04: "Heizen + WW FS"
+      0x05: "Abschaltbetrieb"
+
+# ============================================================================
+# Text sensors
+# ============================================================================
+text_sensor:
+  # Device identity, fed by the hub's one-shot 0xF8..0xFB read at boot.
+  - platform: vitohome
+    type: device_id
+    name: "Geraete-Typ"
+    icon: "mdi:identifier"
+    entity_category: diagnostic
+
+  # Most-recent error slot, read as a 9-byte block and decoded with the FULL
+  # timestamp. NOTE: on this unit the OLD config could only read the single
+  # code byte (per-byte reads at 0x7508+ returned P300 error); a 9-byte BLOCK
+  # read at 0x7507 is a different transaction and is the thing to confirm on
+  # hardware. If the device NAKs the block read, drop length to 1 (code only).
+  - platform: vitohome
+    type: error_history
+    name: "Letzter Fehler"
+    address: 0x7507
+    length: 9
+    icon: "mdi:alert-circle"
+    update_interval: 300s
+    codes:
+        0x00: "Regelbetrieb (kein Fehler)"
+        0x0F: "Wartung (fuer Reset Codieradresse 24 auf 0 stellen)"
+        0x10: "Kurzschluss Aussentemperatursensor"
+        0x18: "Unterbrechung Aussentemperatursensor"
+        0x20: "Kurzschluss Vorlauftemperatursensor"
+        0x21: "Kurzschluss Ruecklauftemperatursensor"
+        0x28: "Unterbrechung Vorlauftemperatursensor"
+        0x29: "Unterbrechung Ruecklauftemperatursensor"
+        0x30: "Kurzschluss Kesseltemperatursensor"
+        0x38: "Unterbrechung Kesseltemperatursensor"
+        0x40: "Kurzschluss Vorlauftemperatursensor M2"
+        0x42: "Unterbrechung Vorlauftemperatursensor M2"
+        0x50: "Kurzschluss Speichertemperatursensor"
+        0x58: "Unterbrechung Speichertemperatursensor"
+        0x92: "Solar: Kurzschluss Kollektortemperatursensor"
+        0x93: "Solar: Kurzschluss Sensor S3"
+        0x94: "Solar: Kurzschluss Speichertemperatursensor"
+        0x9A: "Solar: Unterbrechung Kollektortemperatursensor"
+        0x9B: "Solar: Unterbrechung Sensor S3"
+        0x9C: "Solar: Unterbrechung Speichertemperatursensor"
+        0x9E: "Solar: Zu geringer/kein Volumenstrom oder Temperaturwaechter ausgeloest"
+        0x9F: "Solar: Fehlermeldung Solarteil (siehe Solarregler)"
+        0xA7: "Bedienteil defekt"
+        0xB0: "Kurzschluss Abgastemperatursensor"
+        0xB1: "Kommunikationsfehler Bedieneinheit"
+        0xB4: "Interner Fehler (Elektronik)"
+        0xB5: "Interner Fehler (Elektronik)"
+        0xB6: "Ungueltige Hardwarekennung (Elektronik)"
+        0xB7: "Interner Fehler (Kesselkodierstecker)"
+        0xB8: "Unterbrechung Abgastemperatursensor"
+        0xB9: "Interner Fehler (Dateneingabe wiederholen)"
+        0xBA: "Kommunikationsfehler Erweiterungssatz fuer Mischerkreis M2"
+        0xBC: "Kommunikationsfehler Fernbedienung Vitorol, Heizkreis M1"
+        0xBD: "Kommunikationsfehler Fernbedienung Vitorol, Heizkreis M2"
+        0xBE: "Falsche Codierung Fernbedienung Vitorol"
+        0xC1: "Externe Sicherheitseinrichtung (Kessel kuehlt aus)"
+        0xC2: "Kommunikationsfehler Solarregelung"
+        0xC5: "Kommunikationsfehler drehzahlgeregelte Heizkreispumpe, Heizkreis M1"
+        0xC6: "Kommunikationsfehler drehzahlgeregelte Heizkreispumpe, Heizkreis M2"
+        0xC7: "Falsche Codierung der Heizkreispumpe"
+        0xC9: "Stoermeldeeingang am Schaltmodul-V aktiv"
+        0xCD: "Kommunikationsfehler Vitocom 100 (KM-BUS)"
+        0xCE: "Kommunikationsfehler Schaltmodul-V"
+        0xCF: "Kommunikationsfehler LON Modul"
+        0xD1: "Brennerstoerung"
+        0xD4: "Sicherheitstemperaturbegrenzer hat ausgeloest oder Stoermeldemodul nicht richtig gesteckt"
+        0xDA: "Kurzschluss Raumtemperatursensor, Heizkreis M1"
+        0xDB: "Kurzschluss Raumtemperatursensor, Heizkreis M2"
+        0xDD: "Unterbrechung Raumtemperatursensor, Heizkreis M1"
+        0xDE: "Unterbrechung Raumtemperatursensor, Heizkreis M2"
+        0xE4: "Fehler Versorgungsspannung"
+        0xE5: "Interner Fehler (Ionisationselektrode)"
+        0xE6: "Abgas- / Zuluftsystem verstopft"
+        0xF0: "Interner Fehler (Regelung tauschen)"
+        0xF1: "Abgastemperaturbegrenzer ausgeloest"
+        0xF2: "Temperaturbegrenzer ausgeloest"
+        0xF3: "Flammensigal beim Brennerstart bereits vorhanden"
+        0xF4: "Flammensigal nicht vorhanden"
+        0xF7: "Differenzdrucksensor defekt"
+        0xF8: "Brennstoffventil schliesst zu spaet"
+        0xF9: "Geblaesedrehzahl beim Brennerstart zu niedrig"
+        0xFA: "Geblaesestillstand nicht erreicht"
+        0xFD: "Fehler Gasfeuerungsautomat"
+        0xFE: "Starkes Stoerfeld (EMV) in der Naehe oder Elektronik defekt"
+        0xFF: "Starkes Stoerfeld (EMV) in der Naehe oder interner Fehler"

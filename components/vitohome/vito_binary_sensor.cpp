@@ -9,7 +9,7 @@ namespace vitohome {
 static const char *const TAG = "vitohome.binary_sensor";
 
 void VitoBinarySensor::dump_config() {
-  LOG_BINARY_SENSOR("  ", "Vitoconnect Binary Sensor", this);
+  LOG_BINARY_SENSOR("  ", "VitoHome Binary Sensor", this);
   ESP_LOGCONFIG(TAG, "    Address: 0x%04X  Length: %u  byte_offset: %u  bit_mask: 0x%02X", this->datapoint_.address(),
                 this->datapoint_.length(), this->byte_offset_, this->bit_mask_);
 }
