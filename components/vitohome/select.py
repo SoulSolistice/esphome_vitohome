@@ -64,6 +64,8 @@ CONFIG_SCHEMA = cv.All(
 
 async def to_code(config):
     parent = await cg.get_variable(config[CONF_VITOCONNECT_ID])
+    # See sensor.py: pop the reserved update_interval before register_component.
+    poll_interval = config.pop(CONF_UPDATE_INTERVAL, None)
     options = config[CONF_OPTIONS]
     labels = list(options.values())
 
@@ -76,7 +78,7 @@ async def to_code(config):
 
     cg.add(var.set_datapoint(datapoint_expression(config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH])))
     cg.add(var.set_read_back(config[CONF_READ_BACK]))
-    if CONF_UPDATE_INTERVAL in config:
-        cg.add(var.set_poll_interval(int(config[CONF_UPDATE_INTERVAL].total_milliseconds)))
+    if poll_interval is not None:
+        cg.add(var.set_poll_interval(int(poll_interval.total_milliseconds)))
 
     cg.add(parent.register_entity(var))

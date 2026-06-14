@@ -65,6 +65,11 @@ CONFIG_SCHEMA = cv.All(
 
 async def to_code(config):
     parent = await cg.get_variable(config[CONF_VITOCONNECT_ID])
+    # Pop the reserved update_interval BEFORE register_component: it would
+    # otherwise emit set_update_interval(), a PollingComponent method our
+    # passive entities don't have. The hub drives polling; we keep this only as
+    # a per-datapoint poll interval.
+    poll_interval = config.pop(CONF_UPDATE_INTERVAL, None)
     var = await sensor.new_sensor(config)
     await cg.register_component(var, config)
 
@@ -73,10 +78,9 @@ async def to_code(config):
     cg.add(var.set_signed(resolve_signed(config)))
     if CONF_BYTE_OFFSET in config:
         cg.add(var.set_extract_byte(config[CONF_BYTE_OFFSET]))
-    if CONF_UPDATE_INTERVAL in config:
-        # cv.update_interval yields a TimePeriod; the entity stores ms and the
-        # hub schedules at hub-tick granularity (warns if shorter than the hub
-        # interval).
-        cg.add(var.set_poll_interval(int(config[CONF_UPDATE_INTERVAL].total_milliseconds)))
+    if poll_interval is not None:
+        # TimePeriod -> ms. The hub schedules at hub-tick granularity (and
+        # warns at runtime if this is shorter than the hub interval).
+        cg.add(var.set_poll_interval(int(poll_interval.total_milliseconds)))
 
     cg.add(parent.register_entity(var))

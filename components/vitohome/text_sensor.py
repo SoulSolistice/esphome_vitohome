@@ -93,6 +93,9 @@ CONFIG_SCHEMA = cv.typed_schema(
 
 async def to_code(config):
     parent = await cg.get_variable(config[CONF_VITOCONNECT_ID])
+    # See sensor.py: pop the reserved update_interval before register_component.
+    # (device_id has no such key, so this is a no-op there.)
+    poll_interval = config.pop(CONF_UPDATE_INTERVAL, None)
     var = await text_sensor.new_text_sensor(config)
     await cg.register_component(var, config)
     cg.add(var.set_type(TEXT_SENSOR_TYPES[config[CONF_TYPE]]))
@@ -111,7 +114,7 @@ async def to_code(config):
     for value, label in mapping.items():
         cg.add(var.add_option(value, label))
 
-    if CONF_UPDATE_INTERVAL in config:
-        cg.add(var.set_poll_interval(int(config[CONF_UPDATE_INTERVAL].total_milliseconds)))
+    if poll_interval is not None:
+        cg.add(var.set_poll_interval(int(poll_interval.total_milliseconds)))
 
     cg.add(parent.register_entity(var))

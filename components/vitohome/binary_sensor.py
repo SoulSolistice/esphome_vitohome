@@ -52,6 +52,9 @@ CONFIG_SCHEMA = cv.All(
 
 async def to_code(config):
     parent = await cg.get_variable(config[CONF_VITOCONNECT_ID])
+    # See sensor.py: pop the reserved update_interval before register_component
+    # so it doesn't emit set_update_interval() on our passive entity.
+    poll_interval = config.pop(CONF_UPDATE_INTERVAL, None)
     var = await binary_sensor.new_binary_sensor(config)
     await cg.register_component(var, config)
 
@@ -61,7 +64,7 @@ async def to_code(config):
     cg.add(var.set_datapoint(datapoint_expression(config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH])))
     cg.add(var.set_byte_offset(config[CONF_BYTE_OFFSET]))
     cg.add(var.set_bit_mask(config[CONF_BIT_MASK]))
-    if CONF_UPDATE_INTERVAL in config:
-        cg.add(var.set_poll_interval(int(config[CONF_UPDATE_INTERVAL].total_milliseconds)))
+    if poll_interval is not None:
+        cg.add(var.set_poll_interval(int(poll_interval.total_milliseconds)))
 
     cg.add(parent.register_entity(var))
