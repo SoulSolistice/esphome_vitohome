@@ -22,13 +22,13 @@ using namespace esphome::vitohome;
 static int g_failures = 0;
 static int g_checks = 0;
 
-#define CHECK(cond)                                                        \
-  do {                                                                     \
-    ++g_checks;                                                            \
-    if (!(cond)) {                                                         \
-      ++g_failures;                                                        \
-      std::printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);          \
-    }                                                                      \
+#define CHECK(cond)                                               \
+  do {                                                            \
+    ++g_checks;                                                   \
+    if (!(cond)) {                                                \
+      ++g_failures;                                               \
+      std::printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
+    }                                                             \
   } while (0)
 
 static bool close_to(double a, double b, double eps = 1e-6) { return std::fabs(a - b) <= eps; }
@@ -119,13 +119,13 @@ static void test_encode_scaled() {
   CHECK(buf[0] == 0x28);
 
   // Range checks: unsigned len 1 max is 255.
-  CHECK(!encode_scaled(300.0, 1.0, false, 1, buf));   // 300 > 255
-  CHECK(!encode_scaled(-1.0, 1.0, false, 1, buf));    // negative, unsigned
-  CHECK(!encode_scaled(128.0, 1.0, true, 1, buf));    // > int8 max 127
-  CHECK(!encode_scaled(-129.0, 1.0, true, 1, buf));   // < int8 min -128
+  CHECK(!encode_scaled(300.0, 1.0, false, 1, buf));  // 300 > 255
+  CHECK(!encode_scaled(-1.0, 1.0, false, 1, buf));   // negative, unsigned
+  CHECK(!encode_scaled(128.0, 1.0, true, 1, buf));   // > int8 max 127
+  CHECK(!encode_scaled(-129.0, 1.0, true, 1, buf));  // < int8 min -128
 
   // Round-trip: encode then decode returns the original (within rounding).
-  CHECK(encode_scaled(21.0, 0.1, false, 1, buf));     // raw 210
+  CHECK(encode_scaled(21.0, 0.1, false, 1, buf));  // raw 210
   double back = 0;
   CHECK(decode_scaled(buf, 1, 1, false, 0.1, &back));
   CHECK(close_to(back, 21.0));
