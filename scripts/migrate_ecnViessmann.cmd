@@ -33,8 +33,8 @@ set "DB_NAME=ViessmannMigrateTemp"
 REM SOURCE files = your standalone copies. They are COPIED, never attached
 REM directly, so the originals are never at risk. Do NOT point these at the
 REM live Vitosoft database files (that DB is open; attaching it is unsafe).
-set "SRC_MDF=C:\Your\Path\Here\ecnViessmann.mdf"
-set "SRC_LDF=C:\Your\Path\Here\ecnViessmann.ldf"
+set "SRC_MDF=E:\29_Git_Soulsolistice\ecnViessmann.mdf"
+set "SRC_LDF=E:\29_Git_Soulsolistice\ecnViessmann.ldf"
 
 REM WORKING copies that actually get attached. Must be readable by the SQL
 REM Server service account (see GRANT_SERVICE_READ). Deleted at the end.
@@ -43,8 +43,8 @@ set "WORK_MDF=%WORK_DIR%\ecnViessmann.mdf"
 set "WORK_LDF=%WORK_DIR%\ecnViessmann.ldf"
 
 REM Tools
-set "EXPORT_TOOL=C:\Your\Path\Here\Export2SQLCE.exe"
-set "SQLITE_TOOL=sqlite3.exe"
+set "EXPORT_TOOL=E:\29_Git_Soulsolistice\Export2SqlCE\Export2SqlCE-4.9.68.exe"
+set "SQLITE_TOOL=E:\29_Git_Soulsolistice\sqlite\sqlite3.exe"
 
 REM Outputs
 set "DUMP_FILE=%~dp0ViessmannDump.sql"
