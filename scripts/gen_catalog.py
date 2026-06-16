@@ -502,8 +502,7 @@ class Catalog:
     """Parsed Vitosoft export: device types + events (merged with the access
     layer) + value types + identification."""
 
-    def __init__(self, types, dp_name, links, raw_events, vlinks, raw_values,
-                 access, ident_rows, textmap):
+    def __init__(self, types, dp_name, links, raw_events, vlinks, raw_values, access, ident_rows, textmap):
         self.devices = types  # token -> datapoint-type Id
         self._dp_name = dp_name  # Id -> display name
         self._links = links  # dp_id -> [event_id]
@@ -537,11 +536,7 @@ class Catalog:
             return _intval(v)
 
         raw_name = f.get("Name", "") or ""
-        addr = (
-            _hexaddr(acc.get("address"))
-            or _address_from_token(token)
-            or _address_from_name(raw_name)
-        )
+        addr = _hexaddr(acc.get("address")) or _address_from_token(token) or _address_from_name(raw_name)
         return Event(
             id=eid,
             name=_friendly(raw_name, self._text),
@@ -649,11 +644,7 @@ class Catalog:
         f0_aware = [t for t in pool if t["f0"] is not None]
         if f0_aware:
             if f0 is not None:
-                fm = [
-                    t
-                    for t in f0_aware
-                    if t["f0"] <= f0 <= (t["f0t"] if t["f0t"] is not None else t["f0"])
-                ]
+                fm = [t for t in f0_aware if t["f0"] <= f0 <= (t["f0t"] if t["f0t"] is not None else t["f0"])]
                 if fm:
                     return fm[0]["token"], why + " + F0 match" + note
             generic = sorted(pool, key=lambda t: (t["f0"] if t["f0"] is not None else -1))
@@ -672,9 +663,7 @@ def load_catalog(data_dir: str, culture: str = "de") -> Catalog:
         )
     access = _load_access(_find_file(data_dir, "ecnEventType.xml"))
     ident = _load_identification(_find_file(data_dir, "ecnDataPointType.xml"))
-    textmap = _load_textresources(
-        _find_file(data_dir, f"Textresource_{culture}.xml", "Textresource.xml"), culture
-    )
+    textmap = _load_textresources(_find_file(data_dir, f"Textresource_{culture}.xml", "Textresource.xml"), culture)
     if not access:
         print(
             "warning: ecnEventType.xml not found next to DPDefinitions.xml; "
@@ -1002,7 +991,7 @@ def _error_history_lines(ev: Event, oid: str, codes: bool) -> list[str]:
         for code, text in sorted(OPENV_ERROR_CODES.items()):
             lines.append(f"    0x{code:02X}: {_yaml_str(text)}")
     else:
-        lines.append("  # codes: { 0x00: \"kein Fehler\", ... }  # add a code->text map")
+        lines.append('  # codes: { 0x00: "kein Fehler", ... }  # add a code->text map')
     return lines
 
 
@@ -1037,24 +1026,28 @@ def _profile_keep(ev: Event, profile: str) -> bool:
     return True
 
 
-def generate(catalog: Catalog, device: str, profile: str,
-             include_re: str | None, exclude_re: str | None) -> str:
+def generate(catalog: Catalog, device: str, profile: str, include_re: str | None, exclude_re: str | None) -> str:
     events = catalog.events_for(device)
     if not events:
         raise SystemExit(
-            f"device {device!r} not found or has no events. "
-            "Run with --list-devices to see available device tokens."
+            f"device {device!r} not found or has no events. " "Run with --list-devices to see available device tokens."
         )
 
-def generate(catalog: Catalog, device: str, profile: str,
-             include_re: str | None, exclude_re: str | None,
-             emit_device_id: bool = True, emit_error_history: bool = True,
-             error_codes: bool = True) -> str:
+
+def generate(
+    catalog: Catalog,
+    device: str,
+    profile: str,
+    include_re: str | None,
+    exclude_re: str | None,
+    emit_device_id: bool = True,
+    emit_error_history: bool = True,
+    error_codes: bool = True,
+) -> str:
     events = catalog.events_for(device)
     if not events:
         raise SystemExit(
-            f"device {device!r} not found or has no events. "
-            "Run with --list-devices to see available device tokens."
+            f"device {device!r} not found or has no events. " "Run with --list-devices to see available device tokens."
         )
 
     inc = re.compile(include_re) if include_re else None
@@ -1089,9 +1082,7 @@ def generate(catalog: Catalog, device: str, profile: str,
             if ev.address is not None:
                 seen_addr.add(ev.address)
             oid = _make_obj_id("letzter_fehler", used_ids)
-            buckets["text_sensor"].extend(
-                "  " + ln if ln else "" for ln in _error_history_lines(ev, oid, error_codes)
-            )
+            buckets["text_sensor"].extend("  " + ln if ln else "" for ln in _error_history_lines(ev, oid, error_codes))
             kept += 1
             continue
 
@@ -1161,7 +1152,9 @@ def generate(catalog: Catalog, device: str, profile: str,
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--data", required=True, help="dir with the Vitosoft XML export (DPDefinitions*.xml, ecnEventType.xml, ...)")
+    p.add_argument(
+        "--data", required=True, help="dir with the Vitosoft XML export (DPDefinitions*.xml, ecnEventType.xml, ...)"
+    )
     p.add_argument("--device", help="datapoint-type token to generate for, e.g. VScotHO1_72")
     p.add_argument("--identify", help="device Identification hex (group<<8|ident), e.g. 0x20CB; auto-selects the revision")
     p.add_argument("--hw", help="hardware index hex (0xFA), used with --identify")
@@ -1172,12 +1165,24 @@ def main(argv=None):
     p.add_argument("--include", help="regex; only emit events whose name matches")
     p.add_argument("--exclude", help="regex; drop events whose name matches")
     p.add_argument("--culture", default="de", help="Textresource language for names/labels (de,en,fr,it,ru,nl)")
-    p.add_argument("--device-id", action=argparse.BooleanOptionalAction, default=True,
-                   help="emit a device_id diagnostic text_sensor and suppress the raw 0xF8..0xFB reads (default: on)")
-    p.add_argument("--error-history", action=argparse.BooleanOptionalAction, default=True,
-                   help="emit a 'Letzter Fehler' error_history text_sensor for the 0x7507 slot (default: on)")
-    p.add_argument("--error-codes", action=argparse.BooleanOptionalAction, default=True,
-                   help="include the built-in openv error-code map in the error_history entity (default: on)")
+    p.add_argument(
+        "--device-id",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="emit a device_id diagnostic text_sensor and suppress the raw 0xF8..0xFB reads (default: on)",
+    )
+    p.add_argument(
+        "--error-history",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="emit a 'Letzter Fehler' error_history text_sensor for the 0x7507 slot (default: on)",
+    )
+    p.add_argument(
+        "--error-codes",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="include the built-in openv error-code map in the error_history entity (default: on)",
+    )
     p.add_argument("--out", help="output file (default: stdout)")
     args = p.parse_args(argv)
 
@@ -1220,7 +1225,11 @@ def main(argv=None):
         p.error("provide --device, or --identify with --hw/--sw (or use --list-devices)")
 
     text = generate(
-        catalog, device, args.profile, args.include, args.exclude,
+        catalog,
+        device,
+        args.profile,
+        args.include,
+        args.exclude,
         emit_device_id=args.device_id,
         emit_error_history=args.error_history,
         error_codes=args.error_codes,
