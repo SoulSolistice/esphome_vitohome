@@ -1026,14 +1026,6 @@ def _profile_keep(ev: Event, profile: str) -> bool:
     return True
 
 
-def generate(catalog: Catalog, device: str, profile: str, include_re: str | None, exclude_re: str | None) -> str:
-    events = catalog.events_for(device)
-    if not events:
-        raise SystemExit(
-            f"device {device!r} not found or has no events. " "Run with --list-devices to see available device tokens."
-        )
-
-
 def generate(
     catalog: Catalog,
     device: str,
