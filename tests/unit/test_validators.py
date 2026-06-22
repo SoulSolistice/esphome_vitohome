@@ -179,7 +179,7 @@ def test_cpp_string_literal_escapes():
 
 def test_datapoint_expression_uses_noconv_and_hex():
     expr = str(datapoint_expression('Kessel "K"', 0x0802, 2))
-    assert "VitoWiFi::Datapoint(" in expr
-    assert "VitoWiFi::noconv" in expr  # always bypass the library converter
+    assert "esphome::vitohome::optolink::Datapoint(" in expr
+    assert "esphome::vitohome::optolink::noconv" in expr  # always bypass the engine converter
     assert "0x0802" in expr
     assert '\\"K\\"' in expr  # name escaping survived

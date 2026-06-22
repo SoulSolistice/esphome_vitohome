@@ -7,10 +7,10 @@
 namespace esphome {
 namespace vitohome {
 
-// Adapter satisfying VitoWiFi's generic-interface contract against ESPHome's
+// Adapter satisfying the optolink engine's generic-interface contract against ESPHome's
 // uart::UARTDevice.
 //
-// VitoWiFi calls these from inside its own loop(), so we must remain
+// the optolink engine calls these from inside its own loop(), so we must remain
 // non-blocking. ESPHome's UART API is already non-blocking, so each method is
 // a thin forward.
 //
@@ -37,7 +37,7 @@ class ESPHomeUARTInterface {
   }
 
   uint8_t read() {
-    // VitoWiFi only calls read() after available() > 0, so the byte is
+    // the optolink engine only calls read() after available() > 0, so the byte is
     // guaranteed to be there. We still guard defensively.
     uint8_t b = 0;
     if (dev_ != nullptr) {

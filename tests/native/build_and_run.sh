@@ -1,16 +1,28 @@
 #!/usr/bin/env bash
-# Host build + run of the VS2 transaction harness.
-# VW = path to the vendored VitoWiFi sources. Pre-cleanup that is the upstream
-# tree; post-§1a (platform ctors removed) drop LinuxSerialInterface.cpp below.
+# Host build + run of the P300 (VS2) transaction harness against the in-tree
+# vendored Optolink engine (components/vitohome/optolink/).
+#
+# ROOT = component root that contains optolink/. The test includes the engine as
+#   #include "optolink/optolink.h"
+# so the component dir is on the include path; the engine's own headers use
+# paths relative to their own location, which resolve from there.
+#
+# Only the P300 path is compiled (OptolinkEngine<P300> == VS2Engine); the VS1/GWG
+# translation units are deferred protocols and not referenced by these vectors.
 set -euo pipefail
-VW="${1:-./components/vitohome/vitowifi/src}"
-g++ -std=c++17 -Wall \
-  -I"$VW" -I"$VW/VS2" -I"$VW/Datapoint" -I"$VW/Interface" \
+ROOT="${1:-../../components/vitohome}"
+OPTO="$ROOT/optolink"
+g++ -std=c++17 -Wall -Wextra \
+  -I"$ROOT" -I"$OPTO" \
   test_vs2_transaction.cpp \
-  "$VW/Constants.cpp" \
-  "$VW/Datapoint/Datapoint.cpp" "$VW/Datapoint/Converter.cpp" "$VW/Datapoint/ConversionHelpers.cpp" \
-  "$VW/VS2/VS2.cpp" "$VW/VS2/ParserVS2.cpp" "$VW/VS2/PacketVS2.cpp" \
-  "$VW/Interface/LinuxSerialInterface.cpp" \
+  "$OPTO/constants.cpp" \
+  "$OPTO/datapoint/datapoint.cpp" \
+  "$OPTO/datapoint/converter.cpp" \
+  "$OPTO/datapoint/conversion_helpers.cpp" \
+  "$OPTO/protocol/vs2/vs2.cpp" \
+  "$OPTO/protocol/vs2/parser_vs2.cpp" \
+  "$OPTO/protocol/vs2/packet_vs2.cpp" \
   -o vs2_transaction_harness
-# engine PC-logging goes to stdout until the §1b Logging.h fix lands; filter it
-./vs2_transaction_harness 2>/dev/null | grep -vE '^\[I\]'
+# Engine debug logging is compiled out on host (logging.h is gated on
+# VITOHOME_DEBUG_OPTOLINK && ESP_PLATFORM), so stdout is the harness only.
+./vs2_transaction_harness

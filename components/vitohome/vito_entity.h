@@ -1,14 +1,14 @@
 #pragma once
-#include <VitoWiFi.h>
-
 #include <cstring>
+
+#include "optolink/optolink.h"
 
 namespace esphome {
 namespace vitohome {
 
 class VitoHomeComponent;
 
-// Common base for any entity that owns a VitoWiFi datapoint. The component
+// Common base for any entity that owns an optolink datapoint. The component
 // holds a vector<VitoEntityBase*> and dispatches read/write responses and
 // errors back to the originating entity via its in-flight pointer. Concrete
 // subclasses translate raw Optolink payloads into ESPHome state publishes.
@@ -23,8 +23,8 @@ class VitoEntityBase {
  public:
   virtual ~VitoEntityBase() = default;
 
-  void set_datapoint(const VitoWiFi::Datapoint &dp) { this->datapoint_ = dp; }
-  const VitoWiFi::Datapoint &get_datapoint() const { return this->datapoint_; }
+  void set_datapoint(const optolink::Datapoint &dp) { this->datapoint_ = dp; }
+  const optolink::Datapoint &get_datapoint() const { return this->datapoint_; }
 
   // Optional distinct write target. When set, polling, read-back and read
   // response-matching still use datapoint_ (the state / read address) but
@@ -32,11 +32,11 @@ class VitoEntityBase {
   // is read at a different address than the command register (see the
   // read/write-split analysis). Unset: writes use datapoint_, i.e. the
   // original single-address behaviour, so existing entities are unaffected.
-  void set_write_datapoint(const VitoWiFi::Datapoint &dp) {
+  void set_write_datapoint(const optolink::Datapoint &dp) {
     this->write_datapoint_ = dp;
     this->has_write_dp_ = true;
   }
-  const VitoWiFi::Datapoint &get_write_datapoint() const {
+  const optolink::Datapoint &get_write_datapoint() const {
     return this->has_write_dp_ ? this->write_datapoint_ : this->datapoint_;
   }
 
@@ -56,11 +56,11 @@ class VitoEntityBase {
 
   // --- read path ------------------------------------------------------------
   // Called by the component on a successful read response. Packet length and
-  // checksum have already been verified by VitoWiFi.
-  virtual void handle_response(const VitoWiFi::PacketVS2 &response) = 0;
+  // checksum have already been verified by the optolink engine.
+  virtual void handle_response(const optolink::PacketVS2 &response) = 0;
 
   // Called by the component on a protocol-level error (read or write).
-  virtual void handle_error(VitoWiFi::OptolinkResult error) = 0;
+  virtual void handle_error(optolink::OptolinkResult error) = 0;
 
   // --- write path -----------------------------------------------------------
   const uint8_t *write_data() const { return this->write_buf_; }
@@ -72,7 +72,7 @@ class VitoEntityBase {
 
   // Called by the component when the device ACKed a write. Default: no-op
   // (the hub enqueues the read-back when wants_read_back()).
-  virtual void handle_write_response(const VitoWiFi::PacketVS2 & /*response*/) {}
+  virtual void handle_write_response(const optolink::PacketVS2 & /*response*/) {}
 
   // --- logging / dump_config --------------------------------------------------
   virtual const char *entity_kind() const = 0;
@@ -92,12 +92,12 @@ class VitoEntityBase {
   }
 
   // Default-constructed Datapoint until set_datapoint runs from codegen.
-  // The VitoWiFi converter slot is always noconv: vitohome decodes and
+  // The optolink converter slot is always noconv: vitohome decodes and
   // encodes the raw payload itself (decode.h) and uses the raw-bytes write
   // overload, so the library converter is never exercised.
-  VitoWiFi::Datapoint datapoint_{"uninitialized", 0, 1, VitoWiFi::noconv};
+  optolink::Datapoint datapoint_{"uninitialized", 0, 1, optolink::noconv};
   // Distinct write target (command address); used only when has_write_dp_.
-  VitoWiFi::Datapoint write_datapoint_{"uninitialized", 0, 1, VitoWiFi::noconv};
+  optolink::Datapoint write_datapoint_{"uninitialized", 0, 1, optolink::noconv};
   bool has_write_dp_{false};
 
   VitoHomeComponent *vh_parent_{nullptr};

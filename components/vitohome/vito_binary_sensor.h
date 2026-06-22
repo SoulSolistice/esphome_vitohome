@@ -12,8 +12,8 @@ class VitoBinarySensor : public binary_sensor::BinarySensor, public Component, p
   void set_bit_mask(uint8_t mask) { this->bit_mask_ = mask; }
 
   void dump_config() override;
-  void handle_response(const VitoWiFi::PacketVS2 &response) override;
-  void handle_error(VitoWiFi::OptolinkResult error) override;
+  void handle_response(const optolink::PacketVS2 &response) override;
+  void handle_error(optolink::OptolinkResult error) override;
   const char *entity_kind() const override { return "binary_sensor"; }
 
  protected:

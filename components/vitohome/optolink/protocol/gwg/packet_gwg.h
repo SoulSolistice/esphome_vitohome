@@ -16,9 +16,9 @@ margin. Deleted copy operations restored.
 #pragma once
 
 #include <array>
-#include <cstdint>
-#include <cstddef>
 #include <cassert>
+#include <cstddef>
+#include <cstdint>
 
 #include "../../constants.h"
 #include "../../helpers.h"

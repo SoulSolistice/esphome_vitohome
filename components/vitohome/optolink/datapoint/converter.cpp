@@ -29,7 +29,7 @@ VariantValue Div10Convert::decode(const uint8_t *data, uint8_t len) const {
 
 void Div10Convert::encode(uint8_t *buf, uint8_t len, const VariantValue &val) const {
   assert(len == 1 || len == 2);
-  (void) len;
+  (void)len;
   float srcVal = val;
   int16_t tmp = std::floor((srcVal * 10.f) + 0.5f);
   if (len == 2) {
@@ -48,7 +48,7 @@ VariantValue Div2Convert::decode(const uint8_t *data, uint8_t len) const {
 
 void Div2Convert::encode(uint8_t *buf, uint8_t len, const VariantValue &val) const {
   assert(len == 1);
-  (void) len;
+  (void)len;
   float srcVal = val;
   int8_t tmp = std::floor((srcVal * 2.f) + 0.5f);
   buf[0] = tmp;
@@ -56,7 +56,7 @@ void Div2Convert::encode(uint8_t *buf, uint8_t len, const VariantValue &val) con
 
 VariantValue Div3600Convert::decode(const uint8_t *data, uint8_t len) const {
   assert(len == 4);
-  (void) len;
+  (void)len;
   uint32_t val = data[3] << 24 | data[2] << 16 | data[1] << 8 | data[0];
   float retVal = val / 3600.f;
   return VariantValue(retVal);
@@ -64,7 +64,7 @@ VariantValue Div3600Convert::decode(const uint8_t *data, uint8_t len) const {
 
 void Div3600Convert::encode(uint8_t *buf, uint8_t len, const VariantValue &val) const {
   assert(len == 4);
-  (void) len;
+  (void)len;
   float srcVal = val;
   uint32_t tmp = std::floor((srcVal * 3600.f) + 0.5f);
   buf[3] = tmp >> 24;

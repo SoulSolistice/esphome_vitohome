@@ -9,8 +9,8 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 #pragma once
 
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 
 #include "../../constants.h"
 #include "../../helpers.h"

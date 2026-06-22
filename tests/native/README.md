@@ -1,14 +1,15 @@
 # VS2 transaction harness — fixture folded from live vitohome capture
 
-Host-side regression gate for the part of the VS2 engine upstream never unit-tested:
+Host-side regression gate for the part of the engine upstream never unit-tested:
 the request/ACK/response/fragment-reassembly choreography. It composes with the
 existing 74-check `decode.h` tests — this harness covers wire→payload; those cover
 payload→value.
 
-## Status: built and run against the real VS2 engine — 8/8 pass
+## Status: built and run against the in-tree optolink engine — 8/8 pass
 
-The fixture was **not** asserted on faith. It was compiled against the actual
-VitoWiFi VS2 sources on the host and executed:
+The fixture was **not** asserted on faith. It is compiled against the actual
+vendored Optolink engine (`components/vitohome/optolink/`, P300 path) on the host
+and executed:
 
 ```
   Outside Temp 0x5525    READ  addr=0x5525 frag=0  wire=ok   resp=ok
@@ -53,43 +54,44 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
   UART fragmentation.
 - `test_vs2_transaction.cpp` — data-driven runner: handshake into IDLE, then per
   vector replay request + chunked response and assert wire + payload.
-- `build_and_run.sh` — host compile + run. Pass the path to the vendored VitoWiFi
-  `src` as `$1` (default assumes `components/vitohome/vitowifi/src`).
+- `build_and_run.sh` — host compile + run. Optional `$1` is the component root
+  containing `optolink/` (default `../../components/vitohome`); it compiles the
+  P300 translation units (`constants`, `datapoint/*`, `protocol/vs2/*`).
 
-## Three things the build surfaced (all already in the cleanup plan)
+## Three things the original build surfaced (now resolved in-tree)
 
-1. **Namespace collides with class name.** `VitoWiFi::VitoWiFi<VS2>` must be fully
-   qualified — `using namespace VitoWiFi;` is ambiguous. (vitohome's component
-   already does this correctly; the test follows suit.)
-2. **`PacketVS2` is non-copyable** (deleted copy-assign — owns a `malloc` buffer), so
-   the callback extracts the payload rather than copying. The §1c `std::array` swap
-   would make it trivially copyable again — a free side benefit.
+1. **Namespace once collided with the class name.** Upstream `VitoWiFi::VitoWiFi<VS2>`
+   had to be fully qualified. After de-branding the engine is
+   `esphome::vitohome::optolink::OptolinkEngine<P300>`, so the collision is gone; the
+   harness just aliases the namespace.
+2. **`PacketVS2` was non-copyable** (deleted copy-assign — owned a `malloc` buffer).
+   The §1c `std::array` swap restored copyability. The callback still extracts the
+   payload there, because `data()` points into engine-owned storage valid only for the
+   duration of the callback.
 
-   The harness also caught a real null-deref hazard: for a write-ack, `data()` returns
+   The enduring finding is a real null-deref hazard: for a write-ack, `data()` returns
    `nullptr` by design but `dataLength()` still returns the echoed length, so a naive
    `data()[0..dataLength())` segfaults. The correct consumer guard is `if (data())`
-   before reading payload. vitohome's hub already does the right thing (hardware
-   doesn't crash); this vector now guards that contract permanently.
-3. **The §1b `<iostream>` wart is live.** The engine's verbose `state N --> M`
-   logging is upstream `Logging.h`'s PC branch writing to `std::cout`
-   unconditionally; `build_and_run.sh` filters it. After the §1b fix it is silent.
+   before reading payload. The two WRITE vectors guard that contract permanently.
+3. **The `<iostream>` log wart is fixed.** Upstream `Logging.h`'s PC branch wrote
+   `state N --> M` to `std::cout` unconditionally. The vendored `logging.h` (§1b) gates
+   all engine logging on `VITOHOME_DEBUG_OPTOLINK && ESP_PLATFORM`, so the host build is
+   silent — no stdout filtering needed.
 
 ## CI integration
 
-Add as a host gate beside the decode tests (it is the first host test that compiles
-the actual VS2 engine):
+Add as a host gate beside the decode tests (it is the host test that compiles the
+actual P300 engine, not just `decode.h`):
 
 ```yaml
 - name: VS2 transaction harness
   working-directory: tests/native
-  run: ./build_and_run.sh ../../components/vitohome/vitowifi/src
+  run: bash build_and_run.sh
 ```
 
-The script exits non-zero on any vector failure. **Note:** the build currently links
-`LinuxSerialInterface.cpp` because the unmodified upstream `VS2.cpp` defines the
-`VS2(const char*)` constructor under `__linux__`. After cleanup §1a removes the
-platform-specific constructors, drop that file from the link line — the harness then
-compiles only `VS2` / `ParserVS2` / `PacketVS2` / `Constants` / `Datapoint*`.
+The script exits non-zero on any vector failure. It compiles only the P300 path —
+`constants` / `datapoint/*` / `protocol/vs2/{vs2,parser_vs2,packet_vs2}` — since the
+VS1/GWG translation units are deferred protocols these vectors do not reference.
 
 ## Extending
 

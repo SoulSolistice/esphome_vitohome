@@ -7,10 +7,10 @@ namespace esphome {
 namespace vitohome {
 
 // Pure, framework-free decode/encode helpers, kept separate so the logic can
-// be unit-tested on the host without VitoWiFi or ESPHome headers
+// be unit-tested on the host without the optolink engine or ESPHome headers
 // (tests/native/test_decode.cpp).
 //
-// Why this file exists (Stage 2): VitoWiFi's converters decode through a
+// Why this file exists (Stage 2): the optolink engine's converters decode through a
 // non-discriminated union and do their math in float32, which silently loses
 // precision for 4-byte counters (uint32 -> float drops bits above 2^24; a
 // burner-seconds counter of ~212,000,000 is already past that). vitohome
@@ -35,7 +35,7 @@ inline bool decode_masked_bit(const uint8_t *data, std::size_t data_len, uint8_t
 // numeric decode/encode (Stage 2)
 // ---------------------------------------------------------------------------
 
-// Optolink payloads are little-endian (verified against VitoWiFi
+// Optolink payloads are little-endian (verified against the optolink engine
 // Converter.cpp at the pinned SHA: data[1] << 8 | data[0], etc.).
 inline uint64_t read_le(const uint8_t *data, uint8_t len) {
   uint64_t v = 0;

@@ -1,21 +1,23 @@
-"""ESPHome component for Viessmann Optolink (VitoWiFi-based).
+"""ESPHome component for Viessmann Optolink (vendored optolink engine).
 
 Stage 2: P300 (VS2) protocol with sensor, binary_sensor, text_sensor, number
 and select platforms. The component decodes and encodes raw Optolink payloads
-itself (see ``decode.h``) and uses VitoWiFi only as the wire/transport engine;
-the VitoWiFi converters are never exercised (every ``Datapoint`` is built with
-``VitoWiFi::noconv`` and the raw-bytes write overload is used).
+itself (see ``decode.h``) and uses the in-tree optolink engine (under
+``optolink/``) only as the wire/transport layer; the engine's converters are
+never exercised (every ``Datapoint`` is built with ``optolink::noconv`` and the
+raw-bytes write overload is used).
 
-Why decode in-component rather than via VitoWiFi's converters:
-  * ``VitoWiFi::VariantValue`` is a non-discriminated union, so reading the
+Why decode in-component rather than via the engine's converters:
+  * ``optolink::VariantValue`` is a non-discriminated union, so reading the
     wrong member silently returns garbage; and
-  * VitoWiFi does all converter math in float32, which loses precision for
+  * the engine does all converter math in float32, which loses precision for
     4-byte counters (uint32 -> float drops bits above 2**24).
 ``decode.h`` extracts the integer in int64/uint64, scales in double, and only
 narrows the *final* value to the float32 ESPHome state requires.
 """
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import esphome.codegen as cg
 import esphome.config_validation as cv
@@ -37,7 +39,6 @@ CONF_SIGNED = "signed"
 CONF_READ_BACK = "read_back"
 
 vitohome_ns = cg.esphome_ns.namespace("vitohome")
-vito_wifi_ns = cg.global_ns.namespace("VitoWiFi")
 
 VitoHomeComponent = vitohome_ns.class_("VitoHomeComponent", cg.PollingComponent, uart.UARTDevice)
 
@@ -47,15 +48,6 @@ PROTOCOLS = {
     "P300": "P300",
     "VS2": "P300",
 }
-
-# VitoWiFi commit pin. Pinned to an exact upstream commit for reproducible
-# builds: no 4.x tag with the generic-interface support exists yet, and a
-# moving branch (#main) would let an upstream commit silently change/break OTA
-# for every device. Bump this SHA deliberately, after re-validating the C++
-# API surface against the new revision (the VitoWiFi facts in
-# docs/stage2_design.md cite this exact commit).
-VITOWIFI_REPO = "https://github.com/bertmelis/VitoWiFi.git"
-VITOWIFI_COMMIT = "edc059a7"
 
 
 @dataclass(frozen=True)
@@ -171,7 +163,7 @@ def cpp_string_literal(value: str) -> str:
     """Return *value* as a safely-escaped C++ string literal (incl. quotes).
 
     Entity names are interpolated verbatim into generated C++ (the
-    ``VitoWiFi::Datapoint`` name argument). A backslash or double-quote in the
+    ``optolink::Datapoint`` name argument). A backslash or double-quote in the
     name would otherwise break the literal, so escape those characters.
     """
     escaped = value.replace("\\", "\\\\").replace('"', '\\"')
@@ -179,14 +171,21 @@ def cpp_string_literal(value: str) -> str:
 
 
 def datapoint_expression(name: str, address: int, length: int) -> cg.RawExpression:
-    """Build the ``VitoWiFi::Datapoint`` constructor expression.
+    """Build the ``optolink::Datapoint`` constructor expression.
 
     The converter slot is always ``noconv``: the component decodes/encodes the
-    raw payload itself, so the library converter is never used. ``name`` is
-    escaped; ``address`` is emitted as a 0x-prefixed 16-bit literal.
+    raw payload itself, so the engine converter is never used. ``name`` is
+    escaped; ``address`` is emitted as a 0x-prefixed 16-bit literal. The type is
+    fully qualified (``esphome::vitohome::optolink::``) because the expression is
+    emitted into the global-scope generated ``main.cpp``.
     """
     return cg.RawExpression(
-        f"VitoWiFi::Datapoint(" f"{cpp_string_literal(name)}, " f"{address:#06x}, " f"{length}, " f"VitoWiFi::noconv" f")"
+        f"esphome::vitohome::optolink::Datapoint("
+        f"{cpp_string_literal(name)}, "
+        f"{address:#06x}, "
+        f"{length}, "
+        f"esphome::vitohome::optolink::noconv"
+        f")"
     )
 
 
@@ -204,11 +203,27 @@ CONFIG_SCHEMA = (
 
 
 async def to_code(config):
-    cg.add_library(
-        name="VitoWiFi",
-        version=None,
-        repository=f"{VITOWIFI_REPO}#{VITOWIFI_COMMIT}",
-    )
+    # The Optolink protocol engine is vendored in-tree under
+    # ``components/vitohome/optolink/`` and compiled as a PlatformIO library via
+    # its own ``optolink/library.json`` manifest.
+    #
+    # We register it from the component's own directory (``__file__`` -> the
+    # clone/checkout location, where the full nested tree exists) rather than
+    # relying on ESPHome's component file copier: that copier only copies files
+    # sitting directly in the component dir and does NOT descend into nested
+    # subdirectories, so the engine's ``protocol/``, ``datapoint/`` and
+    # ``interface/`` trees would never reach the build. A ``file://`` library
+    # is handed straight to PlatformIO's library dependency finder, which
+    # compiles the nested sources with their structure intact and works for a
+    # remotely-pulled component (``git clone`` brings the whole subtree).
+    #
+    # The ``-I`` flag puts the component dir on the include path so the
+    # component's ``#include "optolink/optolink.h"`` (and the engine's header
+    # tree it pulls in) resolves against that same checkout location.
+    component_dir = Path(__file__).resolve().parent
+    optolink_dir = component_dir / "optolink"
+    cg.add_library("optolink", None, f"file://{optolink_dir}")
+    cg.add_build_flag(f"-I{component_dir}")
 
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)

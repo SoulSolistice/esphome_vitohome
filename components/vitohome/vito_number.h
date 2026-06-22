@@ -7,7 +7,7 @@ namespace esphome {
 namespace vitohome {
 
 // Writable datapoint exposed as an ESPHome number. The write path encodes in
-// double precision (decode.h::encode_scaled) and transmits via VitoWiFi's
+// double precision (decode.h::encode_scaled) and transmits via the optolink engine's
 // raw-bytes write; the periodic read path keeps the entity in sync with
 // changes made at the boiler panel. No flash preferences are used: the
 // device itself is the source of truth, restored by the first poll.
@@ -18,9 +18,9 @@ class VitoNumber : public number::Number, public Component, public VitoEntityBas
   void set_read_back(bool v) { this->read_back_ = v; }
 
   void dump_config() override;
-  void handle_response(const VitoWiFi::PacketVS2 &response) override;
-  void handle_write_response(const VitoWiFi::PacketVS2 &response) override;
-  void handle_error(VitoWiFi::OptolinkResult error) override;
+  void handle_response(const optolink::PacketVS2 &response) override;
+  void handle_write_response(const optolink::PacketVS2 &response) override;
+  void handle_error(optolink::OptolinkResult error) override;
   const char *entity_kind() const override { return "number"; }
 
  protected:

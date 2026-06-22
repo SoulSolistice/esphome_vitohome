@@ -18,9 +18,9 @@ operations are restored.
 #pragma once
 
 #include <array>
-#include <cstdint>
-#include <cstddef>
 #include <cassert>
+#include <cstddef>
+#include <cstdint>
 
 #include "../../constants.h"
 #include "../../helpers.h"
@@ -48,7 +48,8 @@ class PacketVS2 {
   uint8_t &operator[](std::size_t index);
 
  public:
-  bool createPacket(PacketType pt, FunctionCode fc, uint8_t id, uint16_t addr, uint8_t len, const uint8_t *data = nullptr);
+  bool createPacket(PacketType pt, FunctionCode fc, uint8_t id, uint16_t addr, uint8_t len,
+                    const uint8_t *data = nullptr);
   bool setLength(uint8_t length);
   uint8_t length() const;
   PacketType packetType() const;

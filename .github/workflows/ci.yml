@@ -2,8 +2,10 @@ name: CI
 
 on:
   push:
+    branches: ['**']      # every branch (incl. feature branches like vendoring_cleanup)
+    tags-ignore: ['**']   # a tag push points at an already-built commit — don't re-run on it
   pull_request:
-  workflow_dispatch:
+  workflow_dispatch:        # manual runs on any branch from the Actions tab
 
 jobs:
   lint:
@@ -41,6 +43,9 @@ jobs:
       - uses: actions/checkout@v4
       - run: g++ -std=c++17 -Wall -Wextra -Werror -o /tmp/test_decode tests/native/test_decode.cpp
       - run: /tmp/test_decode
+      - name: VS2 transaction harness (vendored optolink engine)
+        working-directory: tests/native
+        run: bash build_and_run.sh
 
   compile:
     name: ${{ matrix.config }}

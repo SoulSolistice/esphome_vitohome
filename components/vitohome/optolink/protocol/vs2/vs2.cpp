@@ -22,7 +22,8 @@ bool VS2Engine::read(const Datapoint &datapoint) {
   if (_currentDatapoint) {
     return false;
   }
-  if (_currentPacket.createPacket(PacketType::REQUEST, FunctionCode::READ, 0, datapoint.address(), datapoint.length())) {
+  if (_currentPacket.createPacket(PacketType::REQUEST, FunctionCode::READ, 0, datapoint.address(),
+                                  datapoint.length())) {
     _currentDatapoint = datapoint;
     _requestTime = _currentMillis;
     optolink_log_i("reading packet OK");
@@ -199,7 +200,8 @@ void VS2Engine::_sendStart() {
 }
 
 void VS2Engine::_sendPacket() {
-  _bytesTransferred += _interface->write(&_currentPacket[_bytesTransferred], _currentPacket.length() - _bytesTransferred);
+  _bytesTransferred +=
+      _interface->write(&_currentPacket[_bytesTransferred], _currentPacket.length() - _bytesTransferred);
   if (_bytesTransferred == _currentPacket.length()) {
     _bytesTransferred = 0;
     _lastMillis = _currentMillis;

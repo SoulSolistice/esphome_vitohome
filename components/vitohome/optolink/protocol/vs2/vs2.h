@@ -17,12 +17,12 @@ timeouts are lifted to named constexpr members (values unchanged).
 
 #include <functional>
 
-#include "../../logging.h"
 #include "../../constants.h"
-#include "../../helpers.h"
-#include "parser_vs2.h"
 #include "../../datapoint/datapoint.h"
+#include "../../helpers.h"
 #include "../../interface/generic_interface.h"
+#include "../../logging.h"
+#include "parser_vs2.h"
 
 namespace esphome {
 namespace vitohome {
@@ -35,8 +35,8 @@ class VS2Engine {
 
   // Named timeouts (ms). Values are byte-identical to the previous inline
   // literals; kept per-engine (do not unify across protocols).
-  static constexpr uint32_t REQUEST_TIMEOUT_MS = 4000;    // per-request response watchdog
-  static constexpr uint32_t HANDSHAKE_RETRY_MS = 3000;    // RESET-ACK / INIT-ACK window
+  static constexpr uint32_t REQUEST_TIMEOUT_MS = 4000;     // per-request response watchdog
+  static constexpr uint32_t HANDSHAKE_RETRY_MS = 3000;     // RESET-ACK / INIT-ACK window
   static constexpr uint32_t KEEPALIVE_INTERVAL_MS = 3000;  // idle re-INIT keepalive
 
   template <class C>

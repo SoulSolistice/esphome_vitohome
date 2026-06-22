@@ -10,8 +10,8 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 #pragma once
 
 #include <cassert>
-#include <cstdint>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 
 #include "../logging.h"

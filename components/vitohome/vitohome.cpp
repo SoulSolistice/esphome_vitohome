@@ -34,20 +34,20 @@ void VitoHomeComponent::setup() {
   this->validate_uart_();
   if (this->is_failed()) return;
 
-  // VitoWiFi<VS2> takes the protocol version only; the constructor deduces
+  // OptolinkEngine<P300> takes the protocol tag only; the constructor deduces
   // the interface type and wraps &iface_ in a GenericInterface internally.
-  this->vito_ = std::make_unique<VitoWiFi::VitoWiFi<VitoWiFi::VS2>>(&this->iface_);
+  this->vito_ = std::make_unique<optolink::OptolinkEngine<optolink::P300>>(&this->iface_);
 
   // VS2 callbacks are std::function (verified at the pinned SHA), so they
   // can capture `this` directly — no static-instance indirection needed.
-  this->vito_->onResponse([this](const VitoWiFi::PacketVS2 &response, const VitoWiFi::Datapoint &request) {
+  this->vito_->onResponse([this](const optolink::PacketVS2 &response, const optolink::Datapoint &request) {
     this->on_response_(response, request);
   });
   this->vito_->onError(
-      [this](VitoWiFi::OptolinkResult error, const VitoWiFi::Datapoint &request) { this->on_error_(error, request); });
+      [this](optolink::OptolinkResult error, const optolink::Datapoint &request) { this->on_error_(error, request); });
 
   if (!this->vito_->begin()) {
-    ESP_LOGE(TAG, "VitoWiFi::begin() failed");
+    ESP_LOGE(TAG, "optolink engine begin() failed");
     this->mark_failed();
     return;
   }
@@ -117,7 +117,7 @@ void VitoHomeComponent::loop() {
         ESP_LOGW(TAG, "In-flight %s to %s exceeded watchdog (%" PRIu32 " ms). Clearing.",
                  this->in_flight_op_ == OpType::WRITE ? "write" : "read", this->in_flight_->get_datapoint().name(),
                  IN_FLIGHT_WATCHDOG_MS);
-        this->in_flight_->handle_error(VitoWiFi::OptolinkResult::TIMEOUT);
+        this->in_flight_->handle_error(optolink::OptolinkResult::TIMEOUT);
         if (this->in_flight_op_ == OpType::READ) {
           this->in_flight_->read_queued_ = false;
         } else {
@@ -171,7 +171,7 @@ void VitoHomeComponent::dispatch_next_() {
     this->read_queue_.pop_front();
     ESP_LOGV(TAG, "Dispatched read for %s", entity->get_datapoint().name());
   }
-  // else: VitoWiFi engine is busy with internal state; retry next loop().
+  // else: optolink engine is busy with internal state; retry next loop().
 }
 
 void VitoHomeComponent::schedule_due_entities_() {
@@ -232,7 +232,7 @@ bool VitoHomeComponent::request_write(VitoEntityBase *entity) {
   return true;
 }
 
-void VitoHomeComponent::on_response_(const VitoWiFi::PacketVS2 &response, const VitoWiFi::Datapoint &request) {
+void VitoHomeComponent::on_response_(const optolink::PacketVS2 &response, const optolink::Datapoint &request) {
   if (this->ident_in_flight_) {
     this->ident_in_flight_ = false;
     this->ident_handle_response_(response);
@@ -277,11 +277,11 @@ void VitoHomeComponent::on_response_(const VitoWiFi::PacketVS2 &response, const 
   entity->handle_response(response);
 }
 
-void VitoHomeComponent::on_error_(VitoWiFi::OptolinkResult error, const VitoWiFi::Datapoint &request) {
+void VitoHomeComponent::on_error_(optolink::OptolinkResult error, const optolink::Datapoint &request) {
   if (this->ident_in_flight_) {
     this->ident_in_flight_ = false;
     ESP_LOGD(TAG, "Identification read 0x%04X len %u failed (%s)", request.address(), request.length(),
-             VitoWiFi::errorToString(error));
+             optolink::errorToString(error));
     this->ident_handle_error_();
     return;
   }
@@ -293,22 +293,22 @@ void VitoHomeComponent::on_error_(VitoWiFi::OptolinkResult error, const VitoWiFi
 
   const char *name = request.name();
   switch (error) {
-    case VitoWiFi::OptolinkResult::TIMEOUT:
+    case optolink::OptolinkResult::TIMEOUT:
       ESP_LOGE(TAG, "[TIMEOUT] %s — Optolink not responding", name);
       break;
-    case VitoWiFi::OptolinkResult::LENGTH:
+    case optolink::OptolinkResult::LENGTH:
       ESP_LOGE(TAG, "[LENGTH]  %s — invalid payload length", name);
       break;
-    case VitoWiFi::OptolinkResult::NACK:
+    case optolink::OptolinkResult::NACK:
       ESP_LOGW(TAG,
                "[NACK]    %s — heater rejected request "
                "(unsupported address?)",
                name);
       break;
-    case VitoWiFi::OptolinkResult::CRC:
+    case optolink::OptolinkResult::CRC:
       ESP_LOGE(TAG, "[CRC]     %s — checksum mismatch (wiring?)", name);
       break;
-    case VitoWiFi::OptolinkResult::ERROR:
+    case optolink::OptolinkResult::ERROR:
     default:
       ESP_LOGE(TAG, "[ERROR]   %s — protocol error", name);
       break;
@@ -336,19 +336,19 @@ void VitoHomeComponent::ident_dispatch_(IdentState state) {
   this->ident_state_ = state;
   switch (state) {
     case IdentState::READ4:
-      this->ident_dp_ = VitoWiFi::Datapoint("ident", 0x00F8, 4, VitoWiFi::noconv);
+      this->ident_dp_ = optolink::Datapoint("ident", 0x00F8, 4, optolink::noconv);
       break;
     case IdentState::READ_F8:
-      this->ident_dp_ = VitoWiFi::Datapoint("ident", 0x00F8, 1, VitoWiFi::noconv);
+      this->ident_dp_ = optolink::Datapoint("ident", 0x00F8, 1, optolink::noconv);
       break;
     case IdentState::READ_F9:
-      this->ident_dp_ = VitoWiFi::Datapoint("ident", 0x00F9, 1, VitoWiFi::noconv);
+      this->ident_dp_ = optolink::Datapoint("ident", 0x00F9, 1, optolink::noconv);
       break;
     case IdentState::READ_FA:
-      this->ident_dp_ = VitoWiFi::Datapoint("ident", 0x00FA, 1, VitoWiFi::noconv);
+      this->ident_dp_ = optolink::Datapoint("ident", 0x00FA, 1, optolink::noconv);
       break;
     case IdentState::READ_FB:
-      this->ident_dp_ = VitoWiFi::Datapoint("ident", 0x00FB, 1, VitoWiFi::noconv);
+      this->ident_dp_ = optolink::Datapoint("ident", 0x00FB, 1, optolink::noconv);
       break;
     default:
       break;
@@ -356,7 +356,7 @@ void VitoHomeComponent::ident_dispatch_(IdentState state) {
   // The actual bus dispatch happens from dispatch_next_() when idle.
 }
 
-void VitoHomeComponent::ident_handle_response_(const VitoWiFi::PacketVS2 &response) {
+void VitoHomeComponent::ident_handle_response_(const optolink::PacketVS2 &response) {
   const uint8_t *d = response.data();
   const uint8_t n = response.dataLength();
   switch (this->ident_state_) {

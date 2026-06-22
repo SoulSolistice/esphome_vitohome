@@ -14,9 +14,9 @@ void VitoBinarySensor::dump_config() {
                 this->datapoint_.length(), this->byte_offset_, this->bit_mask_);
 }
 
-void VitoBinarySensor::handle_response(const VitoWiFi::PacketVS2 &response) {
+void VitoBinarySensor::handle_response(const optolink::PacketVS2 &response) {
   // Raw-byte read: truthiness is a configurable (byte_offset, bit_mask)
-  // within the payload, so we bypass the VitoWiFi converter. The range
+  // within the payload, so we bypass the optolink converter. The range
   // check and extraction live in decode_masked_bit() so they can be
   // unit-tested on the host.
   bool value;
@@ -31,7 +31,7 @@ void VitoBinarySensor::handle_response(const VitoWiFi::PacketVS2 &response) {
   this->publish_state(value);
 }
 
-void VitoBinarySensor::handle_error(VitoWiFi::OptolinkResult /*error*/) {
+void VitoBinarySensor::handle_error(optolink::OptolinkResult /*error*/) {
   // ESPHome binary_sensor has no native "unavailable" state; we leave
   // the last value in place and rely on the component to log the error.
 }

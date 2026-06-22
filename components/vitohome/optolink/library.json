@@ -1,0 +1,19 @@
+{
+    "name": "optolink",
+    "version": "0.0.0",
+    "description": "Vendored Optolink VS2/P300 engine for the vitohome ESPHome component (derived from bertmelis/VitoWiFi @ edc059a7). Compiled as an in-tree PlatformIO library so its nested source tree survives ESPHome's external-component copier. Provenance: THIRD_PARTY.md / LICENSE.optolink.",
+    "keywords": "viessmann, optolink, vs2, p300, vitohome",
+    "license": "MIT",
+    "frameworks": "*",
+    "platforms": "*",
+    "build": {
+        "srcDir": ".",
+        "srcFilter": [
+            "+<*.cpp>",
+            "+<datapoint/*.cpp>",
+            "+<protocol/vs2/*.cpp>",
+            "+<protocol/vs1/*.cpp>",
+            "+<protocol/gwg/*.cpp>"
+        ]
+    }
+}

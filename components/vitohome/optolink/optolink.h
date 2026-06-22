@@ -19,16 +19,16 @@ P300 / KW / GWG and a small trait that maps each tag to its engine class.
 #pragma once
 
 #include "constants.h"
+#include "datapoint/conversion_helpers.h"
 #include "datapoint/converter.h"
 #include "datapoint/datapoint.h"
-#include "datapoint/conversion_helpers.h"
+#include "protocol/gwg/gwg.h"
+#include "protocol/gwg/packet_gwg.h"
+#include "protocol/vs1/packet_vs1.h"
+#include "protocol/vs1/vs1.h"
 #include "protocol/vs2/packet_vs2.h"
 #include "protocol/vs2/parser_vs2.h"
 #include "protocol/vs2/vs2.h"
-#include "protocol/vs1/packet_vs1.h"
-#include "protocol/vs1/vs1.h"
-#include "protocol/gwg/packet_gwg.h"
-#include "protocol/gwg/gwg.h"
 
 namespace esphome {
 namespace vitohome {

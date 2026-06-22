@@ -19,8 +19,8 @@ void VitoSensor::dump_config() {
   }
 }
 
-void VitoSensor::handle_response(const VitoWiFi::PacketVS2 &response) {
-  // Stage-2 decode path: vitohome bypasses VitoWiFi's converters entirely
+void VitoSensor::handle_response(const optolink::PacketVS2 &response) {
+  // Stage-2 decode path: vitohome bypasses the optolink engine's converters entirely
   // (their VariantValue is a tagless union and their math is float32 — see
   // decode.h and docs/stage2_design.md) and decodes the raw payload itself.
   const uint8_t *data = response.data();
@@ -48,7 +48,7 @@ void VitoSensor::handle_response(const VitoWiFi::PacketVS2 &response) {
   this->publish_state(out);
 }
 
-void VitoSensor::handle_error(VitoWiFi::OptolinkResult /*error*/) {
+void VitoSensor::handle_error(optolink::OptolinkResult /*error*/) {
   // Mark the entity unavailable in HA. The component logs the specific
   // error code; we just signal "no data" here.
   this->publish_state(NAN);

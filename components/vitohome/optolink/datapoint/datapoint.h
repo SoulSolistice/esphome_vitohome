@@ -9,8 +9,8 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 #pragma once
 
-#include "converter.h"
 #include "../protocol/vs2/packet_vs2.h"
+#include "converter.h"
 
 namespace esphome {
 namespace vitohome {

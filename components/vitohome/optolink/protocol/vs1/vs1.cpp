@@ -174,7 +174,8 @@ void VS1Engine::_syncRecv() {
 
 // send request and move to RECEIVE
 void VS1Engine::_send() {
-  _bytesTransferred += _interface->write(&_currentRequest[_bytesTransferred], _currentRequest.length() - _bytesTransferred);
+  _bytesTransferred +=
+      _interface->write(&_currentRequest[_bytesTransferred], _currentRequest.length() - _bytesTransferred);
   if (_bytesTransferred == _currentRequest.length()) {
     _bytesTransferred = 0;
     _lastMillis = _currentMillis;

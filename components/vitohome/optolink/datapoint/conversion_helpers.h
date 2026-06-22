@@ -10,10 +10,10 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 #pragma once
 
 #include <cassert>
-#include <cstdint>
 #include <cstddef>
-#include <cstring>  // strlen
+#include <cstdint>
 #include <cstdio>   // snprintf
+#include <cstring>  // strlen
 
 namespace esphome {
 namespace vitohome {

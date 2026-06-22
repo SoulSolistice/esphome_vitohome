@@ -22,7 +22,8 @@ PacketVS2::operator bool() const {
 
 uint8_t &PacketVS2::operator[](std::size_t index) { return _buffer[index]; }
 
-bool PacketVS2::createPacket(PacketType pt, FunctionCode fc, uint8_t id, uint16_t addr, uint8_t len, const uint8_t *data) {
+bool PacketVS2::createPacket(PacketType pt, FunctionCode fc, uint8_t id, uint16_t addr, uint8_t len,
+                             const uint8_t *data) {
   reset();
 
   // check arguments
@@ -46,7 +47,8 @@ bool PacketVS2::createPacket(PacketType pt, FunctionCode fc, uint8_t id, uint16_
   }
   const std::size_t needed = (fc == FunctionCode::WRITE) ? len + 6 : 6;
   if (needed > _buffer.size()) {
-    optolink_log_e("buffer overflow: need %u > %u", static_cast<unsigned>(needed), static_cast<unsigned>(_buffer.size()));
+    optolink_log_e("buffer overflow: need %u > %u", static_cast<unsigned>(needed),
+                   static_cast<unsigned>(_buffer.size()));
     return false;
   }
 

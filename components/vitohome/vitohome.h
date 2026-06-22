@@ -1,6 +1,4 @@
 #pragma once
-#include <VitoWiFi.h>
-
 #include <deque>
 #include <memory>
 #include <string>
@@ -9,6 +7,7 @@
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/component.h"
+#include "optolink/optolink.h"
 #include "vito_entity.h"
 #include "vito_uart_interface.h"
 
@@ -71,13 +70,13 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   void validate_uart_();
   void dispatch_next_();
   void schedule_due_entities_();
-  void on_response_(const VitoWiFi::PacketVS2 &response, const VitoWiFi::Datapoint &request);
-  void on_error_(VitoWiFi::OptolinkResult error, const VitoWiFi::Datapoint &request);
+  void on_response_(const optolink::PacketVS2 &response, const optolink::Datapoint &request);
+  void on_error_(optolink::OptolinkResult error, const optolink::Datapoint &request);
 
   // identification
   void ident_start_();
   void ident_dispatch_(IdentState state);
-  void ident_handle_response_(const VitoWiFi::PacketVS2 &response);
+  void ident_handle_response_(const optolink::PacketVS2 &response);
   void ident_handle_error_();
   void ident_finish_();
   std::string ident_string_() const;
@@ -85,10 +84,10 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
 
  private:
   ESPHomeUARTInterface iface_;
-  // VitoWiFi's class template takes only the protocol version; the interface
+  // the optolink engine's class template takes only the protocol tag; the interface
   // type is deduced by the constructor (which wraps &iface_ in a
   // GenericInterface<ESPHomeUARTInterface> internally).
-  std::unique_ptr<VitoWiFi::VitoWiFi<VitoWiFi::VS2>> vito_;
+  std::unique_ptr<optolink::OptolinkEngine<optolink::P300>> vito_;
 
   std::vector<VitoEntityBase *> entities_;
   std::vector<text_sensor::TextSensor *> device_id_sensors_;
@@ -101,11 +100,11 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   // identification state
   bool identify_device_{true};
   IdentState ident_state_{IdentState::IDLE};
-  VitoWiFi::Datapoint ident_dp_{"ident", 0x00F8, 4, VitoWiFi::noconv};
+  optolink::Datapoint ident_dp_{"ident", 0x00F8, 4, optolink::noconv};
   int ident_group_{-1}, ident_controller_{-1}, ident_hw_{-1}, ident_sw_{-1};
 
   // Failsafe: if a request is in flight for longer than this, log and
-  // clear it. VitoWiFi has its own internal timeout (via OptolinkResult
+  // clear it. the optolink engine has its own internal timeout (via OptolinkResult
   // ::TIMEOUT) but if a callback is somehow lost the queue stalls.
   static constexpr uint32_t IN_FLIGHT_WATCHDOG_MS = 10000;
 };

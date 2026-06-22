@@ -25,8 +25,8 @@ class VitoTextSensor : public text_sensor::TextSensor, public Component, public 
   void add_option(uint32_t value, const char *label) { this->options_.emplace_back(value, label); }
 
   void dump_config() override;
-  void handle_response(const VitoWiFi::PacketVS2 &response) override;
-  void handle_error(VitoWiFi::OptolinkResult error) override;
+  void handle_response(const optolink::PacketVS2 &response) override;
+  void handle_error(optolink::OptolinkResult error) override;
   const char *entity_kind() const override { return "text_sensor"; }
 
  protected:

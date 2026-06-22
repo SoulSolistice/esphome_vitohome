@@ -129,7 +129,8 @@ void GWGEngine::_init() {
 }
 
 void GWGEngine::_send() {
-  _bytesTransferred += _interface->write(&_currentRequest[_bytesTransferred], _currentRequest.length() - _bytesTransferred);
+  _bytesTransferred +=
+      _interface->write(&_currentRequest[_bytesTransferred], _currentRequest.length() - _bytesTransferred);
   if (_bytesTransferred == _currentRequest.length()) {
     _bytesTransferred = 0;
     _lastMillis = _currentMillis;

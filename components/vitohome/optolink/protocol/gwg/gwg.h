@@ -19,12 +19,12 @@ Bugfix: _tryOnResponse() now clears _currentDatapoint after the callback
 #include <array>
 #include <functional>
 
-#include "../../logging.h"
 #include "../../constants.h"
-#include "../../helpers.h"
-#include "packet_gwg.h"
 #include "../../datapoint/datapoint.h"
+#include "../../helpers.h"
 #include "../../interface/generic_interface.h"
+#include "../../logging.h"
+#include "packet_gwg.h"
 
 namespace esphome {
 namespace vitohome {

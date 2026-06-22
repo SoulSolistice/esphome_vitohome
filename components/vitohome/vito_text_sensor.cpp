@@ -116,7 +116,7 @@ void VitoTextSensor::publish_ascii_(const uint8_t *data, uint8_t len) {
   this->publish_state(buf);
 }
 
-void VitoTextSensor::handle_response(const VitoWiFi::PacketVS2 &response) {
+void VitoTextSensor::handle_response(const optolink::PacketVS2 &response) {
   const uint8_t *data = response.data();
   const uint8_t len = response.dataLength();
   if (data == nullptr || len == 0) {
@@ -142,7 +142,7 @@ void VitoTextSensor::handle_response(const VitoWiFi::PacketVS2 &response) {
   }
 }
 
-void VitoTextSensor::handle_error(VitoWiFi::OptolinkResult /*error*/) {
+void VitoTextSensor::handle_error(optolink::OptolinkResult /*error*/) {
   // Keep the last value; the hub logs the specific error.
 }
 

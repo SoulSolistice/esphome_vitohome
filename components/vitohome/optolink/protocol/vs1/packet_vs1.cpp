@@ -39,7 +39,8 @@ bool PacketVS1::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, con
   // bounds check against the fixed buffer (fail-soft, no overflow)
   const std::size_t needed = (packetType == PacketVS1Type.WRITE) ? static_cast<std::size_t>(len) + 4 : 4;
   if (needed > _buffer.size()) {
-    optolink_log_e("buffer overflow: need %u > %u", static_cast<unsigned>(needed), static_cast<unsigned>(_buffer.size()));
+    optolink_log_e("buffer overflow: need %u > %u", static_cast<unsigned>(needed),
+                   static_cast<unsigned>(_buffer.size()));
     return false;
   }
 

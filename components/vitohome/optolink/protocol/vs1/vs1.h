@@ -18,12 +18,12 @@ constexpr members (values unchanged), including the two 50ms sync windows.
 #include <array>
 #include <functional>
 
-#include "../../logging.h"
 #include "../../constants.h"
-#include "../../helpers.h"
-#include "packet_vs1.h"
 #include "../../datapoint/datapoint.h"
+#include "../../helpers.h"
 #include "../../interface/generic_interface.h"
+#include "../../logging.h"
+#include "packet_vs1.h"
 
 namespace esphome {
 namespace vitohome {
@@ -36,9 +36,9 @@ class VS1Engine {
 
   // Named timeouts (ms). Values byte-identical to the previous inline
   // literals; kept per-engine (do not unify across protocols).
-  static constexpr uint32_t REQUEST_TIMEOUT_MS = 4000;       // per-request response watchdog
-  static constexpr uint32_t ENQ_RESET_INTERVAL_MS = 3000;    // reset/EOT when no ENQ (Vitotronic on VS2)
-  static constexpr uint32_t SYNC_WINDOW_MS = 50;             // ENQ-ACK / re-send sync window
+  static constexpr uint32_t REQUEST_TIMEOUT_MS = 4000;     // per-request response watchdog
+  static constexpr uint32_t ENQ_RESET_INTERVAL_MS = 3000;  // reset/EOT when no ENQ (Vitotronic on VS2)
+  static constexpr uint32_t SYNC_WINDOW_MS = 50;           // ENQ-ACK / re-send sync window
 
   // Fixed response buffer: bounds the largest VS1 datapoint payload. 256 is a
   // safe upper bound (datapoint length is a uint8_t).

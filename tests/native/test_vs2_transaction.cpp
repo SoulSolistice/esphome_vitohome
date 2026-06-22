@@ -2,12 +2,17 @@
 #include <cstdio>
 #include <vector>
 
-#include "VitoWiFi.h"  // vendored engine
 #include "fake_optolink.h"
 #include "fixture_vectors.h"
+#include "optolink/optolink.h"  // vendored in-tree engine
 
-// VitoWiFi::VitoWiFi<VS2> must be fully qualified (class name == namespace name).
-// PacketVS2 is non-copyable (malloc buffer), so extract payload in the callback.
+// The harness lives at global scope, so alias the engine namespace to keep the
+// optolink:: spellings used by the component. Post-de-branding the class-name /
+// namespace collision is gone (engine is OptolinkEngine in esphome::vitohome::
+// optolink), so no fully-qualified workaround is needed. PacketVS2 is copyable
+// since §1c (std::array buffer), but data() points into engine-owned storage
+// that is only valid during the callback, so copy the payload out there.
+namespace optolink = esphome::vitohome::optolink;
 
 template <class Pump>
 static void handshake(FakeOptolink& io, Pump pump) {
@@ -21,10 +26,10 @@ static void handshake(FakeOptolink& io, Pump pump) {
 
 static bool run_vector(const TransactionVector& tv) {
   FakeOptolink io;
-  VitoWiFi::VitoWiFi<VitoWiFi::VS2> vito(&io);
+  optolink::OptolinkEngine<optolink::P300> vito(&io);
   std::vector<uint8_t> got_payload;
   bool got_resp = false;
-  vito.onResponse([&](const VitoWiFi::PacketVS2& r, const VitoWiFi::Datapoint&) {
+  vito.onResponse([&](const optolink::PacketVS2& r, const optolink::Datapoint&) {
     // data() is nullptr for write-ack responses (by design); only read payload
     // for read responses. This is the correct consumer guard.
     if (r.data()) got_payload.assign(r.data(), r.data() + r.dataLength());
@@ -36,7 +41,7 @@ static bool run_vector(const TransactionVector& tv) {
   };
   handshake(io, pump);
 
-  VitoWiFi::Datapoint dp(tv.name, tv.address, tv.read_len, VitoWiFi::noconv);
+  optolink::Datapoint dp(tv.name, tv.address, tv.read_len, optolink::noconv);
   if (tv.kind == Kind::WRITE)
     vito.write(dp, tv.write_data.data(), static_cast<uint8_t>(tv.write_data.size()));
   else

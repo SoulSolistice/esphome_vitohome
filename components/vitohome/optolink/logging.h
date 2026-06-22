@@ -16,12 +16,18 @@ iostream/iomanip, and so the native host harness output stays clean.
 #pragma once
 
 #if defined(VITOHOME_DEBUG_OPTOLINK) && defined(ESP_PLATFORM)
-  #include "esp_log.h"
-  #define optolink_log_i(...) ESP_LOGI("optolink", __VA_ARGS__)
-  #define optolink_log_e(...) ESP_LOGE("optolink", __VA_ARGS__)
-  #define optolink_log_w(...) ESP_LOGW("optolink", __VA_ARGS__)
+#include "esp_log.h"
+#define optolink_log_i(...) ESP_LOGI("optolink", __VA_ARGS__)
+#define optolink_log_e(...) ESP_LOGE("optolink", __VA_ARGS__)
+#define optolink_log_w(...) ESP_LOGW("optolink", __VA_ARGS__)
 #else
-  #define optolink_log_i(...) do {} while (0)
-  #define optolink_log_e(...) do {} while (0)
-  #define optolink_log_w(...) do {} while (0)
+#define optolink_log_i(...) \
+  do {                      \
+  } while (0)
+#define optolink_log_e(...) \
+  do {                      \
+  } while (0)
+#define optolink_log_w(...) \
+  do {                      \
+  } while (0)
 #endif
