@@ -52,7 +52,14 @@ class VitoEntityBase {
   // Hub-side bookkeeping (only the hub touches these).
   uint32_t next_due_ms_{0};
   bool read_queued_{false};
+  // write_queued_ means "sitting in the hub write_queue_, awaiting dispatch";
+  // write_in_flight_ means "dispatched to the engine, awaiting ACK/error". They
+  // are deliberately independent: a value changed while a write is in flight
+  // must be able to re-enqueue (write_queued_ = true) even though the entity is
+  // still in flight, so the newest value is transmitted once the in-flight
+  // transaction completes. Conflating them silently drops the newer write.
   bool write_queued_{false};
+  bool write_in_flight_{false};
 
   // --- read path ------------------------------------------------------------
   // Called by the component on a successful read response. Packet length and

@@ -49,8 +49,10 @@ From `VitosoftCommunication.md`, confirmed by how the component behaves:
   numeric Optolink function codes (`Virtual_READ` = 1, `Virtual_WRITE` = 2,
   `Remote_Procedure_Call` = 7, …). Stage 1 is read-only and only uses
   `Virtual_READ`. The event **`Type`** field (1 = read-only, 2 = read/write,
-  3 = write-only) is what should gate which datapoints become writable entities
-  (`number`/`select`) once the encode path lands in Stage 2.
+  3 = write-only) is what gates which datapoints `gen_catalog.py` emits as
+  writable entities (`number`/`select`). The component itself does **not** check
+  `Type` — it trusts the generated/authored YAML and only enforces that the
+  chosen converter is encodable (`number.py`'s `_WRITABLE_CONVERTERS`).
 
 ---
 
@@ -63,10 +65,14 @@ VitoWiFi at the pinned SHA exposes **exactly four** converters
 
 | VitoWiFi converter | result member | valid length(s) | sign of raw read |
 | ------------------ | ------------- | --------------- | ---------------- |
-| `noconv`           | unsigned int  | 1, 2, 4         | **unsigned**     |
+| `noconv`           | unsigned int  | 1, 2, 3, 4 †    | **unsigned**     |
 | `div10`            | `float`       | 1, 2            | signed           |
 | `div2`             | `float`       | 1               | signed           |
 | `div3600`          | `float`       | 4               | unsigned         |
+
+† `noconv` lengths are defined by this component (Stage 2 decodes it in
+`decode.h`), not by VitoWiFi's `Converter.cpp` — length 3 is valid here even
+though upstream `noconv` does not list it. The other rows mirror `Converter.cpp`.
 
 Viessmann's XML `Conversion` vocabulary is ~50 names (`VitosoftXML.md`). Only a
 few have a direct VitoWiFi equivalent:
@@ -132,10 +138,14 @@ guard even in a debug build; an out-of-range length silently decodes as `0`.
 
 That is why `CONVERTER_LENGTHS` in `__init__.py` plus the `sensor.py` cross-check
 are the real guard — they turn a silent-wrong-data bug into an `esphome config`
-error. Values verified against `Converter.cpp` at the pinned SHA:
+error. `noconv` is the exception: Stage 2 decodes it in `decode.h` and never calls
+VitoWiFi's converter, and the upstream `noconv` assert is commented out anyway, so
+its valid lengths are **defined by this component** (`__init__.py`), not by
+`Converter.cpp`. The scaling converters' lengths are verified against
+`Converter.cpp` at the pinned SHA:
 
 ```
-noconv  -> (1, 2, 4)
+noconv  -> (1, 2, 3, 4)   # component-defined (decode.h); not a Converter.cpp bound
 div10   -> (1, 2)
 div2    -> (1,)
 div3600 -> (4,)      # when it is added to CONVERTERS
@@ -227,8 +237,9 @@ Drive the two ESPHome fields independently:
 
 - `CODEOWNERS` still holds the `@yourhandle` placeholder.
 - `README.md` is a stub.
-- Encode/write path: `Virtual_WRITE`, `number`/`select` platforms, with
-  writability gated on the event `Type` field (§2).
+- Encode/write path: `Virtual_WRITE`, `number`/`select` platforms; `gen_catalog.py`
+  emits writable entities per the event `Type` field (§2), while the component
+  enforces converter encodability.
 - Expose `div3600` (length 4) once a `Sec2Hour` datapoint is wired and tested.
 - KW (VS1) / GWG protocol support (separate templates, §2).
 - Optional: auto-identify the connected unit by reading group/controller

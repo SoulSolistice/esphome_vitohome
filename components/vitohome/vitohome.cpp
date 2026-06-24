@@ -121,7 +121,7 @@ void VitoHomeComponent::loop() {
         if (this->in_flight_op_ == OpType::READ) {
           this->in_flight_->read_queued_ = false;
         } else {
-          this->in_flight_->write_queued_ = false;
+          this->in_flight_->write_in_flight_ = false;
         }
         this->in_flight_ = nullptr;
         this->in_flight_op_ = OpType::NONE;
@@ -157,6 +157,11 @@ void VitoHomeComponent::dispatch_next_() {
       this->in_flight_op_ = OpType::WRITE;
       this->in_flight_started_ms_ = millis();
       this->write_queue_.pop_front();
+      // It has left the queue and is now in flight. Clearing write_queued_ here
+      // (rather than on completion) lets a value changed during the in-flight
+      // window re-enqueue, so the newest payload is still transmitted.
+      entity->write_queued_ = false;
+      entity->write_in_flight_ = true;
       ESP_LOGV(TAG, "Dispatched write for %s (%u bytes)", entity->get_datapoint().name(), entity->write_length());
     }
     return;  // engine busy: retry next loop()
@@ -223,10 +228,15 @@ void VitoHomeComponent::dump_config() {
 bool VitoHomeComponent::request_write(VitoEntityBase *entity) {
   if (entity == nullptr || entity->write_length() == 0) return false;
   if (entity->write_queued_) {
-    // Already queued: the entity's buffer now holds the newest payload, so
-    // the pending dispatch will transmit the latest value. Nothing to do.
+    // Already in the write queue and not yet dispatched: control() has already
+    // overwritten the entity buffer with the newest payload, so the pending
+    // dispatch will transmit the latest value. Coalesce — nothing to do.
     return true;
   }
+  // Not queued. Either idle, or a write for this entity is currently in flight
+  // (write_in_flight_). In the in-flight case the dispatched bytes were already
+  // handed to the engine, so the buffer now holds a newer value that would be
+  // lost; enqueue again so it is transmitted once the in-flight write finishes.
   entity->write_queued_ = true;
   this->write_queue_.push_back(entity);
   return true;
@@ -256,12 +266,14 @@ void VitoHomeComponent::on_response_(const optolink::PacketVS2 &response, const 
     ESP_LOGW(TAG, "Response address 0x%04X does not match in-flight 0x%04X; dropping", request.address(),
              expected_addr);
     entity->read_queued_ = false;
-    entity->write_queued_ = false;
+    // Clear only the in-flight marker; if a newer value re-enqueued during this
+    // transaction, write_queued_ stays set so it is still transmitted.
+    entity->write_in_flight_ = false;
     return;
   }
 
   if (op == OpType::WRITE) {
-    entity->write_queued_ = false;
+    entity->write_in_flight_ = false;
     ESP_LOGD(TAG, "Write to %s acknowledged", entity->get_datapoint().name());
     entity->handle_write_response(response);
     if (entity->wants_read_back() && !entity->read_queued_) {
@@ -317,7 +329,7 @@ void VitoHomeComponent::on_error_(optolink::OptolinkResult error, const optolink
     if (op == OpType::READ) {
       entity->read_queued_ = false;
     } else {
-      entity->write_queued_ = false;
+      entity->write_in_flight_ = false;
     }
     entity->handle_error(error);
   }
