@@ -912,7 +912,13 @@ def emit_entity(ev: Event, profile: str):
         lines.append(f"  # NOTE: {note}")
 
     # --- writable: select (enum) or number ---
-    if writable and enum_opts and length == 1 and all(0 <= v <= 255 for v, _ in enum_opts):
+    # A writable enum becomes a select when the field is 1-2 bytes AND every
+    # option value fits that width. 1-2 is the range components/vitohome/select.py
+    # accepts (validate_length_in(1, 2)); the per-value fit check mirrors that
+    # file's _validate_options (raw_fits(value, length, is_signed=False)), so a
+    # select this emits will not be rejected at `esphome config` time. Wider or
+    # non-fitting enums fall through to the number branch below.
+    if writable and enum_opts and length in (1, 2) and all(0 <= v < (1 << (8 * length)) for v, _ in enum_opts):
         lines += [
             "- platform: vitohome",
             f"  name: {_yaml_str(name)}",
@@ -930,7 +936,7 @@ def emit_entity(ev: Event, profile: str):
             "  options:",
         ]
         for v, label in enum_opts:
-            lines.append(f"    0x{v:02X}: {_yaml_str(label)}")
+            lines.append(f"    0x{v:0{2 * length}X}: {_yaml_str(label)}")
         return ("select", lines)
 
     if writable:
