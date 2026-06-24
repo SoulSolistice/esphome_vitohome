@@ -105,6 +105,7 @@ copy /Y "%SRC_MDF%" "%WORK_MDF%" >nul || ( call :error "Failed to copy MDF (is t
 copy /Y "%SRC_LDF%" "%WORK_LDF%" >nul || ( call :error "Failed to copy LDF" & goto :fail )
 
 if "%GRANT_SERVICE_READ%"=="1" if not defined IS_LOCALDB (
+    icacls "%WORK_DIR%" /grant *S-1-1-0:(RX) >nul 2>&1
     icacls "%WORK_MDF%" /grant *S-1-1-0:R >nul 2>&1
     icacls "%WORK_LDF%" /grant *S-1-1-0:R >nul 2>&1
 )
