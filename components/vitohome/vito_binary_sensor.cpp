@@ -14,18 +14,18 @@ void VitoBinarySensor::dump_config() {
                 this->datapoint_.length(), this->byte_offset_, this->bit_mask_);
 }
 
-void VitoBinarySensor::handle_response(const optolink::PacketVS2 &response) {
+void VitoBinarySensor::handle_response(const ResponseView &response) {
   // Raw-byte read: truthiness is a configurable (byte_offset, bit_mask)
   // within the payload, so we bypass the optolink converter. The range
   // check and extraction live in decode_masked_bit() so they can be
   // unit-tested on the host.
   bool value;
-  if (!decode_masked_bit(response.data(), response.dataLength(), this->byte_offset_, this->bit_mask_, &value)) {
+  if (!decode_masked_bit(response.data, response.data_length, this->byte_offset_, this->bit_mask_, &value)) {
     ESP_LOGW(TAG, "%s: response too short (have %u bytes, need offset %u)", this->datapoint_.name(),
-             response.dataLength(), this->byte_offset_);
+             response.data_length, this->byte_offset_);
     return;
   }
-  uint8_t raw = response.data()[this->byte_offset_];
+  uint8_t raw = response.data[this->byte_offset_];
   ESP_LOGD(TAG, "%s: raw=0x%02X mask=0x%02X -> %s", this->datapoint_.name(), raw, this->bit_mask_,
            value ? "ON" : "OFF");
   this->publish_state(value);

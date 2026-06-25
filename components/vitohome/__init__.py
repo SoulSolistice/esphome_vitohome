@@ -1,8 +1,9 @@
 """ESPHome component for Viessmann Optolink (vendored optolink engine).
 
-Stage 2: P300 (VS2) protocol with sensor, binary_sensor, text_sensor, number
-and select platforms. The component decodes and encodes raw Optolink payloads
-itself (see ``decode.h``) and uses the in-tree optolink engine (under
+P300 (VS2) is the validated protocol; KW (VS1) and GWG are build-time selectable
+through the same adapter but untested. Platforms: sensor, binary_sensor,
+text_sensor, number and select. The component decodes and encodes raw Optolink
+payloads itself (see ``decode.h``) and uses the in-tree optolink engine (under
 ``optolink/``) only as the wire/transport layer; the engine's converters are
 never exercised (every ``Datapoint`` is built with ``optolink::noconv`` and the
 raw-bytes write overload is used).
@@ -16,6 +17,7 @@ Why decode in-component rather than via the engine's converters:
 narrows the *final* value to the float32 ESPHome state requires.
 """
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,6 +25,8 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import uart
 from esphome.const import CONF_ID
+
+_LOGGER = logging.getLogger(__name__)
 
 CODEOWNERS = ["@yourhandle"]  # TODO: replace with your actual GitHub handle
 DEPENDENCIES = ["uart"]
@@ -42,11 +46,16 @@ vitohome_ns = cg.esphome_ns.namespace("vitohome")
 
 VitoHomeComponent = vitohome_ns.class_("VitoHomeComponent", cg.PollingComponent, uart.UARTDevice)
 
-# Stage 2 supports P300 (VS2) only. KW (VS1) and GWG are separate protocols
-# with different framing and callback shapes; deferred to a later stage.
+# Selectable protocols. P300 (VS2) is the only one exercised on hardware; KW
+# (VS1) and GWG are wired through the same adapter but untested -- selecting
+# either emits a warning at compile time. The value is the build-flag token
+# (P300/KW/GWG) that selects the engine inside ProtocolAdapter.
 PROTOCOLS = {
     "P300": "P300",
     "VS2": "P300",
+    "KW": "KW",
+    "VS1": "KW",
+    "GWG": "GWG",
 }
 
 
@@ -194,7 +203,9 @@ CONFIG_SCHEMA = (
         {
             cv.GenerateID(): cv.declare_id(VitoHomeComponent),
             cv.Optional(CONF_PROTOCOL, default="P300"): cv.enum(PROTOCOLS, upper=True),
-            cv.Optional(CONF_IDENTIFY_DEVICE, default=True): cv.boolean,
+            # Default depends on the protocol (on for P300, off for KW/GWG,
+            # whose boot identification scheme differs); resolved in to_code.
+            cv.Optional(CONF_IDENTIFY_DEVICE): cv.boolean,
         }
     )
     .extend(cv.polling_component_schema("60s"))
@@ -225,8 +236,24 @@ async def to_code(config):
     cg.add_library("optolink", None, f"file://{optolink_dir}")
     cg.add_build_flag(f"-I{component_dir}")
 
+    # Build-time protocol selection: emit exactly one VITOHOME_PROTOCOL_* flag,
+    # which selects the engine inside ProtocolAdapter.
+    protocol = config[CONF_PROTOCOL]
+    cg.add_build_flag(f"-DVITOHOME_PROTOCOL_{protocol}")
+    if protocol != "P300":
+        _LOGGER.warning(
+            "vitohome protocol '%s' is selectable but UNTESTED on hardware; "
+            "P300 (VS2) is the validated protocol. Please report results.",
+            protocol,
+        )
+
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     await uart.register_uart_device(var, config)
 
-    cg.add(var.set_identify_device(config[CONF_IDENTIFY_DEVICE]))
+    # Identification (0xF8..0xFB) is a P300-era scheme; default it off for
+    # KW/GWG unless the user explicitly enables it.
+    identify = config.get(CONF_IDENTIFY_DEVICE)
+    if identify is None:
+        identify = protocol == "P300"
+    cg.add(var.set_identify_device(identify))

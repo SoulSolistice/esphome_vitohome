@@ -20,7 +20,7 @@ class VitoSensor : public sensor::Sensor, public Component, public VitoEntityBas
   void set_extract_byte(int8_t byte) { this->extract_byte_ = byte; }
 
   void dump_config() override;
-  void handle_response(const optolink::PacketVS2 &response) override;
+  void handle_response(const ResponseView &response) override;
   void handle_error(optolink::OptolinkResult error) override;
   const char *entity_kind() const override { return "sensor"; }
 

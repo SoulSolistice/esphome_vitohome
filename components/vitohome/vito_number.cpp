@@ -41,13 +41,13 @@ void VitoNumber::control(float value) {
   ESP_LOGD(TAG, "%s: queued write %.3f", this->datapoint_.name(), value);
 }
 
-void VitoNumber::handle_response(const optolink::PacketVS2 &response) {
+void VitoNumber::handle_response(const ResponseView &response) {
   // Same decode path as the sensor platform: read-back after a write, and
   // the periodic poll that reflects panel-side changes.
   double value = NAN;
-  if (!decode_scaled(response.data(), response.dataLength(), this->datapoint_.length(), this->signed_, this->scale_,
+  if (!decode_scaled(response.data, response.data_length, this->datapoint_.length(), this->signed_, this->scale_,
                      &value)) {
-    ESP_LOGW(TAG, "%s: response too short (have %u bytes, need %u)", this->datapoint_.name(), response.dataLength(),
+    ESP_LOGW(TAG, "%s: response too short (have %u bytes, need %u)", this->datapoint_.name(), response.data_length,
              this->datapoint_.length());
     return;
   }
@@ -60,7 +60,7 @@ void VitoNumber::handle_response(const optolink::PacketVS2 &response) {
   this->publish_state(out);
 }
 
-void VitoNumber::handle_write_response(const optolink::PacketVS2 & /*response*/) {
+void VitoNumber::handle_write_response(const ResponseView & /*response*/) {
   if (!this->read_back_) {
     // No read-back requested: publish optimistically on the device ACK.
     this->publish_state(this->pending_value_);

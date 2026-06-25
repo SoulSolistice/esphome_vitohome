@@ -19,8 +19,8 @@ class VitoSelect : public select::Select, public Component, public VitoEntityBas
   void set_read_back(bool v) { this->read_back_ = v; }
 
   void dump_config() override;
-  void handle_response(const optolink::PacketVS2 &response) override;
-  void handle_write_response(const optolink::PacketVS2 &response) override;
+  void handle_response(const ResponseView &response) override;
+  void handle_write_response(const ResponseView &response) override;
   void handle_error(optolink::OptolinkResult error) override;
   const char *entity_kind() const override { return "select"; }
 

@@ -2,6 +2,7 @@
 #include <cstring>
 
 #include "optolink/optolink.h"
+#include "response_view.h"
 
 namespace esphome {
 namespace vitohome {
@@ -64,7 +65,7 @@ class VitoEntityBase {
   // --- read path ------------------------------------------------------------
   // Called by the component on a successful read response. Packet length and
   // checksum have already been verified by the optolink engine.
-  virtual void handle_response(const optolink::PacketVS2 &response) = 0;
+  virtual void handle_response(const ResponseView &response) = 0;
 
   // Called by the component on a protocol-level error (read or write).
   virtual void handle_error(optolink::OptolinkResult error) = 0;
@@ -79,7 +80,7 @@ class VitoEntityBase {
 
   // Called by the component when the device ACKed a write. Default: no-op
   // (the hub enqueues the read-back when wants_read_back()).
-  virtual void handle_write_response(const optolink::PacketVS2 & /*response*/) {}
+  virtual void handle_write_response(const ResponseView & /*response*/) {}
 
   // --- logging / dump_config --------------------------------------------------
   virtual const char *entity_kind() const = 0;

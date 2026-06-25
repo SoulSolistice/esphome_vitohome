@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Host build + run of the protocol-adapter proofs against all three vendored
+# engines (P300 / KW / GWG). Proves ProtocolAdapter + ResponseView compile and
+# link for every build-time-selected protocol, and asserts the GWG sync-poke
+# switch (GWGEngine::SEND_ENQ_POKE) is OFF by default (no EOT emitted). Does not
+# exercise real wire behaviour.
+#
+# The poke-ON path (EOT 0x04 emitted) is verified separately by flipping the
+# switch; this script guards the default-off invariant so it can't regress.
+set -euo pipefail
+ROOT="${1:-../../components/vitohome}"
+OPTO="$ROOT/optolink"
+SRCS=(
+  "$OPTO/constants.cpp"
+  "$OPTO/datapoint/datapoint.cpp"
+  "$OPTO/datapoint/converter.cpp"
+  "$OPTO/datapoint/conversion_helpers.cpp"
+  "$OPTO/protocol/vs2/vs2.cpp"
+  "$OPTO/protocol/vs2/parser_vs2.cpp"
+  "$OPTO/protocol/vs2/packet_vs2.cpp"
+  "$OPTO/protocol/vs1/vs1.cpp"
+  "$OPTO/protocol/vs1/packet_vs1.cpp"
+  "$OPTO/protocol/gwg/gwg.cpp"
+  "$OPTO/protocol/gwg/packet_gwg.cpp"
+)
+
+echo "== protocol adapter: compile + link for each protocol =="
+for sel in "P300:" "KW:-DVITOHOME_PROTOCOL_KW" "GWG:-DVITOHOME_PROTOCOL_GWG"; do
+  name="${sel%%:*}"
+  flag="${sel#*:}"
+  g++ -std=c++17 -Wall -Wextra -pthread $flag -I"$ROOT" -I"$OPTO" \
+    adapter_compile_proof.cpp "${SRCS[@]}" -o adapter_proof
+  printf '  %-5s ' "$name"
+  ./adapter_proof
+done
+
+echo "== GWG sync poke: must be OFF by default =="
+g++ -std=c++17 -Wall -Wextra -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
+  proof_gwg_poke.cpp "${SRCS[@]}" -o gwg_poke
+out="$(./gwg_poke)"
+echo "  $out"
+case "$out" in
+  *eot_poke_emitted=0*) ;;
+  *) echo "FAIL: GWG sync poke must default to OFF (no EOT)"; exit 1 ;;
+esac
+
+echo "protocol proofs OK"

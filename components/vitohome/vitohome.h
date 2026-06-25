@@ -8,6 +8,7 @@
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/component.h"
 #include "optolink/optolink.h"
+#include "protocol_adapter.h"
 #include "vito_entity.h"
 #include "vito_uart_interface.h"
 
@@ -70,13 +71,13 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   void validate_uart_();
   void dispatch_next_();
   void schedule_due_entities_();
-  void on_response_(const optolink::PacketVS2 &response, const optolink::Datapoint &request);
+  void on_response_(const ResponseView &response, const optolink::Datapoint &request);
   void on_error_(optolink::OptolinkResult error, const optolink::Datapoint &request);
 
   // identification
   void ident_start_();
   void ident_dispatch_(IdentState state);
-  void ident_handle_response_(const optolink::PacketVS2 &response);
+  void ident_handle_response_(const ResponseView &response);
   void ident_handle_error_();
   void ident_finish_();
   std::string ident_string_() const;
@@ -84,10 +85,11 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
 
  private:
   ESPHomeUARTInterface iface_;
-  // the optolink engine's class template takes only the protocol tag; the interface
-  // type is deduced by the constructor (which wraps &iface_ in a
-  // GenericInterface<ESPHomeUARTInterface> internally).
-  std::unique_ptr<optolink::OptolinkEngine<optolink::P300>> vito_;
+  // The protocol engine is build-time-selected and wrapped by ProtocolAdapter,
+  // which presents a uniform, protocol-blind interface (ResponseView callbacks +
+  // read/write/begin/loop) regardless of P300/KW/GWG. The adapter is the only
+  // place that touches a concrete packet type.
+  std::unique_ptr<ProtocolAdapter> vito_;
 
   std::vector<VitoEntityBase *> entities_;
   std::vector<text_sensor::TextSensor *> device_id_sensors_;
@@ -107,6 +109,15 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   // clear it. the optolink engine has its own internal timeout (via OptolinkResult
   // ::TIMEOUT) but if a callback is somehow lost the queue stalls.
   static constexpr uint32_t IN_FLIGHT_WATCHDOG_MS = 10000;
+
+  // Start-up protocol check: the configured protocol must establish a link
+  // (the adapter sees a first valid response) within this window, else the
+  // component is marked failed. This catches a wrong protocol / wiring fault /
+  // offline device instead of polling silently forever. The effective window is
+  // max(this, 3x the hub update interval).
+  static constexpr uint32_t PROTOCOL_VERIFY_MIN_MS = 90000;
+  bool protocol_verify_pending_{false};
+  uint32_t protocol_verify_deadline_ms_{0};
 };
 
 }  // namespace vitohome

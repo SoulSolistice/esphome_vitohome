@@ -7,8 +7,9 @@
 # so the component dir is on the include path; the engine's own headers use
 # paths relative to their own location, which resolve from there.
 #
-# Only the P300 path is compiled (OptolinkEngine<P300> == VS2Engine); the VS1/GWG
-# translation units are deferred protocols and not referenced by these vectors.
+# This first harness compiles only the P300 path (OptolinkEngine<P300> ==
+# VS2Engine) for the transaction vectors; build_and_run_protocols.sh (chained at
+# the end) compiles the adapter against all three engines.
 set -euo pipefail
 ROOT="${1:-../../components/vitohome}"
 OPTO="$ROOT/optolink"
@@ -26,3 +27,6 @@ g++ -std=c++17 -Wall -Wextra \
 # Engine debug logging is compiled out on host (logging.h is gated on
 # VITOHOME_DEBUG_OPTOLINK && ESP_PLATFORM), so stdout is the harness only.
 ./vs2_transaction_harness
+
+# Protocol-adapter proofs: all three engines compile + the GWG poke stays off.
+bash "$(dirname "$0")/build_and_run_protocols.sh" "$ROOT"

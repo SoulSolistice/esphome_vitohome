@@ -38,14 +38,14 @@ void VitoSelect::control(size_t index) {
   ESP_LOGD(TAG, "%s: queued write option %zu (raw 0x%02X)", this->datapoint_.name(), index, raw);
 }
 
-void VitoSelect::handle_response(const optolink::PacketVS2 &response) {
+void VitoSelect::handle_response(const ResponseView &response) {
   const uint8_t len = this->datapoint_.length();
-  if (response.dataLength() < len) {
-    ESP_LOGW(TAG, "%s: response too short (have %u bytes, need %u)", this->datapoint_.name(), response.dataLength(),
+  if (response.data_length < len) {
+    ESP_LOGW(TAG, "%s: response too short (have %u bytes, need %u)", this->datapoint_.name(), response.data_length,
              len);
     return;
   }
-  const uint32_t raw = static_cast<uint32_t>(read_le(response.data(), len > 4 ? 4 : len));
+  const uint32_t raw = static_cast<uint32_t>(read_le(response.data, len > 4 ? 4 : len));
   for (size_t i = 0; i < this->raw_values_.size(); i++) {
     if (this->raw_values_[i] == raw) {
       ESP_LOGD(TAG, "%s = option %zu (raw 0x%02X)", this->datapoint_.name(), i, raw);
@@ -58,7 +58,7 @@ void VitoSelect::handle_response(const optolink::PacketVS2 &response) {
   ESP_LOGW(TAG, "%s: device value 0x%02X is not in the configured options", this->datapoint_.name(), raw);
 }
 
-void VitoSelect::handle_write_response(const optolink::PacketVS2 & /*response*/) {
+void VitoSelect::handle_write_response(const ResponseView & /*response*/) {
   if (!this->read_back_) {
     this->publish_state(this->pending_index_);
   }

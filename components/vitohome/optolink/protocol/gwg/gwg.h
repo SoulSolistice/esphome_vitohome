@@ -12,6 +12,9 @@ _responseBuffer malloc + _expandResponseBuffer + _allocatedLength replaced
 by a fixed std::array; request timeout lifted to a named constexpr member.
 Bugfix: _tryOnResponse() now clears _currentDatapoint after the callback
 (see THIRD_PARTY.md) so GWG is no longer one-shot.
+Sync poke: optional EOT (0x04) nudge while waiting for the device ENQ, gated by
+GWGEngine::SEND_ENQ_POKE (default off, so the default build is unchanged); see
+that flag for the vcontrold/VS1 rationale.
 */
 
 #pragma once
@@ -42,6 +45,15 @@ class GWGEngine {
   // Fixed response buffer: bounds the largest GWG datapoint payload. 256 is a
   // safe upper bound (datapoint length is a uint8_t).
   static constexpr std::size_t kResponseBufferSize = 256;
+
+  // Active sync poke. OFF by default: INIT waits passively for the device's ENQ
+  // (0x05), byte-identical to the original behaviour. Set to true only if a GWG
+  // device never establishes -- then INIT also sends an EOT (0x04) every
+  // ENQ_POKE_INTERVAL_MS while waiting, mirroring vcontrold's GWG sync
+  // (SEND 04; WAIT 05) and the VS1 engine's EOT fallback. Needs a real GWG unit
+  // to validate; GWG is an untested protocol.
+  static constexpr bool SEND_ENQ_POKE = false;
+  static constexpr uint32_t ENQ_POKE_INTERVAL_MS = 3000;
 
   template <class C>
   explicit GWGEngine(C *interface)

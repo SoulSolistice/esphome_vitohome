@@ -34,16 +34,16 @@ void VitoHomeComponent::setup() {
   this->validate_uart_();
   if (this->is_failed()) return;
 
-  // OptolinkEngine<P300> takes the protocol tag only; the constructor deduces
-  // the interface type and wraps &iface_ in a GenericInterface internally.
-  this->vito_ = std::make_unique<optolink::OptolinkEngine<optolink::P300>>(&this->iface_);
+  // The adapter wraps the build-time-selected engine and deduces the interface
+  // type, wrapping &iface_ in a GenericInterface internally.
+  this->vito_ = std::make_unique<ProtocolAdapter>(&this->iface_);
 
-  // VS2 callbacks are std::function (verified at the pinned SHA), so they
-  // can capture `this` directly — no static-instance indirection needed.
-  this->vito_->onResponse([this](const optolink::PacketVS2 &response, const optolink::Datapoint &request) {
+  // The adapter normalises each protocol's callback shape to a ResponseView, so
+  // the hub registers one uniform handler regardless of P300/KW/GWG.
+  this->vito_->on_response([this](const ResponseView &response, const optolink::Datapoint &request) {
     this->on_response_(response, request);
   });
-  this->vito_->onError(
+  this->vito_->on_error(
       [this](optolink::OptolinkResult error, const optolink::Datapoint &request) { this->on_error_(error, request); });
 
   if (!this->vito_->begin()) {
@@ -51,6 +51,14 @@ void VitoHomeComponent::setup() {
     this->mark_failed();
     return;
   }
+
+  // Require the configured protocol to establish a link within the start-up
+  // window (max of the floor and 3x the hub interval); loop() marks the
+  // component failed otherwise.
+  uint32_t verify_window = 3u * this->get_update_interval();
+  if (verify_window < PROTOCOL_VERIFY_MIN_MS) verify_window = PROTOCOL_VERIFY_MIN_MS;
+  this->protocol_verify_pending_ = true;
+  this->protocol_verify_deadline_ms_ = millis() + verify_window;
 
   // Per-entity intervals are scheduled at hub-tick granularity, so anything
   // shorter than the hub interval silently degrades to the hub interval.
@@ -103,6 +111,20 @@ void VitoHomeComponent::loop() {
   if (this->vito_ == nullptr) return;
 
   this->vito_->loop();
+
+  // Start-up protocol verification: confirm the configured protocol actually
+  // established a link, or fail the component with a clear message.
+  if (this->protocol_verify_pending_) {
+    if (this->vito_->established()) {
+      this->protocol_verify_pending_ = false;
+      ESP_LOGI(TAG, "%s link established", ProtocolAdapter::protocol_name());
+    } else if (millis() >= this->protocol_verify_deadline_ms_) {
+      this->protocol_verify_pending_ = false;
+      ESP_LOGE(TAG, "%s link not established; check wiring and that the device speaks this protocol",
+               ProtocolAdapter::protocol_name());
+      this->mark_failed();
+    }
+  }
 
   // Watchdog: if a request has been in flight too long, surface that and
   // free the slot.
@@ -242,7 +264,7 @@ bool VitoHomeComponent::request_write(VitoEntityBase *entity) {
   return true;
 }
 
-void VitoHomeComponent::on_response_(const optolink::PacketVS2 &response, const optolink::Datapoint &request) {
+void VitoHomeComponent::on_response_(const ResponseView &response, const optolink::Datapoint &request) {
   if (this->ident_in_flight_) {
     this->ident_in_flight_ = false;
     this->ident_handle_response_(response);
@@ -368,9 +390,9 @@ void VitoHomeComponent::ident_dispatch_(IdentState state) {
   // The actual bus dispatch happens from dispatch_next_() when idle.
 }
 
-void VitoHomeComponent::ident_handle_response_(const optolink::PacketVS2 &response) {
-  const uint8_t *d = response.data();
-  const uint8_t n = response.dataLength();
+void VitoHomeComponent::ident_handle_response_(const ResponseView &response) {
+  const uint8_t *d = response.data;
+  const uint8_t n = response.data_length;
   switch (this->ident_state_) {
     case IdentState::READ4:
       // 0xF8..0xFB in one transaction. Wire order is the register order:

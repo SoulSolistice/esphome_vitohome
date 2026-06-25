@@ -116,9 +116,9 @@ void VitoTextSensor::publish_ascii_(const uint8_t *data, uint8_t len) {
   this->publish_state(buf);
 }
 
-void VitoTextSensor::handle_response(const optolink::PacketVS2 &response) {
-  const uint8_t *data = response.data();
-  const uint8_t len = response.dataLength();
+void VitoTextSensor::handle_response(const ResponseView &response) {
+  const uint8_t *data = response.data;
+  const uint8_t len = response.data_length;
   if (data == nullptr || len == 0) {
     ESP_LOGW(TAG, "%s: empty response", this->datapoint_.name());
     return;

@@ -124,6 +124,17 @@ void GWGEngine::_init() {
     if (_interface->read() == internals::ProtocolBytes.ENQ && _currentDatapoint) {
       _bytesTransferred = 0;
       _setState(State::SEND);
+      return;
+    }
+  }
+  if constexpr (SEND_ENQ_POKE) {
+    // Active sync (opt-in, see SEND_ENQ_POKE): nudge the device with an EOT
+    // (0x04) while waiting for its ENQ (0x05). Mirrors vcontrold's GWG sync
+    // (SEND 04; WAIT 05) and the VS1 EOT fallback. The default build discards
+    // this branch, so passive-wait behaviour is unchanged.
+    if (_currentDatapoint && (_currentMillis - _lastMillis) > ENQ_POKE_INTERVAL_MS) {
+      _interface->write(&internals::ProtocolBytes.EOT, 1);
+      _lastMillis = _currentMillis;
     }
   }
 }
