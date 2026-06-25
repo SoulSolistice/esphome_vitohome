@@ -232,7 +232,7 @@ void VitoHomeComponent::update() {
 
 void VitoHomeComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "VitoHome:");
-  ESP_LOGCONFIG(TAG, "  Protocol: P300 (VS2)");
+  ESP_LOGCONFIG(TAG, "  Protocol: %s", ProtocolAdapter::protocol_name());
   ESP_LOGCONFIG(TAG, "  Entities: %zu", this->entities_.size());
   if (this->ident_state_ == IdentState::DONE) {
     ESP_LOGCONFIG(TAG, "  Device: %s", this->ident_string_().c_str());
