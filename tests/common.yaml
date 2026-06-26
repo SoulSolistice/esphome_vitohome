@@ -1,18 +1,7 @@
 # Shared test config: exercises EVERY vitohome platform and option so the CI
-# `esphome compile` covers all codegen paths. The wrappers set substitutions +
-# the esp32 block, then `<<: !include` this file.
-#
-# `protocol` and `identify_device` are substitutions because protocol selection
-# is a COMPILE-TIME choice (__init__.py emits one -DVITOHOME_PROTOCOL_* flag), so
-# one binary == one protocol. Compiling this same base once per protocol is the
-# only way `esphome compile` can cover more than one protocol's engine +
-# ProtocolAdapter branch. The wrappers are:
-#   test.esp32-arduino.yaml   P300 / arduino   (validated protocol, identify on)
-#   test.esp32-idf.yaml       P300 / esp-idf   (validated protocol, identify on)
-#   test.esp32-idf-gwg.yaml   GWG  / esp-idf   (untested protocol, identify off)
-#   test.esp32-idf-kw.yaml    KW   / esp-idf   (untested protocol, identify off)
-# identify_device follows each protocol's natural default (on for P300, off for
-# KW/GWG, whose boot identification scheme differs).
+# `esphome compile` covers all codegen paths under both frameworks. The
+# per-framework wrappers (test.esp32-arduino.yaml / test.esp32-idf.yaml) set
+# substitutions + the esp32 block, then `<<: !include` this file.
 #
 # No network stack here on purpose: a compile test does not need wifi/api/ota,
 # and leaving them out keeps the build fast and dependency-light.
@@ -189,3 +178,26 @@ text_sensor:
     codes:
       0x00: "No error"
       0x0F: "EMV / internal error"
+  # scan-console result surface (hub-fed, no address) — exercises the raw lane
+  - platform: vitohome
+    type: scan_result
+    name: "Test Scan Result"
+    entity_category: diagnostic
+
+# Exercise the raw-lane public API (queue_raw_read / queue_raw_write) so the CI
+# compile builds it; the bytes/addresses are arbitrary, this never runs on real
+# hardware in CI.
+button:
+  - platform: template
+    name: "Test Raw Read"
+    entity_category: diagnostic
+    on_press:
+      - lambda: |-
+          id(vito).queue_raw_read(0x0800, 2);
+  - platform: template
+    name: "Test Raw Write"
+    entity_category: diagnostic
+    on_press:
+      - lambda: |-
+          std::vector<uint8_t> b{0x01};
+          id(vito).queue_raw_write(0x2301, b);

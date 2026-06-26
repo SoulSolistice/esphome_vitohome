@@ -3,6 +3,7 @@
 #include <cinttypes>
 #include <cstdio>
 
+#include "decode.h"
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
 
@@ -128,13 +129,18 @@ void VitoHomeComponent::loop() {
 
   // Watchdog: if a request has been in flight too long, surface that and
   // free the slot.
-  if (this->in_flight_ != nullptr || this->ident_in_flight_) {
+  if (this->in_flight_ != nullptr || this->ident_in_flight_ || this->raw_in_flight_) {
     uint32_t now = millis();
     if (now - this->in_flight_started_ms_ > IN_FLIGHT_WATCHDOG_MS) {
       if (this->ident_in_flight_) {
         ESP_LOGW(TAG, "Identification read exceeded watchdog (%" PRIu32 " ms)", IN_FLIGHT_WATCHDOG_MS);
         this->ident_in_flight_ = false;
         this->ident_handle_error_();
+      } else if (this->raw_in_flight_) {
+        ESP_LOGW(TAG, "Raw %s 0x%04X exceeded watchdog (%" PRIu32 " ms)", this->raw_is_write_ ? "write" : "read",
+                 this->raw_dp_.address(), IN_FLIGHT_WATCHDOG_MS);
+        this->raw_in_flight_ = false;
+        this->raw_handle_error_(optolink::OptolinkResult::TIMEOUT);
       } else {
         ESP_LOGW(TAG, "In-flight %s to %s exceeded watchdog (%" PRIu32 " ms). Clearing.",
                  this->in_flight_op_ == OpType::WRITE ? "write" : "read", this->in_flight_->get_datapoint().name(),
@@ -156,7 +162,7 @@ void VitoHomeComponent::loop() {
 }
 
 void VitoHomeComponent::dispatch_next_() {
-  if (this->in_flight_ != nullptr || this->ident_in_flight_) return;
+  if (this->in_flight_ != nullptr || this->ident_in_flight_ || this->raw_in_flight_) return;
 
   // Identification runs before regular traffic so the user sees the device
   // tuple in the first seconds of the log.
@@ -168,6 +174,30 @@ void VitoHomeComponent::dispatch_next_() {
                this->ident_dp_.length());
     }
     return;
+  }
+
+  // Raw scan ops (queue_raw_read / queue_raw_write) preempt regular polling so
+  // the scan console feels immediate; they run after identification.
+  if (!this->raw_queue_.empty()) {
+    const RawOp &op = this->raw_queue_.front();
+    this->raw_dp_ = optolink::Datapoint("scan", op.address, op.length, optolink::noconv);
+    this->raw_is_write_ = op.is_write;
+    bool dispatched;
+    if (op.is_write) {
+      this->raw_write_buf_ = op.bytes;
+      dispatched = this->vito_->write(this->raw_dp_, this->raw_write_buf_.data(),
+                                      static_cast<uint8_t>(this->raw_write_buf_.size()));
+    } else {
+      this->raw_write_buf_.clear();
+      dispatched = this->vito_->read(this->raw_dp_);
+    }
+    if (dispatched) {
+      this->raw_in_flight_ = true;
+      this->in_flight_started_ms_ = millis();
+      ESP_LOGV(TAG, "Dispatched raw %s 0x%04X len %u", op.is_write ? "write" : "read", op.address, op.length);
+      this->raw_queue_.pop_front();
+    }
+    return;  // engine busy: retry next loop()
   }
 
   // Writes preempt reads: a user-initiated setpoint change should not wait
@@ -237,6 +267,9 @@ void VitoHomeComponent::dump_config() {
   if (this->ident_state_ == IdentState::DONE) {
     ESP_LOGCONFIG(TAG, "  Device: %s", this->ident_string_().c_str());
   }
+  if (!this->raw_result_sensors_.empty()) {
+    ESP_LOGCONFIG(TAG, "  Scan console: %zu scan_result sensor(s) attached", this->raw_result_sensors_.size());
+  }
   this->check_uart_settings(4800, 2, uart::UART_CONFIG_PARITY_EVEN, 8);
   if (this->is_failed()) {
     ESP_LOGE(TAG, "  Setup FAILED");
@@ -264,10 +297,70 @@ bool VitoHomeComponent::request_write(VitoEntityBase *entity) {
   return true;
 }
 
+// ---------------------------------------------------------------------------
+// Raw scan console (debug)
+// ---------------------------------------------------------------------------
+
+void VitoHomeComponent::queue_raw_read(uint16_t address, uint8_t length) {
+  if (length < 1 || length > 32) {
+    ESP_LOGW(TAG, "queue_raw_read: length %u out of range (1..32)", length);
+    return;
+  }
+  if (this->raw_queue_.size() >= RAW_QUEUE_MAX) {
+    ESP_LOGW(TAG, "raw queue full (%zu); dropping read 0x%04X", this->raw_queue_.size(), address);
+    return;
+  }
+  this->raw_queue_.push_back(RawOp{address, length, false, {}});
+  ESP_LOGD(TAG, "Queued raw read 0x%04X len %u", address, length);
+}
+
+void VitoHomeComponent::queue_raw_write(uint16_t address, const std::vector<uint8_t> &bytes) {
+  if (bytes.empty() || bytes.size() > 32) {
+    ESP_LOGW(TAG, "queue_raw_write: %zu bytes out of range (1..32)", bytes.size());
+    return;
+  }
+  if (this->raw_queue_.size() >= RAW_QUEUE_MAX) {
+    ESP_LOGW(TAG, "raw queue full (%zu); dropping write 0x%04X", this->raw_queue_.size(), address);
+    return;
+  }
+  this->raw_queue_.push_back(RawOp{address, static_cast<uint8_t>(bytes.size()), true, bytes});
+  ESP_LOGD(TAG, "Queued raw write 0x%04X len %zu", address, bytes.size());
+}
+
+void VitoHomeComponent::raw_handle_response_(const ResponseView &response) {
+  char buf[160];
+  if (this->raw_is_write_) {
+    snprintf(buf, sizeof(buf), "0x%04X: write ACK (%zu byte%s)", this->raw_dp_.address(), this->raw_write_buf_.size(),
+             this->raw_write_buf_.size() == 1 ? "" : "s");
+  } else {
+    format_raw_dump(response.address, response.data, response.data_length, buf, sizeof(buf));
+  }
+  ESP_LOGI(TAG, "Raw: %s", buf);
+  this->raw_publish_(buf);
+}
+
+void VitoHomeComponent::raw_handle_error_(optolink::OptolinkResult error) {
+  char buf[96];
+  snprintf(buf, sizeof(buf), "0x%04X: %s FAILED (%s)", this->raw_dp_.address(), this->raw_is_write_ ? "write" : "read",
+           optolink::errorToString(error));
+  ESP_LOGW(TAG, "Raw: %s", buf);
+  this->raw_publish_(buf);
+}
+
+void VitoHomeComponent::raw_publish_(const std::string &line) {
+  for (auto *ts : this->raw_result_sensors_) ts->publish_state(line);
+}
+
 void VitoHomeComponent::on_response_(const ResponseView &response, const optolink::Datapoint &request) {
   if (this->ident_in_flight_) {
     this->ident_in_flight_ = false;
     this->ident_handle_response_(response);
+    return;
+  }
+
+  if (this->raw_in_flight_) {
+    this->raw_in_flight_ = false;
+    this->raw_handle_response_(response);
     return;
   }
 
@@ -317,6 +410,12 @@ void VitoHomeComponent::on_error_(optolink::OptolinkResult error, const optolink
     ESP_LOGD(TAG, "Identification read 0x%04X len %u failed (%s)", request.address(), request.length(),
              optolink::errorToString(error));
     this->ident_handle_error_();
+    return;
+  }
+
+  if (this->raw_in_flight_) {
+    this->raw_in_flight_ = false;
+    this->raw_handle_error_(error);
     return;
   }
 

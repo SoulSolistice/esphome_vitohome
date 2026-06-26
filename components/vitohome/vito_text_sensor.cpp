@@ -23,6 +23,8 @@ static const char *type_name(TextSensorType t) {
       return "device_id";
     case TextSensorType::ASCII:
       return "ascii";
+    case TextSensorType::SCAN_RESULT:
+      return "scan_result";
   }
   return "?";
 }
@@ -31,6 +33,10 @@ void VitoTextSensor::dump_config() {
   LOG_TEXT_SENSOR("  ", "VitoHome Text Sensor", this);
   if (this->type_ == TextSensorType::DEVICE_ID) {
     ESP_LOGCONFIG(TAG, "    Type: device_id (fed by hub identification)");
+    return;
+  }
+  if (this->type_ == TextSensorType::SCAN_RESULT) {
+    ESP_LOGCONFIG(TAG, "    Type: scan_result (fed by hub raw scan console)");
     return;
   }
   ESP_LOGCONFIG(TAG, "    Type: %s  Address: 0x%04X  Length: %u", type_name(this->type_), this->datapoint_.address(),

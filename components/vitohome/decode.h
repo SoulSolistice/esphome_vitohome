@@ -2,6 +2,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 
 namespace esphome {
 namespace vitohome {
@@ -167,6 +168,53 @@ inline int decode_ascii(const uint8_t *data, std::size_t data_len, uint8_t len, 
   while (n > 0 && out[n - 1] == ' ') n--;  // trim trailing space padding
   out[n] = '\0';
   return static_cast<int>(n);
+}
+
+// ---------------------------------------------------------------------------
+// scan-console raw response formatting (debug)
+// ---------------------------------------------------------------------------
+
+// Format a raw Optolink response for the live scan console: the request
+// address, the payload as space-separated hex, and -- for widths 1..8 -- the
+// little-endian unsigned and signed integer interpretations computed in
+// 64-bit (so a 4-byte value is exact, unlike the float32 a sensor publishes).
+// Example: "0x0800: AA BB  u=48042 i=-17494".
+//
+// Pure / framework-free so it is host-tested in tests/native/test_decode.cpp.
+// Never writes past out[cap-1]; always NUL-terminates when cap > 0. Returns
+// the number of characters written (excluding the NUL), or 0 on bad args.
+inline int format_raw_dump(uint16_t address, const uint8_t *data, uint8_t len, char *out, std::size_t cap) {
+  if (out == nullptr || cap == 0) return 0;
+  int off = std::snprintf(out, cap, "0x%04X:", static_cast<unsigned>(address));
+  if (off < 0) {
+    out[0] = '\0';
+    return 0;
+  }
+  // Cap the hex run so a long/garbled response can't blow the line; a P300
+  // read is a few bytes (error_history is 9), so 32 is generous.
+  const uint8_t max_hex = (len < 32) ? len : 32;
+  for (uint8_t i = 0; i < max_hex && static_cast<std::size_t>(off) < cap; i++) {
+    const int w = std::snprintf(out + off, cap - static_cast<std::size_t>(off), " %02X",
+                                static_cast<unsigned>(data == nullptr ? 0 : data[i]));
+    if (w < 0) return 0;
+    off += w;
+  }
+  if (len > max_hex && static_cast<std::size_t>(off) < cap) {
+    const int w =
+        std::snprintf(out + off, cap - static_cast<std::size_t>(off), " ...(%u bytes)", static_cast<unsigned>(len));
+    if (w < 0) return 0;
+    off += w;
+  }
+  if (data != nullptr && len >= 1 && len <= 8 && static_cast<std::size_t>(off) < cap) {
+    const uint64_t u = read_le(data, len);
+    const int64_t s = sign_extend_le(u, len);
+    const int w = std::snprintf(out + off, cap - static_cast<std::size_t>(off), "  u=%llu i=%lld",
+                                static_cast<unsigned long long>(u), static_cast<long long>(s));
+    if (w < 0) return 0;
+    off += w;
+  }
+  if (static_cast<std::size_t>(off) >= cap) off = static_cast<int>(cap) - 1;  // truncated; snprintf NUL-terminated
+  return off;
 }
 
 }  // namespace vitohome

@@ -47,6 +47,20 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   // entity owns the buffer). Returns false if the entity has no payload.
   bool request_write(VitoEntityBase *entity);
 
+  // --- raw scan console (debug) --------------------------------------------
+  // Subscribe a hub-fed text sensor (text_sensor: type: scan_result) to the
+  // raw-op result line. Mirrors register_device_id_sensor: it never polls.
+  void register_raw_result_sensor(text_sensor::TextSensor *ts) {
+    if (ts != nullptr) this->raw_result_sensors_.push_back(ts);
+  }
+
+  // Queue a one-off read / write to an arbitrary address, dispatched ahead of
+  // regular polling (just after identification). The result -- hex + 64-bit
+  // integer views for a read, ACK / error otherwise -- is logged and published
+  // to any scan_result sensor. Drives the scan console and HA range sweeps.
+  void queue_raw_read(uint16_t address, uint8_t length);
+  void queue_raw_write(uint16_t address, const std::vector<uint8_t> &bytes);
+
  protected:
   enum class OpType : uint8_t { NONE, READ, WRITE };
 
@@ -81,6 +95,12 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   void ident_handle_error_();
   void ident_finish_();
   std::string ident_string_() const;
+
+  // raw scan console (debug)
+  void raw_handle_response_(const ResponseView &response);
+  void raw_handle_error_(optolink::OptolinkResult error);
+  void raw_publish_(const std::string &line);
+
   bool ident_in_flight_{false};
 
  private:
@@ -104,6 +124,24 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   IdentState ident_state_{IdentState::IDLE};
   optolink::Datapoint ident_dp_{"ident", 0x00F8, 4, optolink::noconv};
   int ident_group_{-1}, ident_controller_{-1}, ident_hw_{-1}, ident_sw_{-1};
+
+  // Raw scan console (debug). A small FIFO of one-off ops, dispatched with
+  // priority just below identification and just above regular polling; exactly
+  // one is in flight at a time (raw_in_flight_), so bus arbitration stays
+  // single-owner like the ident lane.
+  struct RawOp {
+    uint16_t address;
+    uint8_t length;
+    bool is_write;
+    std::vector<uint8_t> bytes;
+  };
+  static constexpr size_t RAW_QUEUE_MAX = 256;
+  std::deque<RawOp> raw_queue_;
+  bool raw_in_flight_{false};
+  bool raw_is_write_{false};
+  optolink::Datapoint raw_dp_{"scan", 0, 1, optolink::noconv};
+  std::vector<uint8_t> raw_write_buf_;
+  std::vector<text_sensor::TextSensor *> raw_result_sensors_;
 
   // Failsafe: if a request is in flight for longer than this, log and
   // clear it. the optolink engine has its own internal timeout (via OptolinkResult

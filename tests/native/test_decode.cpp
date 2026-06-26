@@ -222,6 +222,43 @@ static void test_ascii() {
   CHECK(decode_ascii(s1, 4, 4, buf, 2) == -1);
 }
 
+// --- format_raw_dump -------------------------------------------------------
+static void test_format_raw_dump() {
+  char buf[160];
+
+  // 2-byte little-endian: raw 0xBBAA = 48042 unsigned, -17494 signed.
+  const uint8_t two[] = {0xAA, 0xBB};
+  format_raw_dump(0x0800, two, 2, buf, sizeof(buf));
+  CHECK(std::strcmp(buf, "0x0800: AA BB  u=48042 i=-17494") == 0);
+
+  // 1-byte signed view: 0xFF -> u=255 i=-1.
+  const uint8_t one[] = {0xFF};
+  format_raw_dump(0x55D3, one, 1, buf, sizeof(buf));
+  CHECK(std::strcmp(buf, "0x55D3: FF  u=255 i=-1") == 0);
+
+  // 4-byte counter past the float32-exact range (2^24): exact in u64.
+  // LE bytes 80 0A A3 0C = 0x0CA30A80 = 212011648 (>> 2^24 = 16777216).
+  const uint8_t four[] = {0x80, 0x0A, 0xA3, 0x0C};
+  format_raw_dump(0x08A7, four, 4, buf, sizeof(buf));
+  CHECK(std::strcmp(buf, "0x08A7: 80 0A A3 0C  u=212011648 i=212011648") == 0);
+
+  // 9-byte payload (error-history slot): hex only, no integer view (len > 8).
+  const uint8_t nine[] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99};
+  format_raw_dump(0x7507, nine, 9, buf, sizeof(buf));
+  CHECK(std::strcmp(buf, "0x7507: 11 22 33 44 55 66 77 88 99") == 0);
+
+  // Truncation is safe: tiny buffer is NUL-terminated and never overruns.
+  char tiny[8];
+  const int n = format_raw_dump(0x0800, two, 2, tiny, sizeof(tiny));
+  CHECK(n == static_cast<int>(sizeof(tiny)) - 1);
+  CHECK(tiny[sizeof(tiny) - 1] == '\0');
+  CHECK(std::strncmp(tiny, "0x0800:", 7) == 0);
+
+  // Bad args fail soft.
+  CHECK(format_raw_dump(0x0800, two, 2, nullptr, sizeof(buf)) == 0);
+  CHECK(format_raw_dump(0x0800, two, 2, buf, 0) == 0);
+}
+
 int main() {
   test_read_le();
   test_sign_extend();
@@ -231,6 +268,7 @@ int main() {
   test_datetime();
   test_masked_bit();
   test_ascii();
+  test_format_raw_dump();
 
   std::printf("\n%d checks, %d failure(s)\n", g_checks, g_failures);
   return g_failures == 0 ? 0 : 1;

@@ -35,6 +35,7 @@ TEXT_SENSOR_TYPES = {
     "error_history": TextSensorType.ERROR_HISTORY,
     "device_id": TextSensorType.DEVICE_ID,
     "ascii": TextSensorType.ASCII,
+    "scan_result": TextSensorType.SCAN_RESULT,
 }
 
 # A {raw_value: label} map. Keys are integers (the decoded wire value), values
@@ -86,6 +87,10 @@ CONFIG_SCHEMA = cv.typed_schema(
             }
         ),
         "device_id": (text_sensor.text_sensor_schema(VitoTextSensor).extend(_BASE).extend(cv.COMPONENT_SCHEMA)),
+        # No address: the hub feeds it the raw scan-console result line
+        # (queue_raw_read / queue_raw_write), exactly like device_id is fed by
+        # identification.
+        "scan_result": (text_sensor.text_sensor_schema(VitoTextSensor).extend(_BASE).extend(cv.COMPONENT_SCHEMA)),
         "ascii": _addressed(
             {
                 # Byte-string field width (Sachnummer 7, Herstellnummer 16).
@@ -112,6 +117,12 @@ async def to_code(config):
         # No bus reads of its own: it subscribes to the hub's one-shot
         # identification result instead of polling.
         cg.add(parent.register_device_id_sensor(var))
+        return
+
+    if config[CONF_TYPE] == "scan_result":
+        # No bus reads of its own: the hub publishes the raw scan-console result
+        # line to it (queue_raw_read / queue_raw_write).
+        cg.add(parent.register_raw_result_sensor(var))
         return
 
     cg.add(var.set_datapoint(datapoint_expression(config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH])))

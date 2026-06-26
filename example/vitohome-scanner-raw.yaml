@@ -1,0 +1,181 @@
+# =============================================================================
+# vitohome — RAW SCAN CONSOLE  (uses the hub raw-lane addition)
+# =============================================================================
+# This config drives the hub feature: queue_raw_read / queue_raw_write and a
+# hub-fed `text_sensor: type: scan_result`:
+#   * READ-NOW  — an immediate one-off read, not "next poll tick".
+#   * RAW HEX    — the response as bytes + exact 64-bit integer views (no
+#                  float32 narrowing on 4-byte values).
+#   * RAW WRITE  — an arbitrary byte payload (not just one LE integer).
+#   * RANGE SWEEP— scan a contiguous block from a Home Assistant action.
+#
+# =============================================================================
+
+substitutions:
+  friendly_name: "Viessmann Optolink (vitohome RAW CONSOLE)"
+  device_name: viessmann-optolink-raw
+  device_description: "vitohome raw scan console (queue_raw_read/write)"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  comment: ${device_description}
+  min_version: "2026.5.0"
+
+esp32:
+  variant: esp32c3
+  board: esp32-c3-devkitm-1
+  framework:
+    type: esp-idf
+    log_level: WARN
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/SoulSolistice/esphome_vitohome
+      ref: vendoring_cleanup
+    components: [vitohome]
+    refresh: 0s
+
+api:
+  encryption:
+    key: !secret esphome-api
+  # HA-scriptable range sweep. Actions replace the old `services:` key (still
+  # accepted). Call from Developer Tools --> Actions: esphome.<device>_scan_range
+  actions:
+    - action: scan_range
+      variables:
+        start: int
+        count: int
+        length: int
+      then:
+        - repeat:
+            count: !lambda 'return count < 0 ? 0 : count;'
+            then:
+              - lambda: |-
+                  id(vito).queue_raw_read((uint16_t)(start + iteration), (uint8_t)length);
+              - delay: 250ms   # pace the bus; raw ops dispatch as the engine frees up
+
+ota:
+  - platform: esphome
+    password: !secret esphome-ota
+
+ethernet:
+  type: DM9051
+  clk_pin: GPIO07
+  mosi_pin: GPIO10
+  miso_pin: GPIO03
+  cs_pin: GPIO09
+  interrupt_pin: GPIO08
+  reset_pin: GPIO06
+  clock_speed: 8MHz
+  use_address: viessmann-optolink
+
+safe_mode:
+  boot_is_good_after: 60s
+  num_attempts: 10
+  reboot_timeout: 5min
+
+web_server:
+  port: 80
+  local: true
+
+logger:
+  hardware_uart: UART0
+  level: VERBOSE
+  logs:
+    vitohome: VERBOSE
+
+uart:
+  - id: uart_optolink
+    rx_pin: GPIO05
+    tx_pin: GPIO02
+    baud_rate: 4800
+    data_bits: 8
+    parity: EVEN
+    stop_bits: 2
+
+vitohome:
+  id: vito
+  uart_id: uart_optolink
+  protocol: P300
+  update_interval: 30s          # raw ops are independent of this tick
+
+# --- The result surface: a hub-fed text sensor (no address, no polling) ------
+text_sensor:
+  - platform: vitohome
+    vitohome_id: vito
+    type: scan_result
+    id: scan_raw
+    name: "Scan ▸ Raw result"
+    entity_category: diagnostic
+
+# --- Inputs -----------------------------------------------------------------
+text:
+  - platform: template
+    id: scan_addr
+    name: "Scan · Address (hex, e.g. 0800)"
+    optimistic: true
+    mode: text
+    initial_value: "0800"
+    entity_category: config
+
+  - platform: template
+    id: scan_write_bytes
+    name: "Scan · Write bytes (hex, e.g. 01 or 00 0A)"
+    optimistic: true
+    mode: text
+    initial_value: ""
+    entity_category: config
+
+number:
+  - platform: template
+    id: scan_length
+    name: "Scan · Read length (bytes)"
+    optimistic: true
+    min_value: 1
+    max_value: 9
+    step: 1
+    initial_value: 2
+    mode: box
+    entity_category: config
+
+# --- Actions ----------------------------------------------------------------
+button:
+  - platform: restart
+    name: "Restart"
+    entity_category: diagnostic
+
+  # Immediate one-off read; result lands on "Scan ▸ Raw result".
+  - platform: template
+    name: "Scan ▸ Raw read (now)"
+    entity_category: config
+    on_press:
+      - lambda: |-
+          long a = strtol(id(scan_addr).state.c_str(), nullptr, 16);
+          if (a < 0 || a > 0xFFFF) { ESP_LOGW("scan", "address out of range: %s", id(scan_addr).state.c_str()); return; }
+          id(vito).queue_raw_read((uint16_t) a, (uint8_t) id(scan_length).state);
+
+  # Arbitrary-byte write: parse the hex string (spaces/colons ignored) into bytes.
+  - platform: template
+    name: "Scan ▸ Raw write"
+    entity_category: config
+    on_press:
+      - lambda: |-
+          long a = strtol(id(scan_addr).state.c_str(), nullptr, 16);
+          if (a < 0 || a > 0xFFFF) { ESP_LOGW("scan", "address out of range: %s", id(scan_addr).state.c_str()); return; }
+          auto ishex = [](char c) {
+            return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+          };
+          std::string hex;
+          for (char ch : id(scan_write_bytes).state) { if (ishex(ch)) hex.push_back(ch); }
+          if (hex.empty() || (hex.size() % 2) != 0) {
+            ESP_LOGW("scan", "write bytes: need an even number of hex digits, got '%s'", id(scan_write_bytes).state.c_str());
+            return;
+          }
+          std::vector<uint8_t> bytes;
+          for (size_t i = 0; i + 1 < hex.size(); i += 2) {
+            bytes.push_back((uint8_t) strtol(hex.substr(i, 2).c_str(), nullptr, 16));
+          }
+          ESP_LOGW("scan", "RAW WRITE 0x%04X (%u bytes)", (unsigned)(uint16_t)a, (unsigned)bytes.size());
+          id(vito).queue_raw_write((uint16_t) a, bytes);

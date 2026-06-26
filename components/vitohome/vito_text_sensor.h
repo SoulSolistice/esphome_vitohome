@@ -15,6 +15,7 @@ enum class TextSensorType : uint8_t {
   ERROR_HISTORY,  // 9-byte error slot: [0]=code, [1..8]=DateTimeBCD
   DEVICE_ID,      // no bus reads of its own — fed by the hub's identification
   ASCII,          // byte-array-as-string (HexByte2AsciiByte): Sachnummer etc.
+  SCAN_RESULT,    // no bus reads of its own — fed by the hub's raw scan console
 };
 
 class VitoTextSensor : public text_sensor::TextSensor, public Component, public VitoEntityBase {
