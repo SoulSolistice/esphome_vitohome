@@ -1,31 +1,59 @@
-# yamllint config tuned for ESPHome.
+# yamllint configuration for the esphome_weatherman repo.
 #
-# ESPHome YAML uses custom tags (!include, !secret, !lambda, !extend, !remove)
-# and tends toward long device-address / lambda lines, so a few stock rules
-# are relaxed. The authoritative schema check is `esphome config` (CI +
-# the manual pre-commit hook), NOT yamllint — this only enforces hygiene.
-
+# ESPHome YAML legitimately uses things default yamllint flags: long lines
+# (lambdas, URLs), no `---` document start, and `true`/`false` literals. The
+# rules below relax those while still enforcing the hygiene we care about:
+# trailing spaces, consistent 2-space indentation, no tab characters, a single
+# newline at end of file, and no excess blank lines.
 extends: default
 
 yaml-files:
   - "*.yaml"
   - "*.yml"
 
+ignore: |
+  .esphome/
+  .pio/
+  .pioenvs/
+  build/
+
 rules:
-  # ESPHome lines (addresses, lambdas, URLs) routinely exceed 80 cols.
+  # ESPHome configs have long lambda/url lines; don't fight them, but flag
+  # genuinely runaway lines.
   line-length:
     max: 120
     level: warning
-  # `on:` blocks in GH workflows and ESPHome automations read as truthy keys.
-  truthy:
-    check-keys: false
-  # ESPHome configs commonly omit the document start marker.
+    allow-non-breakable-words: true
+  # ESPHome device YAML doesn't use a `---` document-start marker.
   document-start: disable
-  # Comments don't always have the two-space prefix ESPHome examples use.
+  # `true` / `false` / `on` / `off` are normal in ESPHome; allow them as
+  # values and don't flag them as keys.
+  truthy:
+    allowed-values: ["true", "false", "on", "off"]
+    check-keys: false
+  # 2-space indentation, consistent throughout.
+  indentation:
+    spaces: 2
+    indent-sequences: true
+  # The hygiene the brief explicitly calls for.
+  trailing-spaces: enable
+  new-line-at-end-of-file: enable
+  empty-lines:
+    max: 2
+    max-start: 0
+    max-end: 0
+  # The entry file deliberately column-aligns substitution values
+  # (`device_name:        weatherman`) for readability, and uses `[ x ]` flow
+  # style with inner spaces. Both are consistent project-wide, so don't fight
+  # them: disable the alignment check and allow the inner-bracket spacing.
+  colons: disable
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+  # Comments: require a space after `#`, but allow the `##` banner style the
+  # project uses (so don't require a leading space before inline comments to be
+  # exactly 2 — keep it lenient).
   comments:
+    require-starting-space: true
     min-spaces-from-content: 1
-
-ignore: |
-  .pioenvs/
-  .esphome/
-  secrets.yaml
+  comments-indentation: disable

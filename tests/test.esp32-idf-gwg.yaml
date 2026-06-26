@@ -1,0 +1,17 @@
+# GWG protocol on esp-idf. GWG is build-time selectable through ProtocolAdapter
+# but UNTESTED on hardware -- this job is a compile gate (codegen + the
+# OptolinkEngine<GWG>/GWGEngine instantiation + the GWG branch of
+# ProtocolAdapter through the real ESPHome+PlatformIO build), not a wire test.
+# identify_device is set false (the natural default for GWG): the 0xF8..0xFB
+# identification is a P300-era scheme.
+substitutions:
+  name: vitohome-test-idf-gwg
+  protocol: GWG
+  identify_device: "false"
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+<<: !include common.yaml

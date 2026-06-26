@@ -1,3 +1,4 @@
+exclude = ["example"]
 line-length = 125
 target-version = "py311"
 

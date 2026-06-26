@@ -1,5 +1,7 @@
 substitutions:
   name: vitohome-test-arduino
+  protocol: P300
+  identify_device: "true"
 
 esp32:
   board: esp32dev

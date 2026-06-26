@@ -55,8 +55,19 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - test.esp32-arduino.yaml
-          - test.esp32-idf.yaml
+          # P300 (the validated protocol) on BOTH frameworks: the framework axis
+          # mostly stresses the toolchain + shared transport/codegen, which is
+          # protocol-independent, so it is covered here once per framework.
+          - test.esp32-arduino.yaml   # P300 / arduino
+          - test.esp32-idf.yaml       # P300 / esp-idf
+          # Each remaining protocol once (esp-idf, the modern default): the
+          # protocol axis stresses that engine's translation units + the
+          # ProtocolAdapter branch + the -DVITOHOME_PROTOCOL_* flow through
+          # ESPHome's build. UNTESTED on hardware -- this is a compile gate only.
+          # (The host `native` job already proves these adapter branches
+          # compile/link; this builds them end-to-end through ESPHome.)
+          - test.esp32-idf-gwg.yaml   # GWG  / esp-idf
+          - test.esp32-idf-kw.yaml    # KW   / esp-idf  (beyond P300+GWG; drop if leaner CI wanted)
     steps:
       - uses: actions/checkout@v4
 
