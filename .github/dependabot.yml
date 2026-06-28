@@ -1,0 +1,21 @@
+# Scope: GitHub Actions ONLY -- this is deliberate, and matches how the ESPHome
+# org configures its own repos.
+#   - pip is intentionally NOT tracked: the sole requirement (esphome) is pinned
+#     and bumped by hand only after hardware re-validation; upstream drift is
+#     watched non-blocking by .github/workflows/upstream-canary.yml instead.
+#   - pre-commit hook revs (clang-format, ruff, yamllint) are not a Dependabot
+#     ecosystem; refresh them with `pre-commit autoupdate`.
+#   - the vendored optolink engine (THIRD_PARTY.md) is not a manifest dependency
+#     and is updated deliberately, not automatically.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    # Batch all action bumps into a single PR to keep review noise minimal.
+    groups:
+      github-actions:
+        patterns:
+          - "*"

@@ -5,9 +5,9 @@
 substitutions:
   device_name: viessmann-optolink
   friendly_name: "Viessmann Optolink"
-  device_description: "Viessman Optolink Heating Control"
+  device_description: "Viessmann Optolink Heating Control"
   ## Project name MUST be "namespace.project" (dot-separated) or validation fails.
-  project_name:       "viessmann-optolink.VscotH01_72"
+  project_name:       "viessmann-optolink.VScotHO1_72"
   debug_level:        "DEBUG"
   ## --- Firmware source -------------------------------------------------------
   ## Upgrade the whole firmware by bumping vitohome_ref to a new git tag.
@@ -23,10 +23,13 @@ esphome:
   min_version:    2025.12.0
   project:
     name: ${project_name}
-    ## Version follows the deployed firmware tag: one source of truth. Because
+    ## Version follows the deployed firmware ref: one source of truth. Because
     ## project.version reads vitohome_ref (the git tag/branch the packages and
-    ## C++ component were pulled from), the reported version can never drift from
-    ## what's actually flashed. Bump vitohome_ref and the version follows.
+    ## C++ component were pulled from), the reported version tracks that ref.
+    ## With a pinned tag (e.g. "v0.1") the version uniquely identifies the build.
+    ## With ref "main" the version string is just "main", so two builds taken at
+    ## different times both report "main" despite differing — pin a tag for a
+    ## reproducible, uniquely identifiable build.
     ## (project.version is a free string; a tag like "v0.1" or "main" both fit.)
     version: ${vitohome_ref}
 
@@ -106,6 +109,7 @@ uart:
         delimiter: [0x06]
       sequence:
         - lambda: UARTDebug::log_hex(direction, bytes, ':');
+
 # --- vitohome hub -----------------------------------------------------------
 # update_interval is the base poll tick; per-entity `update_interval` below
 # slows individual datapoints to a multiple of this tick. identify_device reads
@@ -123,10 +127,9 @@ vitohome:
 ## branch; irrelevant when ref is a fixed tag. Files merge with the blocks
 ## in this entry file (substitutions here override package defaults).
 ##
-## `packages:` is a LIST (not a name->package mapping): as of ESPHome 2026.7
-## the single/mapping include forms are deprecated, and the conditional-include
-## expression is only reliable as a top-level list entry. The optional SHT21 is
-## a SECOND git package entry pulling just its one file from the same repo+tag.
+## `packages:` is given as a LIST. ESPHome also accepts a name->package
+## mapping; both forms are supported. The list form is used here because the
+## entry is a single remote git package and needs no reference key.
 ## ============================================================
 packages:
   - url: ${vitohome_repo}

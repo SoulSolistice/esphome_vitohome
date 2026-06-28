@@ -1,0 +1,81 @@
+name: pre-commit autoupdate
+
+# Refreshes the pinned hook revs in .pre-commit-config.yaml (clang-format, ruff,
+# yamllint, pre-commit-hooks) on a schedule and opens a PR. Dependabot has no
+# pre-commit ecosystem, so this fills the one gap it cannot: keeping the lint
+# toolchain current without letting it silently fossilize.
+#
+# The PR bundles the rev bump AND any reformatting the new hooks introduce (a
+# clang-format major bump can reflow C++), so the diff shows exactly what the
+# update does and the PR is self-consistent.
+
+on:
+  schedule:
+    - cron: "30 5 * * 1"   # Mondays 05:30 UTC
+  workflow_dispatch:
+
+# A maintenance PR doesn't need to race itself.
+concurrency:
+  group: pre-commit-autoupdate
+  cancel-in-progress: true
+
+permissions:
+  contents: write          # push the autoupdate branch
+  pull-requests: write     # open / update the PR
+
+jobs:
+  autoupdate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pre-commit
+        run: pip install pre-commit
+
+      - name: Bump hook revs to latest
+        run: pre-commit autoupdate
+
+      - name: Apply the new hooks (bundle any reflow they introduce)
+        # pre-commit exits non-zero when a hook rewrites a file -- that is the
+        # point here, so don't let it fail the step. The rewrites are committed
+        # alongside the rev bump so a reviewer sees the full effect of the bump.
+        run: pre-commit run --all-files || true
+
+      - name: Open or update PR if anything changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: chore/pre-commit-autoupdate
+        run: |
+          set -euo pipefail
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "Hooks already at latest; nothing to update."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "${BRANCH}"
+          git add -A
+          git commit -m "chore: pre-commit autoupdate"
+          git push --force origin "${BRANCH}"
+          body="Automated \`pre-commit autoupdate\`. Bundles the bumped hook revs "
+          body+="and any reformatting the new hooks produce -- a clang-format "
+          body+="major bump can reflow C++, so review the diff. "
+          body+="Note: created by GITHUB_TOKEN, so ci.yml does NOT auto-run on "
+          body+="this PR; push an empty commit (or use a PAT) to fire CI checks."
+          open_pr="$(gh pr list --head "${BRANCH}" --state open \
+                       --json number --jq '.[0].number // empty')"
+          if [ -z "${open_pr}" ]; then
+            gh pr create --head "${BRANCH}" \
+              --title "chore: pre-commit autoupdate" --body "${body}"
+          else
+            echo "PR #${open_pr} already open for ${BRANCH}; force-push updated it."
+          fi
+
+      - name: Verify the updated hooks pass on the committed result
+        # Visible signal on THIS run (since ci.yml won't fire on the token PR).
+        # Green = the bump is clean. Red = the new hooks still object -> review.
+        run: pre-commit run --all-files

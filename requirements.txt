@@ -1,2 +1,8 @@
-# Pin for reproducible CI, e.g. esphome==2025.5.0
-esphome
+# Pinned for reproducible CI. This is the exact ESPHome the component is
+# validated and hardware-confirmed against; the `compile` job in ci.yml gates
+# every push against this build. Bump deliberately after re-validating — that
+# also busts the PlatformIO toolchain cache (its key hashes this file).
+#
+# Drift against the moving `beta`/`dev` channels is tracked separately and is
+# non-blocking: see .github/workflows/upstream-canary.yml.
+esphome==2026.6.2

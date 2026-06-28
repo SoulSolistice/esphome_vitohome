@@ -1,0 +1,112 @@
+name: Upstream canary
+
+# Early-warning compile against the MOVING ESPHome `beta` and `dev` channels.
+# Deliberately separate from ci.yml and NOT a required status check:
+#   - upstream `dev` does not change per-PR, so running it on every push would
+#     waste CI minutes and couple your green checks to upstream flakiness;
+#   - run nightly, it gives lead time to react before a breaking upstream change
+#     reaches a release (and your users) -- without ever blocking a merge.
+# This workflow is ALLOWED to go red. A red run here is the signal, not a
+# failure of your code. Keep it out of branch-protection required checks.
+
+on:
+  schedule:
+    - cron: "17 4 * * *"   # 04:17 UTC daily; off-the-hour to dodge cron contention
+  workflow_dispatch:
+
+# Don't pile up overlapping nightly/manual runs.
+concurrency:
+  group: upstream-canary
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    name: ${{ matrix.config }} @ ${{ matrix.channel }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false   # one channel breaking must not hide the others
+      matrix:
+        # One representative config PER FRAMEWORK per channel is enough: the
+        # channel axis stresses upstream ESPHome's codegen + toolchain
+        # integration, which is protocol-independent. P300 is the validated
+        # protocol, so probe with it. `dev` = max lead time; `beta` = imminent
+        # release. `esphome-spec` is passed UNQUOTED to `pip install` on purpose
+        # so the shell splits it into separate arguments.
+        include:
+          - config: test.esp32-idf.yaml
+            channel: dev
+            esphome-spec: "--no-cache-dir https://github.com/esphome/esphome/archive/dev.zip"
+          - config: test.esp32-arduino.yaml
+            channel: dev
+            esphome-spec: "--no-cache-dir https://github.com/esphome/esphome/archive/dev.zip"
+          - config: test.esp32-idf.yaml
+            channel: beta
+            esphome-spec: "--pre esphome"
+          - config: test.esp32-arduino.yaml
+            channel: beta
+            esphome-spec: "--pre esphome"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache PlatformIO toolchain
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          # Channel-scoped so a newer dev/beta toolchain never overwrites the
+          # pinned cache ci.yml relies on. Falls back to a warm neighbour.
+          key: pio-canary-${{ runner.os }}-${{ matrix.config }}-${{ matrix.channel }}
+          restore-keys: |
+            pio-canary-${{ runner.os }}-${{ matrix.config }}-
+            pio-${{ runner.os }}-${{ matrix.config }}-
+            pio-${{ runner.os }}-
+
+      - name: Install ESPHome (${{ matrix.channel }} channel)
+        run: pip install ${{ matrix.esphome-spec }}
+
+      - name: Report resolved ESPHome version
+        run: esphome version
+
+      - name: Validate config
+        run: esphome config tests/${{ matrix.config }}
+
+      - name: Compile
+        run: esphome compile tests/${{ matrix.config }}
+
+  notify:
+    name: Open issue if a channel broke
+    needs: [compile]
+    # Only on the scheduled run, and only when a compile leg actually failed.
+    # `always()` lets this run even though `compile` failed; the result guard
+    # keeps it silent on green nights and on manual workflow_dispatch probes.
+    if: always() && github.event_name == 'schedule' && needs.compile.result == 'failure'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Create or update tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: "Upstream ESPHome canary is failing"
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          body="Nightly canary compile against ESPHome beta/dev failed. "
+          body+="It does NOT affect the pinned build your users get -- it is an "
+          body+="early warning that an upcoming ESPHome release may break the "
+          body+="component. Latest run: ${RUN_URL}"
+          # De-dupe via exact title match (env.TITLE avoids shell-quoting pain).
+          num=$(gh issue list --state open --json number,title \
+                  --jq 'map(select(.title == env.TITLE)) | .[0].number // empty')
+          if [ -n "${num}" ]; then
+            gh issue comment "${num}" --body "Still failing -- ${RUN_URL}"
+          else
+            gh issue create --title "${TITLE}" --body "${body}"
+          fi

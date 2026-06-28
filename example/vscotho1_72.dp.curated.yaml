@@ -37,8 +37,8 @@
 sensor:
   # --- Temperatures -------------------------------------------------------
   - platform: vitohome
-    name: "Outside Temperature"
-    id: outside_temperature
+    name: "Temperatur Außen"
+    id: TiefpassTemperaturwert_ATS
     address: 0x5525            # ATS, low-pass filtered
     length: 2
     converter: div10
@@ -50,8 +50,21 @@ sensor:
     update_interval: 60s
 
   - platform: vitohome
-    name: "Boiler Temperature"
-    id: boiler_temperature
+    name: "Temperatur Kessel Soll"
+    id: Kesselsoll_eff
+    address: 0x555A            # Kesselsoll eff
+    length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    icon: "mdi:thermometer-lines"
+    update_interval: 60s
+
+  - platform: vitohome
+    name: "Temperatur Kessel Ist"
+    id: TiefpassTemperaturwert_KTS
     address: 0x0810            # KTS, boiler water (low-pass; vcontrold uses raw 0x0802)
     length: 2
     converter: div10
@@ -63,8 +76,8 @@ sensor:
     update_interval: 60s
 
   - platform: vitohome
-    name: "Flue Gas Temperature"
-    id: flue_gas_temperature
+    name: "Temperatur Abgas"
+    id: TiefpassTemperaturwert_AGTS
     address: 0x0816            # AGTS, Abgas (low-pass; vcontrold uses raw 0x0808 for 0x20CB)
     length: 2
     converter: div10
@@ -76,8 +89,8 @@ sensor:
     update_interval: 60s
 
   - platform: vitohome
-    name: "Flow Temperature HC1 (A1)"
-    id: flow_temperature_hc1
+    name: "Temperatur Vorlauf Ist"
+    id: VorlauftemperaturM1
     address: 0x2900            # Vorlauftemperatur M1/A1
     length: 2
     converter: div10
@@ -89,8 +102,8 @@ sensor:
     update_interval: 60s
 
   - platform: vitohome
-    name: "Flow Setpoint HC1 (A1)"
-    id: flow_setpoint_hc1
+    name: "Temperatur Vorlauf Soll"
+    id: VT_SolltemperaturA1M1
     address: 0x2544            # VT Solltemperatur A1M1 (demanded flow)
     length: 2
     converter: div10
@@ -102,8 +115,21 @@ sensor:
     update_interval: 60s
 
   - platform: vitohome
-    name: "DHW Temperature"
-    id: dhw_temperature
+    name: "Temperatur Rücklauf"
+    id: Neptun_Temperatur_STRS1
+    address: 0x0C20
+    length: 2
+    converter: div100
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    icon: "mdi:thermometer-lines"
+    update_interval: 60s
+
+  - platform: vitohome
+    name: "Temperatur Warmwasser Ist"
+    id: TiefpassTemperaturwertWW1
     address: 0x0812            # WW1 / Speicher (top)
     length: 2
     converter: div10
@@ -115,8 +141,8 @@ sensor:
     update_interval: 60s
 
   - platform: vitohome
-    name: "DHW Setpoint"
-    id: dhw_setpoint
+    name: "Temperatur Warmwasser Soll"
+    id: WW_SolltemperaturAktuell
     address: 0x6500            # WW Solltemperatur aktuell (read-back)
     length: 2
     converter: div10
@@ -127,23 +153,10 @@ sensor:
     icon: "mdi:thermometer-water"
     update_interval: 60s
 
-  - platform: vitohome
-    name: "Boiler Setpoint"
-    id: boiler_setpoint
-    address: 0x555A            # Kesselsoll eff
-    length: 2
-    converter: div10
-    unit_of_measurement: "°C"
-    device_class: temperature
-    state_class: measurement
-    accuracy_decimals: 1
-    icon: "mdi:thermometer-lines"
-    update_interval: 60s
-
   # --- Burner -------------------------------------------------------------
   - platform: vitohome
-    name: "Burner Modulation"
-    id: burner_modulation
+    name: "Brenner Modulation"
+    id: nvoBoilerState_BLR_value
     address: 0xA305            # nvoBoilerState value (low byte, x0.5)
     length: 1
     converter: div2
@@ -154,8 +167,8 @@ sensor:
     update_interval: 30s
 
   - platform: vitohome
-    name: "Burner Hours"
-    id: burner_hours
+    name: "Brenner Betriebsstunden"
+    id: BetriebsstundenBrenner1
     address: 0x0886            # Betriebsstunden Brenner 1
     length: 4
     converter: sec2hour
@@ -170,8 +183,8 @@ sensor:
     # If this reads 0 or looks wrong on hardware, compare against 0x08A7.
 
   - platform: vitohome
-    name: "Burner Starts"
-    id: burner_starts
+    name: "Brenner Starts"
+    id: BrennerstartsGWG
     address: 0x088A            # Brennerstarts (read-only here)
     length: 4
     converter: noconv
@@ -181,8 +194,8 @@ sensor:
 
   # --- Flow rate ----------------------------------------------------------
   - platform: vitohome
-    name: "Flow Rate"
-    id: flow_rate
+    name: "Volumenstrom"
+    id: Neptun_Durchfluss_STRS1
     address: 0x0C24            # Durchfluss STRS1; raw l/h (see note below)
     length: 2
     converter: noconv
@@ -193,72 +206,23 @@ sensor:
     # NOTE: a scaling factor exists at 0x0C26 (Skalierung Durchfluss). If the
     # raw value looks off by a constant factor, divide by that on the HA side.
 
-  # ======================================================================
-  # BETRIEBSART (operating-mode) WRITE DEBUG  --  hardware test harness
-  # ----------------------------------------------------------------------
-  # Goal: find why setting the mode does not "take". Use together with the
-  # writable "Operating Mode (set) [A1]" select in the select: section below.
-  # The writable mode for this variant is 0x2323 (BedienteilBA, Virtual_WRITE,
-  # 5 values); the read-only current mode lives in the 0x2500 block (byte 1 =
-  # 0x2501). openv/vcontrold instead drive the mode at 0x2301 (6 values) -- a
-  # read/write address split is one of the prime suspects.
-  #
-  # Test procedure:
-  #   1. Note "BA raw @0x2323" and "BA raw @0x2301" and "BA effective".
-  #   2. Change the select to a new value (it writes 0x2323).
-  #   3. If "BA raw @0x2323" changes to your value -> the write reached 0x2323.
-  #      If it does NOT change -> the write is rejected at 0x2323 (try 0x2301).
-  #   4. If "BA effective" ALSO changes -> the mode took. If 0x2323 changed but
-  #      effective did not -> a Bedienteil program-switch interlock is overriding.
-  #   5. If "Economy/Party/Holiday active" is ON, a special mode can lock the
-  #      base Betriebsart -- clear it first.
-  # Raw bytes are shown (not enum labels) so an out-of-range value (e.g. 0x05,
-  # the value seen earlier) is visible instead of decoding to blank.
-  # ======================================================================
   - platform: vitohome
-    name: "BA raw @0x2323 (debug)"
-    id: ba_raw_2323
-    address: 0x2323            # the Virtual_WRITE target; read its raw byte back
+    name: "Pumpenleistung"
+    id: Pumpenleistung
+    address: 0x0A3C
     length: 1
     converter: noconv
-    entity_category: diagnostic
-    icon: "mdi:bug"
-    update_interval: 30s
-  - platform: vitohome
-    name: "BA raw @0x2301 (debug)"
-    id: ba_raw_2301
-    address: 0x2301            # vcontrold operating-mode address (unit "BA") = the
-    length: 1                  # ACTUAL mode; reads OK on this unit (not a NAK). BA
-    converter: noconv          # enum: 0=WW 1=RED 2=NORM 3=H+WW 4=H+WW_FS 5=ABSCHALT
-    entity_category: diagnostic
-    icon: "mdi:bug"
-    update_interval: 30s
-  - platform: vitohome
-    name: "BA effective (debug)"
-    id: ba_effective
-    address: 0x2501            # byte 1 of the 0x2500 block = running mode; verify
-    length: 1
-    converter: noconv
-    entity_category: diagnostic
-    icon: "mdi:bug"
-    update_interval: 30s
-  # Economy (0x2302) and Party (0x2303) state are now exposed by the writable
-  # two-address selects in the select: section (they read the state address and
-  # write the command address), so their standalone debug sensors were removed.
-  - platform: vitohome
-    name: "Holiday active A1 (debug)"
-    id: ba_holiday_active
-    address: 0x2535            # HK FerienbetriebA1M1 (0/1)
-    length: 1
-    converter: noconv
-    entity_category: diagnostic
-    icon: "mdi:bug"
-    update_interval: 30s
+    unit_of_measurement: "%"
+    state_class: measurement
+    icon: "mdi:water-percent"
+    update_interval: 60s
+    # NOTE: a scaling factor exists at 0x0C26 (Skalierung Durchfluss). If the
+    # raw value looks off by a constant factor, divide by that on the HA side.
 
 binary_sensor:
   - platform: vitohome
-    name: "Flame"
-    id: flame
+    name: "Status Brenner Flamme"
+    id: GWG_Flamme1
     address: 0x55DD            # GWG Flamme1 (bit 2)
     length: 1
     bit_mask: 0x04
@@ -269,15 +233,15 @@ binary_sensor:
 text_sensor:
   - platform: vitohome
     type: device_id
-    name: "Device Type"
+    name: "Gerätetyp"
     id: device_type
     icon: "mdi:identifier"
     entity_category: diagnostic
 
   - platform: vitohome
     type: enum
-    name: "Heating Pump HC1 (A1)"
-    id: heating_pump_hc1
+    name: "Status Pumpe Heizkreis"
+    id: HK_PumpenzustandA1M1
     address: 0x2906            # HK Pumpenzustand A1M1
     length: 1
     icon: "mdi:pump"
@@ -288,8 +252,8 @@ text_sensor:
 
   - platform: vitohome
     type: enum
-    name: "DHW Charge Pump"
-    id: dhw_charge_pump
+    name: "Status Speicherladepumpe"
+    id: Speicherladepumpe
     address: 0x6513            # Speicherladepumpe
     length: 1
     icon: "mdi:pump"
@@ -303,8 +267,8 @@ text_sensor:
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
-    name: "Last Fault"
-    id: last_fault
+    name: "Letzter Fehler"
+    id: letzter_fehler
     address: 0x7507
     length: 9
     icon: "mdi:alert-circle"
@@ -357,24 +321,24 @@ text_sensor:
   # diagnostic. Surfaced by the vcontrold cross-check as worthwhile reads.
   - platform: vitohome
     type: ascii
-    name: "Part Number (Sachnummer)"
-    id: sachnummer
+    name: "Sachnummer"
+    id: Sachnummer
     address: 0x08E0
     length: 7
     entity_category: diagnostic
     icon: "mdi:identifier"
   - platform: vitohome
     type: ascii
-    name: "Control Serial (Herstellnr Regelung)"
-    id: herstellnr_regelung
+    name: "HWHerstellNrRegelung"
+    id: HWHerstellNrRegelung
     address: 0xF000
     length: 16
     entity_category: diagnostic
     icon: "mdi:identifier"
   - platform: vitohome
     type: ascii
-    name: "Boiler Serial (Herstellnr Kessel)"
-    id: herstellnr_kessel
+    name: "HWHerstellNrKessel"
+    id: HWHerstellNrKessel
     address: 0xF010
     length: 16
     entity_category: diagnostic
@@ -384,8 +348,8 @@ number:
   # Optional control: set the DHW target temperature. Remove this section
   # if you only want monitoring.
   - platform: vitohome
-    name: "DHW Setpoint Control"
-    id: dhw_setpoint_control
+    name: "Bedien WW Solltemperatur"
+    id: Bedien_WW_Solltemperatur
     address: 0x6300            # Bedien WW Solltemperatur (writable)
     length: 1
     converter: noconv
@@ -397,8 +361,8 @@ number:
     update_interval: 3600s
 
 select:
-  # The "Betriebsart switch" referenced by the debug block above. Writes the
-  # operating mode at 0x2323 (BedienteilBA, the Virtual_WRITE target for this
+  # Operating-mode switch (Betriebsart). Writes the operating mode at 0x2323
+  # (BedienteilBA, the Virtual_WRITE target for this
   # variant). Writes are HARDWARE-CONFIRMED: the byte read back at 0x2323 reflects
   # what was written, and all 5 options round-trip (write -> ACK -> read-back).
   #
@@ -411,8 +375,8 @@ select:
   # yet directly observed. Observed translation 0x2323 -> 0x2301: 0->5, 3->1
   # (predicted full map 0->5 1->0 2->3 3->1 4->2).
   - platform: vitohome
-    name: "Operating Mode (set) [A1]"
-    id: operating_mode_set_a1
+    name: "Modus Betriebsart"
+    id: BedienteilBA_GWGA1
     address: 0x2323
     length: 1
     update_interval: 30s
@@ -428,8 +392,8 @@ select:
   # is correct: it WRITES the command address and READS the live state address.
   # Confirm on hardware that toggling actually moves the state.
   - platform: vitohome
-    name: "Party Mode [A1]"
-    id: party_mode_a1
+    name: "Modus Partybetrieb"
+    id: NRx_PartybetriebA1M1_D
     address: 0x2330            # command (NRx Partybetrieb)
     state_address: 0x2303      # live state (BedienPartybetrieb)
     length: 1
@@ -438,8 +402,8 @@ select:
       0x00: "Off"
       0x01: "On"
   - platform: vitohome
-    name: "Economy Mode [A1]"
-    id: economy_mode_a1
+    name: "Modus Sparbetrieb"
+    id: NRx_SparbetriebA1M1_D
     address: 0x2331            # command (NRx Sparbetrieb)
     state_address: 0x2302      # live state (BedienSparbetrieb)
     length: 1
