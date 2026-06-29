@@ -117,6 +117,10 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   std::string ident_string_() const;
 
   // raw scan console (debug)
+  // Purpose tag for raw-lane ops: SCAN is the debug console, the CLOCK_* values
+  // route a system-time read/write/verify through the same lane. Defined here so
+  // it precedes enqueue_raw_ and the RawOp struct below.
+  enum class RawPurpose : uint8_t { SCAN, CLOCK_READ, CLOCK_WRITE, CLOCK_VERIFY };
   void raw_handle_response_(const ResponseView &response);
   void raw_handle_error_(optolink::OptolinkResult error);
   void raw_publish_(const std::string &line);
@@ -162,9 +166,8 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   // priority just below identification and just above regular polling; exactly
   // one is in flight at a time (raw_in_flight_), so bus arbitration stays
   // single-owner like the ident lane. The same lane carries the system-time
-  // sync ops, tagged by purpose so the result is routed to the clock logic
-  // instead of the scan console.
-  enum class RawPurpose : uint8_t { SCAN, CLOCK_READ, CLOCK_WRITE, CLOCK_VERIFY };
+  // sync ops, tagged by RawPurpose (declared above) so the result is routed to
+  // the clock logic instead of the scan console.
   struct RawOp {
     uint16_t address;
     uint8_t length;

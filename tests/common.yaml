@@ -184,6 +184,18 @@ text_sensor:
     name: "Test Scan Result"
     entity_category: diagnostic
 
+# Per-day Schaltzeiten (switching-time) editing. Exercises the text platform so
+# the CI compile builds vito_text.cpp (and loads the text base component). The
+# addresses are arbitrary for a compile test.
+text:
+  - platform: vitohome
+    name: "Test Schaltzeit Mo"
+    address: 0x2000
+    update_interval: 3600s
+  - platform: vitohome
+    name: "Test Schaltzeit Di"
+    address: 0x2008
+
 # Exercise the raw-lane public API (queue_raw_read / queue_raw_write) so the CI
 # compile builds it; the bytes/addresses are arbitrary, this never runs on real
 # hardware in CI.
