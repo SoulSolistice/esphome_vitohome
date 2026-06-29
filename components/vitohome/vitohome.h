@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "esphome/components/text_sensor/text_sensor.h"
-#include "esphome/components/time/real_time_clock.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/component.h"
 #include "optolink/optolink.h"
@@ -14,6 +13,15 @@
 #include "vito_uart_interface.h"
 
 namespace esphome {
+
+// Forward declaration only: the hub holds a pointer to a time source for the
+// optional system-time sync. The real header is pulled into vitohome.cpp under
+// VITOHOME_TIME_SYNC, so a build without a time: component (the common case)
+// never needs the time component's sources on the include path.
+namespace time {
+class RealTimeClock;
+}  // namespace time
+
 namespace vitohome {
 
 class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {

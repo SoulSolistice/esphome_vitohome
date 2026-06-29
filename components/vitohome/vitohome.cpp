@@ -6,6 +6,9 @@
 #include "decode.h"
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
+#ifdef VITOHOME_TIME_SYNC
+#include "esphome/components/time/real_time_clock.h"
+#endif
 
 namespace esphome {
 namespace vitohome {
