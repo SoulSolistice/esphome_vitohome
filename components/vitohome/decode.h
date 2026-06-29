@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 
 namespace esphome {
 namespace vitohome {
@@ -140,6 +141,235 @@ inline bool decode_datetime_bcd(const uint8_t *data, std::size_t data_len, std::
   // Plausibility: heating controllers did not exist before ~1990 and a
   // BCD year caps at 9999; an all-zero slot decodes as year 0 -> reject.
   return out->year >= 1990;
+}
+
+// ---------------------------------------------------------------------------
+// BCD encode (system-time set)
+// ---------------------------------------------------------------------------
+
+// Inverse of bcd_to_int: pack a decimal 0..99 into one packed-BCD byte
+// (25 -> 0x25). A single BCD byte cannot hold values above 99, so the caller
+// reduces wider fields upstream (the year is split into a century byte and a
+// year-of-century byte). Returns false on an out-of-range input.
+inline bool int_to_bcd(uint8_t dec, uint8_t *out) {
+  if (out == nullptr || dec > 99) return false;
+  *out = static_cast<uint8_t>(((dec / 10) << 4) | (dec % 10));
+  return true;
+}
+
+// Days since 1970-01-01 for a civil (proleptic Gregorian) date -- Howard
+// Hinnant's days_from_civil. Used only to compare two wall-clock times (the
+// device clock vs the HA time source) for the drift check: both sides are
+// computed identically, so the absolute epoch and timezone are irrelevant.
+inline int64_t civil_days(int year, unsigned month, unsigned day) {
+  year -= month <= 2;
+  const int64_t era = (year >= 0 ? year : year - 399) / 400;
+  const unsigned yoe = static_cast<unsigned>(year - era * 400);
+  const unsigned doy = (153 * (month + (month > 2 ? -3 : 9)) + 2) / 5 + day - 1;
+  const unsigned doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+  return era * 146097 + static_cast<int64_t>(doe) - 719468;
+}
+
+// Seconds-since-epoch for a decoded device datetime, treated as a plain
+// wall-clock value (no timezone math) -- for the drift comparison only.
+inline int64_t civil_seconds(const BcdDateTime &dt) {
+  return civil_days(dt.year, dt.month, dt.day) * 86400 + static_cast<int64_t>(dt.hour) * 3600 +
+         static_cast<int64_t>(dt.minute) * 60 + dt.second;
+}
+
+// ESPHome ESPTime::day_of_week is sunday=1..saturday=7; Viessmann stores the
+// weekday byte as monday=0..sunday=6. Map between them.
+inline uint8_t weekday_mon0_from_sunday1(uint8_t dow_sun1) { return static_cast<uint8_t>((dow_sun1 + 5) % 7); }
+
+// Encode a datetime into the 8-byte Viessmann DateTimeBCD wire layout (the
+// inverse of decode_datetime_bcd):
+//   [0]=century BCD  [1]=year-of-century BCD  [2]=month  [3]=day
+//   [4]=weekday (monday=0)  [5]=hour  [6]=minute  [7]=second
+// Builds into a local and only commits on success, so a bad field leaves buf8
+// unchanged. Returns false on any out-of-range field.
+inline bool encode_datetime_bcd(uint16_t year, uint8_t month, uint8_t day, uint8_t weekday_mon0, uint8_t hour,
+                                uint8_t minute, uint8_t second, uint8_t *buf8) {
+  if (buf8 == nullptr) return false;
+  if (year > 9999 || month < 1 || month > 12 || day < 1 || day > 31 || weekday_mon0 > 6 || hour > 23 || minute > 59 ||
+      second > 59) {
+    return false;
+  }
+  uint8_t tmp[8];
+  if (!int_to_bcd(static_cast<uint8_t>(year / 100), &tmp[0]) ||
+      !int_to_bcd(static_cast<uint8_t>(year % 100), &tmp[1]) || !int_to_bcd(month, &tmp[2]) ||
+      !int_to_bcd(day, &tmp[3]) || !int_to_bcd(weekday_mon0, &tmp[4]) || !int_to_bcd(hour, &tmp[5]) ||
+      !int_to_bcd(minute, &tmp[6]) || !int_to_bcd(second, &tmp[7])) {
+    return false;
+  }
+  std::memcpy(buf8, tmp, 8);
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Schaltzeiten / cycle-time (PhaseType) -- per-day 8-byte switching program
+// ---------------------------------------------------------------------------
+//
+// A Viessmann switching-time program is addressed per weekday as an 8-byte
+// block: four ON/OFF switch-point pairs, each pair two bytes (even = ON,
+// odd = OFF). Each byte encodes a time of day in 10-minute resolution:
+//   hour   = byte >> 3            (5 bits, 0..31)
+//   minute = (byte & 0x07) * 10   (3 bits -> 0,10,20,30,40,50)
+// An ON byte with hour >= 24 (0xC0..0xFF; the device fills 0xFF) marks the
+// pair disabled. The three-bit minute field is the reason the device only
+// stores 10-minute steps -- there is physically no room for a finer value, so
+// the encode path truncates to the next-lower 10 minutes (06:07 -> 06:00).
+//
+// Format cross-checked against two independent references: vcontrold
+// getCycleTime/setCycleTime (src/unit.c) and InsideViessmannVitosoft
+// Viessmann2MQTT.py PhaseDay. vcontrold addresses each weekday separately
+// (xml/300/vito.xml: getTimerM1Mo 0x2000 len 8 ... So 0x2030), the per-day
+// model vitohome follows so a read covers exactly the bytes a write sets
+// (read-back alignment).
+//
+// Canonical string (round-trippable -- decode and encode share it):
+//   "06:00-22:00 08:30-12:00"  -- up to four space-separated ON-OFF pairs.
+// A disabled pair is "--"; trailing disabled pairs are omitted; an interior
+// disabled pair keeps its slot as "--" so positions are preserved. An
+// all-disabled day is the empty string.
+
+// True if a switch-point byte encodes a real time (hour 0..23), false if it
+// is the disabled sentinel (hour >= 24, which includes the 0xFF fill).
+inline bool timebyte_active(uint8_t b) { return static_cast<uint8_t>(b >> 3) < 24; }
+
+// Decode one switch-point byte to hour/minute. Returns false for a disabled
+// byte (hour >= 24); *h/*m are left untouched in that case.
+inline bool timebyte_to_hhmm(uint8_t b, uint8_t *h, uint8_t *m) {
+  if (h == nullptr || m == nullptr) return false;
+  const uint8_t hour = static_cast<uint8_t>(b >> 3);
+  if (hour >= 24) return false;
+  *h = hour;
+  *m = static_cast<uint8_t>((b & 0x07) * 10);
+  return true;
+}
+
+// Encode hour/minute to one switch-point byte, truncating the minute to the
+// next-lower 10-minute step. Returns false if the hour is not 0..23 (24+
+// collides with the disabled sentinel) or the minute is not 0..59, so a bad
+// value is rejected rather than silently disabling the slot.
+inline bool hhmm_to_timebyte(uint8_t h, uint8_t m, uint8_t *b) {
+  if (b == nullptr || h > 23 || m > 59) return false;
+  *b = static_cast<uint8_t>((h << 3) | (m / 10));  // m/10 in 0..5 fits 3 bits
+  return true;
+}
+
+// Decode an 8-byte per-day program into the canonical string. Returns the
+// character count written (excluding the NUL), or -1 on bad args / a payload
+// shorter than 8 bytes. out_cap should be >= 48 (worst case
+// "HH:MM-HH:MM" x4 + 3 spaces = 47, + NUL).
+inline int decode_schaltzeiten_day(const uint8_t *data, std::size_t data_len, char *out, std::size_t out_cap) {
+  if (out != nullptr && out_cap > 0) out[0] = '\0';
+  if (data == nullptr || out == nullptr || out_cap == 0 || data_len < 8) return -1;
+  // Trailing disabled pairs are trimmed, so find the last active ON byte.
+  int last_active = -1;
+  for (int p = 0; p < 4; p++) {
+    if (timebyte_active(data[2 * p])) last_active = p;
+  }
+  std::size_t off = 0;
+  for (int p = 0; p <= last_active; p++) {
+    if (off != 0 && off < out_cap - 1) out[off++] = ' ';
+    const uint8_t on = data[2 * p];
+    int w;
+    if (!timebyte_active(on)) {
+      w = std::snprintf(out + off, out_cap - off, "--");
+    } else {
+      uint8_t oh = 0, om = 0;
+      timebyte_to_hhmm(on, &oh, &om);
+      // A malformed OFF (disabled while ON is active) still renders via the
+      // same formula so the raw state is visible rather than hidden.
+      const uint8_t offb = data[2 * p + 1];
+      const uint8_t fh = static_cast<uint8_t>(offb >> 3);
+      const uint8_t fm = static_cast<uint8_t>((offb & 0x07) * 10);
+      w = std::snprintf(out + off, out_cap - off, "%02u:%02u-%02u:%02u", oh, om, fh, fm);
+    }
+    if (w < 0) break;
+    off += static_cast<std::size_t>(w);
+    if (off >= out_cap) {
+      off = out_cap - 1;  // truncated; snprintf left it NUL-terminated
+      break;
+    }
+  }
+  out[off] = '\0';
+  return static_cast<int>(off);
+}
+
+// Parse "HH:MM" (1-2 digit hour, 1-2 digit minute) in [*pp, end) into a
+// switch-point byte (truncating the minute). Advances *pp past the field.
+// Returns false on a malformed or out-of-range field.
+inline bool parse_hhmm_(const char **pp, const char *end, uint8_t *b) {
+  const char *p = *pp;
+  int field[2] = {0, 0};
+  for (int f = 0; f < 2; f++) {
+    if (p >= end || *p < '0' || *p > '9') return false;
+    int v = 0, n = 0;
+    while (p < end && *p >= '0' && *p <= '9' && n < 2) {
+      v = v * 10 + (*p - '0');
+      p++;
+      n++;
+    }
+    field[f] = v;
+    if (f == 0) {
+      if (p >= end || *p != ':') return false;
+      p++;
+    }
+  }
+  if (field[0] > 23 || field[1] > 59) return false;
+  if (!hhmm_to_timebyte(static_cast<uint8_t>(field[0]), static_cast<uint8_t>(field[1]), b)) return false;
+  *pp = p;
+  return true;
+}
+
+// Encode the canonical string into an 8-byte per-day program (caller provides
+// buf8). Empty / blank input clears the day (all 0xFF). Returns false on any
+// malformed token or more than four pairs; on failure buf8 is left unchanged
+// (the parse builds into a local and only commits on success, so a rejected
+// string never leaves a torn write) and the caller must not transmit -- same
+// contract as encode_scaled.
+inline bool encode_schaltzeiten_day(const char *str, uint8_t *buf8) {
+  if (buf8 == nullptr) return false;
+  uint8_t tmp[8];
+  for (int i = 0; i < 8; i++) tmp[i] = 0xFF;
+  if (str != nullptr) {
+    const char *p = str;
+    const char *const end = str + std::strlen(str);
+    int pair = 0;
+    while (p < end) {
+      while (p < end && *p == ' ') p++;  // skip spaces between tokens
+      if (p >= end) break;
+      if (pair >= 4) return false;  // too many pairs
+      const char *tok_end = p;
+      while (tok_end < end && *tok_end != ' ') tok_end++;
+      bool has_colon = false;
+      for (const char *q = p; q < tok_end; q++) {
+        if (*q == ':') {
+          has_colon = true;
+          break;
+        }
+      }
+      const std::size_t tok_len = static_cast<std::size_t>(tok_end - p);
+      if (!has_colon) {  // disabled pair: "-" or "--", leaves 0xFF/0xFF
+        if (!(tok_len == 1 && p[0] == '-') && !(tok_len == 2 && p[0] == '-' && p[1] == '-')) return false;
+      } else {  // "HH:MM-HH:MM"
+        const char *cur = p;
+        uint8_t onb = 0, offb = 0;
+        if (!parse_hhmm_(&cur, tok_end, &onb)) return false;
+        if (cur >= tok_end || *cur != '-') return false;
+        cur++;
+        if (!parse_hhmm_(&cur, tok_end, &offb)) return false;
+        if (cur != tok_end) return false;  // trailing garbage in the token
+        tmp[2 * pair] = onb;
+        tmp[2 * pair + 1] = offb;
+      }
+      p = tok_end;
+      pair++;
+    }
+  }
+  std::memcpy(buf8, tmp, 8);
+  return true;
 }
 
 // ---------------------------------------------------------------------------

@@ -259,12 +259,171 @@ static void test_format_raw_dump() {
   CHECK(format_raw_dump(0x0800, two, 2, buf, 0) == 0);
 }
 
+// --- int_to_bcd (system-time set) ------------------------------------------
+static void test_int_to_bcd() {
+  uint8_t b = 0;
+  CHECK(int_to_bcd(25, &b) && b == 0x25);
+  CHECK(int_to_bcd(0, &b) && b == 0x00);
+  CHECK(int_to_bcd(9, &b) && b == 0x09);
+  CHECK(int_to_bcd(99, &b) && b == 0x99);
+  CHECK(int_to_bcd(20, &b) && b == 0x20);  // century byte
+  CHECK(!int_to_bcd(100, &b));             // out of one-byte BCD range
+  // Round-trips against the decoder.
+  for (uint8_t v = 0; v <= 99; v++) {
+    uint8_t enc = 0, dec = 0;
+    CHECK(int_to_bcd(v, &enc));
+    CHECK(bcd_to_int(enc, &dec) && dec == v);
+  }
+}
+
+// --- timebyte_to_hhmm / hhmm_to_timebyte -----------------------------------
+static void test_timebyte() {
+  uint8_t h = 0, m = 0, b = 0;
+  // 06:00 = (6<<3)|0 = 0x30 ; 22:00 = (22<<3)|0 = 0xB0.
+  CHECK(timebyte_to_hhmm(0x30, &h, &m) && h == 6 && m == 0);
+  CHECK(timebyte_to_hhmm(0xB0, &h, &m) && h == 22 && m == 0);
+  // 08:30 = (8<<3)|3 = 0x43 (3*10 = 30 min).
+  CHECK(timebyte_to_hhmm(0x43, &h, &m) && h == 8 && m == 30);
+  // Disabled sentinel (0xFF -> hour 31) and any hour >= 24 -> false.
+  CHECK(!timebyte_to_hhmm(0xFF, &h, &m));
+  CHECK(!timebyte_to_hhmm(0xC0, &h, &m));  // hour 24
+
+  // Encode truncates the minute to the next-lower 10-minute step.
+  CHECK(hhmm_to_timebyte(6, 0, &b) && b == 0x30);
+  CHECK(hhmm_to_timebyte(6, 7, &b) && b == 0x30);   // 06:07 -> 06:00
+  CHECK(hhmm_to_timebyte(6, 9, &b) && b == 0x30);   // 06:09 -> 06:00
+  CHECK(hhmm_to_timebyte(8, 30, &b) && b == 0x43);  // exact
+  CHECK(hhmm_to_timebyte(8, 35, &b) && b == 0x43);  // 08:35 -> 08:30
+  CHECK(hhmm_to_timebyte(23, 50, &b) && b == 0xBD);
+  CHECK(hhmm_to_timebyte(23, 55, &b) && b == 0xBD);  // 23:55 -> 23:50, never 24:00
+  // Hour 24+ would collide with the disabled sentinel -> rejected.
+  CHECK(!hhmm_to_timebyte(24, 0, &b));
+  CHECK(!hhmm_to_timebyte(6, 60, &b));  // minute out of range
+}
+
+// --- decode_schaltzeiten_day / encode_schaltzeiten_day ---------------------
+static void test_schaltzeiten_day() {
+  char out[64];
+
+  // One window 06:00-22:00, remaining pairs disabled (0xFF) -> trailing
+  // disabled pairs trimmed.
+  const uint8_t one[] = {0x30, 0xB0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+  CHECK(decode_schaltzeiten_day(one, sizeof(one), out, sizeof(out)) == 11);
+  CHECK(std::strcmp(out, "06:00-22:00") == 0);
+
+  // Two windows.
+  const uint8_t two[] = {0x30, 0xB0, 0x43, 0x60, 0xFF, 0xFF, 0xFF, 0xFF};
+  decode_schaltzeiten_day(two, sizeof(two), out, sizeof(out));
+  CHECK(std::strcmp(out, "06:00-22:00 08:30-12:00") == 0);
+
+  // Interior disabled pair keeps its slot as "--" (position preserved).
+  const uint8_t gap[] = {0x30, 0xB0, 0xFF, 0xFF, 0x43, 0x60, 0xFF, 0xFF};
+  decode_schaltzeiten_day(gap, sizeof(gap), out, sizeof(out));
+  CHECK(std::strcmp(out, "06:00-22:00 -- 08:30-12:00") == 0);
+
+  // All disabled -> empty string.
+  const uint8_t none[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+  CHECK(decode_schaltzeiten_day(none, sizeof(none), out, sizeof(out)) == 0);
+  CHECK(out[0] == '\0');
+
+  // Short payload / bad args fail soft.
+  CHECK(decode_schaltzeiten_day(one, 7, out, sizeof(out)) == -1);
+  CHECK(decode_schaltzeiten_day(nullptr, 8, out, sizeof(out)) == -1);
+
+  // Encode mirrors decode.
+  uint8_t buf[8];
+  CHECK(encode_schaltzeiten_day("06:00-22:00", buf));
+  CHECK(std::memcmp(buf, one, 8) == 0);
+
+  CHECK(encode_schaltzeiten_day("06:00-22:00 08:30-12:00", buf));
+  CHECK(std::memcmp(buf, two, 8) == 0);
+
+  CHECK(encode_schaltzeiten_day("06:00-22:00 -- 08:30-12:00", buf));
+  CHECK(std::memcmp(buf, gap, 8) == 0);
+
+  // Empty / blank clears the whole day (all 0xFF).
+  CHECK(encode_schaltzeiten_day("", buf));
+  CHECK(std::memcmp(buf, none, 8) == 0);
+  CHECK(encode_schaltzeiten_day("   ", buf));
+  CHECK(std::memcmp(buf, none, 8) == 0);
+  CHECK(encode_schaltzeiten_day(nullptr, buf));
+  CHECK(std::memcmp(buf, none, 8) == 0);
+
+  // Minute truncation on the encode side.
+  CHECK(encode_schaltzeiten_day("06:07-22:55", buf));
+  CHECK(buf[0] == 0x30 && buf[1] == 0xB5);  // 06:00 and 22:50
+
+  // Single-digit hour accepted.
+  CHECK(encode_schaltzeiten_day("6:00-9:30", buf));
+  CHECK(buf[0] == 0x30 && buf[1] == 0x4B);
+
+  // Round-trip: decode(encode(canonical)) == canonical for a mixed day.
+  CHECK(encode_schaltzeiten_day("06:00-22:00 -- 08:30-12:00", buf));
+  decode_schaltzeiten_day(buf, 8, out, sizeof(out));
+  CHECK(std::strcmp(out, "06:00-22:00 -- 08:30-12:00") == 0);
+
+  // Malformed input is rejected; buf is left unchanged (no torn write). Seed
+  // buf to a known value first so "unchanged" is what we actually assert.
+  CHECK(encode_schaltzeiten_day("", buf));        // buf := all 0xFF
+  CHECK(!encode_schaltzeiten_day("06:00", buf));  // missing OFF
+  CHECK(std::memcmp(buf, none, 8) == 0);
+  CHECK(!encode_schaltzeiten_day("24:00-01:00", buf));        // hour out of range
+  CHECK(!encode_schaltzeiten_day("06:00-22:00-23:00", buf));  // trailing garbage
+  CHECK(!encode_schaltzeiten_day("aa:bb-cc:dd", buf));        // non-numeric
+  CHECK(!encode_schaltzeiten_day("1-2-3-4-5", buf));          // five tokens
+}
+
+// --- clock helpers: civil_seconds / weekday / encode_datetime_bcd ----------
+static void test_clock_helpers() {
+  // civil_seconds matches a Unix epoch computed as plain wall-clock (no tz).
+  BcdDateTime dt{};
+  dt.year = 2026;
+  dt.month = 6;
+  dt.day = 28;
+  dt.hour = 14;
+  dt.minute = 30;
+  dt.second = 45;
+  CHECK(civil_seconds(dt) == 1782657045LL);
+
+  // Weekday map: ESPHome sunday=1..saturday=7 -> Viessmann monday=0..sunday=6.
+  CHECK(weekday_mon0_from_sunday1(1) == 6);  // Sunday
+  CHECK(weekday_mon0_from_sunday1(2) == 0);  // Monday
+  CHECK(weekday_mon0_from_sunday1(3) == 1);  // Tuesday
+  CHECK(weekday_mon0_from_sunday1(7) == 5);  // Saturday
+
+  // Encode the 8-byte DateTimeBCD wire layout. 2026-06-28 14:30:45, Sunday
+  // (weekday byte = 6 in monday=0 form).
+  uint8_t buf[8];
+  CHECK(encode_datetime_bcd(2026, 6, 28, 6, 14, 30, 45, buf));
+  const uint8_t want[] = {0x20, 0x26, 0x06, 0x28, 0x06, 0x14, 0x30, 0x45};
+  CHECK(std::memcmp(buf, want, 8) == 0);
+
+  // Round-trip against the decoder (which ignores the weekday byte).
+  BcdDateTime back{};
+  CHECK(decode_datetime_bcd(buf, 8, 0, &back));
+  CHECK(back.year == 2026 && back.month == 6 && back.day == 28);
+  CHECK(back.hour == 14 && back.minute == 30 && back.second == 45);
+
+  // Out-of-range fields are rejected and leave buf untouched.
+  uint8_t seed[8];
+  std::memcpy(seed, want, 8);
+  std::memcpy(buf, want, 8);
+  CHECK(!encode_datetime_bcd(2026, 13, 28, 6, 14, 30, 45, buf));  // month 13
+  CHECK(std::memcmp(buf, seed, 8) == 0);
+  CHECK(!encode_datetime_bcd(2026, 6, 28, 7, 14, 30, 45, buf));  // weekday 7
+  CHECK(!encode_datetime_bcd(2026, 6, 28, 6, 24, 30, 45, buf));  // hour 24
+}
+
 int main() {
   test_read_le();
   test_sign_extend();
   test_decode_scaled();
   test_encode_scaled();
   test_bcd();
+  test_int_to_bcd();
+  test_timebyte();
+  test_schaltzeiten_day();
+  test_clock_helpers();
   test_datetime();
   test_masked_bit();
   test_ascii();

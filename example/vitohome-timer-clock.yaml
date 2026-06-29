@@ -1,0 +1,112 @@
+# Example: system-time sync + per-day Schaltzeiten (switching-time) editing.
+#
+# Standalone and self-contained so `esphome config` validates it as-is. To use
+# the features in your own setup, lift the `time:`, the `time_sync:` block, and
+# the `text:` entities into your existing device config (e.g.
+# vscotho1_72.vitohome.yaml) — keep your own network, uart, and secrets.
+#
+# Two things are demonstrated:
+#   1. time_sync — the hub reads the device clock (0x088E) and rewrites it from
+#      a time source when it drifts past the threshold. The weekday byte is
+#      written Monday=0 (the Viessmann convention; vitohome decodes it the same
+#      way and the controller also derives the weekday from the date).
+#   2. text: platform: vitohome — one entity per weekday holds that day's
+#      switching program as "06:00-22:00 08:30-12:00" (up to four ON-OFF pairs,
+#      "--" for a disabled pair). Editing the text writes the 8-byte day block;
+#      each switch point is stored on the device's 10-minute grid, so an entered
+#      minute is truncated to the next-lower 10 (06:07 -> 06:00).
+
+esphome:
+  name: vitohome-timer-clock
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: esp-idf
+
+# Use your real network. The reference board uses SPI-Ethernet (DM9051); a
+# placeholder wifi: block is shown only so this example validates standalone.
+wifi:
+  ssid: "your-ssid"
+  password: "your-password"
+
+logger:
+  baud_rate: 0 # free the UART for Optolink
+
+api:
+
+# Time source for the clock sync. "homeassistant" pulls the time from Home
+# Assistant over the API; "sntp" (with a network) works too.
+time:
+  - platform: homeassistant
+    id: ha_time
+
+uart:
+  id: optolink_uart
+  tx_pin: GPIO5
+  rx_pin: GPIO2
+  baud_rate: 4800
+  data_bits: 8
+  parity: EVEN
+  stop_bits: 2
+
+vitohome:
+  id: vito
+  uart_id: optolink_uart
+  protocol: P300
+  update_interval: 60s
+
+  # System-time sync. All three knobs are optional; the defaults are interval
+  # 24h, drift_threshold 60s, sync_on_boot true. interval: 0s disables the
+  # periodic check (sync only once at boot).
+  time_id: ha_time
+  time_sync:
+    interval: 24h
+    drift_threshold: 60s
+    sync_on_boot: true
+
+# Per-day switching-time programs for heating circuit 1 (Monday..Sunday).
+#
+# Addresses below follow the vcontrold P300 convention (getTimerM1*: each
+# weekday is an 8-byte block, base + day*8, Monday first). SOURCE-CONFIRMED
+# against vcontrold xml/300/vito.xml, but NOT yet confirmed against this exact
+# unit's Vitosoft datapoints — verify the base address on the wire (the raw
+# scan console in vitohome-scanner-raw.yaml is handy) before relying on it. The
+# other programs follow the same per-day stride from their own bases, e.g.
+# (vcontrold convention) DHW 0x2100, circulation 0x2200, HK2 0x3000, HK3 0x4000.
+text:
+  - platform: vitohome
+    vitohome_id: vito
+    name: "HK1 Schaltzeit Montag"
+    address: 0x2000
+    update_interval: 1h
+  - platform: vitohome
+    vitohome_id: vito
+    name: "HK1 Schaltzeit Dienstag"
+    address: 0x2008
+    update_interval: 1h
+  - platform: vitohome
+    vitohome_id: vito
+    name: "HK1 Schaltzeit Mittwoch"
+    address: 0x2010
+    update_interval: 1h
+  - platform: vitohome
+    vitohome_id: vito
+    name: "HK1 Schaltzeit Donnerstag"
+    address: 0x2018
+    update_interval: 1h
+  - platform: vitohome
+    vitohome_id: vito
+    name: "HK1 Schaltzeit Freitag"
+    address: 0x2020
+    update_interval: 1h
+  - platform: vitohome
+    vitohome_id: vito
+    name: "HK1 Schaltzeit Samstag"
+    address: 0x2028
+    update_interval: 1h
+  - platform: vitohome
+    vitohome_id: vito
+    name: "HK1 Schaltzeit Sonntag"
+    address: 0x2030
+    update_interval: 1h

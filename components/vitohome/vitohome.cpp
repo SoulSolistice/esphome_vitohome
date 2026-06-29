@@ -180,8 +180,10 @@ void VitoHomeComponent::dispatch_next_() {
   // the scan console feels immediate; they run after identification.
   if (!this->raw_queue_.empty()) {
     const RawOp &op = this->raw_queue_.front();
-    this->raw_dp_ = optolink::Datapoint("scan", op.address, op.length, optolink::noconv);
+    this->raw_dp_ =
+        optolink::Datapoint(op.purpose == RawPurpose::SCAN ? "scan" : "clock", op.address, op.length, optolink::noconv);
     this->raw_is_write_ = op.is_write;
+    this->raw_purpose_ = op.purpose;
     bool dispatched;
     if (op.is_write) {
       this->raw_write_buf_ = op.bytes;
@@ -256,6 +258,7 @@ void VitoHomeComponent::schedule_due_entities_() {
 
 void VitoHomeComponent::update() {
   if (this->vito_ == nullptr) return;
+  this->time_sync_tick_();
   if (this->entities_.empty()) return;
   this->schedule_due_entities_();
 }
@@ -306,12 +309,7 @@ void VitoHomeComponent::queue_raw_read(uint16_t address, uint8_t length) {
     ESP_LOGW(TAG, "queue_raw_read: length %u out of range (1..32)", length);
     return;
   }
-  if (this->raw_queue_.size() >= RAW_QUEUE_MAX) {
-    ESP_LOGW(TAG, "raw queue full (%zu); dropping read 0x%04X", this->raw_queue_.size(), address);
-    return;
-  }
-  this->raw_queue_.push_back(RawOp{address, length, false, {}});
-  ESP_LOGD(TAG, "Queued raw read 0x%04X len %u", address, length);
+  this->enqueue_raw_(address, length, false, {}, RawPurpose::SCAN);
 }
 
 void VitoHomeComponent::queue_raw_write(uint16_t address, const std::vector<uint8_t> &bytes) {
@@ -319,15 +317,35 @@ void VitoHomeComponent::queue_raw_write(uint16_t address, const std::vector<uint
     ESP_LOGW(TAG, "queue_raw_write: %zu bytes out of range (1..32)", bytes.size());
     return;
   }
+  this->enqueue_raw_(address, static_cast<uint8_t>(bytes.size()), true, bytes, RawPurpose::SCAN);
+}
+
+void VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const std::vector<uint8_t> &bytes,
+                                     RawPurpose purpose) {
   if (this->raw_queue_.size() >= RAW_QUEUE_MAX) {
-    ESP_LOGW(TAG, "raw queue full (%zu); dropping write 0x%04X", this->raw_queue_.size(), address);
+    ESP_LOGW(TAG, "raw queue full (%zu); dropping %s 0x%04X", this->raw_queue_.size(), is_write ? "write" : "read",
+             address);
     return;
   }
-  this->raw_queue_.push_back(RawOp{address, static_cast<uint8_t>(bytes.size()), true, bytes});
-  ESP_LOGD(TAG, "Queued raw write 0x%04X len %zu", address, bytes.size());
+  this->raw_queue_.push_back(RawOp{address, length, is_write, bytes, purpose});
+  ESP_LOGD(TAG, "Queued raw %s 0x%04X len %u", is_write ? "write" : "read", address, length);
 }
 
 void VitoHomeComponent::raw_handle_response_(const ResponseView &response) {
+  switch (this->raw_purpose_) {
+    case RawPurpose::CLOCK_READ:
+      this->clock_handle_read_(response);
+      return;
+    case RawPurpose::CLOCK_WRITE:
+      this->clock_handle_write_ack_();
+      return;
+    case RawPurpose::CLOCK_VERIFY:
+      this->clock_handle_verify_(response);
+      return;
+    case RawPurpose::SCAN:
+    default:
+      break;
+  }
   char buf[160];
   if (this->raw_is_write_) {
     snprintf(buf, sizeof(buf), "0x%04X: write ACK (%zu byte%s)", this->raw_dp_.address(), this->raw_write_buf_.size(),
@@ -340,6 +358,11 @@ void VitoHomeComponent::raw_handle_response_(const ResponseView &response) {
 }
 
 void VitoHomeComponent::raw_handle_error_(optolink::OptolinkResult error) {
+  if (this->raw_purpose_ != RawPurpose::SCAN) {
+    ESP_LOGW(TAG, "System-time sync: %s 0x%04X failed (%s)", this->raw_is_write_ ? "write" : "read",
+             this->raw_dp_.address(), optolink::errorToString(error));
+    return;
+  }
   char buf[96];
   snprintf(buf, sizeof(buf), "0x%04X: %s FAILED (%s)", this->raw_dp_.address(), this->raw_is_write_ ? "write" : "read",
            optolink::errorToString(error));
@@ -349,6 +372,106 @@ void VitoHomeComponent::raw_handle_error_(optolink::OptolinkResult error) {
 
 void VitoHomeComponent::raw_publish_(const std::string &line) {
   for (auto *ts : this->raw_result_sensors_) ts->publish_state(line);
+}
+
+// ---------------------------------------------------------------------------
+// System-time sync (rides the raw lane)
+// ---------------------------------------------------------------------------
+// The now()-using bodies are compiled only when a time source is configured
+// (-DVITOHOME_TIME_SYNC, set by to_code when time_id is present), so a build
+// without time sync pulls in no dependency on the time component.
+
+void VitoHomeComponent::time_sync_tick_() {
+#ifdef VITOHOME_TIME_SYNC
+  if (this->time_source_ == nullptr) return;
+  const uint32_t now = millis();
+  if (!this->time_sync_did_boot_) {
+    // Defer the first sync until the time source has a valid time at least once.
+    if (!this->time_source_->now().is_valid()) return;
+    this->time_sync_did_boot_ = true;
+    this->time_sync_next_ms_ = now + this->time_sync_interval_ms_;
+    if (this->time_sync_on_boot_) this->sync_system_time_();
+    return;
+  }
+  if (this->time_sync_interval_ms_ != 0 && static_cast<int32_t>(now - this->time_sync_next_ms_) >= 0) {
+    this->time_sync_next_ms_ = now + this->time_sync_interval_ms_;
+    this->sync_system_time_();
+  }
+#endif
+}
+
+void VitoHomeComponent::sync_system_time_() {
+#ifdef VITOHOME_TIME_SYNC
+  if (this->time_source_ == nullptr) return;
+  if (!this->time_source_->now().is_valid()) {
+    ESP_LOGW(TAG, "System-time sync: time source not valid yet, skipping");
+    return;
+  }
+  // Read the device clock first; clock_handle_read_ compares it with the time
+  // source and only writes when the drift exceeds the threshold.
+  this->enqueue_raw_(CLOCK_ADDRESS, CLOCK_LEN, false, {}, RawPurpose::CLOCK_READ);
+#endif
+}
+
+void VitoHomeComponent::clock_handle_read_(const ResponseView &response) {
+#ifdef VITOHOME_TIME_SYNC
+  if (this->time_source_ == nullptr) return;
+  const ESPTime t = this->time_source_->now();
+  if (!t.is_valid()) {
+    ESP_LOGW(TAG, "System-time sync: time source became invalid, skipping");
+    return;
+  }
+  BcdDateTime dev{};
+  const bool dev_ok = decode_datetime_bcd(response.data, response.data_length, 0, &dev);
+  bool need_write = true;
+  if (dev_ok) {
+    BcdDateTime ha{};
+    ha.year = t.year;
+    ha.month = t.month;
+    ha.day = t.day_of_month;
+    ha.hour = t.hour;
+    ha.minute = t.minute;
+    ha.second = t.second;
+    const int64_t drift = civil_seconds(ha) - civil_seconds(dev);
+    const int64_t mag = drift < 0 ? -drift : drift;
+    if (mag <= static_cast<int64_t>(this->time_drift_threshold_s_)) {
+      ESP_LOGD(TAG, "System-time sync: drift %lds within %us, no write", static_cast<long>(drift),
+               this->time_drift_threshold_s_);
+      need_write = false;
+    } else {
+      ESP_LOGI(TAG, "System-time sync: drift %lds exceeds %us, updating device clock", static_cast<long>(drift),
+               this->time_drift_threshold_s_);
+    }
+  } else {
+    ESP_LOGI(TAG, "System-time sync: device clock unreadable, setting it");
+  }
+  if (!need_write) return;
+  uint8_t buf[CLOCK_LEN];
+  const uint8_t weekday = weekday_mon0_from_sunday1(t.day_of_week);
+  if (!encode_datetime_bcd(t.year, t.month, t.day_of_month, weekday, t.hour, t.minute, t.second, buf)) {
+    ESP_LOGW(TAG, "System-time sync: time source out of range, skipping");
+    return;
+  }
+  this->enqueue_raw_(CLOCK_ADDRESS, CLOCK_LEN, true, std::vector<uint8_t>(buf, buf + CLOCK_LEN),
+                     RawPurpose::CLOCK_WRITE);
+#else
+  (void)response;
+#endif
+}
+
+void VitoHomeComponent::clock_handle_write_ack_() {
+  ESP_LOGI(TAG, "System-time sync: device clock set; reading back to confirm");
+  this->enqueue_raw_(CLOCK_ADDRESS, CLOCK_LEN, false, {}, RawPurpose::CLOCK_VERIFY);
+}
+
+void VitoHomeComponent::clock_handle_verify_(const ResponseView &response) {
+  BcdDateTime dev{};
+  if (decode_datetime_bcd(response.data, response.data_length, 0, &dev)) {
+    ESP_LOGI(TAG, "System-time sync: device clock now %04u-%02u-%02u %02u:%02u:%02u", dev.year, dev.month, dev.day,
+             dev.hour, dev.minute, dev.second);
+  } else {
+    ESP_LOGW(TAG, "System-time sync: read-back of device clock unreadable");
+  }
 }
 
 void VitoHomeComponent::on_response_(const ResponseView &response, const optolink::Datapoint &request) {

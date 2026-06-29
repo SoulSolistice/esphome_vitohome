@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "esphome/components/text_sensor/text_sensor.h"
+#include "esphome/components/time/real_time_clock.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/component.h"
 #include "optolink/optolink.h"
@@ -40,6 +41,17 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   }
 
   void set_identify_device(bool v) { this->identify_device_ = v; }
+
+  // System-time sync (optional). The hub periodically reads the device clock
+  // (0x088E) and, when it differs from the configured time source by more than
+  // the drift threshold, writes the current time back. All three knobs are
+  // user-configured; sync is inert unless a time source is set.
+  void set_time_source(time::RealTimeClock *t) { this->time_source_ = t; }
+  void set_time_sync(uint32_t interval_ms, uint32_t drift_threshold_s, bool sync_on_boot) {
+    this->time_sync_interval_ms_ = interval_ms;
+    this->time_drift_threshold_s_ = drift_threshold_s;
+    this->time_sync_on_boot_ = sync_on_boot;
+  }
 
   // Queue a write for `entity` (payload already staged in the entity's write
   // buffer). Writes are dispatched with priority over reads; the newest
@@ -100,6 +112,19 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   void raw_handle_response_(const ResponseView &response);
   void raw_handle_error_(optolink::OptolinkResult error);
   void raw_publish_(const std::string &line);
+  // Shared enqueue for the raw lane; the scan console uses purpose SCAN, the
+  // clock sync uses the CLOCK_* purposes.
+  void enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const std::vector<uint8_t> &bytes,
+                    RawPurpose purpose);
+
+  // system-time sync (rides the raw lane)
+  void time_sync_tick_();
+  void sync_system_time_();
+  void clock_handle_read_(const ResponseView &response);
+  void clock_handle_write_ack_();
+  void clock_handle_verify_(const ResponseView &response);
+  static constexpr uint16_t CLOCK_ADDRESS = 0x088E;  // getSystemTime / setSystemTime
+  static constexpr uint8_t CLOCK_LEN = 8;
 
   bool ident_in_flight_{false};
 
@@ -128,20 +153,33 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   // Raw scan console (debug). A small FIFO of one-off ops, dispatched with
   // priority just below identification and just above regular polling; exactly
   // one is in flight at a time (raw_in_flight_), so bus arbitration stays
-  // single-owner like the ident lane.
+  // single-owner like the ident lane. The same lane carries the system-time
+  // sync ops, tagged by purpose so the result is routed to the clock logic
+  // instead of the scan console.
+  enum class RawPurpose : uint8_t { SCAN, CLOCK_READ, CLOCK_WRITE, CLOCK_VERIFY };
   struct RawOp {
     uint16_t address;
     uint8_t length;
     bool is_write;
     std::vector<uint8_t> bytes;
+    RawPurpose purpose;
   };
   static constexpr size_t RAW_QUEUE_MAX = 256;
   std::deque<RawOp> raw_queue_;
   bool raw_in_flight_{false};
   bool raw_is_write_{false};
+  RawPurpose raw_purpose_{RawPurpose::SCAN};
   optolink::Datapoint raw_dp_{"scan", 0, 1, optolink::noconv};
   std::vector<uint8_t> raw_write_buf_;
   std::vector<text_sensor::TextSensor *> raw_result_sensors_;
+
+  // System-time sync state. time_source_ == nullptr means the feature is off.
+  time::RealTimeClock *time_source_{nullptr};
+  uint32_t time_sync_interval_ms_{0};    // 0 = no periodic sync
+  uint32_t time_drift_threshold_s_{60};  // only write if drift exceeds this
+  bool time_sync_on_boot_{true};         // sync once after time first valid
+  bool time_sync_did_boot_{false};       // boot sync already done
+  uint32_t time_sync_next_ms_{0};        // next periodic sync (millis)
 
   // Failsafe: if a request is in flight for longer than this, log and
   // clear it. the optolink engine has its own internal timeout (via OptolinkResult

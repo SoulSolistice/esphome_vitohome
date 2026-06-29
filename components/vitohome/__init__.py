@@ -23,8 +23,9 @@ from pathlib import Path
 
 import esphome.codegen as cg
 import esphome.config_validation as cv
+from esphome.components import time as time_
 from esphome.components import uart
-from esphome.const import CONF_ID
+from esphome.const import CONF_ID, CONF_INTERVAL, CONF_TIME_ID
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,6 +36,22 @@ MULTI_CONF = False
 CONF_VITOCONNECT_ID = "vitohome_id"
 CONF_PROTOCOL = "protocol"
 CONF_IDENTIFY_DEVICE = "identify_device"
+
+# System-time sync options (hub-level; see VitoHomeComponent::set_time_sync).
+CONF_TIME_SYNC = "time_sync"
+CONF_DRIFT_THRESHOLD = "drift_threshold"
+CONF_SYNC_ON_BOOT = "sync_on_boot"
+
+# Defaults are deliberately conservative: a daily check, a one-minute drift
+# tolerance, and a one-shot sync once the time source is first valid. All three
+# are user-overridable. interval: 0s disables the periodic check (boot-only).
+TIME_SYNC_SCHEMA = cv.Schema(
+    {
+        cv.Optional(CONF_INTERVAL, default="24h"): cv.positive_time_period_milliseconds,
+        cv.Optional(CONF_DRIFT_THRESHOLD, default="60s"): cv.positive_time_period_seconds,
+        cv.Optional(CONF_SYNC_ON_BOOT, default=True): cv.boolean,
+    }
+)
 
 # Shared platform option names (used by sensor/number/select/text_sensor).
 CONF_LENGTH = "length"
@@ -198,7 +215,17 @@ def datapoint_expression(name: str, address: int, length: int) -> cg.RawExpressi
     )
 
 
-CONFIG_SCHEMA = (
+def _validate_time_sync(config):
+    """``time_sync`` needs a ``time_id`` to pull the current time from."""
+    if CONF_TIME_SYNC in config and CONF_TIME_ID not in config:
+        raise cv.Invalid(
+            f"'{CONF_TIME_SYNC}' requires '{CONF_TIME_ID}' to select a time source (e.g. a homeassistant or sntp time:)",
+            path=[CONF_TIME_SYNC],
+        )
+    return config
+
+
+CONFIG_SCHEMA = cv.All(
     cv.Schema(
         {
             cv.GenerateID(): cv.declare_id(VitoHomeComponent),
@@ -206,10 +233,15 @@ CONFIG_SCHEMA = (
             # Default depends on the protocol (on for P300, off for KW/GWG,
             # whose boot identification scheme differs); resolved in to_code.
             cv.Optional(CONF_IDENTIFY_DEVICE): cv.boolean,
+            # Optional system-time sync: write the device clock (0x088E) from a
+            # time source when it drifts. Inert unless time_id is set.
+            cv.Optional(CONF_TIME_ID): cv.use_id(time_.RealTimeClock),
+            cv.Optional(CONF_TIME_SYNC): TIME_SYNC_SCHEMA,
         }
     )
     .extend(cv.polling_component_schema("60s"))
-    .extend(uart.UART_DEVICE_SCHEMA)
+    .extend(uart.UART_DEVICE_SCHEMA),
+    _validate_time_sync,
 )
 
 
@@ -257,3 +289,19 @@ async def to_code(config):
     if identify is None:
         identify = protocol == "P300"
     cg.add(var.set_identify_device(identify))
+
+    # Optional system-time sync. The build flag compiles the now()-using paths
+    # in the hub only when a time source is configured, so a build without
+    # time_id pulls in no dependency on the time component.
+    if CONF_TIME_ID in config:
+        time_var = await cg.get_variable(config[CONF_TIME_ID])
+        cg.add(var.set_time_source(time_var))
+        cg.add_build_flag("-DVITOHOME_TIME_SYNC")
+        sync = config.get(CONF_TIME_SYNC) or TIME_SYNC_SCHEMA({})
+        cg.add(
+            var.set_time_sync(
+                int(sync[CONF_INTERVAL].total_milliseconds),
+                int(sync[CONF_DRIFT_THRESHOLD].total_seconds),
+                sync[CONF_SYNC_ON_BOOT],
+            )
+        )

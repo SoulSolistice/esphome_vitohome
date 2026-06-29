@@ -109,7 +109,10 @@ class VitoEntityBase {
   bool has_write_dp_{false};
 
   VitoHomeComponent *vh_parent_{nullptr};
-  uint8_t write_buf_[4]{0, 0, 0, 0};
+  // 8 bytes covers every write path: numeric/select (<= 4), a per-day
+  // Schaltzeiten program (8), and the system-time set (8). set_write_payload_
+  // bounds-checks against sizeof, so existing <= 4-byte writers are unaffected.
+  uint8_t write_buf_[8]{0, 0, 0, 0, 0, 0, 0, 0};
   uint8_t write_len_{0};
   bool read_back_{true};
   uint32_t poll_interval_ms_{0};
