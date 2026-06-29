@@ -19,7 +19,7 @@ int main() {
   int responses = 0;
   int errors = 0;
 
-  adapter.on_response([&](const ResponseView &view, const optolink::Datapoint &dp) {
+  adapter.on_response([&](const ResponseView& view, const optolink::Datapoint& dp) {
     // Touch every field so the compiler proves the view is usable downstream.
     (void)view.data;
     (void)view.data_length;
@@ -27,7 +27,7 @@ int main() {
     (void)dp.address();
     ++responses;
   });
-  adapter.on_error([&](optolink::OptolinkResult err, const optolink::Datapoint &dp) {
+  adapter.on_error([&](optolink::OptolinkResult err, const optolink::Datapoint& dp) {
     (void)err;
     (void)dp;
     ++errors;

@@ -18,7 +18,7 @@ GWGEngine::~GWGEngine() { delete _interface; }
 void GWGEngine::onResponse(OnResponseCallback callback) { _onResponseCallback = callback; }
 void GWGEngine::onError(OnErrorCallback callback) { _onErrorCallback = callback; }
 
-bool GWGEngine::read(const Datapoint &datapoint) {
+bool GWGEngine::read(const Datapoint& datapoint) {
   if (_currentDatapoint) {
     return false;
   }
@@ -36,11 +36,11 @@ bool GWGEngine::read(const Datapoint &datapoint) {
   return false;
 }
 
-bool GWGEngine::write(const Datapoint &datapoint, const VariantValue &value) {
+bool GWGEngine::write(const Datapoint& datapoint, const VariantValue& value) {
   if (_currentDatapoint) {
     return false;
   }
-  uint8_t *payload = reinterpret_cast<uint8_t *>(malloc(datapoint.length()));
+  uint8_t* payload = reinterpret_cast<uint8_t*>(malloc(datapoint.length()));
   if (!payload) return false;
   datapoint.encode(payload, datapoint.length(), value);
   bool result = write(datapoint, payload, datapoint.length());
@@ -48,7 +48,7 @@ bool GWGEngine::write(const Datapoint &datapoint, const VariantValue &value) {
   return result;
 }
 
-bool GWGEngine::write(const Datapoint &datapoint, const uint8_t *data, uint8_t length) {
+bool GWGEngine::write(const Datapoint& datapoint, const uint8_t* data, uint8_t length) {
   if (_currentDatapoint) {
     return false;
   }

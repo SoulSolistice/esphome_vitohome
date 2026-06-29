@@ -25,8 +25,8 @@ namespace vitohome {
 // ---------------------------------------------------------------------------
 
 // Returns false (and leaves *out untouched) if byte_offset is out of range.
-inline bool decode_masked_bit(const uint8_t *data, std::size_t data_len, uint8_t byte_offset, uint8_t bit_mask,
-                              bool *out) {
+inline bool decode_masked_bit(const uint8_t* data, std::size_t data_len, uint8_t byte_offset, uint8_t bit_mask,
+                              bool* out) {
   if (data == nullptr || data_len <= byte_offset) return false;
   *out = (data[byte_offset] & bit_mask) != 0;
   return true;
@@ -38,7 +38,7 @@ inline bool decode_masked_bit(const uint8_t *data, std::size_t data_len, uint8_t
 
 // Optolink payloads are little-endian (verified against the optolink engine
 // Converter.cpp at the pinned SHA: data[1] << 8 | data[0], etc.).
-inline uint64_t read_le(const uint8_t *data, uint8_t len) {
+inline uint64_t read_le(const uint8_t* data, uint8_t len) {
   uint64_t v = 0;
   for (uint8_t i = 0; i < len && i < 8; i++) {
     v |= static_cast<uint64_t>(data[i]) << (8 * i);
@@ -60,8 +60,8 @@ inline int64_t sign_extend_le(uint64_t raw, uint8_t len) {
 // Decode `len` bytes starting at data[0] as a (signed or unsigned) integer
 // and scale it in double precision. Returns false if the payload is shorter
 // than `len` or len is outside [1,8].
-inline bool decode_scaled(const uint8_t *data, std::size_t data_len, uint8_t len, bool is_signed, double scale,
-                          double *out) {
+inline bool decode_scaled(const uint8_t* data, std::size_t data_len, uint8_t len, bool is_signed, double scale,
+                          double* out) {
   if (data == nullptr || len == 0 || len > 8 || data_len < len) return false;
   const uint64_t raw = read_le(data, len);
   const double v = is_signed ? static_cast<double>(sign_extend_le(raw, len)) : static_cast<double>(raw);
@@ -74,7 +74,7 @@ inline bool decode_scaled(const uint8_t *data, std::size_t data_len, uint8_t len
 // false if the raw value does not fit the (signed or unsigned) range of
 // `len` bytes, or on a non-finite input — the caller must treat that as a
 // hard error and not transmit. len in [1,4] (Optolink writes).
-inline bool encode_scaled(double value, double scale, bool is_signed, uint8_t len, uint8_t *buf) {
+inline bool encode_scaled(double value, double scale, bool is_signed, uint8_t len, uint8_t* buf) {
   if (buf == nullptr || len == 0 || len > 4 || scale == 0.0 || !std::isfinite(value)) return false;
   const double raw_d = value / scale;
   if (!std::isfinite(raw_d)) return false;
@@ -99,7 +99,7 @@ inline bool encode_scaled(double value, double scale, bool is_signed, uint8_t le
 
 // Decode one packed-BCD byte (0x25 -> 25). Returns false on a non-BCD nibble
 // (e.g. 0xFF, the fill value of empty error-history slots).
-inline bool bcd_to_int(uint8_t b, uint8_t *out) {
+inline bool bcd_to_int(uint8_t b, uint8_t* out) {
   const uint8_t hi = (b >> 4) & 0x0F;
   const uint8_t lo = b & 0x0F;
   if (hi > 9 || lo > 9) return false;
@@ -122,7 +122,7 @@ struct BcdDateTime {
 // docs/stage2_design.md for that correction).
 // Returns false on any non-BCD byte or an out-of-range field (empty
 // error-history slots are 0xFF-filled and fail the BCD check).
-inline bool decode_datetime_bcd(const uint8_t *data, std::size_t data_len, std::size_t offset, BcdDateTime *out) {
+inline bool decode_datetime_bcd(const uint8_t* data, std::size_t data_len, std::size_t offset, BcdDateTime* out) {
   if (data == nullptr || out == nullptr || data_len < offset + 8) return false;
   uint8_t yh, yl, mo, da, ho, mi, se;
   if (!bcd_to_int(data[offset + 0], &yh) || !bcd_to_int(data[offset + 1], &yl) || !bcd_to_int(data[offset + 2], &mo) ||
@@ -156,7 +156,7 @@ inline bool decode_datetime_bcd(const uint8_t *data, std::size_t data_len, std::
 // characters. Writes the result plus a NUL into `out` (out_cap must be >=
 // len+1). Returns the character count written (excluding the terminator), or
 // -1 on bad arguments / short payload.
-inline int decode_ascii(const uint8_t *data, std::size_t data_len, uint8_t len, char *out, std::size_t out_cap) {
+inline int decode_ascii(const uint8_t* data, std::size_t data_len, uint8_t len, char* out, std::size_t out_cap) {
   if (data == nullptr || out == nullptr || out_cap == 0) return -1;
   if (len == 0 || data_len < len || out_cap < static_cast<std::size_t>(len) + 1) return -1;
   std::size_t n = 0;
@@ -183,7 +183,7 @@ inline int decode_ascii(const uint8_t *data, std::size_t data_len, uint8_t len, 
 // Pure / framework-free so it is host-tested in tests/native/test_decode.cpp.
 // Never writes past out[cap-1]; always NUL-terminates when cap > 0. Returns
 // the number of characters written (excluding the NUL), or 0 on bad args.
-inline int format_raw_dump(uint16_t address, const uint8_t *data, uint8_t len, char *out, std::size_t cap) {
+inline int format_raw_dump(uint16_t address, const uint8_t* data, uint8_t len, char* out, std::size_t cap) {
   if (out == nullptr || cap == 0) return 0;
   int off = std::snprintf(out, cap, "0x%04X:", static_cast<unsigned>(address));
   if (off < 0) {

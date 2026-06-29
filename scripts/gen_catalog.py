@@ -669,7 +669,7 @@ class Catalog:
                 fm = [t for t in f0_aware if t["f0"] <= f0 <= (t["f0t"] if t["f0t"] is not None else t["f0"])]
                 if fm:
                     return fm[0]["token"], why + " + F0 match" + note
-            generic = sorted(pool, key=lambda t: (t["f0"] if t["f0"] is not None else -1))
+            generic = sorted(pool, key=lambda t: t["f0"] if t["f0"] is not None else -1)
             tail = " (F0 not provided; generic variant)" if f0 is None else " (no F0 match; generic variant)"
             return generic[0]["token"], why + tail + note
         return pool[0]["token"], why + note
@@ -928,7 +928,7 @@ def emit_entity(ev: Event, profile: str):
         state_addr = COMMAND_STATE_ADDR.get(ev.address)
         if state_addr is not None:
             lines.append(
-                f"  state_address: 0x{state_addr:04X}" "  # live state read here; address above is the write/command target"
+                f"  state_address: 0x{state_addr:04X}  # live state read here; address above is the write/command target"
             )
         lines += [
             "  disabled_by_default: true",
@@ -1186,7 +1186,7 @@ def generate(
     events = catalog.events_for(device)
     if not events:
         raise SystemExit(
-            f"device {device!r} not found or has no events. " "Run with --list-devices to see available device tokens."
+            f"device {device!r} not found or has no events. Run with --list-devices to see available device tokens."
         )
 
     inc = re.compile(include_re) if include_re else None
@@ -1212,7 +1212,7 @@ def generate(
         buckets["text_sensor"].extend("  " + ln if ln else "" for ln in _device_id_lines(oid))
         kept += 1
 
-    for ev in sorted(events, key=lambda e: (e.address or 0)):
+    for ev in sorted(events, key=lambda e: e.address or 0):
         # Special datapoints are handled independently of profile/name filters.
         if emit_device_id and _is_identification(ev):
             continue  # represented by the device_id entity above

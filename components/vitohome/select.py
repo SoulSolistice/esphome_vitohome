@@ -40,7 +40,7 @@ def _validate_options(config):
     for value in options:
         if not raw_fits(value, config[CONF_LENGTH], is_signed=False):
             raise cv.Invalid(
-                f"option value {value} does not fit {config[CONF_LENGTH]} " f"unsigned byte(s)",
+                f"option value {value} does not fit {config[CONF_LENGTH]} unsigned byte(s)",
                 path=[CONF_OPTIONS],
             )
     labels = list(options.values())

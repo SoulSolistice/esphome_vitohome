@@ -20,9 +20,9 @@ PacketVS1::operator bool() const {
   return false;
 }
 
-uint8_t &PacketVS1::operator[](std::size_t index) { return _buffer[index]; }
+uint8_t& PacketVS1::operator[](std::size_t index) { return _buffer[index]; }
 
-bool PacketVS1::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, const uint8_t *data) {
+bool PacketVS1::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, const uint8_t* data) {
   reset();
 
   // check arguments
@@ -75,7 +75,7 @@ uint16_t PacketVS1::address() const {
 
 uint8_t PacketVS1::dataLength() const { return _buffer[3]; }
 
-const uint8_t *PacketVS1::data() const { return &_buffer[4]; }
+const uint8_t* PacketVS1::data() const { return &_buffer[4]; }
 
 void PacketVS1::reset() { _buffer[3] = 0x00; }
 

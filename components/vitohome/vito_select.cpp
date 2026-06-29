@@ -7,7 +7,7 @@
 namespace esphome {
 namespace vitohome {
 
-static const char *const TAG = "vitohome.select";
+static const char* const TAG = "vitohome.select";
 
 void VitoSelect::dump_config() {
   LOG_SELECT("  ", "VitoHome Select", this);
@@ -38,7 +38,7 @@ void VitoSelect::control(size_t index) {
   ESP_LOGD(TAG, "%s: queued write option %zu (raw 0x%02X)", this->datapoint_.name(), index, raw);
 }
 
-void VitoSelect::handle_response(const ResponseView &response) {
+void VitoSelect::handle_response(const ResponseView& response) {
   const uint8_t len = this->datapoint_.length();
   if (response.data_length < len) {
     ESP_LOGW(TAG, "%s: response too short (have %u bytes, need %u)", this->datapoint_.name(), response.data_length,
@@ -58,7 +58,7 @@ void VitoSelect::handle_response(const ResponseView &response) {
   ESP_LOGW(TAG, "%s: device value 0x%02X is not in the configured options", this->datapoint_.name(), raw);
 }
 
-void VitoSelect::handle_write_response(const ResponseView & /*response*/) {
+void VitoSelect::handle_write_response(const ResponseView& /*response*/) {
   if (!this->read_back_) {
     this->publish_state(this->pending_index_);
   }

@@ -9,9 +9,9 @@
 namespace esphome {
 namespace vitohome {
 
-static const char *const TAG = "vitohome.text_sensor";
+static const char* const TAG = "vitohome.text_sensor";
 
-static const char *type_name(TextSensorType t) {
+static const char* type_name(TextSensorType t) {
   switch (t) {
     case TextSensorType::RAW_HEX:
       return "raw";
@@ -43,14 +43,14 @@ void VitoTextSensor::dump_config() {
                 this->datapoint_.length());
 }
 
-const char *VitoTextSensor::lookup_(uint32_t value) const {
-  for (const auto &kv : this->options_) {
+const char* VitoTextSensor::lookup_(uint32_t value) const {
+  for (const auto& kv : this->options_) {
     if (kv.first == value) return kv.second;
   }
   return nullptr;
 }
 
-void VitoTextSensor::publish_raw_hex_(const uint8_t *data, uint8_t len) {
+void VitoTextSensor::publish_raw_hex_(const uint8_t* data, uint8_t len) {
   std::string out;
   out.reserve(static_cast<size_t>(len) * 3);
   char b[4];
@@ -62,10 +62,10 @@ void VitoTextSensor::publish_raw_hex_(const uint8_t *data, uint8_t len) {
   this->publish_state(out);
 }
 
-void VitoTextSensor::publish_enum_(const uint8_t *data, uint8_t len) {
+void VitoTextSensor::publish_enum_(const uint8_t* data, uint8_t len) {
   const uint8_t use = len > 4 ? 4 : len;
   const uint32_t raw = static_cast<uint32_t>(read_le(data, use));
-  const char *label = this->lookup_(raw);
+  const char* label = this->lookup_(raw);
   if (label != nullptr) {
     this->publish_state(label);
     return;
@@ -76,7 +76,7 @@ void VitoTextSensor::publish_enum_(const uint8_t *data, uint8_t len) {
   this->publish_state(buf);
 }
 
-void VitoTextSensor::publish_error_history_(const uint8_t *data, uint8_t len) {
+void VitoTextSensor::publish_error_history_(const uint8_t* data, uint8_t len) {
   // Layout (InsideViessmannVitosoft, Viessmann2MQTT.py): a 9-byte slot is
   // [0] = error code, [1..8] = DateTimeBCD (year-hi, year-lo, month, day,
   // weekday, hour, minute, second). Empty slots are 0xFF-filled, which
@@ -86,7 +86,7 @@ void VitoTextSensor::publish_error_history_(const uint8_t *data, uint8_t len) {
     return;
   }
   const uint8_t code = data[0];
-  const char *text = this->lookup_(code);
+  const char* text = this->lookup_(code);
 
   BcdDateTime dt{};
   const bool has_dt = decode_datetime_bcd(data, len, 1, &dt);
@@ -107,7 +107,7 @@ void VitoTextSensor::publish_error_history_(const uint8_t *data, uint8_t len) {
   this->publish_state(buf);
 }
 
-void VitoTextSensor::publish_ascii_(const uint8_t *data, uint8_t len) {
+void VitoTextSensor::publish_ascii_(const uint8_t* data, uint8_t len) {
   // HexByte2AsciiByte: the payload is an ASCII byte-string (device part /
   // serial number). decode_ascii() NUL-terminates, trims trailing spaces and
   // maps non-printable bytes to '?'. Cap at 32 chars (longest such field is
@@ -122,8 +122,8 @@ void VitoTextSensor::publish_ascii_(const uint8_t *data, uint8_t len) {
   this->publish_state(buf);
 }
 
-void VitoTextSensor::handle_response(const ResponseView &response) {
-  const uint8_t *data = response.data;
+void VitoTextSensor::handle_response(const ResponseView& response) {
+  const uint8_t* data = response.data;
   const uint8_t len = response.data_length;
   if (data == nullptr || len == 0) {
     ESP_LOGW(TAG, "%s: empty response", this->datapoint_.name());

@@ -27,7 +27,7 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   void dump_config() override;
   float get_setup_priority() const override { return setup_priority::AFTER_WIFI; }
 
-  void register_entity(VitoEntityBase *entity) {
+  void register_entity(VitoEntityBase* entity) {
     if (entity == nullptr) return;
     entity->set_vitohome_parent(this);
     this->entities_.push_back(entity);
@@ -35,7 +35,7 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
 
   // device_id text sensors don't poll the bus themselves — they subscribe to
   // the hub's one-shot identification result (see identification below).
-  void register_device_id_sensor(text_sensor::TextSensor *ts) {
+  void register_device_id_sensor(text_sensor::TextSensor* ts) {
     if (ts != nullptr) this->device_id_sensors_.push_back(ts);
   }
 
@@ -45,12 +45,12 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   // buffer). Writes are dispatched with priority over reads; the newest
   // payload wins if the entity is re-controlled while still queued (the
   // entity owns the buffer). Returns false if the entity has no payload.
-  bool request_write(VitoEntityBase *entity);
+  bool request_write(VitoEntityBase* entity);
 
   // --- raw scan console (debug) --------------------------------------------
   // Subscribe a hub-fed text sensor (text_sensor: type: scan_result) to the
   // raw-op result line. Mirrors register_device_id_sensor: it never polls.
-  void register_raw_result_sensor(text_sensor::TextSensor *ts) {
+  void register_raw_result_sensor(text_sensor::TextSensor* ts) {
     if (ts != nullptr) this->raw_result_sensors_.push_back(ts);
   }
 
@@ -59,7 +59,7 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   // integer views for a read, ACK / error otherwise -- is logged and published
   // to any scan_result sensor. Drives the scan console and HA range sweeps.
   void queue_raw_read(uint16_t address, uint8_t length);
-  void queue_raw_write(uint16_t address, const std::vector<uint8_t> &bytes);
+  void queue_raw_write(uint16_t address, const std::vector<uint8_t>& bytes);
 
  protected:
   enum class OpType : uint8_t { NONE, READ, WRITE };
@@ -85,21 +85,21 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   void validate_uart_();
   void dispatch_next_();
   void schedule_due_entities_();
-  void on_response_(const ResponseView &response, const optolink::Datapoint &request);
-  void on_error_(optolink::OptolinkResult error, const optolink::Datapoint &request);
+  void on_response_(const ResponseView& response, const optolink::Datapoint& request);
+  void on_error_(optolink::OptolinkResult error, const optolink::Datapoint& request);
 
   // identification
   void ident_start_();
   void ident_dispatch_(IdentState state);
-  void ident_handle_response_(const ResponseView &response);
+  void ident_handle_response_(const ResponseView& response);
   void ident_handle_error_();
   void ident_finish_();
   std::string ident_string_() const;
 
   // raw scan console (debug)
-  void raw_handle_response_(const ResponseView &response);
+  void raw_handle_response_(const ResponseView& response);
   void raw_handle_error_(optolink::OptolinkResult error);
-  void raw_publish_(const std::string &line);
+  void raw_publish_(const std::string& line);
 
   bool ident_in_flight_{false};
 
@@ -111,11 +111,11 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   // place that touches a concrete packet type.
   std::unique_ptr<ProtocolAdapter> vito_;
 
-  std::vector<VitoEntityBase *> entities_;
-  std::vector<text_sensor::TextSensor *> device_id_sensors_;
-  std::deque<VitoEntityBase *> read_queue_;
-  std::deque<VitoEntityBase *> write_queue_;
-  VitoEntityBase *in_flight_{nullptr};
+  std::vector<VitoEntityBase*> entities_;
+  std::vector<text_sensor::TextSensor*> device_id_sensors_;
+  std::deque<VitoEntityBase*> read_queue_;
+  std::deque<VitoEntityBase*> write_queue_;
+  VitoEntityBase* in_flight_{nullptr};
   OpType in_flight_op_{OpType::NONE};
   uint32_t in_flight_started_ms_{0};
 
@@ -141,7 +141,7 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   bool raw_is_write_{false};
   optolink::Datapoint raw_dp_{"scan", 0, 1, optolink::noconv};
   std::vector<uint8_t> raw_write_buf_;
-  std::vector<text_sensor::TextSensor *> raw_result_sensors_;
+  std::vector<text_sensor::TextSensor*> raw_result_sensors_;
 
   // Failsafe: if a request is in flight for longer than this, log and
   // clear it. the optolink engine has its own internal timeout (via OptolinkResult

@@ -15,13 +15,13 @@ namespace vitohome {
 // default (no flag) is P300, the only protocol exercised on hardware.
 #if defined(VITOHOME_PROTOCOL_KW)
 using SelectedProtocol = optolink::KW;
-inline constexpr const char *PROTOCOL_NAME = "KW (VS1)";
+inline constexpr const char* PROTOCOL_NAME = "KW (VS1)";
 #elif defined(VITOHOME_PROTOCOL_GWG)
 using SelectedProtocol = optolink::GWG;
-inline constexpr const char *PROTOCOL_NAME = "GWG";
+inline constexpr const char* PROTOCOL_NAME = "GWG";
 #else
 using SelectedProtocol = optolink::P300;
-inline constexpr const char *PROTOCOL_NAME = "P300 (VS2)";
+inline constexpr const char* PROTOCOL_NAME = "P300 (VS2)";
 #endif
 
 // The single place that knows about engine packet types and the per-protocol
@@ -31,17 +31,17 @@ inline constexpr const char *PROTOCOL_NAME = "P300 (VS2)";
 // branch above the adapter.
 class ProtocolAdapter {
  public:
-  using ResponseHandler = std::function<void(const ResponseView &, const optolink::Datapoint &)>;
-  using ErrorHandler = std::function<void(optolink::OptolinkResult, const optolink::Datapoint &)>;
+  using ResponseHandler = std::function<void(const ResponseView&, const optolink::Datapoint&)>;
+  using ErrorHandler = std::function<void(optolink::OptolinkResult, const optolink::Datapoint&)>;
 
   template <class Iface>
-  explicit ProtocolAdapter(Iface *iface) : engine_(iface) {}
+  explicit ProtocolAdapter(Iface* iface) : engine_(iface) {}
 
   void on_response(ResponseHandler handler) {
     response_handler_ = std::move(handler);
 #if defined(VITOHOME_PROTOCOL_KW) || defined(VITOHOME_PROTOCOL_GWG)
     // KW / GWG deliver raw bytes; the request datapoint carries the address.
-    engine_.onResponse([this](const uint8_t *data, uint8_t length, const optolink::Datapoint &request) {
+    engine_.onResponse([this](const uint8_t* data, uint8_t length, const optolink::Datapoint& request) {
       this->established_ = true;
       if (this->response_handler_) {
         this->response_handler_(ResponseView{data, length, request.address()}, request);
@@ -49,7 +49,7 @@ class ProtocolAdapter {
     });
 #else
     // P300 delivers a PacketVS2; pull the payload out of it.
-    engine_.onResponse([this](const optolink::PacketVS2 &packet, const optolink::Datapoint &request) {
+    engine_.onResponse([this](const optolink::PacketVS2& packet, const optolink::Datapoint& request) {
       this->established_ = true;
       if (this->response_handler_) {
         this->response_handler_(ResponseView{packet.data(), packet.dataLength(), request.address()}, request);
@@ -60,7 +60,7 @@ class ProtocolAdapter {
 
   void on_error(ErrorHandler handler) {
     error_handler_ = std::move(handler);
-    engine_.onError([this](optolink::OptolinkResult error, const optolink::Datapoint &request) {
+    engine_.onError([this](optolink::OptolinkResult error, const optolink::Datapoint& request) {
       if (this->error_handler_) {
         this->error_handler_(error, request);
       }
@@ -69,8 +69,8 @@ class ProtocolAdapter {
 
   bool begin() { return engine_.begin(); }
   void loop() { engine_.loop(); }
-  bool read(const optolink::Datapoint &datapoint) { return engine_.read(datapoint); }
-  bool write(const optolink::Datapoint &datapoint, const uint8_t *data, uint8_t length) {
+  bool read(const optolink::Datapoint& datapoint) { return engine_.read(datapoint); }
+  bool write(const optolink::Datapoint& datapoint, const uint8_t* data, uint8_t length) {
     return engine_.write(datapoint, data, length);
   }
   bool is_busy() const { return engine_.isBusy(); }
@@ -80,7 +80,7 @@ class ProtocolAdapter {
   // hub uses this as the start-up verification signal.
   bool established() const { return established_; }
 
-  static const char *protocol_name() { return PROTOCOL_NAME; }
+  static const char* protocol_name() { return PROTOCOL_NAME; }
 
  private:
   optolink::OptolinkEngine<SelectedProtocol> engine_;

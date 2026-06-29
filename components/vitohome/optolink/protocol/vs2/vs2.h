@@ -30,8 +30,8 @@ namespace optolink {
 
 class VS2Engine {
  public:
-  typedef std::function<void(const PacketVS2 &response, const Datapoint &request)> OnResponseCallback;
-  typedef std::function<void(OptolinkResult error, const Datapoint &request)> OnErrorCallback;
+  typedef std::function<void(const PacketVS2& response, const Datapoint& request)> OnResponseCallback;
+  typedef std::function<void(OptolinkResult error, const Datapoint& request)> OnErrorCallback;
 
   // Named timeouts (ms). Values are byte-identical to the previous inline
   // literals; kept per-engine (do not unify across protocols).
@@ -40,7 +40,7 @@ class VS2Engine {
   static constexpr uint32_t KEEPALIVE_INTERVAL_MS = 3000;  // idle re-INIT keepalive
 
   template <class C>
-  explicit VS2Engine(C *interface)
+  explicit VS2Engine(C* interface)
       : _state(State::UNDEFINED),
         _currentMillis(optolink_millis()),
         _lastMillis(_currentMillis),
@@ -60,15 +60,15 @@ class VS2Engine {
     }
   }
   ~VS2Engine();
-  VS2Engine(const VS2Engine &) = delete;
-  VS2Engine &operator=(const VS2Engine &) = delete;
+  VS2Engine(const VS2Engine&) = delete;
+  VS2Engine& operator=(const VS2Engine&) = delete;
 
   void onResponse(OnResponseCallback callback);
   void onError(OnErrorCallback callback);
 
-  bool read(const Datapoint &datapoint);
-  bool write(const Datapoint &datapoint, const VariantValue &value);
-  bool write(const Datapoint &datapoint, const uint8_t *data, uint8_t length);
+  bool read(const Datapoint& datapoint);
+  bool write(const Datapoint& datapoint, const VariantValue& value);
+  bool write(const Datapoint& datapoint, const uint8_t* data, uint8_t length);
 
   bool begin();
   void loop();
@@ -96,7 +96,7 @@ class VS2Engine {
   uint32_t _lastMillis;
   uint32_t _requestTime;
   uint8_t _bytesTransferred;
-  internals::SerialInterface *_interface;
+  internals::SerialInterface* _interface;
   internals::ParserVS2 _parser;
   Datapoint _currentDatapoint;
   PacketVS2 _currentPacket;

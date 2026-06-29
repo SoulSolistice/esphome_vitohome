@@ -18,7 +18,7 @@ VS1Engine::~VS1Engine() { delete _interface; }
 void VS1Engine::onResponse(OnResponseCallback callback) { _onResponseCallback = callback; }
 void VS1Engine::onError(OnErrorCallback callback) { _onErrorCallback = callback; }
 
-bool VS1Engine::read(const Datapoint &datapoint) {
+bool VS1Engine::read(const Datapoint& datapoint) {
   if (_currentDatapoint) {
     return false;
   }
@@ -36,11 +36,11 @@ bool VS1Engine::read(const Datapoint &datapoint) {
   return false;
 }
 
-bool VS1Engine::write(const Datapoint &datapoint, const VariantValue &value) {
+bool VS1Engine::write(const Datapoint& datapoint, const VariantValue& value) {
   if (_currentDatapoint) {
     return false;
   }
-  uint8_t *payload = reinterpret_cast<uint8_t *>(malloc(datapoint.length()));
+  uint8_t* payload = reinterpret_cast<uint8_t*>(malloc(datapoint.length()));
   if (!payload) return false;
   datapoint.encode(payload, datapoint.length(), value);
   bool result = write(datapoint, payload, datapoint.length());
@@ -48,7 +48,7 @@ bool VS1Engine::write(const Datapoint &datapoint, const VariantValue &value) {
   return result;
 }
 
-bool VS1Engine::write(const Datapoint &datapoint, const uint8_t *data, uint8_t length) {
+bool VS1Engine::write(const Datapoint& datapoint, const uint8_t* data, uint8_t length) {
   if (_currentDatapoint) {
     return false;
   }
