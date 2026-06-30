@@ -1,0 +1,57 @@
+# ==========================================
+# ESPHome & PlatformIO
+# ==========================================
+# ESPHome generates build environments and compiled firmware here
+.esphome/
+.pio/
+
+# Ignore local secrets referenced by secrets.example.yaml
+secrets.yaml
+
+# ==========================================
+# Python (Scripts & Unit Tests)
+# ==========================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+.venv/
+venv/
+env/
+
+# ==========================================
+# Tooling, Linting & Testing Caches
+# ==========================================
+# Pytest caching (used in tests/unit/)
+.pytest_cache/
+
+# Ruff caching (defined by ruff.toml)
+.ruff_cache/
+
+# Coverage tracking (if added later)
+.coverage
+htmlcov/
+
+# ==========================================
+# C++ Native Tests & Build Artifacts
+# ==========================================
+# Artifacts from tests/native/build_and_run.sh and similar scripts
+build/
+*.o
+*.out
+*.exe
+*.bin
+*.elf
+
+# ==========================================
+# OS & IDEs
+# ==========================================
+# Mac / Windows system files
+.DS_Store
+Thumbs.db
+
+# VS Code / JetBrains / PlatformIO IDE folders
+.vscode/
+.idea/
