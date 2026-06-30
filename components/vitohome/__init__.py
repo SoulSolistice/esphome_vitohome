@@ -102,6 +102,8 @@ class Converter:
     default_signed: bool
     lengths: tuple
     encodable: bool
+    # RotateBytes: the same bytes assembled big-endian (read_be in decode.h).
+    big_endian: bool = False
 
 
 CONVERTERS = {
@@ -119,11 +121,18 @@ CONVERTERS = {
     "mult5": Converter(5.0, False, (1, 2, 4), True),
     "mult10": Converter(10.0, False, (1, 2, 4), True),
     "mult100": Converter(100.0, False, (1, 2, 4), True),
+    # RotateBytes: big-endian 2-byte coding values (GWG_Codierstecker_Kennziffer,
+    # VSKO_Scot_NEC_*). Read-only; decoded via decode_scaled_be.
+    "rotatebytes": Converter(1.0, False, (2,), False, big_endian=True),
 }
 
 
 def converter_scale(name: str) -> float:
     return CONVERTERS[name].scale
+
+
+def converter_big_endian(name: str) -> bool:
+    return CONVERTERS[name].big_endian
 
 
 def converter_default_signed(name: str) -> bool:

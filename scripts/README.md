@@ -30,10 +30,18 @@ reads up to four files from it:
 | `DPDefinitions.xml` | Device types, event links, enum value types, units, borders |
 | `ecnEventType.xml` | Per-event Optolink address, lengths, bit position, read/write access, conversion |
 | `ecnDataPointType.xml` | Identification ranges (group/ident, hardware/software index) used by `--identify` |
-| `Textresource.xml` | Names and enum labels in the chosen language (optional) |
+| `Textresource.xml` | UI names in the chosen language (optional; see note) |
 
 `DPDefinitions.xml` does not carry datapoint lengths; those live in
 `ecnEventType.xml`, so keep the export files together in one directory.
+
+> **Label source (2026 export).** `Textresource.xml` carries UI strings only and,
+> in current exports, **none** of the per-event/value display names — so
+> `--culture` mainly affects those (mostly absent) names. Enum **option** labels
+> are independent: they come from `ecnEventValueType.Description` in
+> `DPDefinitions.xml` (pre-resolved German, ~87% coverage), so an enum/`select`'s
+> `options:` are readable regardless of `--culture`. Entity `name:` falls back to
+> a snake_case derivation of the technical id where no UI name exists.
 
 ### Options
 
@@ -47,7 +55,19 @@ reads up to four files from it:
 | `--profile {minimal,standard,full}` | How many datapoints to emit (default: `standard`) |
 | `--include <regex>` / `--exclude <regex>` | Keep / drop events whose name matches |
 | `--culture {de,en,fr,it,ru,nl}` | Language for names and labels (default: `de`) |
+| `--[no-]error-history` | Emit `error_history` entities for the `FehlerHis*` slots (default: on) |
+| `--[no-]error-codes` | Attach a fault-code map to those entities (default: on) |
+| `--error-code-set {openv,vd200,vd300,union}` | Which fault-code map to attach (default: `vd300`) |
 | `--out <file>` | Output file (default: stdout) |
+
+The fault-code maps live in [`fault_codes.py`](fault_codes.py) (one module, the
+single source of truth): `vd300` is the Vitodens 300-W (B3HA) set and the default
+(VScotHO1_72 / "Projekt Neptun" is the Vitotronic 200 controller in that boiler),
+`vd200` is the Vitodens 200 (WB2A) set, `openv` is the generic openv/community
+map, and `union` merges all three (most-specific manual wins). **Fault-code
+semantics are device-variant-specific** — these are a default to verify on the
+unit; openv-vs-VD200 disagreements are in `fault_codes.CONFLICTS`, and the VD300
+set carries OCR caveats (a few codes to verify against the PDF) in its header.
 
 ### Examples
 

@@ -41,6 +41,7 @@ These back the `sensor` platform, and the encodable subset backs the writable
 | `mult5` | x5 | unsigned | 1, 2, 4 | yes |
 | `mult10` | x10 | unsigned | 1, 2, 4 | yes |
 | `mult100` | x100 | unsigned | 1, 2, 4 | yes |
+| `rotatebytes` | x1 (**big-endian**) | unsigned | 2 | no (read-only) |
 
 **Sign.** `div2` and `div10` decode the raw integer as signed (two's
 complement), so a sub-zero temperature reads correctly; every other converter
@@ -49,6 +50,8 @@ default for that datapoint.
 
 **Encodability.** A writable `number` accepts only converters that have a
 defined inverse; `sec2hour` is read-only and cannot back a `number`.
+
+**Byte order.** Payloads are little-endian by default. `rotatebytes` (Vitosoft `RotateBytes`) is the exception: the same bytes are assembled **big-endian** before scaling (`decode.h::read_be` / `decode_scaled_be`). It is read-only and currently used for 2-byte coding values (`GWG_Codierstecker_Kennziffer`).
 
 ## Decode by platform
 
@@ -60,6 +63,8 @@ A `converter:` is one of several ways a value is read. The full set:
 | `number` (write) | scaled integer, encodable converters only | `converter`, `length`, `min_value` / `max_value` / `step` |
 | `binary_sensor` | one bit of a byte | `bit_mask`, `length` |
 | `text_sensor` `type: ascii` | raw bytes as an ASCII string | `length` |
+| `text_sensor` `type: utf16` | raw bytes as a UTF-16LE string | `length` (even) |
+| `text_sensor` `type: error_history` | 9-byte slot: code byte + 8-byte BCD timestamp, mapped via `codes:` | `length`, `codes` |
 | `text_sensor` `type: enum` | raw value mapped to a label | `options` |
 | `text_sensor` `type: device_id` | the device identification string | (none) |
 | `select` | raw value mapped to a label, writable | `options`, `address`, `state_address` |
@@ -68,6 +73,8 @@ A `converter:` is one of several ways a value is read. The full set:
 terminates the string, trailing spaces are trimmed, and any non-printable byte
 becomes `?`, so a bad read yields a safe string rather than control characters.
 Used for part and serial numbers.
+
+**UTF-16** (`type: utf16`): the payload is a UTF-16LE byte-string decoded to UTF-8 (Vitosoft `HexByte2UTF16Byte`). `length` is the field width in **bytes** and must be even; a `0x0000` unit terminates, `0xFFFF` fill is skipped, and trailing spaces are trimmed. Used for the editable heating-circuit labels (`Beschriftung_HK1..3`), emitted read-only (display); round-trip editing would need a `text:` platform with a UTF-16 encode path.
 
 **Bit** (`binary_sensor`): `bit_mask` selects which bit of the addressed byte
 drives the state; `length` sizes the read.
@@ -108,7 +115,7 @@ reach the device:
 
 ## Conversions that are not modelled
 
-Some Vitosoft conversions cannot be represented as a scale (for example true
-floating-point conversions). The catalog generator emits these as commented
-hints in the generated package rather than decoding them incorrectly, so you
-can decide how to handle them by hand.
+Some Vitosoft conversions still cannot be represented (for example true
+floating-point conversions, `Convert4BytesToFloat`). The catalog generator
+emits these as commented hints in the generated package rather than decoding
+them incorrectly, so you can decide how to handle them by hand.

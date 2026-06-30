@@ -14,6 +14,8 @@ class VitoSensor : public sensor::Sensor, public Component, public VitoEntityBas
   // loss of float32-pipeline decodes for 4-byte counters (see decode.h).
   void set_scale(double scale) { this->scale_ = scale; }
   void set_signed(bool s) { this->signed_ = s; }
+  // RotateBytes: assemble the raw integer big-endian (read_be) before scaling.
+  void set_big_endian(bool b) { this->big_endian_ = b; }
   // Optional single-byte extraction: take payload[byte] (length-1 raw) and
   // apply scale/sign to that byte. Replaces the old ">> 8 & 0xFF" lambda
   // filters for the PR2 pump-speed unit.
@@ -27,6 +29,7 @@ class VitoSensor : public sensor::Sensor, public Component, public VitoEntityBas
  protected:
   double scale_{1.0};
   bool signed_{false};
+  bool big_endian_{false};
   int8_t extract_byte_{-1};
 };
 

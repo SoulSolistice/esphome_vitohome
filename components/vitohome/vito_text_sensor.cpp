@@ -23,6 +23,8 @@ static const char *type_name(TextSensorType t) {
       return "device_id";
     case TextSensorType::ASCII:
       return "ascii";
+    case TextSensorType::UTF16:
+      return "utf16";
     case TextSensorType::SCAN_RESULT:
       return "scan_result";
   }
@@ -122,6 +124,21 @@ void VitoTextSensor::publish_ascii_(const uint8_t *data, uint8_t len) {
   this->publish_state(buf);
 }
 
+void VitoTextSensor::publish_utf16_(const uint8_t *data, uint8_t len) {
+  // HexByte2UTF16Byte: a UTF-16LE label (Beschriftung_HK1..3, 40 bytes = 20
+  // code units). decode_utf16() emits UTF-8, NUL-terminates, trims trailing
+  // spaces and skips 0xFFFF fill. Cap at 40 bytes; worst case is 3 UTF-8 bytes
+  // per code unit (60) + NUL.
+  const uint8_t use = len > 40 ? 40 : len;
+  char buf[80];
+  if (decode_utf16(data, len, use, buf, sizeof(buf)) < 0) {
+    ESP_LOGW(TAG, "%s: UTF-16 decode failed (len=%u)", this->datapoint_.name(), len);
+    return;
+  }
+  ESP_LOGD(TAG, "%s: \"%s\"", this->datapoint_.name(), buf);
+  this->publish_state(buf);
+}
+
 void VitoTextSensor::handle_response(const ResponseView &response) {
   const uint8_t *data = response.data;
   const uint8_t len = response.data_length;
@@ -144,6 +161,9 @@ void VitoTextSensor::handle_response(const ResponseView &response) {
       return;
     case TextSensorType::ASCII:
       this->publish_ascii_(data, len);
+      return;
+    case TextSensorType::UTF16:
+      this->publish_utf16_(data, len);
       return;
   }
 }

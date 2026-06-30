@@ -243,6 +243,14 @@ The load-bearing fact for anyone **adding new datapoints**:
   (`VScotHO1` vs `VScotHO1_72`, "ab Softwareindex 72 / Projekt Neptun") is the
   **software index at `0xFB`** — it is *not* encoded in `0x20CB` and cannot be
   recovered by decoding `0x20CB` differently.
+- **`VScotHO1` is a Vitosoft internal token, not a marketing name.** The 2026
+  export carries no product names (§8), so the token alone does not tell you the
+  product. On the reference unit `VScotHO1_72` ("Projekt Neptun") is the
+  **Vitotronic 200 controller in a Vitodens 300-W (type B3HA)** — corroborated by
+  the `Neptun_Durchfluss_*` / `Neptun_Volumenstromgrenzwert_*` flow-sensor
+  datapoints in its catalog, a Vitodens-300-W feature. The fault-code default is
+  therefore the Vitodens 300-W B3HA set (`fault_codes.VITOTRONIC_VD300_B3HA`),
+  not the Vitodens 200 one.
 - **Authoring a new datapoint from the Vitosoft export → match your unit's
   `0xFB`.** Address and conversion can differ between `VScotHO1` and
   `VScotHO1_72`; picking the wrong variant row is a **silent-wrong-decode trap**.
@@ -275,12 +283,28 @@ implausible years (`< 1990`) so an all-zero slot doesn't decode as year 0. The
 `error_history` text sensor emits `"<label> (0x<code>) @ YYYY-MM-DD HH:MM:SS"`,
 falling back to code-only when the timestamp is empty/invalid.
 
-> **Hardware caveat (unresolved).** On the reference unit the old config could
-> only read the single code byte; per-byte reads at `0x7508+` returned a P300
-> error. A **9-byte block read at `0x7507` is a different transaction** and is the
-> right approach (it is how Viessmann2MQTT reads it), but it must be confirmed on
-> the actual unit. If the device NAKs the block read, drop `length:` to 1 for a
-> code-only sensor.
+**Error history is catalog-driven, not a single hardcoded address.** A unit may
+not keep its fault log at `0x7507` at all: VScotHO1_72 exposes its log as the
+per-slot datapoints `FehlerHisFA01..20` at `0x7590..0x763B` (9 bytes each) and
+has **no** event at `0x7507`. `gen_catalog.py` therefore emits one
+`error_history` entity per `FehlerHis*` slot at its own address — `FA01` →
+"Letzter Fehler", `FA02..20` → "Fehler NN" (disabled by default) — all under
+`entity_category: diagnostic`. When such per-slot datapoints exist they are
+authoritative and the generic `ecnsysEventType~Error` / `0x7507` slot is
+**suppressed**, so there is exactly one "Letzter Fehler". The `codes:` map is
+selected with `--error-code-set` from `scripts/fault_codes.py` (the single
+source of truth: `openv`, `vd200` (manual-verified, default), or `union`;
+openv-vs-VD200 disagreements are kept in `fault_codes.CONFLICTS`, not
+overwritten — see `NOTICE.md`). It maps
+the display-Stoerungscode space (byte[0]) only, not the GFA byte (`0x5738`), the
+LON alarm record, or the self-describing sensor-status enums.
+
+> **Hardware caveat (unresolved).** A **9-byte block read** per slot (the
+> `FehlerHis*` addresses above, or a block at `0x7507` on units that use it) is a
+> different transaction than the per-byte reads that NAKed on the reference unit,
+> and is how Viessmann2MQTT reads it — but it must be confirmed on the actual
+> unit. If the device NAKs the block read, drop `length:` to 1 for a code-only
+> sensor.
 
 ---
 
@@ -330,6 +354,17 @@ units and borders.
   still preferable where clean labels matter. The catalog generator always prints
   the technical id alongside the friendly name, so the id is never lost.
 
+**Enum *option* labels are a separate, mostly-present source.** The above is about
+entity *names*. The readable text for individual enum **values** lives in
+`ecnEventValueType.Description` (a pre-resolved string needing no Textresource
+lookup — e.g. `0x00` → "OK", `0x02` → "Unterbrechung"), which the generator now
+reads. ~87% of this device's enum option values carry a Description; the rest are
+genuinely blank in the export and fall back to the resolved token stem then hex.
+So an enum/`select`'s `options:` are human-readable even though the entity name
+beside them may be a derived snake_case label. (The width an enum option reads is
+derived from its values, not the block length, so a 1-byte status field inside a
+larger block reads 1 byte at its `BytePosition`.)
+
 ---
 
 ## 9. Per-entity polling
@@ -352,7 +387,7 @@ The gates are **sequential and non-substituting** — passing an earlier gate do
 not vouch for a later one:
 
 ```
-host C++ : decode/encode tests           tests/native/test_decode.cpp   (75 checks)
+host C++ : decode/encode tests           tests/native/test_decode.cpp   (379 checks)
 host C++ : VS2 transaction harness        tests/native/test_vs2_transaction.cpp (8/8)
 host C++ : adapter / GWG compile-proofs   adapter_compile_proof.cpp, proof_gwg_poke.cpp
 python   : validators + catalog generator tests/unit/  (pytest)
@@ -366,7 +401,7 @@ run      : esphome run       (real heater — the definitive gate)
 Two coverage layers compose to give wire→decode→value end-to-end without the
 ESPHome framework:
 
-- **`test_decode.cpp` (75 checks)** locks down the *value* layer — the
+- **`test_decode.cpp` (379 checks)** locks down the *value* layer — the
   precision fix, BCD/datetime, sign-extend, encode round-trips, `raw_fits`
   boundaries.
 - **The VS2 transaction harness (8/8)** locks down the *transaction* layer the
@@ -411,11 +446,7 @@ Two limits worth re-stating because they are recurring footguns:
 - **`Convert4BytesToFloat`** (IEEE-754 datapoints) is not yet a converter; such
   datapoints are surfaced by the catalog generator as commented hints rather than
   decoded wrongly. Note this is *not* the same as `sec2hour`, which reads 4 bytes
-  as a `uint32`.
-- **Error-history block read** at `0x7507` needs hardware confirmation on units
-  where per-byte reads NAK (§7).
-- **BCD date/datetime and 56-byte Schaltzeiten (PhaseType) decoders** — reference
-  logic is in `Viessmann2MQTT.py`; not yet wired as converters/decoders.
-- **`CODEOWNERS`** still carries a placeholder handle.
-- **Cut a stable tag** once a fully-working baseline is locked in (currently
-  tracking `ref: main`).
+  as a `uint32`. (`RotateBytes` and `HexByte2UTF16Byte` were previously in this
+  commented-hint set and are now handled — the big-endian `rotatebytes` converter
+  and the `type: utf16` text_sensor, both host-tested in `test_decode.cpp`. Per
+  §4, the `rotatebytes` preset still wants a `tests/unit/test_validators.py` case.)

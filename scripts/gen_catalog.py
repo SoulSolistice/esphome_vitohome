@@ -72,6 +72,12 @@ import xml.etree.ElementTree as ET
 from collections import defaultdict
 from dataclasses import dataclass, field
 
+# fault_codes.py is a sibling module (this file is run as a script, so its own
+# directory may not be on sys.path when invoked from elsewhere). Add it, then
+# import the fault-code maps from the single source of truth.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import fault_codes  # noqa: E402  (sibling import after path insert)
+
 # --- conversion -> vitohome converter --------------------------------------
 # Maps the Vitosoft ``Conversion`` name to a vitohome ``converter:`` plus a
 # "kind" used for platform/poll decisions. None converter means "numeric but no
@@ -92,6 +98,7 @@ CONVERSION_MAP = {
     "Mult10": ("mult10", PLAIN),
     "Mult100": ("mult100", PLAIN),
     "Sec2Hour": ("sec2hour", COUNTER),
+    "RotateBytes": ("rotatebytes", PLAIN),  # big-endian 2-byte values -> decode_scaled_be
     "Sec2Minute": (None, COUNTER),  # no preset; emit noconv + note
 }
 
@@ -105,7 +112,6 @@ NON_NUMERIC_CONVERSIONS = {
     "Phone2BCD": "string -> custom decode",
     "Convert4BytesToFloat": "IEEE-754 float -> not yet supported by vitohome",
     "HexToFloat": "IEEE-754 float -> not yet supported by vitohome",
-    "RotateBytes": "byte array -> custom decode",
     "MultOffsetFloat": "float -> custom decode",
 }
 
@@ -179,57 +185,15 @@ _CULTURES = {"de": "1", "en": "2", "fr": "3", "it": "4", "ru": "5", "nl": "6"}
 _IDENT_ADDRESSES = (0x00F8, 0x00F9, 0x00FA, 0x00FB)
 
 # Canonical Vitotronic error-history block address (10 slots x 9 bytes at 0x7507,
-# slot index at 0x7561). Used as a fallback signal if the token isn't matched.
+# slot index at 0x7561). Used as a fallback only; per-slot FehlerHis* tokens take
+# precedence (see _is_error_history) because some units (e.g. VScotHO1_72) carry
+# their fault log at FehlerHisFA01..20 (0x7590..0x763B) and have NO 0x7507 event.
 _ERROR_HISTORY_ADDRESS = 0x7507
 
-# Built-in openv/community error-code map for VScotHO1-class Vitotronic units.
-# The Vitosoft export ships NO code map for the 0x7507 slot, so this is sourced
-# from the openv wiki / the project's own example config and is a sensible
-# DEFAULT only -- verify/extend for the specific unit. Disable with
-# --no-error-codes to emit an empty placeholder instead.
-OPENV_ERROR_CODES = {
-    0x00: "Regelbetrieb (kein Fehler)",
-    0x0F: "Wartung (fuer Reset Codieradresse 24 auf 0 stellen)",
-    0x10: "Kurzschluss Aussentemperatursensor",
-    0x18: "Unterbrechung Aussentemperatursensor",
-    0x19: "Unterbrechung Kommunikation Aussentemperatursensor (Funk)",
-    0x20: "Kurzschluss Vorlauftemperatursensor",
-    0x21: "Kurzschluss Ruecklauftemperatursensor",
-    0x28: "Unterbrechung Vorlauftemperatursensor",
-    0x29: "Unterbrechung Ruecklauftemperatursensor",
-    0x30: "Kurzschluss Kesseltemperatursensor",
-    0x38: "Unterbrechung Kesseltemperatursensor",
-    0x40: "Kurzschluss Vorlauftemperatursensor M2",
-    0x42: "Unterbrechung Vorlauftemperatursensor M2",
-    0x50: "Kurzschluss Speichertemperatursensor",
-    0x58: "Unterbrechung Speichertemperatursensor",
-    0x92: "Solar: Kurzschluss Kollektortemperatursensor",
-    0x93: "Solar: Kurzschluss Sensor S3",
-    0x94: "Solar: Kurzschluss Speichertemperatursensor",
-    0x9A: "Solar: Unterbrechung Kollektortemperatursensor",
-    0x9B: "Solar: Unterbrechung Sensor S3",
-    0x9C: "Solar: Unterbrechung Speichertemperatursensor",
-    0x9E: "Solar: Zu geringer Ertrag / Durchfluss",
-    0xB0: "Kurzschluss Abgastemperatursensor",
-    0xB1: "Unterbrechung Abgastemperatursensor",
-    0xBA: "Kommunikationsfehler Erweiterung Mischerkreis M2",
-    0xBC: "Kommunikationsfehler Fernbedienung Vitotrol A1",
-    0xBD: "Kommunikationsfehler Fernbedienung Vitotrol M2",
-    0xBE: "Falsche Codierung Fernbedienung",
-    0xC2: "Kommunikationsfehler Erweiterung extern (LON)",
-    0xC5: "Kommunikationsfehler drehzahlgeregelte Pumpe",
-    0xCD: "Kommunikationsfehler Vitocom",
-    0xD1: "Brennerstoerung",
-    0xDA: "Kurzschluss Raumtemperatursensor A1",
-    0xDB: "Kurzschluss Raumtemperatursensor M2",
-    0xE5: "Interner Fehler (Flammenverstaerker)",
-    0xF0: "Interner Fehler (Regelung tauschen)",
-    0xF1: "Abgastemperaturbegrenzer ausgeloest",
-    0xF2: "Uebertemperatur",
-    0xF4: "Flammensignal fehlt / Brenner stoert",
-    0xFD: "Fehler Brennersteuergeraet / Codierung",
-    0xFF: "Kommunikationsfehler Brennersteuergeraet",
-}
+# Fault-code maps (OPENV / VITOTRONIC_VD200 / UNION) and the openv-vs-VD200
+# CONFLICTS live in fault_codes.py -- a single source of truth, imported above as
+# `fault_codes`. The --error-code-set flag selects which map is attached to
+# error_history entities (see _error_history_lines / generate).
 
 
 @dataclass
@@ -237,6 +201,12 @@ class EventValue:
     name: str = ""
     enum_address_value: int | None = None
     enum_replace_value: str = ""
+    # ecnEventValueType.Description: the ALREADY-RESOLVED human-readable label
+    # (e.g. "OK", "Vitodens mit Vitotronic 100 HC1"). Unlike enum_replace_value /
+    # name, this needs no Textresource lookup -- and this export ships no
+    # eventvaluetype strings in Textresource, so it is the only reliable label
+    # source for enum options. Preferred first by _enum_options().
+    description: str = ""
     unit: str = ""
     lower: str = ""
     upper: str = ""
@@ -539,6 +509,7 @@ class Catalog:
             name=_resolve_label(f.get("Name", ""), self._text),
             enum_address_value=_intval(f.get("EnumAddressValue")),
             enum_replace_value=_resolve_label(f.get("EnumReplaceValue", ""), self._text),
+            description=(f.get("Description", "") or "").strip(),
             unit=_resolve_unit(f.get("Unit", ""), self._text),
             lower=f.get("LowerBorder", "") or "",
             upper=f.get("UpperBorder", "") or "",
@@ -669,7 +640,7 @@ class Catalog:
                 fm = [t for t in f0_aware if t["f0"] <= f0 <= (t["f0t"] if t["f0t"] is not None else t["f0"])]
                 if fm:
                     return fm[0]["token"], why + " + F0 match" + note
-            generic = sorted(pool, key=lambda t: (t["f0"] if t["f0"] is not None else -1))
+            generic = sorted(pool, key=lambda t: t["f0"] if t["f0"] is not None else -1)
             tail = " (F0 not provided; generic variant)" if f0 is None else " (no F0 match; generic variant)"
             return generic[0]["token"], why + tail + note
         return pool[0]["token"], why + note
@@ -778,13 +749,33 @@ def _poll_for(ev: Event, conv_kind: str) -> int:
 
 
 def _enum_options(ev: Event) -> list:
-    """Return [(raw_value, label)] from the event's value types, if any."""
+    """Return [(raw_value, label)] from the event's value types, if any.
+
+    Label priority: Description (pre-resolved German, column O of the Vitosoft
+    export) -> resolved EnumReplaceValue -> Name -> hex. Description is first
+    because this export ships no eventvaluetype strings in Textresource, so the
+    token paths resolve only to a trimmed stem (e.g. "Allgemein_Sensorstatus~0")
+    while Description already holds "OK". ~87% of this device's enum option
+    values carry a Description; the rest fall through to the old behaviour.
+    """
     out = []
     for v in ev.values:
         if v.enum_address_value is not None:
-            label = v.enum_replace_value or v.name or f"0x{v.enum_address_value:02X}"
+            label = v.description or v.enum_replace_value or v.name or f"0x{v.enum_address_value:02X}"
             out.append((v.enum_address_value, label))
     return out
+
+
+def _enum_read_length(enum_opts: list, fallback: int) -> int:
+    """Minimal byte width that holds every enum value. A status enum living in a
+    larger block (e.g. SM1_Sensor_*_Status_GWG, a 1-byte field inside the 20-byte
+    0xCF90 block) must read 1 byte at its BytePosition, not the clamped block
+    width -- otherwise the 4-byte read never matches 0/1/2/128. Derive from the
+    values; fall back to the clamped length only if there are none."""
+    if not enum_opts:
+        return fallback
+    hi = max(v for v, _ in enum_opts)
+    return 1 if hi < 0x100 else (2 if hi < 0x10000 else fallback)
 
 
 def _unit_for(ev: Event) -> str:
@@ -897,6 +888,27 @@ def emit_entity(ev: Event, profile: str):
             ],
         )
 
+    # UTF-16LE label (HexByte2UTF16Byte): editable heating-circuit names
+    # Beschriftung_HK1..3 (40 bytes = 20 chars). Emitted read-only here (display
+    # of the label); round-trip editing would need a `text:` platform with a
+    # UTF-16 encode path. Must precede the >4-byte comment fallback.
+    if ev.conversion == "HexByte2UTF16Byte":
+        if length > 40 or (length % 2) != 0:
+            return (
+                "comment",
+                [f"# {name} @ 0x{addr:04X}: HexByte2UTF16Byte length {length} (>40 or odd) -> custom decode"],
+            )
+        return (
+            "text_sensor",
+            [
+                "- platform: vitohome",
+                "  type: utf16",
+                f"  name: {_yaml_str(name)}",
+                addr_line,
+                f"  length: {length}",
+            ],
+        )
+
     # A field wider than 4 bytes can't go through the 1..4-byte scalar converters.
     if length > 4 and not is_bit and not enum_opts:
         return (
@@ -928,7 +940,7 @@ def emit_entity(ev: Event, profile: str):
         state_addr = COMMAND_STATE_ADDR.get(ev.address)
         if state_addr is not None:
             lines.append(
-                f"  state_address: 0x{state_addr:04X}" "  # live state read here; address above is the write/command target"
+                f"  state_address: 0x{state_addr:04X}  # live state read here; address above is the write/command target"
             )
         lines += [
             "  disabled_by_default: true",
@@ -1019,18 +1031,19 @@ def emit_entity(ev: Event, profile: str):
         return ("binary_sensor", lines)
 
     if enum_opts:
+        enum_len = _enum_read_length(enum_opts, num_length)
         lines += [
             "- platform: vitohome",
             "  type: enum",
             f"  name: {_yaml_str(name)}",
             addr_line,
-            f"  length: {num_length}",
+            f"  length: {enum_len}",
             "  disabled_by_default: true",
             f"  update_interval: {poll}s",
             "  options:",
         ]
         for v, label in enum_opts:
-            lines.append(f"    0x{v:02X}: {_yaml_str(label)}")
+            lines.append(f"    0x{v:0{2 * enum_len}X}: {_yaml_str(label)}")
         return ("text_sensor", lines)
 
     # numeric sensor
@@ -1062,19 +1075,62 @@ def _is_identification(ev: Event) -> bool:
 
 
 def _is_error_history(ev: Event) -> bool:
-    """The most-recent error slot (ecnsysEventType~Error), not the index slot."""
+    """An error-history slot: the generic ecnsysEventType~Error slot, OR a
+    device-specific FehlerHis* slot (e.g. FehlerHisFA01..20 at 0x7590..0x763B on
+    VScotHO1_72, which has NO 0x7507 event), OR the hardcoded 0x7507 fallback.
+    The 'Index'/pointer slot is excluded."""
     if ev.address is None:
         return False
-    tok = ev.token or ""
-    if "ecnsysEventType" in tok and "Error" in tok and "Index" not in tok:
+    tok = ev.token or ev.tech or ev.name or ""
+    if "Index" in tok or "Zeiger" in tok:
+        return False
+    if "ecnsysEventType" in tok and "Error" in tok:
         return True
-    return ev.address == _ERROR_HISTORY_ADDRESS and "Index" not in tok
+    if re.search(r"FehlerHis", tok, re.I):
+        return True
+    return ev.address == _ERROR_HISTORY_ADDRESS
+
+
+_FEHLERHIS_SLOT_RE = re.compile(r"FehlerHis\w*?(\d{1,2})\b", re.I)
+
+
+def _error_history_slot(ev: Event) -> int | None:
+    """Slot number for a FehlerHis* token (FehlerHisFA01 -> 1), else None."""
+    m = _FEHLERHIS_SLOT_RE.search(ev.token or ev.tech or ev.name or "")
+    return int(m.group(1)) if m else None
 
 
 def _is_mode_select(ev: Event) -> bool:
     return ev.access_type in (2, 3) and bool(
         re.search(r"Betriebsart|BedienteilBA|BedienBetriebsart", ev.token or ev.tech or "", re.I)
     )
+
+
+# Fault / status / health registers. Tagged entity_category: diagnostic so they
+# group under Diagnostics in Home Assistant rather than mixing with measurements.
+# Covers: fault bytes (GFA 0x5738, EEPROM/I2C), the LON alarm record (0xA132),
+# sensor-status enums (TemperaturFehler_*, *Sensor*Status*, 0x089C.., 0xCF90),
+# collective-fault flags (Sammel*), and the system/maintenance status enums.
+_DIAGNOSTIC_RE = re.compile(
+    r"Fehler|Stoer|St[oö]r|Status|Sensor.*Status|SensorStatus|Alarm|EEPROM|I2C|"
+    r"Diagnos|Sammel|Wartung|Quitt|TemperaturFehler|ecnStatusEventType",
+    re.I,
+)
+
+
+def _is_diagnostic(ev: Event) -> bool:
+    return bool(_DIAGNOSTIC_RE.search(ev.token or ev.tech or ev.name or ""))
+
+
+def _inject_diagnostic(lines: list[str]) -> list[str]:
+    """Add entity_category: diagnostic once, if not already present."""
+    if any(ln.strip().startswith("entity_category:") for ln in lines):
+        return lines
+    for idx, ln in enumerate(lines):
+        if ln.startswith("  name:"):
+            lines.insert(idx + 1, "  entity_category: diagnostic")
+            return lines
+    return lines
 
 
 def _device_id_lines(oid: str) -> list[str]:
@@ -1089,27 +1145,43 @@ def _device_id_lines(oid: str) -> list[str]:
     ]
 
 
-def _error_history_lines(ev: Event, oid: str, codes: bool) -> list[str]:
-    """The most-recent error slot as a 9-byte block with full timestamp decode.
-    The Vitosoft block is 90 bytes (10 slots x 9); this reads slot 0 only,
-    matching the component's error_history type and the project example."""
-    lines = [
-        "# Error history. Full block is 90 bytes (10 slots x 9) at this address,",
-        "# plus a slot index at 0x7561; this reads the most-recent slot only.",
+def _error_history_lines(ev: Event, oid: str, codes_map: dict | None, set_name: str = "") -> list[str]:
+    """One error-history slot as a 9-byte block (code byte + 8-byte BCD
+    timestamp), decoded by the component's error_history type. For per-slot
+    FehlerHis* tokens, the slot's own address and number are used (slot 1 ->
+    "Letzter Fehler", later slots -> "Fehler N", disabled by default). The legacy
+    0x7507 path reads slot 0 of the 90-byte block. ``codes_map`` is the selected
+    fault-code map (or None to emit a placeholder); ``set_name`` labels it."""
+    slot = _error_history_slot(ev)
+    blen = ev.byte_length or ev.block_length or 9
+    if slot is not None:
+        name = "Letzter Fehler" if slot <= 1 else f"Fehler {slot:02d}"
+        lines = [f"# Error-history slot {slot} (FehlerHis*): code byte + 8-byte BCD timestamp."]
+    else:
+        name = "Letzter Fehler"
+        lines = [
+            "# Error history. Full block is 90 bytes (10 slots x 9) at this address,",
+            "# plus a slot index at 0x7561; this reads the most-recent slot only.",
+        ]
+    lines += [
         "# If the device NAKs the 9-byte block read, drop length to 1 (code only).",
         "- platform: vitohome",
         "  type: error_history",
-        '  name: "Letzter Fehler"',
+        f"  name: {_yaml_str(name)}",
         f"  id: {oid}",
         f"  address: 0x{ev.address:04X}",
-        "  length: 9",
+        f"  length: {blen if blen in (1, 9) else 9}",
         '  icon: "mdi:alert-circle"',
-        f"  update_interval: {POLL_ERROR}s",
+        "  entity_category: diagnostic",
     ]
-    if codes:
-        lines.append("  # openv/community code map (DEFAULT - verify for this unit):")
+    if slot is not None and slot > 1:
+        lines.append("  disabled_by_default: true")
+    lines.append(f"  update_interval: {POLL_ERROR}s")
+    if codes_map:
+        label = f"'{set_name}' set" if set_name else "set"
+        lines.append(f"  # Fault-code map ({label}) - DEFAULT, verify for this unit (see fault_codes.CONFLICTS):")
         lines.append("  codes:")
-        for code, text in sorted(OPENV_ERROR_CODES.items()):
+        for code, text in sorted(codes_map.items()):
             lines.append(f"    0x{code:02X}: {_yaml_str(text)}")
     else:
         lines.append('  # codes: { 0x00: "kein Fehler", ... }  # add a code->text map')
@@ -1181,13 +1253,23 @@ def generate(
     emit_device_id: bool = True,
     emit_error_history: bool = True,
     error_codes: bool = True,
+    error_code_set: str = "vd300",
     reachable_only: bool = True,
 ) -> str:
     events = catalog.events_for(device)
     if not events:
         raise SystemExit(
-            f"device {device!r} not found or has no events. " "Run with --list-devices to see available device tokens."
+            f"device {device!r} not found or has no events. Run with --list-devices to see available device tokens."
         )
+
+    # When the device defines its own per-slot fault log (FehlerHis*), those are
+    # authoritative; suppress the generic ecnsysEventType~Error / 0x7507 slot so
+    # we don't emit a duplicate "Letzter Fehler" (and a possibly-phantom 0x7507).
+    has_fehlerhis = any(_error_history_slot(ev) is not None for ev in events)
+
+    # Resolve the fault-code map once: the chosen set, or None when codes are off.
+    codes_map = fault_codes.SETS.get(error_code_set) if error_codes else None
+    codes_set_name = error_code_set if error_codes else ""
 
     inc = re.compile(include_re) if include_re else None
     exc = re.compile(exclude_re) if exclude_re else None
@@ -1212,17 +1294,24 @@ def generate(
         buckets["text_sensor"].extend("  " + ln if ln else "" for ln in _device_id_lines(oid))
         kept += 1
 
-    for ev in sorted(events, key=lambda e: (e.address or 0)):
+    for ev in sorted(events, key=lambda e: e.address or 0):
         # Special datapoints are handled independently of profile/name filters.
         if emit_device_id and _is_identification(ev):
             continue  # represented by the device_id entity above
         if emit_error_history and _is_error_history(ev):
+            slot = _error_history_slot(ev)
+            # Device-specific FehlerHis* slots win over the generic 0x7507 slot.
+            if has_fehlerhis and slot is None:
+                continue
             if ev.address is not None and ev.address in seen_addr:
                 continue
             if ev.address is not None:
                 seen_addr.add(ev.address)
-            oid = _make_obj_id("letzter_fehler", used_ids)
-            buckets["text_sensor"].extend("  " + ln if ln else "" for ln in _error_history_lines(ev, oid, error_codes))
+            seed = "letzter_fehler" if not slot or slot <= 1 else f"fehler_{slot:02d}"
+            oid = _make_obj_id(seed, used_ids)
+            buckets["text_sensor"].extend(
+                "  " + ln if ln else "" for ln in _error_history_lines(ev, oid, codes_map, codes_set_name)
+            )
             kept += 1
             continue
 
@@ -1252,6 +1341,9 @@ def generate(
         # Writable operating-mode select: prepend the hardware caveat.
         if platform == "select" and _is_mode_select(ev):
             lines = _mode_select_caveat() + lines
+        # Fault / status / health registers -> Diagnostics category.
+        if platform in ("sensor", "binary_sensor", "text_sensor") and _is_diagnostic(ev):
+            lines = _inject_diagnostic(lines)
         # Carry the stable technical identifier as id: (the join key back to
         # Viessmann), inserted right after the entity's name.
         oid = _make_obj_id(ev.tech or ev.name, used_ids)
@@ -1324,13 +1416,21 @@ def main(argv=None):
         "--error-history",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="emit a 'Letzter Fehler' error_history text_sensor for the 0x7507 slot (default: on)",
+        help="emit error_history text_sensors for the FehlerHis* slots (or 0x7507 fallback) (default: on)",
     )
     p.add_argument(
         "--error-codes",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="include the built-in openv error-code map in the error_history entity (default: on)",
+        help="attach a fault-code map (see --error-code-set) to error_history entities (default: on)",
+    )
+    p.add_argument(
+        "--error-code-set",
+        choices=sorted(fault_codes.SETS),
+        default="vd300",
+        help="which fault-code map to attach: vd300 (Vitodens 300-W B3HA = VScotHO1_72, default), "
+        "vd200 (Vitodens 200 WB2A), openv (generic), or union (all, most-specific wins); "
+        "fault-code semantics are device-variant-specific -- verify on the unit",
     )
     p.add_argument(
         "--reachable-only",
@@ -1389,6 +1489,7 @@ def main(argv=None):
         emit_device_id=args.device_id,
         emit_error_history=args.error_history,
         error_codes=args.error_codes,
+        error_code_set=args.error_code_set,
         reachable_only=args.reachable_only,
     )
     if args.out:

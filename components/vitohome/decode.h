@@ -47,6 +47,19 @@ inline uint64_t read_le(const uint8_t *data, uint8_t len) {
   return v;
 }
 
+// Big-endian assembly for Vitosoft's "RotateBytes" conversion (the same bytes
+// read most-significant-first): data[0] << 8*(len-1) | ... | data[len-1].
+// Used by e.g. GWG_Codierstecker_Kennziffer (0x1040) and VSKO_Scot_NEC_* on
+// VScotHO1_72. Sign extension afterwards is byte-order-agnostic (it operates on
+// the assembled len-byte integer), so sign_extend_le() is reused as-is.
+inline uint64_t read_be(const uint8_t *data, uint8_t len) {
+  uint64_t v = 0;
+  for (uint8_t i = 0; i < len && i < 8; i++) {
+    v = (v << 8) | static_cast<uint64_t>(data[i]);
+  }
+  return v;
+}
+
 // Two's-complement sign extension of a little-endian raw value of `len`
 // bytes. len in [1,8]; len >= 8 returns the value unchanged.
 inline int64_t sign_extend_le(uint64_t raw, uint8_t len) {
@@ -65,6 +78,17 @@ inline bool decode_scaled(const uint8_t *data, std::size_t data_len, uint8_t len
                           double *out) {
   if (data == nullptr || len == 0 || len > 8 || data_len < len) return false;
   const uint64_t raw = read_le(data, len);
+  const double v = is_signed ? static_cast<double>(sign_extend_le(raw, len)) : static_cast<double>(raw);
+  *out = v * scale;
+  return true;
+}
+
+// Big-endian counterpart of decode_scaled for Vitosoft "RotateBytes" datapoints.
+// Identical contract; only the byte assembly differs (read_be).
+inline bool decode_scaled_be(const uint8_t *data, std::size_t data_len, uint8_t len, bool is_signed, double scale,
+                             double *out) {
+  if (data == nullptr || len == 0 || len > 8 || data_len < len) return false;
+  const uint64_t raw = read_be(data, len);
   const double v = is_signed ? static_cast<double>(sign_extend_le(raw, len)) : static_cast<double>(raw);
   *out = v * scale;
   return true;
@@ -394,6 +418,42 @@ inline int decode_ascii(const uint8_t *data, std::size_t data_len, uint8_t len, 
     const uint8_t c = data[i];
     if (c == 0x00) break;  // NUL terminates the string
     out[n++] = (c >= 0x20 && c <= 0x7E) ? static_cast<char>(c) : '?';
+  }
+  while (n > 0 && out[n - 1] == ' ') n--;  // trim trailing space padding
+  out[n] = '\0';
+  return static_cast<int>(n);
+}
+
+// Decode `len` bytes of UTF-16LE (Vitosoft "HexByte2UTF16Byte") to UTF-8.
+// Used by the editable heating-circuit labels Beschriftung_HK1..3 (0x7360..,
+// 40 bytes = 20 code units). `len` must be even. Each code unit is data[2i] |
+// data[2i+1]<<8; 0x0000 terminates and 0xFFFF (empty-slot fill) is skipped.
+// BMP only -- a surrogate (0xD800..0xDFFF) is emitted as '?'. Trailing spaces
+// are trimmed. out_cap must allow up to 3 UTF-8 bytes per unit + NUL. Returns
+// the byte count written (excluding the NUL), or -1 on bad args.
+inline int decode_utf16(const uint8_t *data, std::size_t data_len, uint8_t len, char *out, std::size_t out_cap) {
+  if (data == nullptr || out == nullptr || out_cap == 0) return -1;
+  if (len == 0 || (len & 1) != 0 || data_len < len) return -1;
+  std::size_t n = 0;
+  for (uint8_t i = 0; i + 1 < len; i += 2) {
+    const uint16_t cu = static_cast<uint16_t>(data[i] | (data[i + 1] << 8));
+    if (cu == 0x0000) break;     // NUL terminates
+    if (cu == 0xFFFF) continue;  // empty-slot fill
+    uint32_t cp = cu;
+    if (cu >= 0xD800 && cu <= 0xDFFF) cp = '?';  // lone surrogate -> placeholder
+    if (cp < 0x80) {
+      if (n + 1 >= out_cap) break;
+      out[n++] = static_cast<char>(cp);
+    } else if (cp < 0x800) {
+      if (n + 2 >= out_cap) break;
+      out[n++] = static_cast<char>(0xC0 | (cp >> 6));
+      out[n++] = static_cast<char>(0x80 | (cp & 0x3F));
+    } else {
+      if (n + 3 >= out_cap) break;
+      out[n++] = static_cast<char>(0xE0 | (cp >> 12));
+      out[n++] = static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+      out[n++] = static_cast<char>(0x80 | (cp & 0x3F));
+    }
   }
   while (n > 0 && out[n - 1] == ' ') n--;  // trim trailing space padding
   out[n] = '\0';

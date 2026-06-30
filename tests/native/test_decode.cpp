@@ -414,6 +414,85 @@ static void test_clock_helpers() {
   CHECK(!encode_datetime_bcd(2026, 6, 28, 6, 24, 30, 45, buf));  // hour 24
 }
 
+// --- RotateBytes: read_be / decode_scaled_be ------------------------------
+static void test_rotate_bytes() {
+  // Big-endian assembly is MSB-first: {0x12,0x34} -> 0x1234 (vs read_le 0x3412).
+  const uint8_t two[] = {0x12, 0x34};
+  CHECK(read_be(two, 2) == 0x1234);
+  CHECK(read_le(two, 2) == 0x3412);  // sanity: the two differ
+  const uint8_t one[] = {0x96};
+  CHECK(read_be(one, 1) == 0x96);  // single byte identical to LE
+
+  double v = 0;
+  // GWG_Codierstecker_Kennziffer-style 2-byte unsigned coding number.
+  CHECK(decode_scaled_be(two, 2, 2, false, 1.0, &v) && close_to(v, 4660.0));
+  // Signed BE: {0xFF,0xD8} = 0xFFD8 = -40 as int16, scaled 0.1 -> -4.0.
+  const uint8_t neg[] = {0xFF, 0xD8};
+  CHECK(decode_scaled_be(neg, 2, 2, true, 0.1, &v) && close_to(v, -4.0));
+  // Short payload rejected.
+  CHECK(!decode_scaled_be(two, 1, 2, false, 1.0, &v));
+}
+
+// --- HexByte2UTF16Byte: decode_utf16 --------------------------------------
+static void test_utf16() {
+  char buf[64];
+  // "Wohnzimmer" as UTF-16LE (ASCII chars, low byte then 0x00).
+  const uint8_t s1[] = {0x57, 0, 0x6F, 0, 0x68, 0, 0x6E, 0, 0x7A, 0, 0x69, 0, 0x6D, 0, 0x6D, 0, 0x65, 0, 0x72, 0};
+  CHECK(decode_utf16(s1, sizeof(s1), sizeof(s1), buf, sizeof(buf)) == 10);
+  CHECK(std::strcmp(buf, "Wohnzimmer") == 0);
+
+  // 0x0000 terminates; trailing garbage ignored.
+  const uint8_t s2[] = {0x41, 0, 0x42, 0, 0x00, 0, 0x5A, 0};
+  CHECK(decode_utf16(s2, sizeof(s2), sizeof(s2), buf, sizeof(buf)) == 2);
+  CHECK(std::strcmp(buf, "AB") == 0);
+
+  // 0xFFFF empty-slot fill is skipped; trailing space trimmed.
+  const uint8_t s3[] = {0x48, 0, 0x4B, 0, 0x31, 0, 0x20, 0, 0xFF, 0xFF};
+  CHECK(decode_utf16(s3, sizeof(s3), sizeof(s3), buf, sizeof(buf)) == 3);
+  CHECK(std::strcmp(buf, "HK1") == 0);
+
+  // Latin-1: 'ü' U+00FC -> UTF-8 0xC3 0xBC.
+  const uint8_t s4[] = {0x42, 0, 0xFC, 0};
+  CHECK(decode_utf16(s4, sizeof(s4), sizeof(s4), buf, sizeof(buf)) == 3);
+  CHECK((unsigned char)buf[0] == 'B' && (unsigned char)buf[1] == 0xC3 && (unsigned char)buf[2] == 0xBC);
+
+  // Odd byte length and short payload rejected.
+  CHECK(decode_utf16(s1, sizeof(s1), 5, buf, sizeof(buf)) == -1);
+  CHECK(decode_utf16(s1, 2, 4, buf, sizeof(buf)) == -1);
+}
+
+// --- Schaltzeiten interop with philippoo66 optolink-splitter ---------------
+// Cross-checks the per-switch-point byte format against schedvdens / byte_to_hhmm
+// in optolink-splitter/utils.py (hh = b>>3, mm = (b&7)*10, 0xFF = unused), so a
+// program written here is byte-identical to what that project reads.
+static void test_schaltzeiten_interop() {
+  // byte_to_hhmm reference vectors (value -> "HH:MM").
+  struct {
+    uint8_t b;
+    uint8_t h, m;
+  } vec[] = {
+      {0x00, 0, 0},    // 00:00
+      {0x31, 6, 10},   // 49 -> 06:10
+      {0x2D, 5, 50},   // 45 -> 05:50
+      {0xB0, 22, 0},   // 176 -> 22:00
+      {0xBD, 23, 50},  // 189 -> 23:50  (max valid; minute step 50 = low-3-bits 5)
+  };
+  for (auto &t : vec) {
+    uint8_t h = 0, m = 0;
+    timebyte_to_hhmm(t.b, &h, &m);
+    CHECK(h == t.h && m == t.m);
+    uint8_t enc = 0;
+    CHECK(hhmm_to_timebyte(t.h, t.m, &enc) && enc == t.b);  // round-trip
+  }
+  CHECK(!timebyte_active(0xFF));  // 0xFF is the unused sentinel
+
+  // A full day {ON=06:10, OFF=22:00} renders as schedvdens would print it.
+  char out[48];
+  const uint8_t day[] = {0x31, 0xB0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+  CHECK(decode_schaltzeiten_day(day, sizeof(day), out, sizeof(out)) == 11);
+  CHECK(std::strcmp(out, "06:10-22:00") == 0);
+}
+
 int main() {
   test_read_le();
   test_sign_extend();
@@ -427,6 +506,9 @@ int main() {
   test_datetime();
   test_masked_bit();
   test_ascii();
+  test_rotate_bytes();
+  test_utf16();
+  test_schaltzeiten_interop();
   test_format_raw_dump();
 
   std::printf("\n%d checks, %d failure(s)\n", g_checks, g_failures);

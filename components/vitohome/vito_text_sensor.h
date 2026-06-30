@@ -15,6 +15,7 @@ enum class TextSensorType : uint8_t {
   ERROR_HISTORY,  // 9-byte error slot: [0]=code, [1..8]=DateTimeBCD
   DEVICE_ID,      // no bus reads of its own — fed by the hub's identification
   ASCII,          // byte-array-as-string (HexByte2AsciiByte): Sachnummer etc.
+  UTF16,          // UTF-16LE byte-string (HexByte2UTF16Byte): Beschriftung_HK1..3
   SCAN_RESULT,    // no bus reads of its own — fed by the hub's raw scan console
 };
 
@@ -36,6 +37,7 @@ class VitoTextSensor : public text_sensor::TextSensor, public Component, public 
   void publish_enum_(const uint8_t *data, uint8_t len);
   void publish_error_history_(const uint8_t *data, uint8_t len);
   void publish_ascii_(const uint8_t *data, uint8_t len);
+  void publish_utf16_(const uint8_t *data, uint8_t len);
 
   TextSensorType type_{TextSensorType::RAW_HEX};
   std::vector<std::pair<uint32_t, const char *>> options_;

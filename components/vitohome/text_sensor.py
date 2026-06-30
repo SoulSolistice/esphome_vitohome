@@ -35,6 +35,7 @@ TEXT_SENSOR_TYPES = {
     "error_history": TextSensorType.ERROR_HISTORY,
     "device_id": TextSensorType.DEVICE_ID,
     "ascii": TextSensorType.ASCII,
+    "utf16": TextSensorType.UTF16,
     "scan_result": TextSensorType.SCAN_RESULT,
 }
 
@@ -96,6 +97,13 @@ CONFIG_SCHEMA = cv.typed_schema(
                 # Byte-string field width (Sachnummer 7, Herstellnummer 16).
                 # No universal default, so require it; capped at one P300 read.
                 cv.Required(CONF_LENGTH): cv.int_range(min=1, max=32),
+            }
+        ),
+        "utf16": _addressed(
+            {
+                # UTF-16LE label width in BYTES (Beschriftung_HK* = 40 = 20 chars).
+                # Must be even; capped at one P300 read.
+                cv.Required(CONF_LENGTH): cv.int_range(min=2, max=40),
             }
         ),
     },

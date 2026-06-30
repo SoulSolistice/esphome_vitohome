@@ -31,7 +31,9 @@ void VitoSensor::handle_response(const ResponseView &response) {
     ok = static_cast<uint8_t>(this->extract_byte_) < have &&
          decode_scaled(data + this->extract_byte_, 1, 1, this->signed_, this->scale_, &value);
   } else {
-    ok = decode_scaled(data, have, this->datapoint_.length(), this->signed_, this->scale_, &value);
+    ok = this->big_endian_
+             ? decode_scaled_be(data, have, this->datapoint_.length(), this->signed_, this->scale_, &value)
+             : decode_scaled(data, have, this->datapoint_.length(), this->signed_, this->scale_, &value);
   }
   if (!ok) {
     ESP_LOGW(TAG, "%s: response too short (have %u bytes, need %u)", this->datapoint_.name(), have,

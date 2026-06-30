@@ -14,6 +14,7 @@ from . import (
     CONF_VITOCONNECT_ID,
     CONVERTERS,
     VitoHomeComponent,
+    converter_big_endian,
     converter_scale,
     datapoint_expression,
     resolve_signed,
@@ -75,6 +76,7 @@ async def to_code(config):
 
     cg.add(var.set_datapoint(datapoint_expression(config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH])))
     cg.add(var.set_scale(converter_scale(config[CONF_CONVERTER])))
+    cg.add(var.set_big_endian(converter_big_endian(config[CONF_CONVERTER])))
     cg.add(var.set_signed(resolve_signed(config)))
     if CONF_BYTE_OFFSET in config:
         cg.add(var.set_extract_byte(config[CONF_BYTE_OFFSET]))
