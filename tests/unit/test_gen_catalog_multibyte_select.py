@@ -40,6 +40,7 @@ def _enum_value(raw, label):
         enum_address_value=raw,
         enum_replace_value=label,
         name=label,
+        description="",
         unit="",
         lower="",
         upper="",
