@@ -1,0 +1,84 @@
+# ============================================================================
+# vitohome — heating-circuit climate proxy (device 0x20CB / VScotHO1)
+# ============================================================================
+#
+# Exposes heating circuit 1 as a Home Assistant climate (thermostat) card. The
+# boiler does its own weather-compensated control: the slider sets the *virtual
+# room setpoint*, and the boiler derives the Vorlauf target from that setpoint
+# plus the outside temperature through the heat curve (Neigung/Niveau). The card
+# is a thin proxy — it forwards the setpoint and Betriebsart and mirrors the
+# device read-back; it runs no control loop of its own.
+#
+# Betriebsart is exposed as custom presets. The preset rows bind the two value
+# spaces positionally: `write` is the command byte (0x2323 / BedienteilBA),
+# `read` is one or more state bytes (0x2301 / actual mode, which the boiler
+# panel and the schedule also update), and `mode` is the coarse OFF/HEAT the
+# card shows. Because read and write are different enums, a single select cannot
+# represent Betriebsart faithfully — the table can, with `name` free and the
+# read/write link authored in one place.
+#
+# Standalone for validation. Add your own network (the reference board uses
+# SPI-Ethernet / DM9051) + api/ota as in vscotho1_72.vitohome.yaml.
+
+substitutions:
+  vitohome_repo: "https://github.com/SoulSolistice/esphome_vitohome"
+  vitohome_ref: "main"
+
+esphome:
+  name: vitohome-climate
+
+esp32:
+  variant: esp32c3
+  board: esp32-c3-devkitm-1
+  framework:
+    type: esp-idf
+
+external_components:
+  - source:
+      type: git
+      url: ${vitohome_repo}
+      ref: ${vitohome_ref}
+    components: [vitohome]
+    refresh: 0s
+
+logger:
+  baud_rate: 0 # free the UART for Optolink
+
+uart:
+  id: optolink_uart
+  tx_pin: GPIO5
+  rx_pin: GPIO2
+  baud_rate: 4800
+  data_bits: 8
+  parity: EVEN
+  stop_bits: 2
+
+vitohome:
+  id: vito
+  uart_id: optolink_uart
+  protocol: P300
+  update_interval: 60s
+
+climate:
+  - platform: vitohome
+    name: "Heizkreis 1"
+    # Room setpoint the slider edits (read == write); the boiler applies it
+    # through the heat curve. 1-byte integer degC.
+    target_address: 0x2306
+    visual:
+      min_temperature: 3
+      max_temperature: 37
+      temperature_step: 1
+    # Betriebsart as presets. `write` bytes are the hardware-confirmed command
+    # round-trip set; the `read` (0x2301) bytes are partly predicted — confirm
+    # on the wire (use example/vitohome-scanner-raw.yaml) before relying on the
+    # panel-initiated state display.
+    operating_mode:
+      address: 0x2323 # write (command, BedienteilBA)
+      state_address: 0x2301 # read (actual mode the panel/schedule update)
+      presets:
+        - {name: "Normal", write: 0x04, read: [0x02], mode: heat}
+        - {name: "Reduziert", write: 0x03, read: [0x01], mode: heat}
+        - {name: "Heizen und Warmwasser", write: 0x02, read: [0x03], mode: heat}
+        - {name: "Nur Warmwasser", write: 0x01, read: [0x00], mode: "off"}
+        - {name: "Abschaltbetrieb", write: 0x00, read: [0x05], mode: "off"}

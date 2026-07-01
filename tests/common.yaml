@@ -196,6 +196,27 @@ text:
     name: "Test Schaltzeit Di"
     address: 0x2008
 
+# Weather-compensated heating-circuit proxy: slider writes the room setpoint,
+# Betriebsart is exposed as custom presets with a derived mode. Exercises the
+# climate platform so the CI compile builds vito_climate.cpp (and loads the
+# climate base). Addresses/bytes are arbitrary for a compile test.
+climate:
+  - platform: vitohome
+    name: "Test Heating Circuit"
+    target_address: 0x2306
+    visual:
+      min_temperature: 3
+      max_temperature: 37
+      temperature_step: 1
+    operating_mode:
+      address: 0x2323         # write (command)
+      state_address: 0x2301   # read (actual mode)
+      presets:
+        - {name: "Normal", write: 0x04, read: [0x02], mode: heat}
+        - {name: "Reduziert", write: 0x03, read: [0x01], mode: heat}
+        - {name: "Nur Warmwasser", write: 0x01, read: [0x00], mode: "off"}
+        - {name: "Abschaltbetrieb", write: 0x00, read: [0x05], mode: "off"}
+
 # Exercise the raw-lane public API (queue_raw_read / queue_raw_write) so the CI
 # compile builds it; the bytes/addresses are arbitrary, this never runs on real
 # hardware in CI.
