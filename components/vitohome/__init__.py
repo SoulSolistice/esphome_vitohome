@@ -31,6 +31,20 @@ _LOGGER = logging.getLogger(__name__)
 
 CODEOWNERS = ["@yourhandle"]  # TODO: replace with your actual GitHub handle
 DEPENDENCIES = ["uart"]
+# Every vito_*.cpp in this directory is always compiled, so each platform's
+# base component must be available even when the user's config declares no
+# entity of that type. AUTO_LOAD pulls the bases in (defining USE_<X> and
+# copying their headers) so the component builds regardless of which
+# platforms a given device config uses.
+AUTO_LOAD = [
+    "sensor",
+    "binary_sensor",
+    "text_sensor",
+    "number",
+    "select",
+    "text",
+    "climate",
+]
 MULTI_CONF = False
 
 CONF_VITOCONNECT_ID = "vitohome_id"
