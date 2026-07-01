@@ -164,6 +164,29 @@ void VitoHomeComponent::loop() {
   this->dispatch_next_();
 }
 
+void VitoHomeComponent::dispatch_raw_front_() {
+  const RawOp &op = this->raw_queue_.front();
+  this->raw_dp_ =
+      optolink::Datapoint(op.purpose == RawPurpose::SCAN ? "scan" : "clock", op.address, op.length, optolink::noconv);
+  this->raw_is_write_ = op.is_write;
+  this->raw_purpose_ = op.purpose;
+  bool dispatched;
+  if (op.is_write) {
+    this->raw_write_buf_ = op.bytes;
+    dispatched = this->vito_->write(this->raw_dp_, this->raw_write_buf_.data(),
+                                    static_cast<uint8_t>(this->raw_write_buf_.size()));
+  } else {
+    this->raw_write_buf_.clear();
+    dispatched = this->vito_->read(this->raw_dp_);
+  }
+  if (dispatched) {
+    this->raw_in_flight_ = true;
+    this->in_flight_started_ms_ = millis();
+    ESP_LOGV(TAG, "Dispatched raw %s 0x%04X len %u", op.is_write ? "write" : "read", op.address, op.length);
+    this->raw_queue_.pop_front();
+  }
+}
+
 void VitoHomeComponent::dispatch_next_() {
   if (this->in_flight_ != nullptr || this->ident_in_flight_ || this->raw_in_flight_) return;
 
@@ -179,34 +202,24 @@ void VitoHomeComponent::dispatch_next_() {
     return;
   }
 
-  // Raw scan ops (queue_raw_read / queue_raw_write) preempt regular polling so
-  // the scan console feels immediate; they run after identification.
-  if (!this->raw_queue_.empty()) {
-    const RawOp &op = this->raw_queue_.front();
-    this->raw_dp_ =
-        optolink::Datapoint(op.purpose == RawPurpose::SCAN ? "scan" : "clock", op.address, op.length, optolink::noconv);
-    this->raw_is_write_ = op.is_write;
-    this->raw_purpose_ = op.purpose;
-    bool dispatched;
-    if (op.is_write) {
-      this->raw_write_buf_ = op.bytes;
-      dispatched = this->vito_->write(this->raw_dp_, this->raw_write_buf_.data(),
-                                      static_cast<uint8_t>(this->raw_write_buf_.size()));
-    } else {
-      this->raw_write_buf_.clear();
-      dispatched = this->vito_->read(this->raw_dp_);
-    }
-    if (dispatched) {
-      this->raw_in_flight_ = true;
-      this->in_flight_started_ms_ = millis();
-      ESP_LOGV(TAG, "Dispatched raw %s 0x%04X len %u", op.is_write ? "write" : "read", op.address, op.length);
-      this->raw_queue_.pop_front();
-    }
+  // Interactive scan-console ops (RawPurpose::SCAN) preempt regular polling
+  // -- and a queued user write -- so range sweeps in the scan console feel
+  // immediate. This is the only raw purpose allowed to jump ahead of
+  // write_queue_; CLOCK_* is handled below, after writes.
+  if (!this->raw_queue_.empty() && this->raw_queue_.front().purpose == RawPurpose::SCAN) {
+    this->dispatch_raw_front_();
     return;  // engine busy: retry next loop()
   }
 
   // Writes preempt reads: a user-initiated setpoint change should not wait
-  // behind a full poll cycle.
+  // behind a full poll cycle. This also preempts a queued background
+  // clock-sync step (RawPurpose::CLOCK_READ/CLOCK_WRITE/CLOCK_VERIFY, checked
+  // below): unlike the scan console, clock sync is not something a person is
+  // waiting on, and a full sync can take up to three sequential round trips
+  // (read, conditional write, verify-read), so letting it jump the write
+  // queue could stall a user's slider drag across several bus transactions
+  // at 4800 baud. A one-dispatch-cycle delay to a clock step is invisible;
+  // a multi-second delay to a write is not.
   if (!this->write_queue_.empty()) {
     VitoEntityBase *entity = this->write_queue_.front();
     if (this->vito_->write(entity->get_write_datapoint(), entity->write_data(), entity->write_length())) {
@@ -221,6 +234,14 @@ void VitoHomeComponent::dispatch_next_() {
       entity->write_in_flight_ = true;
       ESP_LOGV(TAG, "Dispatched write for %s (%u bytes)", entity->get_datapoint().name(), entity->write_length());
     }
+    return;  // engine busy: retry next loop()
+  }
+
+  // Background clock-sync ops get a turn once there is no pending user write.
+  // (raw_queue_ can only hold CLOCK_* purposes here -- SCAN was already
+  // dispatched above if present.)
+  if (!this->raw_queue_.empty()) {
+    this->dispatch_raw_front_();
     return;  // engine busy: retry next loop()
   }
 

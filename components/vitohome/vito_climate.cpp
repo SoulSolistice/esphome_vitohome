@@ -155,9 +155,33 @@ void VitoClimate::on_mode_read(const ResponseView &response) {
       }
     }
   }
-  // A state byte with no writable counterpart (the read enum can be a superset
-  // of the write enum) lands here: keep the last preset, surface it in the log.
-  ESP_LOGW(TAG, "%s: device mode 0x%02X is not in any preset's read set", this->get_name().c_str(), byte);
+  // A state byte with no matching preset lands here. Most often the read
+  // enum is a superset of the write enum (a known-but-unbound device state);
+  // it can also mean someone changed Betriebsart from the physical Bedienteil
+  // or the weekly schedule into a mode this YAML's preset table doesn't
+  // cover. Either way the *previous* custom_preset name is no longer true, so
+  // leaving it published would tell Home Assistant the device is still in a
+  // preset it has actually left -- see design_notes.md for the desync this
+  // caused. clear_custom_preset_() (esphome/components/climate/climate.h) is
+  // the real API for this; `set_custom_preset_(std::nullopt)` does not exist
+  // -- set_custom_preset_() only takes a const char* / StringRef and interns
+  // it against supported_custom_presets_, it has no "none" overload.
+  //
+  // `mode` (the coarse OFF/HEAT bucket) is deliberately left at its last
+  // confirmed value: there is no principled way to bucket an unmapped byte,
+  // and forcing it to CLIMATE_MODE_OFF would itself be a fabricated claim --
+  // an unmapped state is frequently still "heating" (e.g. Ferienprogramm).
+  //
+  // has_custom_preset() guards the publish so a device stuck in an unmapped
+  // mode doesn't get a state push -- and a wave of downstream HA/MQTT
+  // traffic -- on every single poll; the UI is already correctly showing "no
+  // preset" after the first one.
+  if (this->has_custom_preset()) {
+    this->clear_custom_preset_();
+    this->publish_state();
+  }
+  ESP_LOGW(TAG, "%s: device mode 0x%02X is not in any preset's read set; cleared custom_preset",
+           this->get_name().c_str(), byte);
 }
 
 void VitoClimate::dump_config() {

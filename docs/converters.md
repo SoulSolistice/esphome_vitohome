@@ -67,6 +67,7 @@ A `converter:` is one of several ways a value is read. The full set:
 | `text_sensor` `type: error_history` | 9-byte slot: code byte + 8-byte BCD timestamp, mapped via `codes:` | `length`, `codes` |
 | `text_sensor` `type: enum` | raw value mapped to a label | `options` |
 | `text_sensor` `type: device_id` | the device identification string | (none) |
+| `text` | 8-byte-per-day switching-time program, read/write as a canonical `"HH:MM-HH:MM ..."` string | `address`, `read_back` |
 | `select` | raw value mapped to a label, writable | `options`, `address`, `state_address` |
 
 **ASCII** (`type: ascii`): each raw byte is one character. A NUL byte
@@ -100,6 +101,21 @@ This read/write-address split is available on `select` only. A writable `number`
 reads and writes a single `address`; a numeric datapoint whose live state is
 exposed at a different register than its command cannot be expressed today, and
 would need `number` to gain the same `state_address`.
+
+**Schaltzeiten (`text`).** Each entity is one weekday's switching-time program
+-- a fixed 8-byte block (four ON/OFF switch-point pairs) at `address`, read and
+written at the same register so the hub's read-back re-reads exactly what was
+sent. The wire bytes encode/decode to a canonical
+`"HH:MM-HH:MM HH:MM-HH:MM ..."` string (up to four pairs, space-separated,
+`"--"` or a blank pair leaves that slot disabled); an empty string clears the
+whole day (all bytes `0xFF`). A malformed input string is rejected in full --
+partial writes never reach the device. Minutes are truncated to the device's
+10-minute grid on write, not rounded to the nearest step. `read_back` (default
+`true`, optional `update_interval`) re-reads immediately after the write ACK,
+so the Home Assistant state snaps to the accepted grid value instead of
+sitting on the raw input for one poll cycle. There is currently no
+`state_address`/`address` split for `text` -- read and write always share the
+one configured `address`.
 
 ## Validation
 

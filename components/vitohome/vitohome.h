@@ -104,6 +104,10 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
 
   void validate_uart_();
   void dispatch_next_();
+  // Dispatches raw_queue_.front() (caller must ensure it is non-empty) and
+  // pops it on successful hand-off to the engine. Shared by both raw-lane
+  // call sites in dispatch_next_() -- see the priority split there.
+  void dispatch_raw_front_();
   void schedule_due_entities_();
   void on_response_(const ResponseView &response, const optolink::Datapoint &request);
   void on_error_(optolink::OptolinkResult error, const optolink::Datapoint &request);
@@ -162,12 +166,19 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   optolink::Datapoint ident_dp_{"ident", 0x00F8, 4, optolink::noconv};
   int ident_group_{-1}, ident_controller_{-1}, ident_hw_{-1}, ident_sw_{-1};
 
-  // Raw scan console (debug). A small FIFO of one-off ops, dispatched with
-  // priority just below identification and just above regular polling; exactly
-  // one is in flight at a time (raw_in_flight_), so bus arbitration stays
-  // single-owner like the ident lane. The same lane carries the system-time
-  // sync ops, tagged by RawPurpose (declared above) so the result is routed to
-  // the clock logic instead of the scan console.
+  // Raw scan console (debug). A small FIFO of one-off ops; exactly one is in
+  // flight at a time (raw_in_flight_), so bus arbitration stays single-owner
+  // like the ident lane. The same lane carries the system-time sync ops,
+  // tagged by RawPurpose (declared above) so the result is routed to the
+  // clock logic instead of the scan console.
+  //
+  // Priority is split by purpose in dispatch_next_(), not uniform for the
+  // whole lane: RawPurpose::SCAN is dispatched just below identification and
+  // above write_queue_/read_queue_, so scan-console sweeps stay interactive.
+  // RawPurpose::CLOCK_READ/CLOCK_WRITE/CLOCK_VERIFY are dispatched below
+  // write_queue_ instead -- clock sync is a background task nobody is
+  // watching, and it can take up to three sequential round trips, so it must
+  // not be able to stall a user-initiated write for that long.
   struct RawOp {
     uint16_t address;
     uint8_t length;

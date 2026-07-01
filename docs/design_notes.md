@@ -6,7 +6,7 @@ user manual or an API table. For the things other docs already own, this file
 points rather than repeats:
 
 - **Authoring/decoding a datapoint, the converter table, two-address `select`,
-  config-time validation rules** → [`converters.md`](../converters.md).
+  config-time validation rules** → [`converters.md`](converters.md).
 - **Quick start, YAML shape, how it works at a glance** → [`README.md`](../README.md).
 - **Exact modifications made to the vendored engine, and licensing** →
   [`optolink/THIRD_PARTY.md`](../components/vitohome/optolink/THIRD_PARTY.md) and
@@ -92,7 +92,7 @@ the bit-exact integer read and the correct scaled hours. (The resulting float32
 *state* of ≈59 000.0 is fine — the bug being fixed is the loss that happened
 while the value was still a large raw integer.) The same double-then-narrow
 discipline is what makes sub-zero temperatures decode correctly under the signed
-converters; see [`converters.md`](../converters.md) for the preset table and the
+converters; see [`converters.md`](converters.md) for the preset table and the
 signedness rules.
 
 ---
@@ -166,7 +166,7 @@ out-of-range length would silently decode as `0`.
 That is why the converter/length cross-checks in the Python layer are the real
 guard: they turn a silent-wrong-data bug into an `esphome config` error before
 anything reaches the device. The actual length sets and the encodable-range rule
-live in [`converters.md`](../converters.md); the principle to carry is that those
+live in [`converters.md`](converters.md); the principle to carry is that those
 checks are **load-bearing** and must stay in lockstep with `decode.h`. The
 config-time encodable-range check in `number.py` mirrors
 `decode.h::encode_scaled` *exactly* (round to nearest raw step, then range-check
@@ -210,7 +210,7 @@ The state model here is subtle and was the source of a real bug:
   their live value at one register and accept commands at another — `address:` is
   the write/command address, optional `state_address:` is the read/state address;
   polling, read-back and response-matching use the state address. The user-facing
-  shape is documented in [`converters.md`](../converters.md). One **hardware
+  shape is documented in [`converters.md`](converters.md). One **hardware
   caveat**: whether a mode write is reflected on read-back is governed by the
   device (program-switch position, register read/write asymmetry), not by the
   component — the write→ACK→read-back pipeline is correct at the software level
@@ -222,6 +222,25 @@ The state model here is subtle and was the source of a real bug:
   deprecated/removed in 2026.7.0). Options are an **ordered `{raw_value: label}`
   map**, so the YAML author controls order; raw values are validated to fit the
   byte width and labels to be unique.
+- **The raw lane is not uniformly higher-priority than `write_queue_`.**
+  `dispatch_next_()` used to check `raw_queue_` ahead of `write_queue_`
+  unconditionally, which was fine while the raw lane only carried
+  `RawPurpose::SCAN` (interactive scan-console ops, which *should* jump ahead
+  of a queued write so range sweeps feel immediate). Once system-time sync
+  started riding the same lane (`RawPurpose::CLOCK_READ/CLOCK_WRITE/
+  CLOCK_VERIFY`), that same unconditional priority let a background clock
+  sync — up to three sequential round trips, invisible to the user — stall a
+  queued setpoint write for the whole sync. `dispatch_next_()` now checks the
+  front op's purpose: `SCAN` still preempts `write_queue_`; `CLOCK_*` is
+  checked *after* `write_queue_` instead, so a pending user write always goes
+  out first. One known residual: because `raw_queue_` is a single FIFO,
+  a `SCAN` op enqueued *behind* a not-yet-dispatched `CLOCK_*` op still has to
+  wait for that `CLOCK_*` op's own turn (which itself now waits on
+  `write_queue_`) — the priority split is by the queue's front purpose, not a
+  full reordering of the deque. In practice this window is narrow (a clock op
+  is enqueued one step at a time, only once its predecessor's response has
+  landed) and self-resolving within one or two dispatch cycles; a real fix
+  would give `CLOCK_*` its own lane instead of sharing `raw_queue_`.
 
 ---
 
