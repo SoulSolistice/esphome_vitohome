@@ -62,8 +62,8 @@ void VitoClimate::setup() {
 climate::ClimateTraits VitoClimate::traits() {
   climate::ClimateTraits t;
   // No room sensor: the boiler controls weather-compensated, so the card is
-  // target-only (current temperature is intentionally absent).
-  t.set_supports_current_temperature(false);
+  // target-only. Current-temperature support is a feature flag that we simply
+  // do not add (feature_flags_ defaults to 0 = unsupported).
   // OFF is in the mask by default; a heating proxy always offers HEAT, plus
   // whatever modes the configured presets derive.
   t.add_supported_mode(climate::CLIMATE_MODE_HEAT);
