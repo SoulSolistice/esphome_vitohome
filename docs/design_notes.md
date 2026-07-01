@@ -275,7 +275,8 @@ code, followed by an 8-byte packed-BCD timestamp:
 |------|---|---|---|---|---|---|---|---|---|
 | field | code | year-hi | year-lo | month | day | weekday* | hour | minute | second |
 
-\* weekday is `0 = Monday` and is ignored.
+\* weekday is `sunday = 0` (strftime %w; hardware-confirmed) and is ignored on
+decode.
 
 `decode.h::decode_datetime_bcd()` validates that every nibble is BCD (so
 `0xFF`-filled empty slots fail cleanly), range-checks the fields, and rejects
