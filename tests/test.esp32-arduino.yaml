@@ -5,6 +5,8 @@ substitutions:
 
 esp32:
   board: esp32dev
+  # See test.esp32-idf.yaml for why this is pinned explicitly.
+  toolchain: platformio
   framework:
     type: arduino
 

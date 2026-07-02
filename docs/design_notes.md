@@ -470,3 +470,71 @@ Two limits worth re-stating because they are recurring footguns:
   commented-hint set and are now handled — the big-endian `rotatebytes` converter
   and the `type: utf16` text_sensor, both host-tested in `test_decode.cpp`. Per
   §4, the `rotatebytes` preset still wants a `tests/unit/test_validators.py` case.)
+- **ESP32 build has two independent axes worth not conflating:**
+  `esp32.framework.type` (`arduino`/`esp-idf` — which runtime SDK the code is
+  compiled against; every test config here already uses `esp-idf`) and
+  `esp32.toolchain` (`platformio`/`esp-idf` — which *build system* orchestrates
+  the compile). The second one is what the rest of this entry is about.
+  - **What happened.** ESPHome 2026.5.0 shipped a native ESP-IDF toolchain
+    that drives `idf.py`/CMake directly instead of wrapping PlatformIO,
+    opt-in alongside the existing default. ESPHome's `dev` channel has since
+    flipped the *default* from `platformio` to `esp-idf` (confirmed not yet
+    in `beta` or stable). That broke the `upstream-canary` workflow: under
+    the native toolchain, our vendored optolink engine's `file://`
+    PlatformIO-library registration
+    (`components/vitohome/__init__.py::to_code`) gets routed through
+    ESPHome's PlatformIO-library-to-IDF-component converter
+    (`esphome/platformio/library.py::convert_libraries`), which treats *any*
+    non-empty `repository` string as a git remote — no `file://` case — and
+    tries (and fails) to `git clone` a local directory.
+  - **Two separate, complementary fixes, not one.**
+    (1) `tests/test.esp32-idf.yaml` / `tests/test.esp32-arduino.yaml` pin
+    `toolchain: platformio` explicitly — a no-op against the pinned build
+    and `beta` (both already default to it), and it restores the working
+    path on `dev`. This makes the canary test what this project actually
+    ships, not an unrelated upstream default change.
+    (2) `esp32.toolchain: esp-idf` is *also* now genuinely supported, not
+    just avoided — `to_code` has a toolchain-conditional branch:
+    `esp32.add_idf_component(name="optolink", path=optolink_dir)` (writing a
+    real, standard ESP-IDF Component Manager `path:` dependency) when
+    `CORE.using_toolchain_esp_idf`, the old `file://` library registration
+    otherwise. The vendored engine's nested `protocol/`/`datapoint/`
+    subtrees were never going to reach either build "for free" regardless of
+    toolchain — ESPHome's own component file copier
+    (`loader.py`'s `ComponentManifest.resources`) only copies files sitting
+    directly in a component's top-level directory, which is why the engine
+    needed the `file://` trick under `platformio` in the first place. A new
+    `optolink/CMakeLists.txt` is the CMake-side twin of `optolink/library.json`
+    for the native toolchain (ESP-IDF's build doesn't read PlatformIO
+    manifests at all). One real bug was caught building this, not just
+    anticipated: the project-wide `-I<component_dir>` flag that makes
+    `#include "optolink/optolink.h"` resolve is silently dropped under the
+    native toolchain (`build_gen/espidf.py::get_project_cmakelists`, pinned
+    2026.6.2, only propagates `-D`/`-W` flags project-wide), so
+    `optolink/CMakeLists.txt` exposes its own parent directory via
+    `INCLUDE_DIRS ".."` instead — "main" already implicitly `REQUIRES`
+    optolink via the `path:` dependency, and ESP-IDF auto-propagates a
+    required component's public `INCLUDE_DIRS` to the requiring component.
+  - **Validation.** (1) is config-level and trivially verified. (2) is
+    validated by two full, successful native compiles in sandbox — both
+    `framework.type: esp-idf` and `framework.type: arduino` combined with
+    `toolchain: esp-idf`, each ending in "Successfully compiled program."
+    with real `firmware.factory.bin` output, not just codegen succeeding.
+    Reproducible with `esphome compile tests/test.esp32-idf-native.yaml`.
+    Neither has been run on real hardware, and nothing selects
+    `toolchain: esp-idf` in any shipped config today — treat "compiles
+    cleanly" as exactly that claim. `esp32.add_idf_component(path=...)` has
+    no other call site anywhere in ESPHome's own component tree as of this
+    writing (every other user of that function passes `name=`/`ref=` for a
+    registry or git component) — the mechanism is real, documented ESP-IDF
+    functionality and now proven by two clean builds here, but this project
+    is among the first to exercise this exact path inside ESPHome's codegen.
+  - **Not wired into any CI workflow.** `tests/test.esp32-idf-native.yaml`
+    is manual/local-only for now. If/when `esp32.toolchain: esp-idf`
+    actually reaches a real ESPHome release, that's the point to decide
+    whether it also becomes a real CI leg.
+  - **Not yet filed upstream.** No existing esphome/esphome issue for the
+    `file://`-as-git gap was found when checked. The surrounding module is
+    under active development — a closely related git-ref bug in the same
+    code path was fixed in a PR the same week this was diagnosed — so this
+    looks like a genuine, recently-introduced, so-far-unreported gap.

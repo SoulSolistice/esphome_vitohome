@@ -23,9 +23,10 @@ from pathlib import Path
 
 import esphome.codegen as cg
 import esphome.config_validation as cv
+from esphome.components import esp32, uart
 from esphome.components import time as time_
-from esphome.components import uart
 from esphome.const import CONF_ID, CONF_INTERVAL, CONF_TIME_ID
+from esphome.core import CORE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -270,25 +271,83 @@ CONFIG_SCHEMA = cv.All(
 
 async def to_code(config):
     # The Optolink protocol engine is vendored in-tree under
-    # ``components/vitohome/optolink/`` and compiled as a PlatformIO library via
-    # its own ``optolink/library.json`` manifest.
+    # ``components/vitohome/optolink/`` with two parallel, toolchain-specific
+    # build descriptions: ``optolink/library.json`` (PlatformIO) and
+    # ``optolink/CMakeLists.txt`` (ESP-IDF native toolchain). Both exist
+    # because of the same underlying limitation, not because of anything
+    # PlatformIO- or CMake-specific: ESPHome's own component file copier
+    # (``loader.py``'s ``ComponentManifest.resources``) only copies files
+    # sitting directly in a component's top level dir; it does not descend
+    # into the engine's ``protocol/``, ``datapoint/`` and ``interface/``
+    # subdirectories under EITHER toolchain. (ESPHome does have a one-level
+    # recursive mode -- ``recursive_sources`` -- but it's hardcoded to
+    # ESPHome's own ``esphome.core`` package, not available to external
+    # components, and wouldn't reach two levels deep here regardless.) So the
+    # engine has to be registered as its own separately-built unit no matter
+    # which toolchain compiles it; only the registration mechanism differs:
     #
-    # We register it from the component's own directory (``__file__`` -> the
-    # clone/checkout location, where the full nested tree exists) rather than
-    # relying on ESPHome's component file copier: that copier only copies files
-    # sitting directly in the component dir and does NOT descend into nested
-    # subdirectories, so the engine's ``protocol/``, ``datapoint/`` and
-    # ``interface/`` trees would never reach the build. A ``file://`` library
-    # is handed straight to PlatformIO's library dependency finder, which
-    # compiles the nested sources with their structure intact and works for a
-    # remotely-pulled component (``git clone`` brings the whole subtree).
+    #   esp32.toolchain: platformio (current default -- see design_notes.md
+    #   SS11 for the toolchain default flip on ESPHome's dev channel): a
+    #   ``file://`` library handed straight to PlatformIO's library
+    #   dependency finder, which compiles the nested sources with their
+    #   structure intact.
+    #
+    #   esp32.toolchain: esp-idf: PlatformIO is not involved at all, so a
+    #   PlatformIO library declaration doesn't reach the build -- worse, if
+    #   left registered unconditionally it actively breaks the build, because
+    #   ESPHome's PlatformIO-library-to-IDF-component converter
+    #   (esphome/platformio/library.py::convert_libraries, upstream) treats
+    #   any non-empty ``repository`` string as a git remote with no
+    #   ``file://`` case, and tries (and fails) to ``git clone`` this local
+    #   directory. The ESP-IDF-native equivalent is
+    #   ``esp32.add_idf_component(path=...)``, which writes a real ESP-IDF
+    #   Component Manager ``path:`` dependency -- standard, documented IDF
+    #   functionality, independent of ESPHome -- into the generated
+    #   ``idf_component.yml``. See ``optolink/CMakeLists.txt`` for the
+    #   ESP-IDF-side source list and its ``INCLUDE_DIRS ".."`` -- that's not
+    #   parity with this function's ``-I`` flag below, it's a *replacement*
+    #   for it; see the note there for why.
+    #
+    # NOTE: this ESP-IDF-native branch has been through full, successful
+    # native compiles in this project's sandbox -- both esp32.framework.type:
+    # esp-idf and : arduino, each ending in "Successfully compiled program."
+    # with real firmware.factory.bin/firmware.ota.bin output, on the pinned
+    # ESPHome version (2026.6.2) -- not just codegen succeeding. One real bug
+    # was caught and fixed in the process: see optolink/CMakeLists.txt's
+    # ``INCLUDE_DIRS ".."`` note. Reproducible with
+    # ``esphome compile tests/test.esp32-idf-native.yaml``. Still never run
+    # against real hardware, and nothing selects esp32.toolchain: esp-idf
+    # today -- this is forward-proofing for if/when that becomes the default,
+    # not a currently-exercised path. Re-run that test config after any
+    # change here or under optolink/ before relying on it again.
     #
     # The ``-I`` flag puts the component dir on the include path so the
     # component's ``#include "optolink/optolink.h"`` (and the engine's header
-    # tree it pulls in) resolves against that same checkout location.
+    # tree it pulls in) resolves against that same checkout location. This
+    # only works under esp32.toolchain: platformio, though -- confirmed by a
+    # real native-toolchain compile failing on exactly this include with the
+    # flag left unconditional. ESPHome's native-toolchain generator
+    # (``build_gen/espidf.py::get_project_cmakelists``, pinned version
+    # 2026.6.2) filters ``CORE.build_flags`` down to flags starting with
+    # ``-D``/``-W`` before propagating them project-wide; a plain ``-I`` flag
+    # is silently dropped, and "main"'s own generated
+    # ``idf_component_register()`` hardcodes ``INCLUDE_DIRS "." "esphome"``
+    # with no extension point for a third-party component to add to. Under
+    # the native toolchain, ``optolink/CMakeLists.txt`` exposing its own
+    # parent dir via ``INCLUDE_DIRS ".."`` is what makes the same include
+    # resolve instead -- "main" implicitly REQUIRES optolink via the ``path:``
+    # dependency above, and ESP-IDF auto-propagates a required component's
+    # public INCLUDE_DIRS to the requiring component. So the flag below is
+    # platformio-only in practice even though it's added unconditionally;
+    # it's simply inert (unused) under the native toolchain rather than
+    # harmful, so there's no need to gate it the way the library
+    # registration above has to be gated.
     component_dir = Path(__file__).resolve().parent
     optolink_dir = component_dir / "optolink"
-    cg.add_library("optolink", None, f"file://{optolink_dir}")
+    if CORE.using_toolchain_esp_idf:
+        esp32.add_idf_component(name="optolink", path=str(optolink_dir))
+    else:
+        cg.add_library("optolink", None, f"file://{optolink_dir}")
     cg.add_build_flag(f"-I{component_dir}")
 
     # Build-time protocol selection: emit exactly one VITOHOME_PROTOCOL_* flag,

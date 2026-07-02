@@ -1,0 +1,25 @@
+substitutions:
+  name: vitohome-test-idf-native
+  protocol: P300
+  identify_device: "true"
+
+esp32:
+  board: esp32dev
+  # The native ESP-IDF toolchain (esp32.toolchain: esp-idf), not to be
+  # confused with esp32.framework.type: esp-idf which every other test config
+  # already uses. This is the not-yet-default build system introduced in
+  # ESPHome 2026.5.0 that drives idf.py/CMake directly instead of wrapping
+  # PlatformIO -- see design_notes.md SS11 for the full writeup, including why
+  # the vendored optolink engine needed its own CMakeLists.txt to work under
+  # it. Not wired into ci.yml or upstream-canary.yml: this validates that the
+  # forward-proofing compiles, on the pinned ESPHome version, in a sandbox --
+  # it has not been run on real hardware, and this toolchain isn't anything a
+  # deployed device uses today. Run manually with `esphome compile
+  # tests/test.esp32-idf-native.yaml` after touching anything under
+  # components/vitohome/optolink/ or the toolchain branch in
+  # components/vitohome/__init__.py::to_code.
+  toolchain: esp-idf
+  framework:
+    type: esp-idf
+
+<<: !include common.yaml
