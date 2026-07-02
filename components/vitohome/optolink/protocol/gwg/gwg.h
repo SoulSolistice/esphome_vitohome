@@ -112,7 +112,7 @@ class GWGEngine {
   void _send();
   void _receive();
 
-  void _tryOnResponse();
+  void _tryOnResponse(uint8_t length);
   void _tryOnError(OptolinkResult result);
 };
 

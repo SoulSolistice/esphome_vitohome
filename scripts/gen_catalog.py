@@ -1299,7 +1299,19 @@ def generate(
         "text_sensor": [],
     }
     comments: list[str] = []
-    seen_addr: set[int] = set()
+
+    # De-duplication identity. Keying on the base address alone silently
+    # collapsed DISTINCT fields carved from one block: verified against the
+    # full 2026 export, VScotHO1_72 has 43 base addresses carrying more than
+    # one field at different BytePositions (HWIndex_SM1/SWIndex_SM1 at 0x0A68,
+    # the RF_TeilnehmerInfo_* families, RF_AllgemeinInfo_* at 0x0D30, ...),
+    # and only the first survived. A datapoint's identity is the FIELD --
+    # (address, byte_position, bit_position) -- which still folds true
+    # duplicates (same field via several event variants) into one entity.
+    def _field_key(ev: Event):
+        return (ev.address, ev.byte_position or 0, ev.bit_position or 0)
+
+    seen_addr: set = set()
     used_ids: set[str] = set()
     kept = 0
     dropped_unreachable = 0
@@ -1320,10 +1332,10 @@ def generate(
             # Device-specific FehlerHis* slots win over the generic 0x7507 slot.
             if has_fehlerhis and slot is None:
                 continue
-            if ev.address is not None and ev.address in seen_addr:
+            if ev.address is not None and _field_key(ev) in seen_addr:
                 continue
             if ev.address is not None:
-                seen_addr.add(ev.address)
+                seen_addr.add(_field_key(ev))
             seed = "letzter_fehler" if not slot or slot <= 1 else f"fehler_{slot:02d}"
             oid = _make_obj_id(seed, used_ids)
             buckets["text_sensor"].extend(
@@ -1339,7 +1351,7 @@ def generate(
             continue
         if exc and exc.search(target):
             continue
-        if ev.address is not None and ev.address in seen_addr:
+        if ev.address is not None and _field_key(ev) in seen_addr:
             continue
 
         if reachable_only and not _is_reachable(ev):
@@ -1354,7 +1366,7 @@ def generate(
             comments.extend(lines)
             continue
         if ev.address is not None:
-            seen_addr.add(ev.address)
+            seen_addr.add(_field_key(ev))
         # Writable operating-mode select: prepend the hardware caveat.
         if platform == "select" and _is_mode_select(ev):
             lines = _mode_select_caveat() + lines

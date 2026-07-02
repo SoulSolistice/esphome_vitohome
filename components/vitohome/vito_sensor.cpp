@@ -47,13 +47,20 @@ void VitoSensor::handle_response(const ResponseView& response) {
     return;
   }
   ESP_LOGD(TAG, "%s = %.3f", this->datapoint_.name(), out);
+  this->consecutive_read_errors_ = 0;
   this->publish_state(out);
 }
 
 void VitoSensor::handle_error(optolink::OptolinkResult /*error*/) {
-  // Mark the entity unavailable in HA. The component logs the specific
-  // error code; we just signal "no data" here.
-  this->publish_state(NAN);
+  // Mark the entity unavailable in HA -- but only after a streak of failed
+  // reads. The component logs the specific error code; we just signal
+  // "no data" here once the streak crosses the threshold.
+  if (this->consecutive_read_errors_ < NAN_AFTER_CONSECUTIVE_READ_ERRORS) {
+    this->consecutive_read_errors_++;
+  }
+  if (this->consecutive_read_errors_ == NAN_AFTER_CONSECUTIVE_READ_ERRORS) {
+    this->publish_state(NAN);
+  }
 }
 
 }  // namespace vitohome

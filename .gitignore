@@ -44,6 +44,14 @@ build/
 *.exe
 *.bin
 *.elf
+# The native test scripts emit extensionless host binaries next to their
+# sources; ignore them by name (g++ -o <name> in build_and_run*.sh).
+tests/native/vs2_transaction_harness
+tests/native/adapter_proof
+tests/native/gwg_poke
+tests/native/gwg_read
+tests/native/vs2_guards
+tests/native/test_decode
 
 # ==========================================
 # OS & IDEs

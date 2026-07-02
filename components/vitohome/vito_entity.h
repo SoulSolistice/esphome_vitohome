@@ -67,8 +67,16 @@ class VitoEntityBase {
   // checksum have already been verified by the optolink engine.
   virtual void handle_response(const ResponseView& response) = 0;
 
-  // Called by the component on a protocol-level error (read or write).
+  // Called by the component on a protocol-level READ error (poll or
+  // read-back). Write errors go to handle_write_error() below, so an entity
+  // can keep its last known state on a failed write (the device value did not
+  // change) while still applying an unavailability policy to failed reads.
   virtual void handle_error(optolink::OptolinkResult error) = 0;
+
+  // Called by the component on a protocol-level WRITE error (NACK, timeout,
+  // ...). Default: no-op -- the hub logs the specific error, and the entity's
+  // published state still reflects the device (the write did not take).
+  virtual void handle_write_error(optolink::OptolinkResult /*error*/) {}
 
   // --- write path -----------------------------------------------------------
   const uint8_t* write_data() const { return this->write_buf_; }

@@ -88,9 +88,50 @@ These are intentional divergences from upstream `edc059a7`:
    `GWG::_tryOnResponse()` did not clear `_currentDatapoint` after a
    successful response, unlike `VS1`/`VS2`.
    The vendored `GWG::_tryOnResponse()` now clears `_currentDatapoint` after
-   invoking the callback, matching VS1/VS2. This is the only intentional
-   change to on-wire/runtime behavior; everything else preserves upstream
-   protocol behavior.
+   invoking the callback, matching VS1/VS2.
+
+8. **GWG response-completion fix (behavioral divergence).** Upstream
+   `GWG::_receive()` completed a transaction when the received byte count
+   equalled the **request frame length** (`_currentRequest.length()` -- 5 for
+   every read, `len + 5` for a write) and reported that frame length as the
+   payload length. A GWG read of any length != 5 could therefore never
+   complete and always timed out. The vendored engine completes a **read** on
+   `_currentDatapoint.length()` received bytes -- source-confirmed against
+   vcontrold's GWG protocol definition (`getaddr` = `SEND 01 CB $addr $hexlen
+   04; RECV $len`) -- and a **write** on a single ack byte, following the
+   KW-family write-ack convention. The write side is **model-derived**:
+   vcontrold's GWG `setaddr` entry is a stub (`SYNC;RECV 1`), so no
+   independent reference exists, and GWG remains unverified on hardware
+   either way. Host-proven by `tests/native/proof_gwg_read.cpp` (read and
+   write completion, exact wire frames); the same proof fails 8 checks
+   against the upstream behaviour.
+
+9. **VS2 non-RESPONSE frame guard (behavioral divergence).** Upstream
+   `VS2::_receive()` delivered **any** complete, checksum-valid frame through
+   the response callback -- including a device ERROR frame (PacketType
+   `0x03`), whose payload was then decoded and published as data. The
+   vendored engine routes a complete frame whose type is not `RESPONSE` to
+   the error callback (`OptolinkResult::ERROR`) instead. The link-layer
+   choreography is unchanged: the frame is still ACKed and the engine
+   proceeds to IDLE. Host-proven by `tests/native/proof_vs2_guards.cpp`
+   (test A); the golden-master transaction harness (8/8, frames lifted from
+   live hardware captures) is unaffected.
+
+10. **VS2 parser reset on engine reset (behavioral divergence).** Upstream
+    left the byte-at-a-time `ParserVS2` state untouched on the engine's
+    RESET path (`ParserVS2::reset()` existed but had **zero call sites**), so
+    a request that timed out mid-frame left the parser stuck mid-PAYLOAD and
+    the next transaction's frame was consumed as payload continuation --
+    one extra failed transaction (CS_ERROR) after every mid-frame timeout
+    before self-healing. The vendored `_reset()` now also resets the parser,
+    matching the RX-buffer drain it already performed. Host-proven by
+    `tests/native/proof_vs2_guards.cpp` (test B: the first post-recovery
+    transaction succeeds).
+
+Items 7-10 are the only intentional changes to on-wire/runtime behavior;
+everything else preserves upstream protocol behavior. Each is covered by a
+host proof that fails against the upstream code, so none of them rests on
+inspection alone.
 
 ---
 

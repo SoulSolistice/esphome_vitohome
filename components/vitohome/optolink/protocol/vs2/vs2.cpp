@@ -137,6 +137,12 @@ void VS2Engine::_setState(State state) {
 }
 
 void VS2Engine::_reset() {
+  // Parser-state fix vs. upstream (THIRD_PARTY.md #10): a request that times
+  // out mid-frame used to leave the byte-at-a-time parser stuck mid-PAYLOAD,
+  // so the next transaction's frame was consumed as payload continuation and
+  // failed with CS_ERROR before self-healing. Every path into RESET now also
+  // resets the parser, matching the RX-buffer drain below.
+  _parser.reset();
   while (_interface->available()) _interface->read();
   if (_interface->write(&internals::ProtocolBytes.EOT, 1) == 1) {
     _lastMillis = _currentMillis;
@@ -236,8 +242,19 @@ void VS2Engine::_receive() {
     _lastMillis = _currentMillis;
     internals::ParserResult result = _parser.parse(_interface->read());
     if (result == internals::ParserResult::COMPLETE) {
+      // Frame-type guard vs. upstream (THIRD_PARTY.md #9): upstream delivered
+      // ANY complete frame -- including a device ERROR frame (PacketType 0x03)
+      // -- through the response callback, so an error frame's payload was
+      // decoded and published as data. The link-layer choreography is
+      // unchanged (the frame is still ACKed via RECEIVE_ACK); only a
+      // non-RESPONSE type is now routed to the error callback instead.
       _setState(State::RECEIVE_ACK);
-      _tryOnResponse();
+      if (_parser.packet().packetType() == PacketType::RESPONSE) {
+        _tryOnResponse();
+      } else {
+        optolink_log_w("packet type 0x%02x is not a response", static_cast<unsigned>(_parser.packet().packetType()));
+        _tryOnError(OptolinkResult::ERROR);
+      }
       return;
     } else if (result == internals::ParserResult::CS_ERROR) {
       _setState(State::RESET);

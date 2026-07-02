@@ -48,11 +48,17 @@ class ProtocolAdapter {
       }
     });
 #else
-    // P300 delivers a PacketVS2; pull the payload out of it.
+    // P300 delivers a PacketVS2; pull the payload out of it. The address is
+    // the one ECHOED IN THE RESPONSE FRAME (bytes 3..4), not the request's --
+    // the device echoes the address on both read responses and write acks
+    // (hardware-confirmed by the transaction-harness fixtures), so the hub's
+    // response-address match is a real wire-level check on P300. Previously
+    // request.address() was passed here, which made that check compare the
+    // request against itself and never fire.
     engine_.onResponse([this](const optolink::PacketVS2& packet, const optolink::Datapoint& request) {
       this->established_ = true;
       if (this->response_handler_) {
-        this->response_handler_(ResponseView{packet.data(), packet.dataLength(), request.address()}, request);
+        this->response_handler_(ResponseView{packet.data(), packet.dataLength(), packet.address()}, request);
       }
     });
 #endif

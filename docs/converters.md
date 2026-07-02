@@ -117,6 +117,16 @@ sitting on the raw input for one poll cycle. There is currently no
 `state_address`/`address` split for `text` -- read and write always share the
 one configured `address`.
 
+**Validation scope: a pure binary packer.** The encoder validates only what
+the wire format can represent -- hour 0..23, minute 0..59, at most four pairs,
+per-token grammar -- and deliberately does **not** validate scheduling
+semantics: ascending pair order, non-overlap, and ON-before-OFF within a pair
+are unchecked. This matches the independent reference: vcontrold's
+`setCycleTime` (`src/unit.c`) performs no ordering validation either (it does
+not even range-check the hour). Whether the device itself requires ordered or
+contiguous pairs is unverified on hardware; scheduling logic and sanity checks
+belong in Home Assistant or with the user, not in this codec.
+
 ## Validation
 
 Length and range are checked at `esphome config` time, before a wrong value can

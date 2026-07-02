@@ -155,15 +155,26 @@ void GWGEngine::_receive() {
     ++_bytesTransferred;
     _lastMillis = _currentMillis;
   }
-  if (_bytesTransferred == _currentRequest.length()) {
+  // Response-completion fix vs. upstream (THIRD_PARTY.md #8): upstream compared
+  // the received byte count against the REQUEST frame length (5 for a read,
+  // len+5 for a write), so a GWG read of any length != 5 could never complete
+  // and timed out. The device actually returns exactly the datapoint's data
+  // bytes for a read (vcontrold GWG getaddr: "SEND 01 CB $addr $hexlen 04;
+  // RECV $len" -- source-confirmed) and, per the KW-family convention, a
+  // single ack byte for a write (model-derived: vcontrold's GWG setaddr entry
+  // is a stub, so the write side has no independent reference; unverified on
+  // GWG hardware).
+  const uint8_t expected = (_currentRequest.packetType() == PacketGWGType.WRITE) ? 1 : _currentDatapoint.length();
+  if (_bytesTransferred == expected) {
+    _bytesTransferred = 0;  // VS1 parity; _init() also resets before SEND
     _setState(State::INIT);
-    _tryOnResponse();
+    _tryOnResponse(expected);
   }
 }
 
-void GWGEngine::_tryOnResponse() {
+void GWGEngine::_tryOnResponse(uint8_t length) {
   if (_onResponseCallback) {
-    _onResponseCallback(_responseBuffer.data(), _currentRequest.length(), _currentDatapoint);
+    _onResponseCallback(_responseBuffer.data(), length, _currentDatapoint);
   }
   // Bugfix vs. upstream: clear the current datapoint after a successful
   // response, matching VS1/VS2. Without this, GWG refuses every read/write

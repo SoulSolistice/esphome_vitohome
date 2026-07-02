@@ -61,6 +61,19 @@ def _validate_presets(value):
     names = [p[CONF_NAME] for p in value]
     if len(set(names)) != len(names):
         raise cv.Invalid("preset names must be unique")
+    # A state byte must resolve to exactly one preset: on_mode_read takes the
+    # FIRST preset whose read set contains the byte, so a duplicate across two
+    # presets would silently shadow the later one and misreport the mode.
+    seen_reads: dict = {}
+    for p in value:
+        for rv in p[CONF_READ]:
+            if rv in seen_reads:
+                raise cv.Invalid(
+                    f"read value 0x{rv:02X} appears in presets "
+                    f"'{seen_reads[rv]}' and '{p[CONF_NAME]}'; each state byte "
+                    f"must map to exactly one preset"
+                )
+            seen_reads[rv] = p[CONF_NAME]
     return value
 
 

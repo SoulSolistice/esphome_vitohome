@@ -70,6 +70,14 @@ climate::ClimateTraits VitoClimate::traits() {
   if (this->has_mode_) {
     for (auto& p : this->presets_) t.add_supported_mode(p.mode);
   }
+  // Default the HA card's gauge to the device's reality: the same range
+  // control() clamps to, on the 1 degC grid the 1-byte setpoint register
+  // stores. Without this the card showed the framework defaults (and a 0.1
+  // deg step the device cannot represent). A user `visual:` block still wins
+  // -- ESPHome applies the visual_*_override_ members on top of traits().
+  t.set_visual_min_temperature(static_cast<float>(this->setpoint_min_));
+  t.set_visual_max_temperature(static_cast<float>(this->setpoint_max_));
+  t.set_visual_target_temperature_step(1.0f);
   return t;
 }
 
@@ -122,6 +130,13 @@ void VitoClimate::control(const climate::ClimateCall& call) {
       } else {
         ESP_LOGE(TAG, "%s: mode write could not be queued", this->get_name().c_str());
       }
+    } else if (call.has_custom_preset() || call.get_mode().has_value()) {
+      // The user asked for a mode/preset this YAML's preset table cannot
+      // express (e.g. an OFF tap with no OFF-mode preset configured). Ignoring
+      // it is correct -- there is no byte to write -- but doing so SILENTLY
+      // left the person tapping a dead button; say why nothing happened.
+      ESP_LOGW(TAG, "%s: no preset matches the requested mode/preset; nothing written (add a preset row for it)",
+               this->get_name().c_str());
     }
   }
 

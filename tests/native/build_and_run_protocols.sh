@@ -34,6 +34,16 @@ for sel in "P300:" "KW:-DVITOHOME_PROTOCOL_KW" "GWG:-DVITOHOME_PROTOCOL_GWG"; do
   ./adapter_proof
 done
 
+echo "== GWG read/write completion (THIRD_PARTY.md #8 fix) =="
+g++ -std=c++17 -Wall -Wextra -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
+  proof_gwg_read.cpp "${SRCS[@]}" -o gwg_read
+./gwg_read
+
+echo "== VS2 guards: ERROR-type frames + parser reset (#9 / #10) =="
+g++ -std=c++17 -Wall -Wextra -pthread -I"$ROOT" -I"$OPTO" \
+  proof_vs2_guards.cpp "${SRCS[@]}" -o vs2_guards
+./vs2_guards
+
 echo "== GWG sync poke: must be OFF by default =="
 g++ -std=c++17 -Wall -Wextra -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
   proof_gwg_poke.cpp "${SRCS[@]}" -o gwg_poke

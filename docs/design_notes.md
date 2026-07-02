@@ -117,7 +117,12 @@ signedness rules.
   so the hub registers **one** uniform response handler regardless of which engine
   is built. KW/GWG deliver raw bytes and the request datapoint carries the
   address; P300 surfaces the address in its packet — both collapse to the same
-  `ResponseView`. This indirection is what makes adding/maintaining a second
+  `ResponseView`. On P300 the `address` field is the one **echoed in the
+  response frame itself** (the device echoes it on read responses and write
+  acks alike — hardware-confirmed by the transaction-harness fixtures), so the
+  hub's response-address match is a live wire-level check there; on KW/GWG no
+  address travels in the response, the adapter fills in the request's, and the
+  check degenerates to a tautology. This indirection is what makes adding/maintaining a second
   protocol cheap, and it is exercised host-side without hardware by
   `tests/native/adapter_compile_proof.cpp`.
 - **Link is verified at runtime.** After `begin()`, the hub watches for the first
@@ -130,11 +135,12 @@ signedness rules.
 ## 3. The vendored engine (`optolink/`)
 
 The `optolink/` subtree is a **vendored and modified** copy of VitoWiFi at
-`edc059a7`, de-branded into `esphome::vitohome::optolink`. The seven intentional
+`edc059a7`, de-branded into `esphome::vitohome::optolink`. The ten intentional
 divergences from upstream (the namespace/class rename, removal of the platform
 serial adapters, the logging rework, the `std::array` packet buffers, the VS2
-write-payload guard, the named timeouts, and the GWG one-shot bugfix) are
-itemised in
+write-payload guard, the named timeouts, the GWG one-shot bugfix, the GWG
+response-completion fix, the VS2 non-RESPONSE frame guard, and the VS2 parser
+reset on engine reset) are itemised in
 [`optolink/THIRD_PARTY.md`](../components/vitohome/optolink/THIRD_PARTY.md);
 licensing (MIT-into-GPLv3) is in [`NOTICE.md`](../NOTICE.md). They are not
 repeated here. What belongs here are the **lessons from doing the vendoring**,
@@ -399,6 +405,14 @@ intervals: the hub id isn't reliably resolvable from a platform's
 chosen tradeoff.) Suggested tiers: live measurements ~60 s, monotonic counters
 ~600 s, writable coding values ~3600 s, error history ~300 s.
 
+**Transient-error tolerance.** `sensor` and `number` publish NAN (HA
+"unavailable") only after **three consecutive failed reads**; a single CRC
+glitch or timeout no longer blanks an hourly-polled entity until its next
+poll, and a successful publish resets the streak. Failed **writes** never
+blank state at all — the device value did not change — which is why the hub
+dispatches read errors to `handle_error()` and write errors to
+`handle_write_error()` (default: keep state) separately.
+
 ---
 
 ## 10. Testing and the gate model
@@ -462,7 +476,12 @@ Two limits worth re-stating because they are recurring footguns:
 
 - **GWG hardware verification.** GWG is implemented and host-proven but never run
   against a GWG unit; it ships labelled as such, gated on a unit or a community
-  tester. KW/VS1 and P300 are hardware-confirmed.
+  tester. KW/VS1 and P300 are hardware-confirmed. Note the vendored engine now
+  deliberately diverges from upstream here: upstream's completion check waited
+  for the request-frame length (5 bytes) instead of the datapoint length, so no
+  GWG read of length != 5 could ever have completed — fixed and host-proven
+  (`proof_gwg_read.cpp`, THIRD_PARTY.md #8; the read side is source-confirmed
+  against vcontrold's GWG framing, the write-ack side is model-derived).
 - **`Convert4BytesToFloat`** (IEEE-754 datapoints) is not yet a converter; such
   datapoints are surfaced by the catalog generator as commented hints rather than
   decoded wrongly. Note this is *not* the same as `sec2hour`, which reads 4 bytes

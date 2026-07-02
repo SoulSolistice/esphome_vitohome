@@ -148,11 +148,12 @@ void VitoHomeComponent::loop() {
         ESP_LOGW(TAG, "In-flight %s to %s exceeded watchdog (%" PRIu32 " ms). Clearing.",
                  this->in_flight_op_ == OpType::WRITE ? "write" : "read", this->in_flight_->get_datapoint().name(),
                  IN_FLIGHT_WATCHDOG_MS);
-        this->in_flight_->handle_error(optolink::OptolinkResult::TIMEOUT);
         if (this->in_flight_op_ == OpType::READ) {
           this->in_flight_->read_queued_ = false;
+          this->in_flight_->handle_error(optolink::OptolinkResult::TIMEOUT);
         } else {
           this->in_flight_->write_in_flight_ = false;
+          this->in_flight_->handle_write_error(optolink::OptolinkResult::TIMEOUT);
         }
         this->in_flight_ = nullptr;
         this->in_flight_op_ = OpType::NONE;
@@ -521,16 +522,25 @@ void VitoHomeComponent::on_response_(const ResponseView& response, const optolin
   }
   // A write was dispatched to the command address; a read to the state
   // address. Match the response against whichever this op used (they differ
-  // only for two-address controls; otherwise both are datapoint_).
+  // only for two-address controls; otherwise both are datapoint_). The
+  // response.address is the address echoed in the device's own frame on P300
+  // (see ProtocolAdapter), so this is a live wire-level check there; on
+  // KW/GWG the adapter fills it from the request and the check is a no-op.
+  // (It previously compared request.address() against the entity's own
+  // datapoint -- the same value by construction -- and could never fire.)
   const uint16_t expected_addr =
       (op == OpType::WRITE) ? entity->get_write_datapoint().address() : entity->get_datapoint().address();
-  if (expected_addr != request.address()) {
-    ESP_LOGW(TAG, "Response address 0x%04X does not match in-flight 0x%04X; dropping", request.address(),
-             expected_addr);
-    entity->read_queued_ = false;
-    // Clear only the in-flight marker; if a newer value re-enqueued during this
-    // transaction, write_queued_ stays set so it is still transmitted.
-    entity->write_in_flight_ = false;
+  if (expected_addr != response.address) {
+    ESP_LOGW(TAG, "Response address 0x%04X does not match in-flight 0x%04X; dropping", response.address, expected_addr);
+    // Clear only the state that belongs to THIS op: a stray write-path clear
+    // of read_queued_ could let a still-queued poll read be double-queued. If
+    // a newer value re-enqueued during this transaction, write_queued_ stays
+    // set so it is still transmitted.
+    if (op == OpType::READ) {
+      entity->read_queued_ = false;
+    } else {
+      entity->write_in_flight_ = false;
+    }
     return;
   }
 
@@ -596,10 +606,13 @@ void VitoHomeComponent::on_error_(optolink::OptolinkResult error, const optolink
   if (entity != nullptr) {
     if (op == OpType::READ) {
       entity->read_queued_ = false;
+      entity->handle_error(error);
     } else {
       entity->write_in_flight_ = false;
+      // The device value did not change on a failed write; the entity keeps
+      // its state (default no-op) rather than going unavailable.
+      entity->handle_write_error(error);
     }
-    entity->handle_error(error);
   }
 }
 
