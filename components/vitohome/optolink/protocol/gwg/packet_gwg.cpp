@@ -20,9 +20,9 @@ PacketGWG::operator bool() const {
   return false;
 }
 
-uint8_t &PacketGWG::operator[](std::size_t index) { return _buffer[index]; }
+uint8_t& PacketGWG::operator[](std::size_t index) { return _buffer[index]; }
 
-bool PacketGWG::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, const uint8_t *data) {
+bool PacketGWG::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, const uint8_t* data) {
   reset();
 
   // check arguments
@@ -80,7 +80,7 @@ uint16_t PacketGWG::address() const { return _buffer[2]; }
 
 uint8_t PacketGWG::dataLength() const { return _buffer[3]; }
 
-const uint8_t *PacketGWG::data() const { return &_buffer[4]; }
+const uint8_t* PacketGWG::data() const { return &_buffer[4]; }
 
 void PacketGWG::reset() { _buffer[3] = 0x00; }
 

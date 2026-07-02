@@ -10,7 +10,7 @@ namespace vitohome {
 // selected engine produces, so the hub and entities never depend on a
 // protocol-specific packet type.
 struct ResponseView {
-  const uint8_t *data;
+  const uint8_t* data;
   uint8_t data_length;
   uint16_t address;
 };

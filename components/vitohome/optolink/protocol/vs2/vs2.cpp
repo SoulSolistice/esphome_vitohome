@@ -18,7 +18,7 @@ VS2Engine::~VS2Engine() { delete _interface; }
 void VS2Engine::onResponse(OnResponseCallback callback) { _onResponseCallback = callback; }
 void VS2Engine::onError(OnErrorCallback callback) { _onErrorCallback = callback; }
 
-bool VS2Engine::read(const Datapoint &datapoint) {
+bool VS2Engine::read(const Datapoint& datapoint) {
   if (_currentDatapoint) {
     return false;
   }
@@ -33,11 +33,11 @@ bool VS2Engine::read(const Datapoint &datapoint) {
   return false;
 }
 
-bool VS2Engine::write(const Datapoint &datapoint, const VariantValue &value) {
+bool VS2Engine::write(const Datapoint& datapoint, const VariantValue& value) {
   if (_currentDatapoint) {
     return false;
   }
-  uint8_t *payload = reinterpret_cast<uint8_t *>(malloc(datapoint.length()));
+  uint8_t* payload = reinterpret_cast<uint8_t*>(malloc(datapoint.length()));
   if (!payload) return false;
   datapoint.encode(payload, datapoint.length(), value);
   bool result = write(datapoint, payload, datapoint.length());
@@ -45,7 +45,7 @@ bool VS2Engine::write(const Datapoint &datapoint, const VariantValue &value) {
   return result;
 }
 
-bool VS2Engine::write(const Datapoint &datapoint, const uint8_t *data, uint8_t length) {
+bool VS2Engine::write(const Datapoint& datapoint, const uint8_t* data, uint8_t length) {
   if (_currentDatapoint) {
     return false;
   }

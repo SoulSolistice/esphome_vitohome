@@ -111,7 +111,7 @@ ParserResult ParserVS2::parse(const uint8_t b) {
   return ParserResult::CONTINUE;
 }
 
-const PacketVS2 &ParserVS2::packet() const { return _packet; }
+const PacketVS2& ParserVS2::packet() const { return _packet; }
 
 void ParserVS2::reset() {
   _packet.reset();

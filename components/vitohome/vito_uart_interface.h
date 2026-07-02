@@ -18,7 +18,7 @@ namespace vitohome {
 // that outlives it. The component holds both as members in the correct order.
 class ESPHomeUARTInterface {
  public:
-  explicit ESPHomeUARTInterface(uart::UARTDevice *dev) : dev_(dev) {}
+  explicit ESPHomeUARTInterface(uart::UARTDevice* dev) : dev_(dev) {}
 
   bool begin() {
     // ESPHome configures and opens the UART from YAML; nothing for us to do
@@ -30,7 +30,7 @@ class ESPHomeUARTInterface {
     // ESPHome owns the UART lifecycle.
   }
 
-  std::size_t write(const uint8_t *data, uint8_t length) {
+  std::size_t write(const uint8_t* data, uint8_t length) {
     if (dev_ == nullptr || data == nullptr || length == 0) return 0;
     dev_->write_array(data, length);
     return length;  // ESPHome's write_array does not signal partial writes
@@ -53,7 +53,7 @@ class ESPHomeUARTInterface {
   }
 
  private:
-  uart::UARTDevice *dev_;
+  uart::UARTDevice* dev_;
 };
 
 }  // namespace vitohome

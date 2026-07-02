@@ -36,7 +36,7 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   void dump_config() override;
   float get_setup_priority() const override { return setup_priority::AFTER_WIFI; }
 
-  void register_entity(VitoEntityBase *entity) {
+  void register_entity(VitoEntityBase* entity) {
     if (entity == nullptr) return;
     entity->set_vitohome_parent(this);
     this->entities_.push_back(entity);
@@ -44,7 +44,7 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
 
   // device_id text sensors don't poll the bus themselves — they subscribe to
   // the hub's one-shot identification result (see identification below).
-  void register_device_id_sensor(text_sensor::TextSensor *ts) {
+  void register_device_id_sensor(text_sensor::TextSensor* ts) {
     if (ts != nullptr) this->device_id_sensors_.push_back(ts);
   }
 
@@ -54,7 +54,7 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   // (0x088E) and, when it differs from the configured time source by more than
   // the drift threshold, writes the current time back. All three knobs are
   // user-configured; sync is inert unless a time source is set.
-  void set_time_source(time::RealTimeClock *t) { this->time_source_ = t; }
+  void set_time_source(time::RealTimeClock* t) { this->time_source_ = t; }
   void set_time_sync(uint32_t interval_ms, uint32_t drift_threshold_s, bool sync_on_boot) {
     this->time_sync_interval_ms_ = interval_ms;
     this->time_drift_threshold_s_ = drift_threshold_s;
@@ -65,12 +65,12 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   // buffer). Writes are dispatched with priority over reads; the newest
   // payload wins if the entity is re-controlled while still queued (the
   // entity owns the buffer). Returns false if the entity has no payload.
-  bool request_write(VitoEntityBase *entity);
+  bool request_write(VitoEntityBase* entity);
 
   // --- raw scan console (debug) --------------------------------------------
   // Subscribe a hub-fed text sensor (text_sensor: type: scan_result) to the
   // raw-op result line. Mirrors register_device_id_sensor: it never polls.
-  void register_raw_result_sensor(text_sensor::TextSensor *ts) {
+  void register_raw_result_sensor(text_sensor::TextSensor* ts) {
     if (ts != nullptr) this->raw_result_sensors_.push_back(ts);
   }
 
@@ -79,7 +79,7 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   // integer views for a read, ACK / error otherwise -- is logged and published
   // to any scan_result sensor. Drives the scan console and HA range sweeps.
   void queue_raw_read(uint16_t address, uint8_t length);
-  void queue_raw_write(uint16_t address, const std::vector<uint8_t> &bytes);
+  void queue_raw_write(uint16_t address, const std::vector<uint8_t>& bytes);
 
  protected:
   enum class OpType : uint8_t { NONE, READ, WRITE };
@@ -109,13 +109,13 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   // call sites in dispatch_next_() -- see the priority split there.
   void dispatch_raw_front_();
   void schedule_due_entities_();
-  void on_response_(const ResponseView &response, const optolink::Datapoint &request);
-  void on_error_(optolink::OptolinkResult error, const optolink::Datapoint &request);
+  void on_response_(const ResponseView& response, const optolink::Datapoint& request);
+  void on_error_(optolink::OptolinkResult error, const optolink::Datapoint& request);
 
   // identification
   void ident_start_();
   void ident_dispatch_(IdentState state);
-  void ident_handle_response_(const ResponseView &response);
+  void ident_handle_response_(const ResponseView& response);
   void ident_handle_error_();
   void ident_finish_();
   std::string ident_string_() const;
@@ -125,20 +125,20 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   // route a system-time read/write/verify through the same lane. Defined here so
   // it precedes enqueue_raw_ and the RawOp struct below.
   enum class RawPurpose : uint8_t { SCAN, CLOCK_READ, CLOCK_WRITE, CLOCK_VERIFY };
-  void raw_handle_response_(const ResponseView &response);
+  void raw_handle_response_(const ResponseView& response);
   void raw_handle_error_(optolink::OptolinkResult error);
-  void raw_publish_(const std::string &line);
+  void raw_publish_(const std::string& line);
   // Shared enqueue for the raw lane; the scan console uses purpose SCAN, the
   // clock sync uses the CLOCK_* purposes.
-  void enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const std::vector<uint8_t> &bytes,
+  void enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const std::vector<uint8_t>& bytes,
                     RawPurpose purpose);
 
   // system-time sync (rides the raw lane)
   void time_sync_tick_();
   void sync_system_time_();
-  void clock_handle_read_(const ResponseView &response);
+  void clock_handle_read_(const ResponseView& response);
   void clock_handle_write_ack_();
-  void clock_handle_verify_(const ResponseView &response);
+  void clock_handle_verify_(const ResponseView& response);
   static constexpr uint16_t CLOCK_ADDRESS = 0x088E;  // getSystemTime / setSystemTime
   static constexpr uint8_t CLOCK_LEN = 8;
 
@@ -152,11 +152,11 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   // place that touches a concrete packet type.
   std::unique_ptr<ProtocolAdapter> vito_;
 
-  std::vector<VitoEntityBase *> entities_;
-  std::vector<text_sensor::TextSensor *> device_id_sensors_;
-  std::deque<VitoEntityBase *> read_queue_;
-  std::deque<VitoEntityBase *> write_queue_;
-  VitoEntityBase *in_flight_{nullptr};
+  std::vector<VitoEntityBase*> entities_;
+  std::vector<text_sensor::TextSensor*> device_id_sensors_;
+  std::deque<VitoEntityBase*> read_queue_;
+  std::deque<VitoEntityBase*> write_queue_;
+  VitoEntityBase* in_flight_{nullptr};
   OpType in_flight_op_{OpType::NONE};
   uint32_t in_flight_started_ms_{0};
 
@@ -193,10 +193,10 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   RawPurpose raw_purpose_{RawPurpose::SCAN};
   optolink::Datapoint raw_dp_{"scan", 0, 1, optolink::noconv};
   std::vector<uint8_t> raw_write_buf_;
-  std::vector<text_sensor::TextSensor *> raw_result_sensors_;
+  std::vector<text_sensor::TextSensor*> raw_result_sensors_;
 
   // System-time sync state. time_source_ == nullptr means the feature is off.
-  time::RealTimeClock *time_source_{nullptr};
+  time::RealTimeClock* time_source_{nullptr};
   uint32_t time_sync_interval_ms_{0};    // 0 = no periodic sync
   uint32_t time_drift_threshold_s_{60};  // only write if drift exceeds this
   bool time_sync_on_boot_{true};         // sync once after time first valid

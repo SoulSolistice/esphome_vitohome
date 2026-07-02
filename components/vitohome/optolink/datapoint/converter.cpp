@@ -13,7 +13,7 @@ namespace esphome {
 namespace vitohome {
 namespace optolink {
 
-VariantValue Div10Convert::decode(const uint8_t *data, uint8_t len) const {
+VariantValue Div10Convert::decode(const uint8_t* data, uint8_t len) const {
   assert(len == 1 || len == 2);
   float retVal = 0;
   if (len == 1) {
@@ -27,7 +27,7 @@ VariantValue Div10Convert::decode(const uint8_t *data, uint8_t len) const {
   return VariantValue(retVal);
 }
 
-void Div10Convert::encode(uint8_t *buf, uint8_t len, const VariantValue &val) const {
+void Div10Convert::encode(uint8_t* buf, uint8_t len, const VariantValue& val) const {
   assert(len == 1 || len == 2);
   (void)len;
   float srcVal = val;
@@ -38,7 +38,7 @@ void Div10Convert::encode(uint8_t *buf, uint8_t len, const VariantValue &val) co
   buf[0] = tmp & 0xFF;
 }
 
-VariantValue Div2Convert::decode(const uint8_t *data, uint8_t len) const {
+VariantValue Div2Convert::decode(const uint8_t* data, uint8_t len) const {
   assert(len == 1);
   float retVal = 0;
   int8_t val = data[0];
@@ -46,7 +46,7 @@ VariantValue Div2Convert::decode(const uint8_t *data, uint8_t len) const {
   return VariantValue(retVal);
 }
 
-void Div2Convert::encode(uint8_t *buf, uint8_t len, const VariantValue &val) const {
+void Div2Convert::encode(uint8_t* buf, uint8_t len, const VariantValue& val) const {
   assert(len == 1);
   (void)len;
   float srcVal = val;
@@ -54,7 +54,7 @@ void Div2Convert::encode(uint8_t *buf, uint8_t len, const VariantValue &val) con
   buf[0] = tmp;
 }
 
-VariantValue Div3600Convert::decode(const uint8_t *data, uint8_t len) const {
+VariantValue Div3600Convert::decode(const uint8_t* data, uint8_t len) const {
   assert(len == 4);
   (void)len;
   uint32_t val = data[3] << 24 | data[2] << 16 | data[1] << 8 | data[0];
@@ -62,7 +62,7 @@ VariantValue Div3600Convert::decode(const uint8_t *data, uint8_t len) const {
   return VariantValue(retVal);
 }
 
-void Div3600Convert::encode(uint8_t *buf, uint8_t len, const VariantValue &val) const {
+void Div3600Convert::encode(uint8_t* buf, uint8_t len, const VariantValue& val) const {
   assert(len == 4);
   (void)len;
   float srcVal = val;
@@ -73,7 +73,7 @@ void Div3600Convert::encode(uint8_t *buf, uint8_t len, const VariantValue &val) 
   buf[0] = tmp & 0xFF;
 }
 
-VariantValue NoconvConvert::decode(const uint8_t *data, uint8_t len) const {
+VariantValue NoconvConvert::decode(const uint8_t* data, uint8_t len) const {
   // assert(len == 1 || len == 2 || len == 4);
   if (len == 1) {
     uint8_t retVal = data[0];
@@ -91,7 +91,7 @@ VariantValue NoconvConvert::decode(const uint8_t *data, uint8_t len) const {
   }
 }
 
-void NoconvConvert::encode(uint8_t *buf, uint8_t len, const VariantValue &val) const {
+void NoconvConvert::encode(uint8_t* buf, uint8_t len, const VariantValue& val) const {
   // assert(len == 1 || len == 2 || len == 4);
   if (len == 1) {
     uint8_t srcVal = val;

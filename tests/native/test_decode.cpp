@@ -477,7 +477,7 @@ static void test_schaltzeiten_interop() {
       {0xB0, 22, 0},   // 176 -> 22:00
       {0xBD, 23, 50},  // 189 -> 23:50  (max valid; minute step 50 = low-3-bits 5)
   };
-  for (auto &t : vec) {
+  for (auto& t : vec) {
     uint8_t h = 0, m = 0;
     timebyte_to_hhmm(t.b, &h, &m);
     CHECK(h == t.h && m == t.m);

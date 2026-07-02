@@ -21,14 +21,14 @@ class VitoClimate;
 class VitoClimateChannel : public VitoEntityBase {
  public:
   enum Kind : uint8_t { SETPOINT, MODE };
-  VitoClimateChannel(VitoClimate *parent, Kind kind) : parent_(parent), kind_(kind) {}
+  VitoClimateChannel(VitoClimate* parent, Kind kind) : parent_(parent), kind_(kind) {}
 
   void set_read_back(bool v) { this->read_back_ = v; }
 
-  void handle_response(const ResponseView &response) override;
-  void handle_error(optolink::OptolinkResult /*error*/) override {}          // keep last state
-  void handle_write_response(const ResponseView & /*response*/) override {}  // read-back reconciles
-  const char *entity_kind() const override { return "climate"; }
+  void handle_response(const ResponseView& response) override;
+  void handle_error(optolink::OptolinkResult /*error*/) override {}         // keep last state
+  void handle_write_response(const ResponseView& /*response*/) override {}  // read-back reconciles
+  const char* entity_kind() const override { return "climate"; }
   void dump_config() override {}
 
   // Stage one raw byte and queue the write through the hub (to the write
@@ -36,7 +36,7 @@ class VitoClimateChannel : public VitoEntityBase {
   bool write_byte(uint8_t value);
 
  protected:
-  VitoClimate *parent_;
+  VitoClimate* parent_;
   Kind kind_;
 };
 
@@ -70,10 +70,10 @@ class VitoClimate : public climate::Climate, public Component {
     this->setpoint_min_ = min_c;
     this->setpoint_max_ = max_c;
   }
-  void configure_setpoint(VitoHomeComponent *hub, const optolink::Datapoint &dp, uint32_t poll_ms);
-  void configure_mode(VitoHomeComponent *hub, const optolink::Datapoint &read_dp, bool read_back, uint32_t poll_ms);
-  void set_mode_write_datapoint(const optolink::Datapoint &dp) { this->mode_.set_write_datapoint(dp); }
-  void add_preset(const std::string &name, uint8_t write_value, const std::vector<uint8_t> &read_values,
+  void configure_setpoint(VitoHomeComponent* hub, const optolink::Datapoint& dp, uint32_t poll_ms);
+  void configure_mode(VitoHomeComponent* hub, const optolink::Datapoint& read_dp, bool read_back, uint32_t poll_ms);
+  void set_mode_write_datapoint(const optolink::Datapoint& dp) { this->mode_.set_write_datapoint(dp); }
+  void add_preset(const std::string& name, uint8_t write_value, const std::vector<uint8_t>& read_values,
                   climate::ClimateMode mode) {
     this->presets_.push_back(VitoClimatePreset{name, write_value, read_values, mode});
   }
@@ -81,16 +81,16 @@ class VitoClimate : public climate::Climate, public Component {
   // --- Component / Climate --------------------------------------------------
   void setup() override;
   void dump_config() override;
-  void control(const climate::ClimateCall &call) override;
+  void control(const climate::ClimateCall& call) override;
   climate::ClimateTraits traits() override;
 
   // --- channel read callbacks ----------------------------------------------
-  void on_setpoint_read(const ResponseView &response);
-  void on_mode_read(const ResponseView &response);
+  void on_setpoint_read(const ResponseView& response);
+  void on_mode_read(const ResponseView& response);
 
  protected:
-  const VitoClimatePreset *find_preset_by_name_(const char *name) const;
-  const VitoClimatePreset *first_preset_with_mode_(climate::ClimateMode mode) const;
+  const VitoClimatePreset* find_preset_by_name_(const char* name) const;
+  const VitoClimatePreset* first_preset_with_mode_(climate::ClimateMode mode) const;
 
   VitoClimateChannel setpoint_;
   VitoClimateChannel mode_;

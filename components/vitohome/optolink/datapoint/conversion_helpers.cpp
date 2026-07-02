@@ -17,7 +17,7 @@ namespace esphome {
 namespace vitohome {
 namespace optolink {
 
-std::size_t encodeSchedule(const char *schedule, std::size_t len, uint8_t *output) {
+std::size_t encodeSchedule(const char* schedule, std::size_t len, uint8_t* output) {
   enum ScheduleParserStep {
     Hours1,
     Hours2,
@@ -81,11 +81,11 @@ std::size_t encodeSchedule(const char *schedule, std::size_t len, uint8_t *outpu
   return 0;
 }
 
-std::size_t encodeSchedule(const char *schedule, uint8_t *output) {
+std::size_t encodeSchedule(const char* schedule, uint8_t* output) {
   return encodeSchedule(schedule, strlen(schedule), output);
 }
 
-std::size_t decodeSchedule(const uint8_t *data, std::size_t len, char *output, std::size_t maxLen) {
+std::size_t decodeSchedule(const uint8_t* data, std::size_t len, char* output, std::size_t maxLen) {
   assert(len == 8);
   assert(maxLen >= 48);  // 8 times 07:30, 7 spaces and 0-terminator --> 8 * 5 + 7 * 1 + 1
 

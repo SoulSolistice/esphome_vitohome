@@ -9,7 +9,7 @@
 namespace esphome {
 namespace vitohome {
 
-static const char *const TAG = "vitohome.number";
+static const char* const TAG = "vitohome.number";
 
 void VitoNumber::dump_config() {
   LOG_NUMBER("  ", "VitoHome Number", this);
@@ -41,7 +41,7 @@ void VitoNumber::control(float value) {
   ESP_LOGD(TAG, "%s: queued write %.3f", this->datapoint_.name(), value);
 }
 
-void VitoNumber::handle_response(const ResponseView &response) {
+void VitoNumber::handle_response(const ResponseView& response) {
   // Same decode path as the sensor platform: read-back after a write, and
   // the periodic poll that reflects panel-side changes.
   double value = NAN;
@@ -60,7 +60,7 @@ void VitoNumber::handle_response(const ResponseView &response) {
   this->publish_state(out);
 }
 
-void VitoNumber::handle_write_response(const ResponseView & /*response*/) {
+void VitoNumber::handle_write_response(const ResponseView& /*response*/) {
   if (!this->read_back_) {
     // No read-back requested: publish optimistically on the device ACK.
     this->publish_state(this->pending_value_);

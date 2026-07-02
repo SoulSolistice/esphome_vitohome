@@ -8,7 +8,7 @@
 namespace esphome {
 namespace vitohome {
 
-static const char *const TAG = "vitohome.sensor";
+static const char* const TAG = "vitohome.sensor";
 
 void VitoSensor::dump_config() {
   LOG_SENSOR("  ", "VitoHome Sensor", this);
@@ -19,11 +19,11 @@ void VitoSensor::dump_config() {
   }
 }
 
-void VitoSensor::handle_response(const ResponseView &response) {
+void VitoSensor::handle_response(const ResponseView& response) {
   // Stage-2 decode path: vitohome bypasses the optolink engine's converters entirely
   // (their VariantValue is a tagless union and their math is float32 — see
   // decode.h and docs/stage2_design.md) and decodes the raw payload itself.
-  const uint8_t *data = response.data;
+  const uint8_t* data = response.data;
   const uint8_t have = response.data_length;
   double value = NAN;
   bool ok;
