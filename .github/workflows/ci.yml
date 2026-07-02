@@ -12,13 +12,13 @@ jobs:
     name: pre-commit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
       - run: pip install pre-commit
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
@@ -28,8 +28,8 @@ jobs:
     name: pytest (python)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -40,7 +40,7 @@ jobs:
     name: host tests (c++)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: g++ -std=c++17 -Wall -Wextra -Werror -o /tmp/test_decode tests/native/test_decode.cpp
       - run: /tmp/test_decode
       - name: VS2 transaction harness (vendored optolink engine)
@@ -69,15 +69,15 @@ jobs:
           - test.esp32-idf-gwg.yaml   # GWG  / esp-idf
           - test.esp32-idf-kw.yaml    # KW   / esp-idf  (beyond P300+GWG; drop if leaner CI wanted)
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
 
       - name: Cache PlatformIO toolchain
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.platformio
           # Keyed on deps + framework only — NOT on component source, so a
