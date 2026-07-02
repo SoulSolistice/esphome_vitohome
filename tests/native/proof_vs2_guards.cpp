@@ -51,11 +51,11 @@ static std::vector<uint8_t> frame(std::vector<uint8_t> body) {
 // Drive RESET/INIT to IDLE: engine writes EOT, expects ENQ, writes SYNC,
 // expects ACK.
 static void handshake(ProtocolAdapter& a, FakeOptolink& u) {
-  pump(a);              // RESET: engine writes EOT (0x04)
-  u.feed({0x05});       // device ENQ
-  pump(a);              // INIT: engine writes SYNC 16 00 00
-  u.feed({0x06});       // device ACK
-  pump(a);              // -> IDLE
+  pump(a);         // RESET: engine writes EOT (0x04)
+  u.feed({0x05});  // device ENQ
+  pump(a);         // INIT: engine writes SYNC 16 00 00
+  u.feed({0x06});  // device ACK
+  pump(a);         // -> IDLE
   u.clear_written();
 }
 
@@ -86,9 +86,9 @@ int main() {
 
   // --- A. ERROR-type frame must not be delivered as data --------------------
   check(adapter.read(dp), "A: read accepted");
-  pump(adapter);       // SENDSTART/SENDPACKET/SEND_CRC -> SEND_ACK
-  uart.feed({0x06});   // device ACKs our request
-  pump(adapter);       // -> RECEIVE
+  pump(adapter);      // SENDSTART/SENDPACKET/SEND_CRC -> SEND_ACK
+  uart.feed({0x06});  // device ACKs our request
+  pump(adapter);      // -> RECEIVE
   // Device ERROR frame: type 0x03, fc READ, addr 0x0800, 2 payload bytes.
   uart.feed(frame({0x07, 0x03, 0x01, 0x08, 0x00, 0x02, 0xDE, 0xAD}));
   pump(adapter);
@@ -112,15 +112,15 @@ int main() {
   g_errors = 0;
   check(adapter.read(dp), "B: read accepted");
   pump(adapter);
-  uart.feed({0x06});                    // request ACKed
-  pump(adapter);                        // -> RECEIVE
-  uart.feed({0x41, 0x07, 0x01});        // frame starts... then the device dies
+  uart.feed({0x06});              // request ACKed
+  pump(adapter);                  // -> RECEIVE
+  uart.feed({0x41, 0x07, 0x01});  // frame starts... then the device dies
   pump(adapter);
   std::printf("  (sleeping past REQUEST_TIMEOUT_MS = 4 s ...)\n");
   std::this_thread::sleep_for(std::chrono::milliseconds(4200));
-  pump(adapter);                        // engine timeout: onError(TIMEOUT), -> RESET
+  pump(adapter);  // engine timeout: onError(TIMEOUT), -> RESET
   check(g_errors == 1 && g_last_error == optolink::OptolinkResult::TIMEOUT, "B: mid-frame timeout surfaced");
-  handshake(adapter, uart);             // engine re-handshakes after RESET
+  handshake(adapter, uart);  // engine re-handshakes after RESET
 
   check(adapter.read(dp), "B: post-recovery read accepted");
   pump(adapter);

@@ -51,6 +51,7 @@ tests/native/adapter_proof
 tests/native/gwg_poke
 tests/native/gwg_read
 tests/native/vs2_guards
+tests/native/vs1_write
 tests/native/test_decode
 
 # ==========================================

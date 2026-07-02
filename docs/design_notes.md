@@ -135,12 +135,12 @@ signedness rules.
 ## 3. The vendored engine (`optolink/`)
 
 The `optolink/` subtree is a **vendored and modified** copy of VitoWiFi at
-`edc059a7`, de-branded into `esphome::vitohome::optolink`. The ten intentional
+`edc059a7`, de-branded into `esphome::vitohome::optolink`. The eleven intentional
 divergences from upstream (the namespace/class rename, removal of the platform
 serial adapters, the logging rework, the `std::array` packet buffers, the VS2
 write-payload guard, the named timeouts, the GWG one-shot bugfix, the GWG
-response-completion fix, the VS2 non-RESPONSE frame guard, and the VS2 parser
-reset on engine reset) are itemised in
+response-completion fix, the VS2 non-RESPONSE frame guard, the VS2 parser
+reset on engine reset, and the VS1 write-ack completion fix) are itemised in
 [`optolink/THIRD_PARTY.md`](../components/vitohome/optolink/THIRD_PARTY.md);
 licensing (MIT-into-GPLv3) is in [`NOTICE.md`](../NOTICE.md). They are not
 repeated here. What belongs here are the **lessons from doing the vendoring**,
@@ -482,6 +482,12 @@ Two limits worth re-stating because they are recurring footguns:
   GWG read of length != 5 could ever have completed — fixed and host-proven
   (`proof_gwg_read.cpp`, THIRD_PARTY.md #8; the read side is source-confirmed
   against vcontrold's GWG framing, the write-ack side is model-derived).
+  The KW sibling had the same completion bug on **writes**: upstream waited
+  for `datapoint.length()` bytes where the device acks with a single `0x00`
+  -- hardware-confirmed by a live VScotHO1_72 capture in which the 8-byte
+  clock write to `0x088E` was acked but reported as a timeout. Fixed and
+  host-proven (`proof_vs1_write.cpp`, THIRD_PARTY.md #11); 1-byte writes were
+  never affected, which is why Betriebsart writes always worked.
 - **`Convert4BytesToFloat`** (IEEE-754 datapoints) is not yet a converter; such
   datapoints are surfaced by the catalog generator as commented hints rather than
   decoded wrongly. Note this is *not* the same as `sec2hour`, which reads 4 bytes

@@ -161,9 +161,10 @@ void GWGEngine::_receive() {
   // and timed out. The device actually returns exactly the datapoint's data
   // bytes for a read (vcontrold GWG getaddr: "SEND 01 CB $addr $hexlen 04;
   // RECV $len" -- source-confirmed) and, per the KW-family convention, a
-  // single ack byte for a write (model-derived: vcontrold's GWG setaddr entry
-  // is a stub, so the write side has no independent reference; unverified on
-  // GWG hardware).
+  // single ack byte for a write (model-derived for GWG itself -- vcontrold's
+  // GWG setaddr entry is a stub -- but the 1-byte-ack convention is hardware-
+  // confirmed on the KW sibling protocol, THIRD_PARTY.md #11; GWG remains
+  // unverified on hardware).
   const uint8_t expected = (_currentRequest.packetType() == PacketGWGType.WRITE) ? 1 : _currentDatapoint.length();
   if (_bytesTransferred == expected) {
     _bytesTransferred = 0;  // VS1 parity; _init() also resets before SEND

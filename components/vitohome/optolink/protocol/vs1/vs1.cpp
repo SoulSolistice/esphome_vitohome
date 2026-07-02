@@ -191,16 +191,29 @@ void VS1Engine::_receive() {
     ++_bytesTransferred;
     _lastMillis = _currentMillis;
   }
-  if (_bytesTransferred == _currentDatapoint.length()) {
+  // Write-completion fix vs. upstream (THIRD_PARTY.md #11): upstream waited
+  // for _currentDatapoint.length() response bytes after a WRITE too, but the
+  // device acks a KW write (0xF4) with a SINGLE 0x00 byte -- hardware-
+  // confirmed on a VScotHO1_72 (0x20CB): the 8-byte clock write got its 0x00
+  // ack ~125 ms after the frame, then upstream's check waited for 8 bytes and
+  // timed out. The coincidence len == 1 for the common 1-byte writes
+  // (Betriebsart, setpoints) is what masked this. vcontrold's KW setaddr
+  // ("RECV 1 SR") also reads exactly one byte and does not validate its
+  // value; we complete on it and warn if it is not the documented 0x00.
+  const uint8_t expected = (_currentRequest.packetType() == PacketVS1Type.WRITE) ? 1 : _currentDatapoint.length();
+  if (_bytesTransferred == expected) {
+    if (_currentRequest.packetType() == PacketVS1Type.WRITE && _responseBuffer[0] != 0x00) {
+      optolink_log_w("write ack byte 0x%02x (expected 0x00)", static_cast<unsigned>(_responseBuffer[0]));
+    }
     _bytesTransferred = 0;
     _setState(State::SYNC_RECV);
-    _tryOnResponse();
+    _tryOnResponse(expected);
   }
 }
 
-void VS1Engine::_tryOnResponse() {
+void VS1Engine::_tryOnResponse(uint8_t length) {
   if (_onResponseCallback) {
-    _onResponseCallback(_responseBuffer.data(), _currentDatapoint.length(), _currentDatapoint);
+    _onResponseCallback(_responseBuffer.data(), length, _currentDatapoint);
   }
   _currentDatapoint = Datapoint(nullptr, 0, 0, noconv);
 }

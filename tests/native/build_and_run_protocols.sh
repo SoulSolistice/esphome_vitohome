@@ -39,6 +39,11 @@ g++ -std=c++17 -Wall -Wextra -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO
   proof_gwg_read.cpp "${SRCS[@]}" -o gwg_read
 ./gwg_read
 
+echo "== VS1/KW write-ack completion (THIRD_PARTY.md #11 fix) =="
+g++ -std=c++17 -Wall -Wextra -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" -I"$OPTO" \
+  proof_vs1_write.cpp "${SRCS[@]}" -o vs1_write
+./vs1_write
+
 echo "== VS2 guards: ERROR-type frames + parser reset (#9 / #10) =="
 g++ -std=c++17 -Wall -Wextra -pthread -I"$ROOT" -I"$OPTO" \
   proof_vs2_guards.cpp "${SRCS[@]}" -o vs2_guards

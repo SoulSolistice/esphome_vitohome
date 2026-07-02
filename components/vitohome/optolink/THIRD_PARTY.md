@@ -99,10 +99,11 @@ These are intentional divergences from upstream `edc059a7`:
    `_currentDatapoint.length()` received bytes -- source-confirmed against
    vcontrold's GWG protocol definition (`getaddr` = `SEND 01 CB $addr $hexlen
    04; RECV $len`) -- and a **write** on a single ack byte, following the
-   KW-family write-ack convention. The write side is **model-derived**:
-   vcontrold's GWG `setaddr` entry is a stub (`SYNC;RECV 1`), so no
-   independent reference exists, and GWG remains unverified on hardware
-   either way. Host-proven by `tests/native/proof_gwg_read.cpp` (read and
+   KW-family write-ack convention. The write side is **model-derived** for GWG
+   itself: vcontrold's GWG `setaddr` entry is a stub (`SYNC;RECV 1`), so no
+   independent GWG reference exists -- but the 1-byte-ack convention it
+   follows is now **hardware-confirmed on the KW sibling protocol** (see
+   item 11). GWG remains unverified on hardware either way. Host-proven by `tests/native/proof_gwg_read.cpp` (read and
    write completion, exact wire frames); the same proof fails 8 checks
    against the upstream behaviour.
 
@@ -128,7 +129,22 @@ These are intentional divergences from upstream `edc059a7`:
     `tests/native/proof_vs2_guards.cpp` (test B: the first post-recovery
     transaction succeeds).
 
-Items 7-10 are the only intentional changes to on-wire/runtime behavior;
+11. **VS1 write-ack completion fix (behavioral divergence,
+    hardware-confirmed).** Upstream `VS1::_receive()` completed a WRITE when
+    `_currentDatapoint.length()` response bytes had arrived -- but the device
+    acks a KW write (`0xF4`) with a **single `0x00` byte**. Live capture from
+    a VScotHO1_72 (`0x20CB`), 2026-07-02: the 8-byte clock write to `0x088E`
+    received its `0x00` ack ~125 ms after the frame, upstream's check then
+    waited for 8 bytes and reported a timeout ~4 s later -- although the
+    device had applied the write. The coincidence `len == 1` for the common
+    1-byte writes (Betriebsart, setpoints) is what masked this. The vendored
+    engine completes a write on the single ack byte and logs a warning if it
+    is not the documented `0x00` (vcontrold's KW `setaddr` -- `RECV 1 SR` --
+    also reads exactly one byte and does not validate its value). Host-proven
+    by `tests/native/proof_vs1_write.cpp`, whose vector mirrors the capture
+    byte-for-byte; it fails 7 checks against the upstream behaviour.
+
+Items 7-11 are the only intentional changes to on-wire/runtime behavior;
 everything else preserves upstream protocol behavior. Each is covered by a
 host proof that fails against the upstream code, so none of them rests on
 inspection alone.
