@@ -8,7 +8,7 @@
 namespace esphome {
 namespace vitohome {
 
-static const char *const TAG = "vitohome.climate";
+static const char* const TAG = "vitohome.climate";
 
 // --- channel ---------------------------------------------------------------
 
@@ -17,7 +17,7 @@ bool VitoClimateChannel::write_byte(uint8_t value) {
   return this->vh_parent_ != nullptr && this->vh_parent_->request_write(this);
 }
 
-void VitoClimateChannel::handle_response(const ResponseView &response) {
+void VitoClimateChannel::handle_response(const ResponseView& response) {
   if (this->kind_ == SETPOINT) {
     this->parent_->on_setpoint_read(response);
   } else {
@@ -27,14 +27,14 @@ void VitoClimateChannel::handle_response(const ResponseView &response) {
 
 // --- channel wiring (needs the complete hub type) --------------------------
 
-void VitoClimate::configure_setpoint(VitoHomeComponent *hub, const optolink::Datapoint &dp, uint32_t poll_ms) {
+void VitoClimate::configure_setpoint(VitoHomeComponent* hub, const optolink::Datapoint& dp, uint32_t poll_ms) {
   this->setpoint_.set_vitohome_parent(hub);
   this->setpoint_.set_datapoint(dp);
   this->setpoint_.set_poll_interval(poll_ms);
   hub->register_entity(&this->setpoint_);
 }
 
-void VitoClimate::configure_mode(VitoHomeComponent *hub, const optolink::Datapoint &read_dp, bool read_back,
+void VitoClimate::configure_mode(VitoHomeComponent* hub, const optolink::Datapoint& read_dp, bool read_back,
                                  uint32_t poll_ms) {
   this->has_mode_ = true;
   this->mode_.set_vitohome_parent(hub);
@@ -51,9 +51,9 @@ void VitoClimate::setup() {
   // accepts them. The const char* point into presets_ (a stable member), which
   // is filled once from codegen and never reallocated after setup.
   if (this->has_mode_ && !this->presets_.empty()) {
-    std::vector<const char *> names;
+    std::vector<const char*> names;
     names.reserve(this->presets_.size());
-    for (auto &p : this->presets_) names.push_back(p.name.c_str());
+    for (auto& p : this->presets_) names.push_back(p.name.c_str());
     this->set_supported_custom_presets(names);
   }
   this->mode = this->has_mode_ ? climate::CLIMATE_MODE_OFF : climate::CLIMATE_MODE_HEAT;
@@ -68,26 +68,26 @@ climate::ClimateTraits VitoClimate::traits() {
   // whatever modes the configured presets derive.
   t.add_supported_mode(climate::CLIMATE_MODE_HEAT);
   if (this->has_mode_) {
-    for (auto &p : this->presets_) t.add_supported_mode(p.mode);
+    for (auto& p : this->presets_) t.add_supported_mode(p.mode);
   }
   return t;
 }
 
-const VitoClimatePreset *VitoClimate::find_preset_by_name_(const char *name) const {
-  for (auto &p : this->presets_) {
+const VitoClimatePreset* VitoClimate::find_preset_by_name_(const char* name) const {
+  for (auto& p : this->presets_) {
     if (p.name == name) return &p;
   }
   return nullptr;
 }
 
-const VitoClimatePreset *VitoClimate::first_preset_with_mode_(climate::ClimateMode mode) const {
-  for (auto &p : this->presets_) {
+const VitoClimatePreset* VitoClimate::first_preset_with_mode_(climate::ClimateMode mode) const {
+  for (auto& p : this->presets_) {
     if (p.mode == mode) return &p;
   }
   return nullptr;
 }
 
-void VitoClimate::control(const climate::ClimateCall &call) {
+void VitoClimate::control(const climate::ClimateCall& call) {
   bool changed = false;
 
   // Target temperature -> room setpoint (1-byte integer degC). Clamp to the
@@ -108,7 +108,7 @@ void VitoClimate::control(const climate::ClimateCall &call) {
   // Preset is authoritative for Betriebsart; a mode tap falls back to the first
   // preset that derives that mode (list order is the lever).
   if (this->has_mode_) {
-    const VitoClimatePreset *p = nullptr;
+    const VitoClimatePreset* p = nullptr;
     if (call.has_custom_preset()) {
       p = this->find_preset_by_name_(call.get_custom_preset().c_str());
     } else if (call.get_mode().has_value()) {
@@ -128,7 +128,7 @@ void VitoClimate::control(const climate::ClimateCall &call) {
   if (changed) this->publish_state();
 }
 
-void VitoClimate::on_setpoint_read(const ResponseView &response) {
+void VitoClimate::on_setpoint_read(const ResponseView& response) {
   if (response.data_length < 1) {
     ESP_LOGW(TAG, "%s: setpoint response too short", this->get_name().c_str());
     return;
@@ -138,13 +138,13 @@ void VitoClimate::on_setpoint_read(const ResponseView &response) {
   this->publish_state();
 }
 
-void VitoClimate::on_mode_read(const ResponseView &response) {
+void VitoClimate::on_mode_read(const ResponseView& response) {
   if (response.data_length < 1) {
     ESP_LOGW(TAG, "%s: mode response too short", this->get_name().c_str());
     return;
   }
   const uint8_t byte = response.data[0];
-  for (auto &p : this->presets_) {
+  for (auto& p : this->presets_) {
     for (uint8_t rv : p.read_values) {
       if (rv == byte) {
         this->set_custom_preset_(p.name.c_str());

@@ -31,8 +31,8 @@ namespace optolink {
 
 class VS1Engine {
  public:
-  typedef std::function<void(const uint8_t *data, uint8_t length, const Datapoint &request)> OnResponseCallback;
-  typedef std::function<void(OptolinkResult error, const Datapoint &request)> OnErrorCallback;
+  typedef std::function<void(const uint8_t* data, uint8_t length, const Datapoint& request)> OnResponseCallback;
+  typedef std::function<void(OptolinkResult error, const Datapoint& request)> OnErrorCallback;
 
   // Named timeouts (ms). Values byte-identical to the previous inline
   // literals; kept per-engine (do not unify across protocols).
@@ -45,7 +45,7 @@ class VS1Engine {
   static constexpr std::size_t kResponseBufferSize = 256;
 
   template <class C>
-  explicit VS1Engine(C *interface)
+  explicit VS1Engine(C* interface)
       : _state(State::UNDEFINED),
         _currentMillis(optolink_millis()),
         _lastMillis(_currentMillis),
@@ -65,15 +65,15 @@ class VS1Engine {
     }
   }
   ~VS1Engine();
-  VS1Engine(const VS1Engine &) = delete;
-  VS1Engine &operator=(const VS1Engine &) = delete;
+  VS1Engine(const VS1Engine&) = delete;
+  VS1Engine& operator=(const VS1Engine&) = delete;
 
   void onResponse(OnResponseCallback callback);
   void onError(OnErrorCallback callback);
 
-  bool read(const Datapoint &datapoint);
-  bool write(const Datapoint &datapoint, const VariantValue &value);
-  bool write(const Datapoint &datapoint, const uint8_t *data, uint8_t length);
+  bool read(const Datapoint& datapoint);
+  bool write(const Datapoint& datapoint, const VariantValue& value);
+  bool write(const Datapoint& datapoint, const uint8_t* data, uint8_t length);
 
   bool begin();
   void loop();
@@ -88,7 +88,7 @@ class VS1Engine {
   uint32_t _lastMillis;
   uint32_t _requestTime;
   uint8_t _bytesTransferred;
-  internals::SerialInterface *_interface;
+  internals::SerialInterface* _interface;
   Datapoint _currentDatapoint;
   PacketVS1 _currentRequest;
   std::array<uint8_t, kResponseBufferSize> _responseBuffer;

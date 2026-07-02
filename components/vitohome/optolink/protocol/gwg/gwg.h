@@ -35,8 +35,8 @@ namespace optolink {
 
 class GWGEngine {
  public:
-  typedef std::function<void(const uint8_t *data, uint8_t length, const Datapoint &request)> OnResponseCallback;
-  typedef std::function<void(OptolinkResult error, const Datapoint &request)> OnErrorCallback;
+  typedef std::function<void(const uint8_t* data, uint8_t length, const Datapoint& request)> OnResponseCallback;
+  typedef std::function<void(OptolinkResult error, const Datapoint& request)> OnErrorCallback;
 
   // Named timeout (ms). GWG deliberately uses a 3000ms request watchdog,
   // distinct from VS2/VS1's 4000ms - value byte-identical to upstream.
@@ -56,7 +56,7 @@ class GWGEngine {
   static constexpr uint32_t ENQ_POKE_INTERVAL_MS = 3000;
 
   template <class C>
-  explicit GWGEngine(C *interface)
+  explicit GWGEngine(C* interface)
       : _state(State::UNDEFINED),
         _currentMillis(optolink_millis()),
         _lastMillis(_currentMillis),
@@ -76,15 +76,15 @@ class GWGEngine {
     }
   }
   ~GWGEngine();
-  GWGEngine(const GWGEngine &) = delete;
-  GWGEngine &operator=(const GWGEngine &) = delete;
+  GWGEngine(const GWGEngine&) = delete;
+  GWGEngine& operator=(const GWGEngine&) = delete;
 
   void onResponse(OnResponseCallback callback);
   void onError(OnErrorCallback callback);
 
-  bool read(const Datapoint &datapoint);
-  bool write(const Datapoint &datapoint, const VariantValue &value);
-  bool write(const Datapoint &datapoint, const uint8_t *data, uint8_t length);
+  bool read(const Datapoint& datapoint);
+  bool write(const Datapoint& datapoint, const VariantValue& value);
+  bool write(const Datapoint& datapoint, const uint8_t* data, uint8_t length);
 
   bool begin();
   void loop();
@@ -99,7 +99,7 @@ class GWGEngine {
   uint32_t _lastMillis;
   uint32_t _requestTime;
   uint8_t _bytesTransferred;
-  internals::SerialInterface *_interface;
+  internals::SerialInterface* _interface;
   Datapoint _currentDatapoint;
   PacketGWG _currentRequest;
   std::array<uint8_t, kResponseBufferSize> _responseBuffer;

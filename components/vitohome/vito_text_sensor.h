@@ -24,23 +24,23 @@ class VitoTextSensor : public text_sensor::TextSensor, public Component, public 
   void set_type(TextSensorType type) { this->type_ = type; }
   // ENUM labels / ERROR_HISTORY code texts. Codegen feeds these one by one;
   // labels are string literals from codegen (static storage).
-  void add_option(uint32_t value, const char *label) { this->options_.emplace_back(value, label); }
+  void add_option(uint32_t value, const char* label) { this->options_.emplace_back(value, label); }
 
   void dump_config() override;
-  void handle_response(const ResponseView &response) override;
+  void handle_response(const ResponseView& response) override;
   void handle_error(optolink::OptolinkResult error) override;
-  const char *entity_kind() const override { return "text_sensor"; }
+  const char* entity_kind() const override { return "text_sensor"; }
 
  protected:
-  const char *lookup_(uint32_t value) const;
-  void publish_raw_hex_(const uint8_t *data, uint8_t len);
-  void publish_enum_(const uint8_t *data, uint8_t len);
-  void publish_error_history_(const uint8_t *data, uint8_t len);
-  void publish_ascii_(const uint8_t *data, uint8_t len);
-  void publish_utf16_(const uint8_t *data, uint8_t len);
+  const char* lookup_(uint32_t value) const;
+  void publish_raw_hex_(const uint8_t* data, uint8_t len);
+  void publish_enum_(const uint8_t* data, uint8_t len);
+  void publish_error_history_(const uint8_t* data, uint8_t len);
+  void publish_ascii_(const uint8_t* data, uint8_t len);
+  void publish_utf16_(const uint8_t* data, uint8_t len);
 
   TextSensorType type_{TextSensorType::RAW_HEX};
-  std::vector<std::pair<uint32_t, const char *>> options_;
+  std::vector<std::pair<uint32_t, const char*>> options_;
 };
 
 }  // namespace vitohome

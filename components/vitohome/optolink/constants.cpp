@@ -13,7 +13,7 @@ namespace esphome {
 namespace vitohome {
 namespace optolink {
 
-const char *errorToString(OptolinkResult error) {
+const char* errorToString(OptolinkResult error) {
   if (error == OptolinkResult::TIMEOUT) {
     return "timeout";
   } else if (error == OptolinkResult::LENGTH) {

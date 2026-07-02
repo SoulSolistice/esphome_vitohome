@@ -26,7 +26,7 @@ class ParserVS2 {
  public:
   ParserVS2();
   ParserResult parse(const uint8_t b);
-  const PacketVS2 &packet() const;
+  const PacketVS2& packet() const;
   void reset();
 
  private:
