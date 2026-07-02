@@ -471,7 +471,7 @@ void VitoHomeComponent::clock_handle_read_(const ResponseView& response) {
   }
   if (!need_write) return;
   uint8_t buf[CLOCK_LEN];
-  const uint8_t weekday = weekday_mon0_from_sunday1(t.day_of_week);
+  const uint8_t weekday = device_weekday_from_esptime(t.day_of_week);
   if (!encode_datetime_bcd(t.year, t.month, t.day_of_month, weekday, t.hour, t.minute, t.second, buf)) {
     ESP_LOGW(TAG, "System-time sync: time source out of range, skipping");
     return;

@@ -385,17 +385,19 @@ static void test_clock_helpers() {
   dt.second = 45;
   CHECK(civil_seconds(dt) == 1782657045LL);
 
-  // Weekday map: ESPHome sunday=1..saturday=7 -> Viessmann monday=0..sunday=6.
-  CHECK(weekday_mon0_from_sunday1(1) == 6);  // Sunday
-  CHECK(weekday_mon0_from_sunday1(2) == 0);  // Monday
-  CHECK(weekday_mon0_from_sunday1(3) == 1);  // Tuesday
-  CHECK(weekday_mon0_from_sunday1(7) == 5);  // Saturday
+  // Weekday map: ESPHome sunday=1..saturday=7 -> device sunday=0..saturday=6
+  // (strftime %w). Wednesday=3 is hardware-confirmed on 0x20CB.
+  CHECK(device_weekday_from_esptime(1) == 0);  // Sunday
+  CHECK(device_weekday_from_esptime(2) == 1);  // Monday
+  CHECK(device_weekday_from_esptime(3) == 2);  // Tuesday
+  CHECK(device_weekday_from_esptime(4) == 3);  // Wednesday
+  CHECK(device_weekday_from_esptime(7) == 6);  // Saturday
 
-  // Encode the 8-byte DateTimeBCD wire layout. 2026-06-28 14:30:45, Sunday
-  // (weekday byte = 6 in monday=0 form).
+  // Encode the 8-byte DateTimeBCD wire layout. 2026-06-28 14:30:45 is a Sunday
+  // (weekday byte = 0 in the sunday=0 convention).
   uint8_t buf[8];
-  CHECK(encode_datetime_bcd(2026, 6, 28, 6, 14, 30, 45, buf));
-  const uint8_t want[] = {0x20, 0x26, 0x06, 0x28, 0x06, 0x14, 0x30, 0x45};
+  CHECK(encode_datetime_bcd(2026, 6, 28, 0, 14, 30, 45, buf));
+  const uint8_t want[] = {0x20, 0x26, 0x06, 0x28, 0x00, 0x14, 0x30, 0x45};
   CHECK(std::memcmp(buf, want, 8) == 0);
 
   // Round-trip against the decoder (which ignores the weekday byte).
@@ -408,10 +410,10 @@ static void test_clock_helpers() {
   uint8_t seed[8];
   std::memcpy(seed, want, 8);
   std::memcpy(buf, want, 8);
-  CHECK(!encode_datetime_bcd(2026, 13, 28, 6, 14, 30, 45, buf));  // month 13
+  CHECK(!encode_datetime_bcd(2026, 13, 28, 0, 14, 30, 45, buf));  // month 13
   CHECK(std::memcmp(buf, seed, 8) == 0);
   CHECK(!encode_datetime_bcd(2026, 6, 28, 7, 14, 30, 45, buf));  // weekday 7
-  CHECK(!encode_datetime_bcd(2026, 6, 28, 6, 24, 30, 45, buf));  // hour 24
+  CHECK(!encode_datetime_bcd(2026, 6, 28, 0, 24, 30, 45, buf));  // hour 24
 }
 
 // --- RotateBytes: read_be / decode_scaled_be ------------------------------

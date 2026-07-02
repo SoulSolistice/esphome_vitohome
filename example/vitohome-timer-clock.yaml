@@ -8,8 +8,8 @@
 # Two things are demonstrated:
 #   1. time_sync — the hub reads the device clock (0x088E) and rewrites it from
 #      a time source when it drifts past the threshold. The weekday byte is
-#      written Monday=0 (the Viessmann convention; vitohome decodes it the same
-#      way and the controller also derives the weekday from the date).
+#      written sunday=0 (strftime %w) to match the device, which validates the
+#      weekday against the date; hardware-confirmed on 0x20CB (Wednesday = 3).
 #   2. text: platform: vitohome — one entity per weekday holds that day's
 #      switching program as "06:00-22:00 08:30-12:00" (up to four ON-OFF pairs,
 #      "--" for a disabled pair). Editing the text writes the 8-byte day block;

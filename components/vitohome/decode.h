@@ -139,7 +139,7 @@ struct BcdDateTime {
 
 // Viessmann DateTimeBCD, 8 bytes starting at data[offset]:
 //   [0]=year-hi BCD (e.g. 0x20)  [1]=year-lo BCD (e.g. 0x26)
-//   [2]=month BCD  [3]=day BCD  [4]=weekday (0=Monday, IGNORED)
+//   [2]=month BCD  [3]=day BCD  [4]=weekday (sunday=0..saturday=6, IGNORED)
 //   [5]=hour BCD  [6]=minute BCD  [7]=second BCD
 // Layout source: InsideViessmannVitosoft, Viessmann2MQTT.py
 // DateTimeFromBCD() — i.e. the reverse-engineering repo's own decoder, NOT
@@ -201,27 +201,31 @@ inline int64_t civil_seconds(const BcdDateTime& dt) {
          static_cast<int64_t>(dt.minute) * 60 + dt.second;
 }
 
-// ESPHome ESPTime::day_of_week is sunday=1..saturday=7; Viessmann stores the
-// weekday byte as monday=0..sunday=6. Map between them.
-inline uint8_t weekday_mon0_from_sunday1(uint8_t dow_sun1) { return static_cast<uint8_t>((dow_sun1 + 5) % 7); }
+// ESPHome ESPTime::day_of_week is sunday=1..saturday=7; the Vitotronic stores
+// the weekday byte as sunday=0..saturday=6 -- the strftime %w convention that
+// vcontrold writes. Hardware-confirmed on 0x20CB: a read of 0x088E on a
+// Wednesday returns weekday byte 0x03. Map ESPTime -> device.
+inline uint8_t device_weekday_from_esptime(uint8_t dow_sun1) { return static_cast<uint8_t>((dow_sun1 + 6) % 7); }
 
 // Encode a datetime into the 8-byte Viessmann DateTimeBCD wire layout (the
 // inverse of decode_datetime_bcd):
 //   [0]=century BCD  [1]=year-of-century BCD  [2]=month  [3]=day
-//   [4]=weekday (monday=0)  [5]=hour  [6]=minute  [7]=second
-// Builds into a local and only commits on success, so a bad field leaves buf8
-// unchanged. Returns false on any out-of-range field.
-inline bool encode_datetime_bcd(uint16_t year, uint8_t month, uint8_t day, uint8_t weekday_mon0, uint8_t hour,
+//   [4]=weekday (sunday=0..saturday=6)  [5]=hour  [6]=minute  [7]=second
+// The device validates the weekday against the date, so it must match the
+// sunday=0 convention (see device_weekday_from_esptime). Builds into a local
+// and only commits on success, so a bad field leaves buf8 unchanged. Returns
+// false on any out-of-range field.
+inline bool encode_datetime_bcd(uint16_t year, uint8_t month, uint8_t day, uint8_t weekday, uint8_t hour,
                                 uint8_t minute, uint8_t second, uint8_t* buf8) {
   if (buf8 == nullptr) return false;
-  if (year > 9999 || month < 1 || month > 12 || day < 1 || day > 31 || weekday_mon0 > 6 || hour > 23 || minute > 59 ||
+  if (year > 9999 || month < 1 || month > 12 || day < 1 || day > 31 || weekday > 6 || hour > 23 || minute > 59 ||
       second > 59) {
     return false;
   }
   uint8_t tmp[8];
   if (!int_to_bcd(static_cast<uint8_t>(year / 100), &tmp[0]) ||
       !int_to_bcd(static_cast<uint8_t>(year % 100), &tmp[1]) || !int_to_bcd(month, &tmp[2]) ||
-      !int_to_bcd(day, &tmp[3]) || !int_to_bcd(weekday_mon0, &tmp[4]) || !int_to_bcd(hour, &tmp[5]) ||
+      !int_to_bcd(day, &tmp[3]) || !int_to_bcd(weekday, &tmp[4]) || !int_to_bcd(hour, &tmp[5]) ||
       !int_to_bcd(minute, &tmp[6]) || !int_to_bcd(second, &tmp[7])) {
     return false;
   }
