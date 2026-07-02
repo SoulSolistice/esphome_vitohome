@@ -65,6 +65,7 @@ stdlib only; runs in CI and in a bare Python install.
 from __future__ import annotations
 
 import argparse
+import math
 import os
 import re
 import sys
@@ -806,21 +807,30 @@ _CONV_SCALE = {
 }
 
 
+def _llround(x: float) -> int:
+    """Round half away from zero -- the semantics of C++ ``std::llround`` and of
+    the component's ``llround`` helper. Python's built-in ``round()`` is half to
+    even and diverges at negative half-steps (round(-128.5) == -128 fits int8;
+    llround(-128.5) == -129 is rejected)."""
+    return int(math.floor(abs(x) + 0.5)) * (1 if x >= 0 else -1)
+
+
 def _bound_fits(value_str: str, length: int, conv: str, is_signed: bool) -> bool:
     """Whether a min/max border survives encoding into ``length`` raw bytes.
 
-    Mirrors components/vitohome/number.py exactly (raw = round(value / scale),
-    then a signed/unsigned range check), so a border the generator emits will
-    not be rejected later at ``esphome config`` time. Borders that do not fit
-    (e.g. a year-valued bound on a 1-byte field, or a display unit that is not
-    the raw encoding) fall back to the safe 0/0/1 placeholder instead.
+    Mirrors components/vitohome/number.py exactly (raw = llround(value / scale)
+    -- half away from zero, matching ``decode.h::encode_scaled`` -- then a
+    signed/unsigned range check), so a border the generator emits will not be
+    rejected later at ``esphome config`` time. Borders that do not fit (e.g. a
+    year-valued bound on a 1-byte field, or a display unit that is not the raw
+    encoding) fall back to the safe 0/0/1 placeholder instead.
     """
     try:
         v = float(value_str)
     except (TypeError, ValueError):
         return False
     scale = _CONV_SCALE.get(conv, 1.0)
-    raw = round(v / scale)
+    raw = _llround(v / scale)
     if is_signed:
         return -(1 << (8 * length - 1)) <= raw <= (1 << (8 * length - 1)) - 1
     return 0 <= raw <= (1 << (8 * length)) - 1
@@ -865,6 +875,13 @@ def emit_entity(ev: Event, profile: str):
     enum_opts = _enum_options(ev)
     is_bit = (ev.bit_length or 0) > 0
     writable = _is_writable(ev)
+    # A writable datapoint whose converter has no encode path (sec2hour,
+    # rotatebytes are read-only in the component -- number.py only accepts
+    # encodable converters) must not be emitted as a `number`: the generated
+    # config would fail `esphome config`. Demote it to a read-only sensor.
+    if writable and conv in ("sec2hour", "rotatebytes"):
+        writable = False
+        note = (note + "; " if note else "") + f"converter {conv!r} is read-only -> demoted to sensor"
 
     # Byte-array-as-string (HexByte2AsciiByte): emit the ascii text_sensor type
     # (Sachnummer, Herstellnummer, ...). Read-only device identity; the field

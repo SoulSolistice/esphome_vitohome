@@ -2,7 +2,7 @@
 
 Host-side regression gate for the part of the engine upstream never unit-tested:
 the request/ACK/response/fragment-reassembly choreography. It composes with the
-existing 379-check `decode.h` tests — this harness covers wire→payload; those cover
+existing 380-check `decode.h` tests — this harness covers wire→payload; those cover
 payload→value.
 
 ## Status: built and run against the in-tree optolink engine — 8/8 pass

@@ -43,8 +43,8 @@ time:
 
 uart:
   id: optolink_uart
-  tx_pin: GPIO5
-  rx_pin: GPIO2
+  rx_pin: GPIO5
+  tx_pin: GPIO2
   baud_rate: 4800
   data_bits: 8
   parity: EVEN

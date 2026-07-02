@@ -144,7 +144,7 @@ struct BcdDateTime {
 // Layout source: InsideViessmannVitosoft, Viessmann2MQTT.py
 // DateTimeFromBCD() — i.e. the reverse-engineering repo's own decoder, NOT
 // the [code,day,month,...] guess in the old vitoconnect config (see
-// docs/stage2_design.md for that correction).
+// docs/design_notes.md SS7 for that correction).
 // Returns false on any non-BCD byte or an out-of-range field (empty
 // error-history slots are 0xFF-filled and fail the BCD check).
 inline bool decode_datetime_bcd(const uint8_t* data, std::size_t data_len, std::size_t offset, BcdDateTime* out) {

@@ -48,6 +48,14 @@ _BASE = {
 }
 
 
+def _validate_even_length(value):
+    """UTF-16 code units are 2 bytes; decode.h::decode_utf16 rejects odd widths
+    at runtime, so reject them at config time instead."""
+    if value % 2 != 0:
+        raise cv.Invalid(f"utf16 length must be even (UTF-16LE code units are 2 bytes; got {value})")
+    return value
+
+
 def _addressed(extra: dict) -> cv.Schema:
     """A text_sensor schema for a bus-polling type (everything but device_id)."""
     return (
@@ -102,8 +110,10 @@ CONFIG_SCHEMA = cv.typed_schema(
         "utf16": _addressed(
             {
                 # UTF-16LE label width in BYTES (Beschriftung_HK* = 40 = 20 chars).
-                # Must be even; capped at one P300 read.
-                cv.Required(CONF_LENGTH): cv.int_range(min=2, max=40),
+                # Must be even (code units are 2 bytes) -- enforced here so an odd
+                # width is an `esphome config` error, not a per-poll runtime
+                # decode failure; capped at one P300 read.
+                cv.Required(CONF_LENGTH): cv.All(cv.int_range(min=2, max=40), _validate_even_length),
             }
         ),
     },

@@ -15,9 +15,9 @@ from . import (
     CONVERTERS,
     VitoHomeComponent,
     converter_big_endian,
-    converter_scale,
     datapoint_expression,
     resolve_signed,
+    scale_literal,
     validate_converter_length,
     validate_length_in,
     vitohome_ns,
@@ -75,7 +75,9 @@ async def to_code(config):
     await cg.register_component(var, config)
 
     cg.add(var.set_datapoint(datapoint_expression(config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH])))
-    cg.add(var.set_scale(converter_scale(config[CONF_CONVERTER])))
+    # scale_literal emits a C++ *double* literal; passing the Python float here
+    # would emit `0.1f`, quantizing the scale to float32 before the double math.
+    cg.add(var.set_scale(scale_literal(config[CONF_CONVERTER])))
     cg.add(var.set_big_endian(converter_big_endian(config[CONF_CONVERTER])))
     cg.add(var.set_signed(resolve_signed(config)))
     if CONF_BYTE_OFFSET in config:

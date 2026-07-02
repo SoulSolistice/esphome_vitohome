@@ -12,7 +12,7 @@ points rather than repeats:
   [`optolink/THIRD_PARTY.md`](../components/vitohome/optolink/THIRD_PARTY.md) and
   [`NOTICE.md`](../NOTICE.md).
 - **VitoWiFi shortcomings written up as upstream proposals** →
-  [`UPSTREAM.md`](../UPSTREAM.md).
+  [`optolink/THIRD_PARTY.md`](../components/vitohome/optolink/THIRD_PARTY.md), Part 2.
 - **Catalog generation tooling** → [`scripts/README.md`](../scripts/README.md).
 - **The host test harnesses** → [`tests/native/README.md`](../tests/native/README.md).
 
@@ -407,7 +407,7 @@ The gates are **sequential and non-substituting** — passing an earlier gate do
 not vouch for a later one:
 
 ```
-host C++ : decode/encode tests           tests/native/test_decode.cpp   (379 checks)
+host C++ : decode/encode tests           tests/native/test_decode.cpp   (380 checks)
 host C++ : VS2 transaction harness        tests/native/test_vs2_transaction.cpp (8/8)
 host C++ : adapter / GWG compile-proofs   adapter_compile_proof.cpp, proof_gwg_poke.cpp
 python   : validators + catalog generator tests/unit/  (pytest)
@@ -421,7 +421,7 @@ run      : esphome run       (real heater — the definitive gate)
 Two coverage layers compose to give wire→decode→value end-to-end without the
 ESPHome framework:
 
-- **`test_decode.cpp` (379 checks)** locks down the *value* layer — the
+- **`test_decode.cpp` (380 checks)** locks down the *value* layer — the
   precision fix, BCD/datetime, sign-extend, encode round-trips, `raw_fits`
   boundaries.
 - **The VS2 transaction harness (8/8)** locks down the *transaction* layer the

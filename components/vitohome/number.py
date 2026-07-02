@@ -20,8 +20,10 @@ from . import (
     VitoHomeComponent,
     converter_scale,
     datapoint_expression,
+    llround,
     raw_fits,
     resolve_signed,
+    scale_literal,
     validate_converter_length,
     validate_length_in,
     vitohome_ns,
@@ -39,15 +41,17 @@ def _validate_encodable_range(config):
     """Reject min/max that cannot be represented on the wire.
 
     This is the load-bearing config-time check for the write path: it mirrors
-    ``decode.h::encode_scaled`` exactly (round to nearest raw step, then range
-    check for the byte width and sign), so an un-encodable bound is an
-    ``esphome config`` error rather than a runtime "value not written" log.
+    ``decode.h::encode_scaled`` exactly (round the raw step half away from zero
+    -- ``llround``, NOT Python's half-to-even ``round()``, which diverges at
+    negative half-steps -- then range-check for the byte width and sign), so an
+    un-encodable bound is an ``esphome config`` error rather than a runtime
+    "value not written" log.
     """
     scale = converter_scale(config[CONF_CONVERTER])
     is_signed = resolve_signed(config)
     length = config[CONF_LENGTH]
     for key in (CONF_MIN_VALUE, CONF_MAX_VALUE):
-        raw = round(config[key] / scale)
+        raw = llround(config[key] / scale)
         if not raw_fits(raw, length, is_signed):
             kind = "signed" if is_signed else "unsigned"
             raise cv.Invalid(
@@ -96,7 +100,8 @@ async def to_code(config):
     await cg.register_component(var, config)
 
     cg.add(var.set_datapoint(datapoint_expression(config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH])))
-    cg.add(var.set_scale(converter_scale(config[CONF_CONVERTER])))
+    # scale_literal emits a C++ *double* literal (see sensor.py / __init__.py).
+    cg.add(var.set_scale(scale_literal(config[CONF_CONVERTER])))
     cg.add(var.set_signed(resolve_signed(config)))
     cg.add(var.set_read_back(config[CONF_READ_BACK]))
     if poll_interval is not None:

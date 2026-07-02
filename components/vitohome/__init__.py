@@ -18,6 +18,7 @@ narrows the *final* value to the float32 ESPHome state requires.
 """
 
 import logging
+import math
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -144,6 +145,33 @@ CONVERTERS = {
 
 def converter_scale(name: str) -> float:
     return CONVERTERS[name].scale
+
+
+def scale_literal(name: str) -> cg.RawExpression:
+    """The converter scale as a C++ *double* literal expression.
+
+    Passing the Python float straight into codegen makes ESPHome emit a float32
+    literal (``set_scale(0.1f)``), quantizing the scale constant *before* the
+    decode path's double multiply -- for div10/div100/div1000/sec2hour a large
+    share of raw values then publish a float32 one ULP off the correctly-rounded
+    value, silently narrowing the "read in uint64, scale in double, narrow last"
+    guarantee. ``repr()`` of a Python float is the shortest decimal that
+    round-trips, and C++ parses an unsuffixed literal as double, so the C++
+    constant is bit-identical to the Python double.
+    """
+    return cg.RawExpression(repr(float(CONVERTERS[name].scale)))
+
+
+def llround(x: float) -> int:
+    """Round half away from zero -- the exact semantics of C++ ``std::llround``.
+
+    Python's built-in ``round()`` is banker's rounding (half to even), which
+    diverges from ``decode.h::encode_scaled`` at negative half-steps: e.g.
+    ``round(-128.5) == -128`` (fits int8) while ``llround(-128.5) == -129``
+    (rejected at runtime). Any config-time check that claims to mirror the C++
+    encode path must use this, not ``round()``.
+    """
+    return int(math.floor(abs(x) + 0.5)) * (1 if x >= 0 else -1)
 
 
 def converter_big_endian(name: str) -> bool:
@@ -352,7 +380,14 @@ async def to_code(config):
 
     # Build-time protocol selection: emit exactly one VITOHOME_PROTOCOL_* flag,
     # which selects the engine inside ProtocolAdapter.
-    protocol = config[CONF_PROTOCOL]
+    #
+    # NOTE: cv.enum returns the *key* the user typed (an EnumValue str), with the
+    # mapped value only in .enum_value. Interpolating the key directly emitted
+    # -DVITOHOME_PROTOCOL_VS1 for `protocol: VS1`, a flag protocol_adapter.h does
+    # not recognise -- so the VS1/VS2 aliases silently built the default P300
+    # engine. Normalise through PROTOCOLS so the flag is always one of
+    # P300/KW/GWG, the tokens the adapter's #if chain actually checks.
+    protocol = PROTOCOLS[str(config[CONF_PROTOCOL])]
     cg.add_build_flag(f"-DVITOHOME_PROTOCOL_{protocol}")
     if protocol != "P300":
         _LOGGER.warning(

@@ -136,7 +136,7 @@ to propose upstream, so the workarounds could eventually be retired. The line
   are unsigned.
 - **vitohome status.** Not needed upstream: converters are modelled in the
   Python layer as `(scale, signed, lengths, encodable)` presets (see
-  [`converters.md`](../../../converters.md)) and applied in `decode.h`.
+  [`converters.md`](../../../docs/converters.md)) and applied in `decode.h`.
   Conversions that can't be represented as a scale (floats, `DateTimeBCD`, …)
   are surfaced by the catalog generator as commented hints rather than decoded
   wrongly.
@@ -177,4 +177,4 @@ to propose upstream, so the workarounds could eventually be retired. The line
   **two-address split** for mode controls — a Viessmann *device* behaviour (some
   datapoints accept a write at one register but expose the resulting state at
   another), not a VitoWiFi limitation, documented in
-  [`converters.md`](../../../converters.md) and `docs/design_notes.md` §5.
+  [`converters.md`](../../../docs/converters.md) and `docs/design_notes.md` §5.
