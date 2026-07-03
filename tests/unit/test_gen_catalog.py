@@ -271,9 +271,12 @@ def test_hexbyte2ascii_emitted_as_ascii_text_sensor(catalog):
 
 def test_command_state_split_emits_state_address(catalog):
     ev = {e.id: e for e in catalog.events_for("VTestHO1_99")}
-    # Event 14: party command at 0x2330 -> select with state_address 0x2303.
+    # Event 14: party command at 0x2330. Its EIN/AUS pair makes it a *switch*
+    # since the boolean-pair heuristic landed (a two-option select before);
+    # the COMMAND_STATE_ADDR split must survive on the switch emission path.
     plat, lines = gc.emit_entity(ev["14"], "full")
-    assert plat == "select"
+    assert plat == "switch"
     body = "\n".join(lines)
     assert "address: 0x2330" in body  # command (write) address
     assert "state_address: 0x2303" in body  # live-state (read) address
+    assert "on 0x01" in body and "off 0x00" in body  # default 1/0 documented

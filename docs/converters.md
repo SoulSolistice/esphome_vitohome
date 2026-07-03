@@ -69,6 +69,7 @@ A `converter:` is one of several ways a value is read. The full set:
 | `text_sensor` `type: device_id` | the device identification string | (none) |
 | `text` | 8-byte-per-day switching-time program, read/write as a canonical `"HH:MM-HH:MM ..."` string | `address`, `read_back` |
 | `select` | raw value mapped to a label, writable | `options`, `address`, `state_address` |
+| `switch` | boolean register, writable | `on_value` / `off_value`, `on_values`, `address`, `state_address` |
 
 **ASCII** (`type: ascii`): each raw byte is one character. A NUL byte
 terminates the string, trailing spaces are trimmed, and any non-printable byte
@@ -126,6 +127,24 @@ are unchecked. This matches the independent reference: vcontrold's
 not even range-check the hour). Whether the device itself requires ordered or
 contiguous pairs is unverified on hardware; scheduling logic and sanity checks
 belong in Home Assistant or with the user, not in this codec.
+
+**Switch** (`switch`): a two-state specialisation of `select` for semantic
+on/off registers (Partybetrieb `0x2330`, the K-coding booleans), so Home
+Assistant gets a native toggle -- `switch.turn_on/off`, voice assistants,
+binary automation conditions -- instead of a two-option dropdown. `on_value` /
+`off_value` are the raw wire values written for on/off (default `1`/`0`;
+configurable because e.g. coding address `K8A` uses `175`=aktiv /
+`176`=inaktiv). `on_values` optionally replaces the set of wire values that
+*read back* as ON, for registers that report extra on-ish states; anything
+that is neither an `on_values` entry nor `off_value` keeps the last state and
+is logged, the same policy `select` applies to unmapped values. The
+`state_address` read/write split and `read_back` behave exactly as on
+`select`. Two options alone do not make a boolean -- Celsius/Fahrenheit or
+Einkessel/Mehrkessel are choices and stay selects (also the rule
+`gen_catalog.py`'s emission heuristic follows). `restore_mode` is pinned to
+`DISABLED` and other values are rejected at config time: state always comes
+from the device, and a boot-time restore would write to the heater on every
+reboot.
 
 ## Validation
 

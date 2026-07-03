@@ -189,8 +189,9 @@ do not infer the constraints.
 
 ## 5. The write path
 
-`number` and `select` stage a raw payload (`encode_scaled`, or a little-endian
-enum value) into the entity's buffer and call `request_write(this)` on the hub.
+`number`, `select` and `switch` stage a raw payload (`encode_scaled`, or a
+little-endian enum/boolean value) into the entity's buffer and call
+`request_write(this)` on the hub.
 The hub keeps separate read and write deques and **writes preempt reads**, so a
 user setpoint change doesn't wait behind a full poll cycle. On the device ACK,
 with `read_back: true` (default) a read of the same address is pushed to the

@@ -3,8 +3,8 @@
 An [ESPHome](https://esphome.io) external component for Viessmann heating
 controllers over the Optolink (optical) interface. It speaks three Optolink
 protocols — P300/VS2, KW/VS1 and GWG — and exposes controller datapoints to Home
-Assistant as `sensor`, `binary_sensor`, `text_sensor`, `number` and `select`
-entities.
+Assistant as `sensor`, `binary_sensor`, `text_sensor`, `number`, `select`
+and `switch` entities.
 
 vitohome targets ESP32 boards and works under both the ESP-IDF and Arduino
 frameworks. It is developed and tested against a VScotHO1 unit (device
@@ -68,7 +68,7 @@ sensor:
 
 The `converter:` above is one preset among several. For the full set of
 converters, the options each platform (`sensor`, `binary_sensor`,
-`text_sensor`, `number`, `select`) accepts, and how a raw Optolink payload
+`text_sensor`, `number`, `select`, `switch`) accepts, and how a raw Optolink payload
 becomes an entity state, see [`docs/converters.md`](docs/converters.md) — the
 reference for authoring a datapoint by hand or reading a generated one.
 

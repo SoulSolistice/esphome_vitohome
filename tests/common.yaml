@@ -147,6 +147,22 @@ select:
       0x02: "Normal"
       0x03: "Heating + DHW"
 
+switch:
+  # write/state address split (command 0x2330, live state 0x2303) with the
+  # default 1/0 on/off pair
+  - platform: vitohome
+    name: "Test Party Mode"
+    address: 0x2330
+    state_address: 0x2303
+    update_interval: 300s
+  # non-default wire values (K8A-style: 0xAF = on, 0xB0 = off)
+  - platform: vitohome
+    name: "Test Coding Toggle"
+    address: 0x778A
+    on_value: 0xAF
+    off_value: 0xB0
+    entity_category: config
+
 text_sensor:
   # device identity (hub-fed, no address)
   - platform: vitohome

@@ -44,6 +44,7 @@ AUTO_LOAD = [
     "text_sensor",
     "number",
     "select",
+    "switch",
     "text",
     "climate",
 ]

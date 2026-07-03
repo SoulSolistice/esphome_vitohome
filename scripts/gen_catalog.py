@@ -767,6 +767,65 @@ def _enum_options(ev: Event) -> list:
     return out
 
 
+_BOOLEAN_ON_OFF_PAIRS = [
+    ("ein", "aus"),
+    ("an", "aus"),
+    ("aktiv", "inaktiv"),
+    ("ja", "nein"),
+    ("on", "off"),
+    ("yes", "no"),
+    ("freigegeben", "gesperrt"),
+]
+
+
+def _norm_bool_label(label: str) -> str:
+    """Normalize an enum option label for on/off matching: drop a leading
+    coding-value echo ("0 inaktiv", "1: Ja"), lowercase, trim."""
+    return re.sub(r"^\d+\s*[:.]?\s*", "", (label or "").strip()).lower()
+
+
+def _boolean_pair(opts: list):
+    """(on_value, off_value, on_label, off_label) when a 2-option enum is a
+    semantic on/off toggle, else None.
+
+    Two options alone do NOT make a boolean: K01 {Einkessel, Mehrkessel} or
+    K88 {Celsius, Fahrenheit} are choices, and a switch card showing "on"
+    would be meaningless for them. A pair qualifies only via:
+      * a known on/off label pair after normalization (EIN/AUS, aktiv/inaktiv,
+        Ja/Nein, ...), matched in either value order -- so K8A's
+        {175: aktiv, 176: inaktiv} works despite its non-0/1 values;
+      * a negation pair, one label being "nicht " + the other
+        (vorhanden / nicht vorhanden, senden / nicht senden);
+      * an unresolved Allgemein_Zustand_Ein_Aus~N token stem (the Neptun pump
+        overrides), where ~1 is on and ~0 is off by the type's own name.
+    Everything else stays a select.
+    """
+    if len(opts) != 2:
+        return None
+    (v_a, l_a), (v_b, l_b) = opts
+    raw_a, raw_b = (l_a or ""), (l_b or "")
+    # Token-stem rule: the enum type name itself says on/off.
+    if "_ein_aus~" in raw_a.lower() and "_ein_aus~" in raw_b.lower():
+        pick = {raw_a.rsplit("~", 1)[-1]: (v_a, raw_a), raw_b.rsplit("~", 1)[-1]: (v_b, raw_b)}
+        if set(pick) == {"0", "1"}:
+            on_v, on_l = pick["1"]
+            off_v, off_l = pick["0"]
+            return (on_v, off_v, "Ein", "Aus")
+    a, b = _norm_bool_label(raw_a), _norm_bool_label(raw_b)
+    # Negation rule.
+    if a == "nicht " + b:
+        return (v_b, v_a, raw_b, raw_a)
+    if b == "nicht " + a:
+        return (v_a, v_b, raw_a, raw_b)
+    # Allowlisted pairs, either order.
+    for on_word, off_word in _BOOLEAN_ON_OFF_PAIRS:
+        if a == on_word and b == off_word:
+            return (v_a, v_b, raw_a, raw_b)
+        if a == off_word and b == on_word:
+            return (v_b, v_a, raw_b, raw_a)
+    return None
+
+
 def _enum_read_length(enum_opts: list, fallback: int) -> int:
     """Minimal byte width that holds every enum value. A status enum living in a
     larger block (e.g. SM1_Sensor_*_Status_GWG, a 1-byte field inside the 20-byte
@@ -947,6 +1006,36 @@ def emit_entity(ev: Event, profile: str):
     # file's _validate_options (raw_fits(value, length, is_signed=False)), so a
     # select this emits will not be rejected at `esphome config` time. Wider or
     # non-fitting enums fall through to the number branch below.
+    # A semantic on/off pair becomes a switch instead of a two-option select:
+    # HA then gets a native toggle (switch.turn_on/off, voice assistants,
+    # binary automation conditions). _boolean_pair is deliberately
+    # conservative -- non-boolean two-option enums (Celsius/Fahrenheit,
+    # Einkessel/Mehrkessel) keep falling through to the select branch.
+    bool_pair = _boolean_pair(enum_opts) if enum_opts else None
+    if writable and bool_pair and length in (1, 2) and all(0 <= v < (1 << (8 * length)) for v, _ in enum_opts):
+        on_v, off_v, on_l, off_l = bool_pair
+        lines += [
+            "- platform: vitohome",
+            f"  name: {_yaml_str(name)}",
+            addr_line,
+            f"  length: {length}",
+        ]
+        state_addr = COMMAND_STATE_ADDR.get(ev.address)
+        if state_addr is not None:
+            lines.append(
+                f"  state_address: 0x{state_addr:04X}  # live state read here; address above is the write/command target"
+            )
+        if (on_v, off_v) != (1, 0):
+            lines.append(f"  on_value: 0x{on_v:0{2 * length}X}  # {on_l}")
+            lines.append(f"  off_value: 0x{off_v:0{2 * length}X}  # {off_l}")
+        else:
+            lines.append(f"  # on 0x{on_v:02X} = {on_l}; off 0x{off_v:02X} = {off_l}")
+        lines += [
+            "  disabled_by_default: true",
+            f"  update_interval: {poll}s",
+        ]
+        return ("switch", lines)
+
     if writable and enum_opts and length in (1, 2) and all(0 <= v < (1 << (8 * length)) for v, _ in enum_opts):
         lines += [
             "- platform: vitohome",
@@ -1296,6 +1385,7 @@ def generate(
         "binary_sensor": [],
         "number": [],
         "select": [],
+        "switch": [],
         "text_sensor": [],
     }
     comments: list[str] = []
@@ -1406,7 +1496,7 @@ def generate(
     out.append("# ============================================================")
     out.append("")
 
-    for platform in ("sensor", "binary_sensor", "number", "select", "text_sensor"):
+    for platform in ("sensor", "binary_sensor", "number", "select", "switch", "text_sensor"):
         if buckets[platform]:
             out.append(f"{platform}:")
             out.extend(buckets[platform])

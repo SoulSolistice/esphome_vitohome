@@ -80,9 +80,12 @@ def _event(**overrides):
 
 
 def test_two_byte_writable_enum_emits_select():
+    # Non-boolean labels: a semantic on/off pair would (correctly) become a
+    # switch since the boolean-pair heuristic; "Stufe 1/2" is a choice and
+    # must keep exercising the select branch this file guards.
     ev = _event(
         byte_length=2,
-        values=[_enum_value(0x0000, "Off"), _enum_value(0x0100, "On")],
+        values=[_enum_value(0x0000, "Stufe 1"), _enum_value(0x0100, "Stufe 2")],
     )
     platform, lines = gc.emit_entity(ev, "full")
     body = "\n".join(lines)
@@ -91,6 +94,22 @@ def test_two_byte_writable_enum_emits_select():
     # Option keys are zero-padded to the field width (2 bytes -> 4 hex digits).
     assert "    0x0000: " in body
     assert "    0x0100: " in body
+
+
+def test_two_byte_boolean_enum_emits_switch():
+    # The switch twin: an EIN/AUS pair on a 2-byte field emits a switch with
+    # the same width handling (values zero-padded to 4 hex digits when
+    # non-default).
+    ev = _event(
+        byte_length=2,
+        values=[_enum_value(0x0000, "AUS"), _enum_value(0x0100, "EIN")],
+    )
+    platform, lines = gc.emit_entity(ev, "full")
+    body = "\n".join(lines)
+    assert platform == "switch"
+    assert "  length: 2" in body
+    assert "on_value: 0x0100" in body
+    assert "off_value: 0x0000" in body
 
 
 def test_one_byte_writable_enum_unchanged_format():
