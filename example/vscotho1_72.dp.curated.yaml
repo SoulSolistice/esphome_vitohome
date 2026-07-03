@@ -247,10 +247,18 @@ binary_sensor:
   # Hub-fed Optolink link diagnostic: ONLINE on any successful response,
   # OFFLINE after 3 consecutive protocol errors or when start-up protocol
   # verification fails. Never polls; edge-published.
+  # on_press (off->on edge) force-refreshes every datapoint, so slow-tier
+  # entities (coding values at 3600s, counters at 600s) un-stale themselves
+  # the moment the link recovers instead of waiting out their intervals.
+  # The very first ONLINE at boot also fires this; harmless -- everything is
+  # due at boot anyway and refresh_all() is debounced (5 s) in the hub.
   - platform: vitohome
     type: connectivity
     name: "Optolink Verbindung"
     id: optolink_link
+    on_press:
+      then:
+        - lambda: "id(vito).refresh_all();"
 
 text_sensor:
   - platform: vitohome
@@ -304,7 +312,7 @@ text_sensor:
     type: error_history
     name: "Letzter Fehler"
     id: letzter_fehler
-    address: 0x7590
+    address: 0x7507
     length: 9
     icon: "mdi:alert-circle"
     entity_category: diagnostic
@@ -445,6 +453,16 @@ event:
     length: 9
     update_interval: 300s
     codes: *vd300_codes
+
+# Force-refresh: marks every datapoint due on the next scheduler tick (the
+# queue discipline throttles the burst; the hub debounces repeats within
+# 5 s). Press from the HA UI, or call button.press from an automation --
+# e.g. after changing coding values at the Bedienteil, so the 3600s-tier
+# entities update immediately.
+button:
+  - platform: vitohome
+    name: "Datenpunkte aktualisieren"
+    id: refresh_all_button
 
 number:
   # DHW target temperature (also driven by the water_heater card below).
@@ -631,7 +649,7 @@ water_heater:
       return id(TiefpassTemperaturwertWW1).state;
     target_temperature: |-
       return id(Bedien_WW_Solltemperatur).state;
-    optimistic: true
+    optimistic: false
     set_action:
       - if:
           condition:

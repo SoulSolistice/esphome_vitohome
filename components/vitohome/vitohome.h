@@ -43,6 +43,17 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
     this->entities_.push_back(entity);
   }
 
+  // Force-refresh: mark every registered entity due on the next scheduler
+  // tick by resetting its next_due_ms_ to the boot sentinel (0 = "never
+  // polled -> due now"). The EXISTING scheduler then does all the hard work:
+  // read_queued_ dedup, queue backpressure, writes still preempt, read-backs
+  // still jump the queue -- so a refresh is a self-throttling drain, the
+  // same burst boot produces. Reads only; in-flight writes are untouched.
+  // Debounced (REFRESH_ALL_MIN_INTERVAL_MS) so a misfiring HA automation
+  // loop cannot pin the bus; returns false when a call was suppressed.
+  // Callable from a lambda: id(vito).refresh_all();
+  bool refresh_all();
+
   // Connectivity binary sensors don't poll the bus themselves — the hub feeds
   // them its own view of the Optolink link (device_class: connectivity in
   // HA), so automations can react to link loss natively instead of templating
@@ -171,6 +182,8 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   int8_t link_state_{-1};
   uint8_t link_error_streak_{0};
   static constexpr uint8_t LINK_OFFLINE_AFTER_ERRORS = 3;
+  uint32_t last_refresh_all_ms_{0};
+  static constexpr uint32_t REFRESH_ALL_MIN_INTERVAL_MS = 5000;
   void publish_link_(bool up);
   void link_note_error_();
   std::deque<VitoEntityBase*> read_queue_;

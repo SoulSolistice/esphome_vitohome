@@ -5,7 +5,7 @@ controllers over the Optolink (optical) interface. It speaks three Optolink
 protocols — P300/VS2, KW/VS1 and GWG — and exposes controller datapoints to Home
 Assistant as `sensor`, `binary_sensor`, `text_sensor`, `number`, `select`,
 `switch` and `event` entities, plus a hub-fed Optolink connectivity
-diagnostic.
+diagnostic and a force-refresh `button`.
 
 vitohome targets ESP32 boards and works under both the ESP-IDF and Arduino
 frameworks. It is developed and tested against a VScotHO1 unit (device

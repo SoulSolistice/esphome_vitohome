@@ -72,6 +72,7 @@ A `converter:` is one of several ways a value is read. The full set:
 | `switch` | boolean register, writable | `on_value` / `off_value`, `on_values`, `address`, `state_address` |
 | `binary_sensor` `type: connectivity` | hub-fed Optolink link state, no address | (none) |
 | `event` | fault-code slot; fires an HA event on code change | `address`, `length`, `codes` |
+| `button` | force-refresh: marks all datapoints due | (none) |
 
 **ASCII** (`type: ascii`): each raw byte is one character. A NUL byte
 terminates the string, trailing spaces are trimmed, and any non-printable byte
@@ -173,6 +174,18 @@ cannot notify.
 temperature `0x0804`, writable setpoint `0x6300`, effective setpoint `0x6500`)
 into a native HA water-heater card, no C++ and no custom HA integration. DHW
 on/off stays with the shared Betriebsart register by design.
+
+**Force refresh** (`button`): pressing it (HA UI, or `button.press` from an
+automation) calls the hub's `refresh_all()`, which resets every registered
+entity's `next_due_ms_` to the boot sentinel so the next scheduler tick
+queues them all -- the existing queue discipline (dedup, backpressure,
+write preemption, front-loaded read-backs) throttles the burst, exactly like
+boot. Reads only; in-flight writes are untouched, the fault-event baseline
+is unaffected (it fires on change), and repeats within 5 s are debounced in
+the hub with a warning so a misfiring automation loop cannot pin the bus.
+ESPHome-side automations can call `id(vito).refresh_all()` directly; the
+curated example wires the connectivity sensor's off->on edge to it so
+slow-tier entities un-stale themselves the moment the link recovers.
 
 ## Validation
 

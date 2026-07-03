@@ -251,6 +251,9 @@ climate:
 # compile builds it; the bytes/addresses are arbitrary, this never runs on real
 # hardware in CI.
 button:
+  # force-refresh: marks all datapoints due (hub-debounced)
+  - platform: vitohome
+    name: "Test Refresh"
   - platform: template
     name: "Test Raw Read"
     entity_category: diagnostic

@@ -569,6 +569,22 @@ void VitoHomeComponent::on_response_(const ResponseView& response, const optolin
   entity->handle_response(response);
 }
 
+bool VitoHomeComponent::refresh_all() {
+  const uint32_t now = millis();
+  if (this->last_refresh_all_ms_ != 0 && now - this->last_refresh_all_ms_ < REFRESH_ALL_MIN_INTERVAL_MS) {
+    ESP_LOGW(TAG, "refresh_all() suppressed (last one %" PRIu32 " ms ago, min interval %" PRIu32 " ms)",
+             now - this->last_refresh_all_ms_, REFRESH_ALL_MIN_INTERVAL_MS);
+    return false;
+  }
+  this->last_refresh_all_ms_ = now;
+  for (auto* entity : this->entities_) {
+    entity->next_due_ms_ = 0;  // boot sentinel: due on the next tick
+  }
+  ESP_LOGI(TAG, "refresh_all(): %u entities marked due; queue drains at normal pace",
+           static_cast<unsigned>(this->entities_.size()));
+  return true;
+}
+
 void VitoHomeComponent::publish_link_(bool up) {
   const int8_t next = up ? 1 : 0;
   if (this->link_state_ == next) return;

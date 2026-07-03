@@ -48,6 +48,7 @@ AUTO_LOAD = [
     "text",
     "climate",
     "event",
+    "button",
 ]
 MULTI_CONF = False
 
