@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/component.h"
@@ -40,6 +41,17 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
     if (entity == nullptr) return;
     entity->set_vitohome_parent(this);
     this->entities_.push_back(entity);
+  }
+
+  // Connectivity binary sensors don't poll the bus themselves — the hub feeds
+  // them its own view of the Optolink link (device_class: connectivity in
+  // HA), so automations can react to link loss natively instead of templating
+  // over stale entity timestamps. ONLINE on any successful response; OFFLINE
+  // when start-up protocol verification fails or after
+  // LINK_OFFLINE_AFTER_ERRORS consecutive protocol errors (watchdog
+  // expiries included). State is edge-published (no per-response spam).
+  void register_link_sensor(binary_sensor::BinarySensor* bs) {
+    if (bs != nullptr) this->link_sensors_.push_back(bs);
   }
 
   // device_id text sensors don't poll the bus themselves — they subscribe to
@@ -154,6 +166,13 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
 
   std::vector<VitoEntityBase*> entities_;
   std::vector<text_sensor::TextSensor*> device_id_sensors_;
+  std::vector<binary_sensor::BinarySensor*> link_sensors_;
+  // tri-state: -1 unknown (nothing published yet), 0 offline, 1 online
+  int8_t link_state_{-1};
+  uint8_t link_error_streak_{0};
+  static constexpr uint8_t LINK_OFFLINE_AFTER_ERRORS = 3;
+  void publish_link_(bool up);
+  void link_note_error_();
   std::deque<VitoEntityBase*> read_queue_;
   std::deque<VitoEntityBase*> write_queue_;
   VitoEntityBase* in_flight_{nullptr};

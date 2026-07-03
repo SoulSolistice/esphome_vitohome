@@ -33,7 +33,22 @@ def _validate_offset_within_length(config):
     return config
 
 
-CONFIG_SCHEMA = cv.All(
+# Hub-fed link diagnostic: no address, no polling — the hub publishes its own
+# Optolink link state into it (online on any successful response; offline on
+# start-up verify failure or after 3 consecutive protocol errors). Mirrors the
+# device_id text_sensor pattern: a plain framework entity registered with the
+# hub, not a VitoBinarySensor.
+_CONNECTIVITY_SCHEMA = binary_sensor.binary_sensor_schema(
+    binary_sensor.BinarySensor,
+    device_class="connectivity",
+    entity_category="diagnostic",
+).extend(
+    {
+        cv.GenerateID(CONF_VITOCONNECT_ID): cv.use_id(VitoHomeComponent),
+    }
+)
+
+_DATAPOINT_SCHEMA = cv.All(
     binary_sensor.binary_sensor_schema(VitoBinarySensor)
     .extend(
         {
@@ -49,8 +64,26 @@ CONFIG_SCHEMA = cv.All(
     _validate_offset_within_length,
 )
 
+CONF_TYPE = "type"
+CONFIG_SCHEMA = cv.typed_schema(
+    {
+        "datapoint": _DATAPOINT_SCHEMA,
+        "connectivity": _CONNECTIVITY_SCHEMA,
+    },
+    default_type="datapoint",
+)
+
+
+async def _connectivity_to_code(config):
+    parent = await cg.get_variable(config[CONF_VITOCONNECT_ID])
+    var = await binary_sensor.new_binary_sensor(config)
+    cg.add(parent.register_link_sensor(var))
+
 
 async def to_code(config):
+    if config.get(CONF_TYPE) == "connectivity":
+        await _connectivity_to_code(config)
+        return
     parent = await cg.get_variable(config[CONF_VITOCONNECT_ID])
     # See sensor.py: pop the reserved update_interval before register_component
     # so it doesn't emit set_update_interval() on our passive entity.

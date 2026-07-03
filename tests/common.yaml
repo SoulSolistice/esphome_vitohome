@@ -84,6 +84,10 @@ sensor:
     state_class: measurement
 
 binary_sensor:
+  # hub-fed Optolink link diagnostic (no address, never polls)
+  - platform: vitohome
+    type: connectivity
+    name: "Test Optolink Link"
   # default bit_mask (0xFF: any nonzero byte is active)
   - platform: vitohome
     name: "Test Problem"
@@ -162,6 +166,16 @@ switch:
     on_value: 0xAF
     off_value: 0xB0
     entity_category: config
+
+event:
+  # fault-code slot FA01: fires on code change (hex type / cleared / unknown)
+  - platform: vitohome
+    name: "Test Fault Event"
+    address: 0x7507
+    update_interval: 300s
+    codes:
+      0x10: "Kurzschluss Aussentemperatursensor"
+      0xF9: "Fehler Geblaese"
 
 text_sensor:
   # device identity (hub-fed, no address)

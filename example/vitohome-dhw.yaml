@@ -1,0 +1,105 @@
+---
+# Domestic hot water (DHW) as a native Home Assistant water_heater entity,
+# built entirely from existing vitohome datapoints plus ESPHome's template
+# water_heater platform -- no custom HA integration needed.
+#
+# Datapoints (Vitodens 300-W B3HA / Vitotronic 200, wire ident 0x20CB):
+#   0x0804  measured DHW tank temperature (div10, 2 bytes)
+#   0x6300  BedienWWSolltemperatur -- the writable DHW setpoint (1 byte, degC)
+#   0x6500  effective DHW setpoint after the controller applies its own
+#           limits/logic -- read-only cross-check
+#
+# KNOWN WRINKLE: DHW on/off is folded into the shared Betriebsart register on
+# this controller, so this water_heater deliberately exposes only temperature
+# control. Mode switching stays with your Betriebsart select/climate entity;
+# wiring it here too would fight that entity over one shared register.
+#
+# Wiring below matches the reference board (rx=GPIO5, tx=GPIO2). Adjust pins,
+# board and api/wifi to your setup.
+
+substitutions:
+  vitohome_repo: https://github.com/SoulSolistice/esphome_vitohome
+  vitohome_ref: main
+
+esphome:
+  name: vitohome-dhw
+
+external_components:
+  - source:
+      type: git
+      url: ${vitohome_repo}
+      ref: ${vitohome_ref}
+    components: [vitohome]
+    refresh: 0s
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: esp-idf
+
+logger:
+
+uart:
+  id: uart_optolink
+  rx_pin: GPIO5
+  tx_pin: GPIO2
+  baud_rate: 4800
+  data_bits: 8
+  parity: EVEN
+  stop_bits: 2
+
+vitohome:
+  id: vito
+  uart_id: uart_optolink
+  update_interval: 60s
+
+sensor:
+  - platform: vitohome
+    id: dhw_temp
+    name: "WW-Temperatur"
+    address: 0x0804
+    length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+  - platform: vitohome
+    id: dhw_setpoint_effective
+    name: "WW-Solltemperatur effektiv"
+    address: 0x6500
+    length: 1
+    unit_of_measurement: "°C"
+    device_class: temperature
+    entity_category: diagnostic
+
+number:
+  - platform: vitohome
+    id: dhw_setpoint
+    name: "WW-Solltemperatur"
+    address: 0x6300
+    length: 1
+    converter: noconv
+    min_value: 10
+    max_value: 60
+    step: 1
+    unit_of_measurement: "°C"
+    mode: box
+
+water_heater:
+  - platform: template
+    name: "Warmwasser"
+    id: dhw
+    # Feed the card from the device's own values; the number's read-back
+    # keeps target_temperature honest after the controller clamps a write.
+    current_temperature: |-
+      return id(dhw_temp).state;
+    target_temperature: |-
+      return id(dhw_setpoint).state;
+    optimistic: false
+    set_action:
+      - if:
+          condition:
+            lambda: "return !std::isnan(x.target_temperature);"
+          then:
+            - number.set:
+                id: dhw_setpoint
+                value: !lambda "return x.target_temperature;"

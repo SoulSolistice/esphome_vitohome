@@ -70,6 +70,8 @@ A `converter:` is one of several ways a value is read. The full set:
 | `text` | 8-byte-per-day switching-time program, read/write as a canonical `"HH:MM-HH:MM ..."` string | `address`, `read_back` |
 | `select` | raw value mapped to a label, writable | `options`, `address`, `state_address` |
 | `switch` | boolean register, writable | `on_value` / `off_value`, `on_values`, `address`, `state_address` |
+| `binary_sensor` `type: connectivity` | hub-fed Optolink link state, no address | (none) |
+| `event` | fault-code slot; fires an HA event on code change | `address`, `length`, `codes` |
 
 **ASCII** (`type: ascii`): each raw byte is one character. A NUL byte
 terminates the string, trailing spaces are trimmed, and any non-printable byte
@@ -145,6 +147,32 @@ Einkessel/Mehrkessel are choices and stay selects (also the rule
 `DISABLED` and other values are rejected at config time: state always comes
 from the device, and a boot-time restore would write to the heater on every
 reboot.
+
+**Connectivity** (`binary_sensor` `type: connectivity`): hub-fed, no address,
+never polls -- the hub publishes its own view of the Optolink link
+(`device_class: connectivity`, `entity_category: diagnostic` by default).
+ONLINE on any successful response; OFFLINE when the start-up protocol
+verification fails or after three consecutive protocol errors (watchdog
+expiries count). Edge-published, so a healthy bus produces no state traffic.
+
+**Fault events** (`event`): polls a fault-history slot (typically FA01, the
+newest fault -- `0x7507` on the B3HA; slot layout is a code byte plus an
+8-byte BCD timestamp) and fires a Home Assistant event when the code
+*changes*: a new fault fires its hex code (`0x10`), a cleared slot fires
+`cleared`, and a code outside `codes:` fires `unknown` with the raw value in
+the log. The `codes:` map has the same shape as `text_sensor`
+`type: error_history` and defines the event-type space HA sees. The first
+successful poll only records a baseline and never fires, so the fault sitting
+in the slot at boot does not spam the logbook on every reboot; a read error
+keeps the baseline (a bus glitch must not manufacture fault events). This
+complements the `error_history` text sensor, which shows slot contents but
+cannot notify.
+
+**DHW as `water_heater`** -- see `example/vitohome-dhw.yaml`: ESPHome's
+`water_heater` `template` platform wraps the existing datapoints (tank
+temperature `0x0804`, writable setpoint `0x6300`, effective setpoint `0x6500`)
+into a native HA water-heater card, no C++ and no custom HA integration. DHW
+on/off stays with the shared Betriebsart register by design.
 
 ## Validation
 

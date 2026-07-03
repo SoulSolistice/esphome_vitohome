@@ -838,11 +838,36 @@ def _enum_read_length(enum_opts: list, fallback: int) -> int:
     return 1 if hi < 0x100 else (2 if hi < 0x10000 else fallback)
 
 
+# Unit -> Home Assistant device_class, for proper cards and long-term
+# statistics. Grounded in the units the full VScotHO1_72 export actually
+# emits; deliberately conservative -- unmapped units (%, K deltas,
+# "Prozent pro K", "l pro h", ...) get no device_class rather than a wrong
+# one. "mBar" is normalised to HA's canonical "mbar" spelling by _unit_for.
+_DEVICE_CLASS_BY_UNIT = {
+    "\u00b0C": "temperature",
+    "kWh": "energy",
+    "Wh": "energy",
+    "mbar": "pressure",
+    "dBm": "signal_strength",
+    "h": "duration",
+    "min": "duration",
+    "s": "duration",
+}
+
+
+def _device_class_for(unit: str):
+    return _DEVICE_CLASS_BY_UNIT.get(unit or "")
+
+
 def _unit_for(ev: Event) -> str:
+    unit = ""
     for v in ev.values:
         if v.unit:
-            return v.unit
-    return ev.unit or ""
+            unit = v.unit
+            break
+    unit = unit or ev.unit or ""
+    # HA's canonical pressure spelling is "mbar"; the export writes "mBar".
+    return "mbar" if unit == "mBar" else unit
 
 
 def _yaml_str(s: str) -> str:
@@ -1082,6 +1107,9 @@ def emit_entity(ev: Event, profile: str):
         unit = _unit_for(ev)
         if unit:
             lines.append(f"  unit_of_measurement: {_yaml_str(unit)}")
+        dc = _device_class_for(unit)
+        if dc:
+            lines.append(f"  device_class: {dc}")
         have_bounds = (
             lo != ""
             and hi != ""
@@ -1166,6 +1194,9 @@ def emit_entity(ev: Event, profile: str):
     unit = _unit_for(ev)
     if unit:
         lines.append(f"  unit_of_measurement: {_yaml_str(unit)}")
+    dc = _device_class_for(unit)
+    if dc:
+        lines.append(f"  device_class: {dc}")
     if conv_kind == COUNTER:
         lines.append("  state_class: total_increasing")
         lines.append("  accuracy_decimals: 1")

@@ -47,6 +47,7 @@ AUTO_LOAD = [
     "switch",
     "text",
     "climate",
+    "event",
 ]
 MULTI_CONF = False
 

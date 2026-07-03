@@ -45,10 +45,15 @@ void VitoHomeComponent::setup() {
   // The adapter normalises each protocol's callback shape to a ResponseView, so
   // the hub registers one uniform handler regardless of P300/KW/GWG.
   this->vito_->on_response([this](const ResponseView& response, const optolink::Datapoint& request) {
+    // Any successful response is proof of link liveness.
+    this->link_error_streak_ = 0;
+    this->publish_link_(true);
     this->on_response_(response, request);
   });
-  this->vito_->on_error(
-      [this](optolink::OptolinkResult error, const optolink::Datapoint& request) { this->on_error_(error, request); });
+  this->vito_->on_error([this](optolink::OptolinkResult error, const optolink::Datapoint& request) {
+    this->link_note_error_();
+    this->on_error_(error, request);
+  });
 
   if (!this->vito_->begin()) {
     ESP_LOGE(TAG, "optolink engine begin() failed");
@@ -126,6 +131,7 @@ void VitoHomeComponent::loop() {
       this->protocol_verify_pending_ = false;
       ESP_LOGE(TAG, "%s link not established; check wiring and that the device speaks this protocol",
                ProtocolAdapter::protocol_name());
+      this->publish_link_(false);
       this->mark_failed();
     }
   }
@@ -135,6 +141,8 @@ void VitoHomeComponent::loop() {
   if (this->in_flight_ != nullptr || this->ident_in_flight_ || this->raw_in_flight_) {
     uint32_t now = millis();
     if (now - this->in_flight_started_ms_ > IN_FLIGHT_WATCHDOG_MS) {
+      // A lost engine callback is a link-health signal too.
+      this->link_note_error_();
       if (this->ident_in_flight_) {
         ESP_LOGW(TAG, "Identification read exceeded watchdog (%" PRIu32 " ms)", IN_FLIGHT_WATCHDOG_MS);
         this->ident_in_flight_ = false;
@@ -559,6 +567,19 @@ void VitoHomeComponent::on_response_(const ResponseView& response, const optolin
 
   entity->read_queued_ = false;
   entity->handle_response(response);
+}
+
+void VitoHomeComponent::publish_link_(bool up) {
+  const int8_t next = up ? 1 : 0;
+  if (this->link_state_ == next) return;
+  this->link_state_ = next;
+  ESP_LOGI(TAG, "Optolink link %s", up ? "online" : "offline");
+  for (auto* bs : this->link_sensors_) bs->publish_state(up);
+}
+
+void VitoHomeComponent::link_note_error_() {
+  if (this->link_error_streak_ < LINK_OFFLINE_AFTER_ERRORS) this->link_error_streak_++;
+  if (this->link_error_streak_ == LINK_OFFLINE_AFTER_ERRORS) this->publish_link_(false);
 }
 
 void VitoHomeComponent::on_error_(optolink::OptolinkResult error, const optolink::Datapoint& request) {
