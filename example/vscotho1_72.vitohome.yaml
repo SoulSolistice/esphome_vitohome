@@ -1,5 +1,11 @@
 # ============================================================================
 # vitohome — full device config for the reference unit (device 0x20CB / VScotHO1)
+#
+# Pulls example/vscotho1_72.dp.curated.yaml as its package: the comprehensive
+# monitoring + control set exercising every platform (sensor, binary_sensor
+# incl. connectivity, text_sensor, number, select, switch, climate, text,
+# event, template water_heater). This file adds the board specifics plus
+# time_sync so the device clock follows Home Assistant time.
 # ============================================================================
 
 substitutions:
@@ -83,6 +89,11 @@ logger:
     vitohome.number: ${debug_level}
     vitohome.select: ${debug_level}
     vitohome.text_sensor: ${debug_level}
+    vitohome.binary_sensor: ${debug_level}
+    vitohome.switch: ${debug_level}
+    vitohome.climate: ${debug_level}
+    vitohome.text: ${debug_level}
+    vitohome.event: ${debug_level}
 
 button:
   - platform: restart
@@ -120,6 +131,13 @@ vitohome:
   protocol: KW
   update_interval: 60s
   identify_device: true
+  # Device-clock sync from Home Assistant time.
+  # drift_threshold 60s avoids rewriting the clock on every check.
+  time_id: homeassistant_time
+  time_sync:
+    interval: 24h
+    drift_threshold: 60s
+    sync_on_boot: true
 
 ## ============================================================
 ## Firmware logic — pulled from GitHub at ${vitohome_ref}.

@@ -1,33 +1,27 @@
 # ============================================================
-# vitohome - VScotHO1_72 "simple setup" package
+# vitohome - VScotHO1_72 comprehensive package
 #
-# A curated, value-adding monitoring set for a basic system:
-#   * one heating circuit on A1 (direct/un-mixed) with its pump
-#   * domestic hot water (DHW / Warmwasser)
-# Covers temperatures, flue gas (Abgas), burner stats, modulation,
-# flow rate, pump states, faults and device identity - i.e. what you
-# need to see that the boiler is working correctly.
+# Curated from the generated full catalog (vscotho1_72.dp.complete.yaml) for
+# a basic system - one direct heating circuit on A1 plus DHW - and meant as
+# the showcase config: comprehensive MONITORING (temperatures incl. flow /
+# return / flue gas, burner modulation and counters, volume flow, pump
+# power) plus CONTROL of the typical features (room climate with operating
+# modes, DHW setpoint incl. a native water_heater card, party / economy
+# switches, heating curve, switching-time programs) - exercising every
+# platform the component offers: sensor, binary_sensor (incl. the hub-fed
+# connectivity diagnostic), text_sensor (device_id / enum / error_history /
+# ascii / utf16), number, select, switch, climate, text (Schaltzeiten),
+# event (fault events) and an ESPHome template water_heater on top.
 #
-# Every datapoint here is Optolink-reachable (FCRead = Virtual_READ) and
-# uses the field-accurate address/length/converter from gen_catalog.py.
-# Entities are ENABLED by default so monitoring works out of the box.
+# Every datapoint is Optolink-reachable and uses the field-accurate
+# address/length/converter from the generated catalog; hand-tuned entries
+# carry their hardware evidence in comments. Entities are ENABLED by
+# default so the set works out of the box (one deliberate exception noted
+# at the Betriebsart select).
 #
-# USAGE - define the hub + UART once in your device YAML, then include
-# this file. For the ESP32-C3 Optolink build that is e.g.:
-#
-#   uart:
-#     id: optolink_uart
-#     rx_pin: GPIO5
-#     tx_pin: GPIO2
-#     baud_rate: 4800
-#     data_bits: 8
-#     parity: EVEN
-#     stop_bits: 2
-#   vitohome:
-#     uart_id: optolink_uart
-#     protocol: P300
-#   packages:
-#     vscot2: !include vscot2.vitohome.yaml
+# USAGE - define uart + vitohome hub in your device YAML and include this
+# file via packages: (see vscotho1_72.vitohome.yaml, which also wires
+# time_sync for the device clock).
 #
 # VERIFY ON HARDWARE: addresses come from the Vitosoft catalog for this
 # variant; confirm with `esphome config` then `esphome run` before relying
@@ -117,14 +111,14 @@ sensor:
   - platform: vitohome
     name: "Temperatur Rücklauf"
     id: Neptun_Temperatur_STRS1
-    address: 0x0C20
+    address: 0x0C20            # STRS1 return sensor (div100!)
     length: 2
     converter: div100
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
     accuracy_decimals: 1
-    icon: "mdi:thermometer-lines"
+    icon: "mdi:thermometer-chevron-down"
     update_interval: 60s
 
   - platform: vitohome
@@ -143,7 +137,7 @@ sensor:
   - platform: vitohome
     name: "Temperatur Warmwasser Soll"
     id: WW_SolltemperaturAktuell
-    address: 0x6500            # WW Solltemperatur aktuell (read-back)
+    address: 0x6500            # WW Solltemperatur aktuell (effective, read-back)
     length: 2
     converter: div10
     unit_of_measurement: "°C"
@@ -192,7 +186,7 @@ sensor:
     icon: "mdi:counter"
     update_interval: 3600s
 
-  # --- Flow rate ----------------------------------------------------------
+  # --- Hydraulics: volume flow & pump power --------------------------------
   - platform: vitohome
     name: "Volumenstrom"
     id: Neptun_Durchfluss_STRS1
@@ -201,7 +195,7 @@ sensor:
     converter: noconv
     unit_of_measurement: "L/h"
     state_class: measurement
-    icon: "mdi:water-percent"
+    icon: "mdi:water-sync"
     update_interval: 60s
     # NOTE: a scaling factor exists at 0x0C26 (Skalierung Durchfluss). If the
     # raw value looks off by a constant factor, divide by that on the HA side.
@@ -209,15 +203,35 @@ sensor:
   - platform: vitohome
     name: "Pumpenleistung"
     id: Pumpenleistung
-    address: 0x0A3C
+    address: 0x0A3C            # internal pump demand
     length: 1
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
-    icon: "mdi:water-percent"
+    icon: "mdi:pump"
     update_interval: 60s
-    # NOTE: a scaling factor exists at 0x0C26 (Skalierung Durchfluss). If the
-    # raw value looks off by a constant factor, divide by that on the HA side.
+
+  - platform: vitohome
+    name: "Interne Pumpe Drehzahl"
+    id: InternePumpeDrehzahl
+    address: 0x7661            # byte 1 of the 2-byte block @ 0x7660; verify on hardware
+    length: 1
+    converter: noconv
+    unit_of_measurement: "%"
+    state_class: measurement
+    icon: "mdi:fan"
+    update_interval: 60s
+
+  - platform: vitohome
+    name: "Heizkreispumpe Drehzahl"
+    id: HKP_A1Drehzahl
+    address: 0x7664            # byte 1 of the 2-byte block @ 0x7663; verify on hardware
+    length: 1
+    converter: noconv
+    unit_of_measurement: "%"
+    state_class: measurement
+    icon: "mdi:fan"
+    update_interval: 60s
 
 binary_sensor:
   - platform: vitohome
@@ -229,6 +243,14 @@ binary_sensor:
     device_class: running
     icon: "mdi:fire"
     update_interval: 30s
+
+  # Hub-fed Optolink link diagnostic: ONLINE on any successful response,
+  # OFFLINE after 3 consecutive protocol errors or when start-up protocol
+  # verification fails. Never polls; edge-published.
+  - platform: vitohome
+    type: connectivity
+    name: "Optolink Verbindung"
+    id: optolink_link
 
 text_sensor:
   - platform: vitohome
@@ -262,62 +284,128 @@ text_sensor:
       0x00: "Off"
       0x01: "On"
 
-  # Most-recent fault from the error archive. Full block is 90 bytes
-  # (10 slots x 9) at this address; this reads the most-recent slot only.
-  # If the device NAKs the 9-byte block read, drop length to 1 (code only).
+  # Owner-set circuit label, UTF-16LE (Beschriftung HK1).
+  - platform: vitohome
+    type: utf16
+    name: "Beschriftung HK1"
+    id: Beschriftung_HK1
+    address: 0x7362            # byte 2 of the 42-byte block @ 0x7360; verify on hardware
+    length: 40
+    entity_category: diagnostic
+    icon: "mdi:label"
+
+  # Most-recent fault (error-history slot 1, FehlerHis*): code byte + 8-byte
+  # BCD timestamp. Address per the regenerated catalog (0x7590; the earlier
+  # openv-convention 0x7507 was superseded by the Vitosoft export for this
+  # unit). If the device NAKs the 9-byte block read, drop length to 1.
+  # The codes map is the 'vd300' set (B3HA Serviceanleitung, 94 codes) and is
+  # shared with the fault EVENT below via the YAML anchor.
   - platform: vitohome
     type: error_history
     name: "Letzter Fehler"
     id: letzter_fehler
-    address: 0x7507
+    address: 0x7590
     length: 9
     icon: "mdi:alert-circle"
+    entity_category: diagnostic
     update_interval: 300s
-    # openv/community code map (DEFAULT - verify for this unit):
-    codes:
+    codes: &vd300_codes
       0x00: "Regelbetrieb (kein Fehler)"
-      0x0F: "Wartung (fuer Reset Codieradresse 24 auf 0 stellen)"
-      0x10: "Kurzschluss Aussentemperatursensor"
-      0x18: "Unterbrechung Aussentemperatursensor"
-      0x19: "Unterbrechung Kommunikation Aussentemperatursensor (Funk)"
-      0x20: "Kurzschluss Vorlauftemperatursensor"
-      0x21: "Kurzschluss Ruecklauftemperatursensor"
-      0x28: "Unterbrechung Vorlauftemperatursensor"
-      0x29: "Unterbrechung Ruecklauftemperatursensor"
+      0x10: "Kurzschluss Außentemperatursensor"
+      0x18: "Unterbrechung Außentemperatursensor"
+      0x19: "Unterbrechung Kommunikation Außentemperatursensor RF"
+      0x1D: "Keine Kommunikation mit Sensor"
+      0x1E: "Strömungssensor defekt"
+      0x1F: "Strömungssensor defekt"
+      0x20: "Kurzschluss Vorlauftemperatursensor Anlage"
+      0x28: "Unterbrechung Vorlauftemperatursensor Anlage"
       0x30: "Kurzschluss Kesseltemperatursensor"
       0x38: "Unterbrechung Kesseltemperatursensor"
-      0x40: "Kurzschluss Vorlauftemperatursensor M2"
-      0x42: "Unterbrechung Vorlauftemperatursensor M2"
+      0x40: "Kurzschluss Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
+      0x44: "Kurzschluss Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
+      0x48: "Unterbrechung Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
+      0x49: "Codierung Erweiterung Mischer Heizkreis 2 falsch eingestellt"
+      0x4C: "Unterbrechung Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
+      0x4D: "Codierung Erweiterung Mischer Heizkreis 3 falsch eingestellt"
       0x50: "Kurzschluss Speichertemperatursensor"
       0x58: "Unterbrechung Speichertemperatursensor"
-      0x92: "Solar: Kurzschluss Kollektortemperatursensor"
-      0x93: "Solar: Kurzschluss Sensor S3"
-      0x94: "Solar: Kurzschluss Speichertemperatursensor"
-      0x9A: "Solar: Unterbrechung Kollektortemperatursensor"
-      0x9B: "Solar: Unterbrechung Sensor S3"
-      0x9C: "Solar: Unterbrechung Speichertemperatursensor"
-      0x9E: "Solar: Zu geringer Ertrag / Durchfluss"
+      0x90: "Kurzschluss Temperatursensor"
+      0x91: "Kurzschluss Temperatursensor"
+      0x92: "Kurzschluss Kollektortemperatursensor"
+      0x93: "Kurzschluss Speichertemperatursensor"
+      0x94: "Kurzschluss Speichertemperatursensor"
+      0x98: "Unterbrechung Temperatursensor"
+      0x99: "Unterbrechung Temperatursensor"
+      0x9A: "Unterbrechung Kollektortemperatursensor"
+      0x9B: "Unterbrechung Speichertemperatursensor"
+      0x9C: "Unterbrechung Speichertemperatursensor"
+      0x9E: "Zu geringer oder kein Volumenstrom im Solarkreis oder Temperaturwächter hat ausgelöst"
+      0x9F: "Fehler Solarregelungsmodul oder Vitosolic"
+      0xA2: "Anlagendruck zu niedrig"
+      0xA3: "Abgastemperatursensor nicht richtig positioniert"
+      0xA4: "Max. Anlagendruck überschritten"
+      0xA7: "Bedienteil defekt"
+      0xA8: "Luft in der internen Umwälzpumpe oder Mindest-Volumenstrom nicht erreicht"
+      0xA9: "Interne Umwälzpumpe blockiert"
       0xB0: "Kurzschluss Abgastemperatursensor"
-      0xB1: "Unterbrechung Abgastemperatursensor"
-      0xBA: "Kommunikationsfehler Erweiterung Mischerkreis M2"
-      0xBC: "Kommunikationsfehler Fernbedienung Vitotrol A1"
-      0xBD: "Kommunikationsfehler Fernbedienung Vitotrol M2"
-      0xBE: "Falsche Codierung Fernbedienung"
-      0xC2: "Kommunikationsfehler Erweiterung extern (LON)"
-      0xC5: "Kommunikationsfehler drehzahlgeregelte Pumpe"
-      0xCD: "Kommunikationsfehler Vitocom"
-      0xD1: "Brennerstoerung"
-      0xDA: "Kurzschluss Raumtemperatursensor A1"
-      0xDB: "Kurzschluss Raumtemperatursensor M2"
-      0xE5: "Interner Fehler (Flammenverstaerker)"
-      0xF0: "Interner Fehler (Regelung tauschen)"
-      0xF1: "Abgastemperaturbegrenzer ausgeloest"
-      0xF2: "Uebertemperatur"
-      0xF4: "Flammensignal fehlt / Brenner stoert"
-      0xFD: "Fehler Brennersteuergeraet / Codierung"
-      0xFF: "Kommunikationsfehler Brennersteuergeraet"
+      0xB1: "Kommunikationsfehler Bedieneinheit"
+      0xB5: "Interner Fehler"
+      0xB7: "Fehler KesselCodierstecker"
+      0xB8: "Unterbrechung Abgastemperatursensor"
+      0xBA: "Kommunikationsfehler Erweiterungssatz für Heizkreis 2 (mit Mischer)"
+      0xBB: "Kommunikationsfehler Erweiterungssatz für Heizkreis 3 (mit Mischer)"
+      0xBC: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 1 (ohne Mischer)"
+      0xBD: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 2 (mit Mischer)"
+      0xBE: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 3 (mit Mischer)"
+      0xBF: "Falsches Kommunikationsmodul LON"
+      0xC1: "Kommunikationsfehler Erweiterung EA1"
+      0xC2: "Kommunikationsfehler Solarregelungsmodul oder Vitosolic"
+      0xC3: "Kommunikationsfehler Erweiterung AM1"
+      0xC4: "Kommunikationsfehler Erweiterung Open Therm"
+      0xC5: "Kommunikationsfehler drehzahlgeregelte interne Pumpe"
+      0xC6: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 2 (mit Mischer)"
+      0xC7: "Kommunikationsfehler drehzahlgeregelte externe Heizkreispumpe Heizkreis 1 (ohne Mischer)"
+      0xC8: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 3 (mit Mischer)"
+      0xCD: "Kommunikationsfehler Vitocom 100 (KM-BUS)"
+      0xCF: "Kommunikationsfehler Kommunikationsmodul LON"
+      0xD6: "Eingang DE1 an Erweiterung EA1 meldet Störung"
+      0xD7: "Eingang DE2 an Erweiterung EA1 meldet Störung"
+      0xD8: "Störung Eingang DE3 an Erweiterung EA1"
+      0xDA: "Kurzschluss Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
+      0xDB: "Kurzschluss Raumtemperatursensor Heizkreis 2 (mit Mischer)"
+      0xDC: "Kurzschluss Raumtemperatursensor Heizkreis 3 (mit Mischer)"
+      0xDD: "Unterbrechung Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
+      0xDE: "Unterbrechung Raumtemperatursensor Heizkreis 2 (mit Mischer)"
+      0xDF: "Unterbrechung Raumtemperatursensor Heizkreis 3 (mit Mischer)"
+      0xE0: "Fehler externer LON-Teilnehmer"
+      0xE1: "Ionisationsstrom während der Kalibrierung zu hoch"
+      0xE2: "Keine Kalibrierung wegen zu geringen Volumenstrom"
+      0xE3: "Zu geringe Wärmeabnahme während der Kalibrierung Temperaturwächter hat ausgeschaltet."
+      0xE4: "Fehler Versorgungsspannung 24 V"
+      0xE5: "Fehler Flammenverstärker"
+      0xE6: "Anlagendruck zu niedrig"
+      0xE7: "Ionisationsstrom während der Kalibrierung zu gering"
+      0xE8: "Ionisationsstrom nicht im gültigen Bereich"
+      0xEA: "Ionisationsstrom während der Kalibrierung nicht im gültigen Bereich (zu große Abweichung gegenüber dem Vorgängerwert)"
+      0xEB: "Wiederholter Flammenverlust während der Kalibrierung"
+      0xEC: "Parameterfehler während der Kalibrierung"
+      0xED: "Interner Fehler"
+      0xEE: "Flammensignal ist bei Brennerstart nicht vorhanden oder zu gering."
+      0xEF: "Flammenverlust direkt nach Flammenbildung (während der Sicherheitszeit)."
+      0xF0: "Interner Fehler"
+      0xF1: "Abgastemperaturbegrenzer hat ausgelöst."
+      0xF2: "Temperaturbegrenzer hat ausgelöst."
+      0xF3: "Flammensignal ist beim Brennerstart bereits vorhanden."
+      0xF7: "Kurzschluss oder Unterbrechung Wasserdrucksensor"
+      0xF8: "Brennstoffventil schließt verspätet."
+      0xF9: "Gebläsedrehzahl beim Brennerstart zu niedrig"
+      0xFA: "Gebläsestillstand nicht erreicht"
+      0xFC: "Gaskombiregler defekt oder fehlerhafte Ansteuerung Modulationsventil oder Abgasweg versperrt"
+      0xFD: "Kessel-Codierstecker fehlt / Fehler Feuerungsautomat"
+      0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
+      0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
 
-  # Device identity (ASCII byte-strings, HexByte2AsciiByte) -- read-only,
+  # Device identity (ASCII byte-strings, HexByte2AsciiByte) - read-only,
   # diagnostic. Surfaced by the vcontrold cross-check as worthwhile reads.
   - platform: vitohome
     type: ascii
@@ -344,9 +432,22 @@ text_sensor:
     entity_category: diagnostic
     icon: "mdi:identifier"
 
+# Fires a Home Assistant logbook event when the newest-fault code CHANGES:
+# hex type ("0x10") for a mapped code, "cleared" on transition to 0x00,
+# "unknown" otherwise. First poll only records a baseline (no stale-fault
+# spam at boot); read errors keep the baseline. Complements the polling
+# "Letzter Fehler" text sensor above; same slot, same codes (anchor).
+event:
+  - platform: vitohome
+    name: "Heizung Störung"
+    id: fault_event
+    address: 0x7590
+    length: 9
+    update_interval: 300s
+    codes: *vd300_codes
+
 number:
-  # Optional control: set the DHW target temperature. Remove this section
-  # if you only want monitoring.
+  # DHW target temperature (also driven by the water_heater card below).
   - platform: vitohome
     name: "Bedien WW Solltemperatur"
     id: Bedien_WW_Solltemperatur
@@ -354,31 +455,73 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "°C"
+    device_class: temperature
     min_value: 10
-    max_value: 95
+    max_value: 95              # Vitosoft border; coding addresses may clamp lower
+    step: 1
+    mode: box
+    update_interval: 3600s
+
+  # Reduced-mode room setpoint. (The NORMAL room setpoint 0x2306 is owned by
+  # the climate entity below - do not add a second writer for it.)
+  - platform: vitohome
+    name: "Raumsoll Reduziert"
+    id: BedienRTSolltemperaturReduziertA1M1
+    address: 0x2307
+    length: 1
+    converter: noconv
+    unit_of_measurement: "°C"
+    device_class: temperature
+    min_value: 3
+    max_value: 37
+    step: 1
+    mode: box
+    update_interval: 3600s
+
+  # Heating curve: slope (Neigung, div10) and level (Niveau, signed Kelvin
+  # offset) - the two knobs of weather-compensated control.
+  - platform: vitohome
+    name: "Heizkurve Neigung"
+    id: KD3_KonfiNeigungA1D
+    address: 0x27D3
+    length: 1
+    converter: div10
+    min_value: 0.2
+    max_value: 3.5
+    step: 0.1
+    mode: box
+    update_interval: 3600s
+  - platform: vitohome
+    name: "Heizkurve Niveau"
+    id: KD4_KonfiNiveauA1
+    address: 0x27D4
+    length: 1
+    converter: noconv
+    signed: true
+    unit_of_measurement: "K"
+    min_value: -13
+    max_value: 40
     step: 1
     mode: box
     update_interval: 3600s
 
 select:
-  # Operating-mode switch (Betriebsart). Writes the operating mode at 0x2323
-  # (BedienteilBA, the Virtual_WRITE target for this
-  # variant). Writes are HARDWARE-CONFIRMED: the byte read back at 0x2323 reflects
-  # what was written, and all 5 options round-trip (write -> ACK -> read-back).
-  #
-  # 0x2323 (BedienteilBA, 5 values) is a DIFFERENT enum from 0x2301 (the actual
-  # mode, 6 values, which openv/vcontrold drive); the controller translates
-  # 0x2323 -> 0x2301. Labels below use vcontrold's "BA" vocabulary
-  # (openv/vcontrold xml/300/vcontrold.xml, unit "BA"). Values 0 and 3 are
-  # log-confirmed via the 0x2301 read-back (0 -> ABSCHALT, 3 -> RED); 1/2/4 follow
-  # the canonical BedienteilBA order and are consistent with that mapping but not
-  # yet directly observed. Observed translation 0x2323 -> 0x2301: 0->5, 3->1
-  # (predicted full map 0->5 1->0 2->3 3->1 4->2).
+  # Operating-mode dropdown (Betriebsart). DISABLED by default because the
+  # climate entity below already drives the same command register 0x2323 via
+  # its presets - enable this only if you prefer a dropdown and accept two
+  # writers on one register. Kept for its hardware evidence:
+  # Writes are HARDWARE-CONFIRMED: the byte read back at 0x2323 reflects what
+  # was written, and all 5 options round-trip (write -> ACK -> read-back).
+  # 0x2323 (BedienteilBA, 5 values) is a DIFFERENT enum from 0x2301 (the
+  # actual mode, 6 values, which openv/vcontrold drive); the controller
+  # translates 0x2323 -> 0x2301. Observed translation: 0->5, 3->1 (predicted
+  # full map 0->5 1->0 2->3 3->1 4->2).
   - platform: vitohome
     name: "Modus Betriebsart"
     id: BedienteilBA_GWGA1
     address: 0x2323
     length: 1
+    disabled_by_default: true
     update_interval: 30s
     options:
       0x00: "Abschaltbetrieb"
@@ -387,27 +530,113 @@ select:
       0x03: "Reduziert"
       0x04: "Normal"
 
-  # Party and economy have a read/write address split like Betriebsart, but
-  # here read and write share the same on/off domain, so ONE two-address select
-  # is correct: it WRITES the command address and READS the live state address.
-  # Confirm on hardware that toggling actually moves the state.
+switch:
+  # Party and economy as native HA toggles. Both have the read/write address
+  # split: the switch WRITES the command address and READS the live state
+  # address, with the default 1/0 on/off pair. Confirm on hardware that
+  # toggling actually moves the state.
   - platform: vitohome
-    name: "Modus Partybetrieb"
+    name: "Partybetrieb"
     id: NRx_PartybetriebA1M1_D
     address: 0x2330            # command (NRx Partybetrieb)
     state_address: 0x2303      # live state (BedienPartybetrieb)
-    length: 1
+    icon: "mdi:party-popper"
     update_interval: 30s
-    options:
-      0x00: "Off"
-      0x01: "On"
   - platform: vitohome
-    name: "Modus Sparbetrieb"
+    name: "Sparbetrieb"
     id: NRx_SparbetriebA1M1_D
     address: 0x2331            # command (NRx Sparbetrieb)
     state_address: 0x2302      # live state (BedienSparbetrieb)
-    length: 1
+    icon: "mdi:leaf"
     update_interval: 30s
-    options:
-      0x00: "Off"
-      0x01: "On"
+
+climate:
+  # Room climate for heating circuit 1: the slider edits the room setpoint
+  # (0x2306, applied through the heat curve); Betriebsart rides along as
+  # presets. `write` bytes are the hardware-confirmed 0x2323 command
+  # round-trip set; the `read` (0x2301) bytes are partly predicted - confirm
+  # on the wire (example/vitohome-scanner-raw.yaml) before relying on the
+  # panel-initiated state display.
+  - platform: vitohome
+    name: "Heizkreis 1"
+    id: hk1_climate
+    target_address: 0x2306
+    visual:
+      min_temperature: 3
+      max_temperature: 37
+      temperature_step: 1
+    operating_mode:
+      address: 0x2323          # write (command, BedienteilBA)
+      state_address: 0x2301    # read (actual mode the panel/schedule update)
+      presets:
+        - {name: "Normal", write: 0x04, read: [0x02], mode: heat}
+        - {name: "Reduziert", write: 0x03, read: [0x01], mode: heat}
+        - {name: "Heizen und Warmwasser", write: 0x02, read: [0x03], mode: heat}
+        - {name: "Nur Warmwasser", write: 0x01, read: [0x00], mode: "off"}
+        - {name: "Abschaltbetrieb", write: 0x00, read: [0x05], mode: "off"}
+
+# Per-day switching-time program for heating circuit 1 as editable text
+# ("06:00-22:00 08:30-12:00", up to four ON-OFF pairs, "--" disabled, device
+# stores on a 10-minute grid). Addresses follow the vcontrold P300 convention
+# (base + day*8, Monday first) - SOURCE-CONFIRMED against vcontrold
+# xml/300/vito.xml, NOT yet confirmed on this unit; verify the base on the
+# wire before relying on it. Other programs stride the same way from their
+# own bases: DHW 0x2100, circulation 0x2200 (vcontrold convention).
+text:
+  - platform: vitohome
+    name: "HK1 Schaltzeit Montag"
+    id: hk1_schaltzeit_mo
+    address: 0x2000
+    update_interval: 1h
+  - platform: vitohome
+    name: "HK1 Schaltzeit Dienstag"
+    id: hk1_schaltzeit_di
+    address: 0x2008
+    update_interval: 1h
+  - platform: vitohome
+    name: "HK1 Schaltzeit Mittwoch"
+    id: hk1_schaltzeit_mi
+    address: 0x2010
+    update_interval: 1h
+  - platform: vitohome
+    name: "HK1 Schaltzeit Donnerstag"
+    id: hk1_schaltzeit_do
+    address: 0x2018
+    update_interval: 1h
+  - platform: vitohome
+    name: "HK1 Schaltzeit Freitag"
+    id: hk1_schaltzeit_fr
+    address: 0x2020
+    update_interval: 1h
+  - platform: vitohome
+    name: "HK1 Schaltzeit Samstag"
+    id: hk1_schaltzeit_sa
+    address: 0x2028
+    update_interval: 1h
+  - platform: vitohome
+    name: "HK1 Schaltzeit Sonntag"
+    id: hk1_schaltzeit_so
+    address: 0x2030
+    update_interval: 1h
+
+# DHW as a native HA water-heater card, wrapping the entities above:
+# current temperature from the tank sensor, target from the writable
+# setpoint number (whose read-back keeps the card honest after the
+# controller clamps a write). DHW on/off stays with Betriebsart by design.
+water_heater:
+  - platform: template
+    name: "Warmwasser"
+    id: dhw
+    current_temperature: |-
+      return id(TiefpassTemperaturwertWW1).state;
+    target_temperature: |-
+      return id(Bedien_WW_Solltemperatur).state;
+    optimistic: true
+    set_action:
+      - if:
+          condition:
+            lambda: "return !std::isnan(id(dhw).get_target_temperature()) && id(dhw).get_target_temperature() != id(Bedien_WW_Solltemperatur).state;"
+          then:
+            - number.set:
+                id: Bedien_WW_Solltemperatur
+                value: !lambda "return id(dhw).get_target_temperature();"
