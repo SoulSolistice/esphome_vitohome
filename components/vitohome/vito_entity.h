@@ -4,8 +4,7 @@
 #include "optolink/optolink.h"
 #include "response_view.h"
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 class VitoHomeComponent;
 
@@ -126,5 +125,4 @@ class VitoEntityBase {
   uint32_t poll_interval_ms_{0};
 };
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

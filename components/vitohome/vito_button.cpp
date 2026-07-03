@@ -3,8 +3,7 @@
 #include "esphome/core/log.h"
 #include "vitohome.h"
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 static const char* const TAG = "vitohome.button";
 
@@ -18,5 +17,4 @@ void VitoRefreshButton::press_action() {
   this->vh_parent_->refresh_all();
 }
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

@@ -6,8 +6,7 @@
 #include "decode.h"
 #include "esphome/core/log.h"
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 static const char* const TAG = "vitohome.text_sensor";
 
@@ -172,5 +171,4 @@ void VitoTextSensor::handle_error(optolink::OptolinkResult /*error*/) {
   // Keep the last value; the hub logs the specific error.
 }
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

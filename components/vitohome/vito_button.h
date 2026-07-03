@@ -2,8 +2,7 @@
 #include "esphome/components/button/button.h"
 #include "esphome/core/component.h"
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 class VitoHomeComponent;
 
@@ -23,5 +22,4 @@ class VitoRefreshButton : public button::Button, public Component {
   VitoHomeComponent* vh_parent_{nullptr};
 };
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

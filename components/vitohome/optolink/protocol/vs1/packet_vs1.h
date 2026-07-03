@@ -26,9 +26,7 @@ are restored.
 #include "../../helpers.h"
 #include "../../logging.h"
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 
 class PacketVS1 {
  public:
@@ -55,6 +53,4 @@ class PacketVS1 {
   std::array<uint8_t, kMaxFrame> _buffer;
 };
 
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink

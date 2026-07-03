@@ -10,8 +10,7 @@
 #include "esphome/components/time/real_time_clock.h"
 #endif
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 static const char* const TAG = "vitohome";
 
@@ -779,5 +778,4 @@ void VitoHomeComponent::ident_finish_() {
   }
 }
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

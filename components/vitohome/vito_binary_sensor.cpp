@@ -3,8 +3,7 @@
 #include "decode.h"
 #include "esphome/core/log.h"
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 static const char* const TAG = "vitohome.binary_sensor";
 
@@ -36,5 +35,4 @@ void VitoBinarySensor::handle_error(optolink::OptolinkResult /*error*/) {
   // the last value in place and rely on the component to log the error.
 }
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

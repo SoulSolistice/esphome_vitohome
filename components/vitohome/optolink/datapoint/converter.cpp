@@ -9,9 +9,7 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 #include "converter.h"
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 
 VariantValue Div10Convert::decode(const uint8_t* data, uint8_t len) const {
   assert(len == 1 || len == 2);
@@ -117,6 +115,4 @@ Div2Convert div2;
 Div3600Convert div3600;
 NoconvConvert noconv;
 
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink

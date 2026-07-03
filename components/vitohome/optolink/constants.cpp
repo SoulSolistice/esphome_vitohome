@@ -9,9 +9,7 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 #include "constants.h"
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 
 const char* errorToString(OptolinkResult error) {
   if (error == OptolinkResult::TIMEOUT) {
@@ -28,6 +26,4 @@ const char* errorToString(OptolinkResult error) {
   return "invalid error";
 }
 
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink

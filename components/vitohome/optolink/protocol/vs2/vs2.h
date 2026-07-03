@@ -24,9 +24,7 @@ timeouts are lifted to named constexpr members (values unchanged).
 #include "../../logging.h"
 #include "parser_vs2.h"
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 
 class VS2Engine {
  public:
@@ -121,6 +119,4 @@ class VS2Engine {
   void _tryOnError(OptolinkResult result);
 };
 
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink

@@ -5,8 +5,7 @@
 #include "esphome/core/component.h"
 #include "vito_entity.h"
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 // Writable enum datapoint exposed as an ESPHome select. The option labels
 // live in SelectTraits (set by codegen); raw_values_ is the parallel list of
@@ -31,5 +30,4 @@ class VitoSelect : public select::Select, public Component, public VitoEntityBas
   size_t pending_index_{0};
 };
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

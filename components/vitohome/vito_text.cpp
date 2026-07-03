@@ -4,8 +4,7 @@
 #include "esphome/core/log.h"
 #include "vitohome.h"
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 static const char* const TAG = "vitohome.text";
 
@@ -66,5 +65,4 @@ void VitoText::handle_error(optolink::OptolinkResult /*error*/) {
   // blank the entity. The hub already logs the protocol-level error.
 }
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

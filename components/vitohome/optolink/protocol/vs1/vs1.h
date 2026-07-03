@@ -25,9 +25,7 @@ constexpr members (values unchanged), including the two 50ms sync windows.
 #include "../../logging.h"
 #include "packet_vs1.h"
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 
 class VS1Engine {
  public:
@@ -107,6 +105,4 @@ class VS1Engine {
   void _tryOnError(OptolinkResult result);
 };
 
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink

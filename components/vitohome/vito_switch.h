@@ -5,8 +5,7 @@
 #include "esphome/core/component.h"
 #include "vito_entity.h"
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 // Boolean writable datapoint exposed as an ESPHome switch: a two-state
 // specialisation of VitoSelect for registers like NRx_Partybetrieb (0x2330,
@@ -46,5 +45,4 @@ class VitoSwitch : public switch_::Switch, public Component, public VitoEntityBa
   bool pending_state_{false};
 };
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

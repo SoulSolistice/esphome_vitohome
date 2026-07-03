@@ -15,9 +15,7 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 #include <cstdio>   // snprintf
 #include <cstring>  // strlen
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 
 /*
 Encodes a c-string containing a schedule to an 8-byte schedule sequence.
@@ -56,6 +54,4 @@ Although passed as variables, the function fails when
 */
 std::size_t decodeSchedule(const uint8_t* data, std::size_t len, char* output, std::size_t maxLen);
 
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink

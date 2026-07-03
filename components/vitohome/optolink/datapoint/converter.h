@@ -17,9 +17,7 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 #include "../logging.h"
 #include "conversion_helpers.h"
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 
 class VariantValue {
  public:
@@ -88,6 +86,4 @@ extern Div2Convert div2;
 extern Div3600Convert div3600;
 extern NoconvConvert noconv;
 
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink

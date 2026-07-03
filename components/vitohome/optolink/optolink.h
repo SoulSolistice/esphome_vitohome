@@ -30,9 +30,7 @@ P300 / KW / GWG and a small trait that maps each tag to its engine class.
 #include "protocol/vs2/parser_vs2.h"
 #include "protocol/vs2/vs2.h"
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 
 // Protocol selector tag types. These supersede the VS2/VS1/GWG tag names
 // introduced in 111805f: P300 and KW are the protocol's own domain names
@@ -66,6 +64,4 @@ struct ProtocolEngine<GWG> {
 template <class PROTOCOLVERSION>
 using OptolinkEngine = typename internals::ProtocolEngine<PROTOCOLVERSION>::type;
 
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink

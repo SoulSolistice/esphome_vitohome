@@ -29,9 +29,7 @@ that flag for the vcontrold/VS1 rationale.
 #include "../../logging.h"
 #include "packet_gwg.h"
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 
 class GWGEngine {
  public:
@@ -116,6 +114,4 @@ class GWGEngine {
   void _tryOnError(OptolinkResult result);
 };
 
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink

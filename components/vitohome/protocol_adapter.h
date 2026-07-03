@@ -7,8 +7,7 @@
 #include "optolink/optolink.h"
 #include "response_view.h"
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 // Compile-time protocol selection. The ESPHome codegen (__init__.py) emits
 // exactly one VITOHOME_PROTOCOL_* build flag from the `protocol:` option; the
@@ -95,5 +94,4 @@ class ProtocolAdapter {
   bool established_{false};
 };
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

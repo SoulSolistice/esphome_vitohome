@@ -9,9 +9,7 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 #include "packet_gwg.h"
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 
 PacketGWG::PacketGWG() : _buffer{} { reset(); }
 
@@ -84,6 +82,4 @@ const uint8_t* PacketGWG::data() const { return &_buffer[4]; }
 
 void PacketGWG::reset() { _buffer[3] = 0x00; }
 
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink

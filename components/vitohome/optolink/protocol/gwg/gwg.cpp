@@ -9,9 +9,7 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 #include "gwg.h"
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 
 GWGEngine::~GWGEngine() { delete _interface; }
 
@@ -190,6 +188,4 @@ void GWGEngine::_tryOnError(OptolinkResult result) {
   _currentDatapoint = Datapoint(nullptr, 0, 0, noconv);
 }
 
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink

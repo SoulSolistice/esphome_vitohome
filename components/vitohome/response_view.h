@@ -2,8 +2,7 @@
 
 #include <cstdint>
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 // Protocol-agnostic view of a decoded response payload. The ProtocolAdapter
 // builds one of these from whichever concrete packet / callback shape the
@@ -19,5 +18,4 @@ struct ResponseView {
   uint16_t address;
 };
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

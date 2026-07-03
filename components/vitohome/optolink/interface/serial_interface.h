@@ -12,9 +12,7 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 #include <cstddef>
 #include <cstdint>
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 namespace internals {
 
 class SerialInterface {
@@ -28,6 +26,4 @@ class SerialInterface {
 };
 
 }  // namespace internals
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink

@@ -5,8 +5,7 @@
 #include "esphome/core/log.h"
 #include "vitohome.h"
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 static const char* const TAG = "vitohome.climate";
 
@@ -211,5 +210,4 @@ void VitoClimate::dump_config() {
   }
 }
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

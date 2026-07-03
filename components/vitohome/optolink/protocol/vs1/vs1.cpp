@@ -9,9 +9,7 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 #include "vs1.h"
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 
 VS1Engine::~VS1Engine() { delete _interface; }
 
@@ -225,6 +223,4 @@ void VS1Engine::_tryOnError(OptolinkResult result) {
   _currentDatapoint = Datapoint(nullptr, 0, 0, noconv);
 }
 
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink

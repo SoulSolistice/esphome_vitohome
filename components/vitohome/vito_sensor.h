@@ -3,8 +3,7 @@
 #include "esphome/core/component.h"
 #include "vito_entity.h"
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 class VitoSensor : public sensor::Sensor, public Component, public VitoEntityBase {
  public:
@@ -41,5 +40,4 @@ class VitoSensor : public sensor::Sensor, public Component, public VitoEntityBas
   uint8_t consecutive_read_errors_{0};
 };
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

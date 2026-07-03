@@ -9,9 +9,7 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 #include "parser_vs2.h"
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 namespace internals {
 
 ParserVS2::ParserVS2() : _packet(), _step(ParserStep::STARTBYTE), _payloadLength(0) {
@@ -120,6 +118,4 @@ void ParserVS2::reset() {
 }
 
 }  // namespace internals
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink

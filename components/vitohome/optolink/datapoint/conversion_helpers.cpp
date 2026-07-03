@@ -13,9 +13,7 @@ namespace {
 bool isDigit(const char c) { return c >= '0' && c <= '9'; }
 }  // namespace
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 
 std::size_t encodeSchedule(const char* schedule, std::size_t len, uint8_t* output) {
   enum ScheduleParserStep {
@@ -107,6 +105,4 @@ std::size_t decodeSchedule(const uint8_t* data, std::size_t len, char* output, s
   return pos + 1;  // include 0-terminator
 }
 
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink

@@ -24,9 +24,7 @@ margin. Deleted copy operations restored.
 #include "../../helpers.h"
 #include "../../logging.h"
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 
 class PacketGWG {
  public:
@@ -53,6 +51,4 @@ class PacketGWG {
   std::array<uint8_t, kMaxFrame> _buffer;
 };
 
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink

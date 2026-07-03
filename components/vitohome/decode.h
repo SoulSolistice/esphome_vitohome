@@ -5,8 +5,7 @@
 #include <cstdio>
 #include <cstring>
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 // Pure, framework-free decode/encode helpers, kept separate so the logic can
 // be unit-tested on the host without the optolink engine or ESPHome headers
@@ -511,5 +510,4 @@ inline int format_raw_dump(uint16_t address, const uint8_t* data, uint8_t len, c
   return off;
 }
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

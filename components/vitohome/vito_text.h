@@ -5,8 +5,7 @@
 #include "esphome/core/component.h"
 #include "vito_entity.h"
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 // Writable per-day Schaltzeiten (switching-time) program exposed as an ESPHome
 // text input. One entity per weekday: it reads its 8-byte block, decodes it to
@@ -33,5 +32,4 @@ class VitoText : public text::Text, public Component, public VitoEntityBase {
   std::string pending_value_;
 };
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

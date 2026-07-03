@@ -9,9 +9,7 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 #include "packet_vs1.h"
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 
 PacketVS1::PacketVS1() : _buffer{} { reset(); }
 
@@ -79,6 +77,4 @@ const uint8_t* PacketVS1::data() const { return &_buffer[4]; }
 
 void PacketVS1::reset() { _buffer[3] = 0x00; }
 
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink

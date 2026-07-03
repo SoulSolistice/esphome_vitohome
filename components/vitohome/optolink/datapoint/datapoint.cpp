@@ -9,9 +9,7 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 #include "datapoint.h"
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 
 Datapoint::Datapoint(const char* name, uint16_t address, uint8_t length, const Converter& converter)
     : _name(name), _address(address), _length(length), _converter(&converter) {
@@ -41,6 +39,4 @@ void Datapoint::encode(uint8_t* buf, uint8_t len, const VariantValue& value) con
   return (*_converter).encode(buf, len, value);
 }
 
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink

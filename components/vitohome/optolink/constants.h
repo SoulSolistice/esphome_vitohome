@@ -16,9 +16,7 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 #define VITOHOME_OPTOLINK_START_PAYLOAD_LENGTH 10
 #endif
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 
 constexpr size_t START_PAYLOAD_LENGTH = VITOHOME_OPTOLINK_START_PAYLOAD_LENGTH;
 
@@ -49,13 +47,9 @@ enum class OptolinkResult { CONTINUE, PACKET, TIMEOUT, LENGTH, NACK, CRC, ERROR 
 
 const char* errorToString(OptolinkResult error);
 
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 namespace internals {
 
 constexpr struct {
@@ -71,6 +65,4 @@ constexpr struct {
 enum class ParserResult { CONTINUE, COMPLETE, CS_ERROR, ERROR };
 
 }  // namespace internals
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink

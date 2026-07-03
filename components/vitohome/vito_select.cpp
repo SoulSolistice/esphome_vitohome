@@ -4,8 +4,7 @@
 #include "esphome/core/log.h"
 #include "vitohome.h"
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 static const char* const TAG = "vitohome.select";
 
@@ -68,5 +67,4 @@ void VitoSelect::handle_error(optolink::OptolinkResult /*error*/) {
   // Keep the last option; the hub logs the specific error.
 }
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

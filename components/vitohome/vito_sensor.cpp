@@ -5,8 +5,7 @@
 #include "decode.h"
 #include "esphome/core/log.h"
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 static const char* const TAG = "vitohome.sensor";
 
@@ -63,5 +62,4 @@ void VitoSensor::handle_error(optolink::OptolinkResult /*error*/) {
   }
 }
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

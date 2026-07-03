@@ -3,8 +3,7 @@
 #include "esphome/core/component.h"
 #include "vito_entity.h"
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 class VitoBinarySensor : public binary_sensor::BinarySensor, public Component, public VitoEntityBase {
  public:
@@ -21,5 +20,4 @@ class VitoBinarySensor : public binary_sensor::BinarySensor, public Component, p
   uint8_t bit_mask_{0xFF};
 };
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

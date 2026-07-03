@@ -6,8 +6,7 @@
 #include "esphome/core/component.h"
 #include "vito_entity.h"
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 // Fault-event entity: polls a fault-history slot (typically FA01, the newest
 // fault, e.g. 0x7507 on the B3HA: code byte + 8-byte BCD timestamp) and fires
@@ -37,5 +36,4 @@ class VitoEvent : public event::Event, public Component, public VitoEntityBase {
   bool baseline_set_{false};
 };
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

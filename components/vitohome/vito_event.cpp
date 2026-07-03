@@ -5,8 +5,7 @@
 #include "esphome/core/log.h"
 #include "vitohome.h"
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 static const char* const TAG = "vitohome.event";
 
@@ -61,5 +60,4 @@ void VitoEvent::handle_error(optolink::OptolinkResult /*error*/) {
   // not manufacture fault events.
 }
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

@@ -3,8 +3,7 @@
 #include "esphome/core/component.h"
 #include "vito_entity.h"
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 // Writable datapoint exposed as an ESPHome number. The write path encodes in
 // double precision (decode.h::encode_scaled) and transmits via the optolink engine's
@@ -37,5 +36,4 @@ class VitoNumber : public number::Number, public Component, public VitoEntityBas
   uint8_t consecutive_read_errors_{0};
 };
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

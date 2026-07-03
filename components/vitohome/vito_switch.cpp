@@ -4,8 +4,7 @@
 #include "esphome/core/log.h"
 #include "vitohome.h"
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 static const char* const TAG = "vitohome.switch";
 
@@ -71,5 +70,4 @@ void VitoSwitch::handle_error(optolink::OptolinkResult /*error*/) {
   // Keep the last state; the hub logs the specific error.
 }
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

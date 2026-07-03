@@ -12,9 +12,7 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 #include "../protocol/vs2/packet_vs2.h"
 #include "converter.h"
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 
 class Datapoint {
  public:
@@ -37,6 +35,4 @@ class Datapoint {
   const Converter* _converter;
 };
 
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink

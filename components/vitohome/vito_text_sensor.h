@@ -6,8 +6,7 @@
 #include "esphome/core/component.h"
 #include "vito_entity.h"
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 enum class TextSensorType : uint8_t {
   RAW_HEX,        // hex dump of the payload (debug / unknown structures)
@@ -43,5 +42,4 @@ class VitoTextSensor : public text_sensor::TextSensor, public Component, public 
   std::vector<std::pair<uint32_t, const char*>> options_;
 };
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

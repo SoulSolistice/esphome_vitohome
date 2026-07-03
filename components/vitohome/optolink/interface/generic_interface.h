@@ -13,9 +13,7 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 #include "serial_interface.h"
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 namespace internals {
 
 template <class C>
@@ -37,6 +35,4 @@ class GenericInterface : public SerialInterface {
 };
 
 }  // namespace internals
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink

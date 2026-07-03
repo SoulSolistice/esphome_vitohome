@@ -17,9 +17,7 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 #include "../../logging.h"
 #include "packet_vs2.h"
 
-namespace esphome {
-namespace vitohome {
-namespace optolink {
+namespace esphome::vitohome::optolink {
 namespace internals {
 
 class ParserVS2 {
@@ -46,6 +44,4 @@ class ParserVS2 {
 };
 
 }  // namespace internals
-}  // namespace optolink
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome::optolink

@@ -6,8 +6,7 @@
 #include "esphome/core/component.h"
 #include "vito_entity.h"
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 class VitoClimate;
 
@@ -100,5 +99,4 @@ class VitoClimate : public climate::Climate, public Component {
   int setpoint_max_{37};
 };
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome

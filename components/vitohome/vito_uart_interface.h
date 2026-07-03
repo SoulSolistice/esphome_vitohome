@@ -4,8 +4,7 @@
 
 #include "esphome/components/uart/uart.h"
 
-namespace esphome {
-namespace vitohome {
+namespace esphome::vitohome {
 
 // Adapter satisfying the optolink engine's generic-interface contract against ESPHome's
 // uart::UARTDevice.
@@ -56,5 +55,4 @@ class ESPHomeUARTInterface {
   uart::UARTDevice* dev_;
 };
 
-}  // namespace vitohome
-}  // namespace esphome
+}  // namespace esphome::vitohome
