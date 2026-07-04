@@ -136,3 +136,46 @@ def test_two_byte_value_overflow_falls_through_to_number():
     )
     platform, _lines = gc.emit_entity(ev, "full")
     assert platform == "number"
+
+
+def test_ecnsys_90_byte_block_expands_to_ten_system_slots():
+    # The Vitotronic SYSTEM history: one 90-byte ecnsysEventType~Error block
+    # -> ten 9-byte slots at base+i*9, slot 1 = "Letzter Fehler" (enabled),
+    # later slots disabled. Mirrors vcontrold getError0..9 and the
+    # hardware-confirmed VScotHO1_72 layout at 0x7507.
+    ev = _event(byte_length=90, values=[])
+    ev.address = 0x7507
+    ev.tech = ev.token = ev.name = "ecnsysEventType~Error"
+    entries = gc._error_history_entries(ev)
+    assert len(entries) == 10
+    assert entries[0]["address"] == 0x7507 and entries[0]["name"] == "Letzter Fehler"
+    assert entries[0]["disabled"] is False and entries[0]["system"] is True
+    assert entries[1]["address"] == 0x7510 and entries[1]["disabled"] is True
+    assert entries[9]["address"] == 0x7507 + 81
+
+
+def test_fehlerhis_fa_slots_are_gfa_without_codes():
+    # FehlerHisFA* is the Feuerungsautomat archive: different subsystem,
+    # different code space -> GFA naming, disabled, and system=False so
+    # _error_history_lines never attaches the Vitotronic codes map.
+    ev = _event(byte_length=9, values=[])
+    ev.address = 0x7590
+    ev.tech = ev.token = ev.name = "FehlerHisFA01"
+    entries = gc._error_history_entries(ev)
+    assert len(entries) == 1
+    e = entries[0]
+    assert e["name"] == "GFA Fehler 01" and e["disabled"] is True and e["system"] is False
+    lines = "\n".join(gc._error_history_lines(e, "gfa_fehler_01", {0x38: "Kesselsensor"}, "vd300"))
+    assert "codes:" not in lines
+    assert "disabled_by_default: true" in lines
+
+
+def test_single_system_slot_stays_letzter_fehler():
+    # The mini-fixture / address-fallback path: a single sub-90-byte system
+    # event emits one enabled "Letzter Fehler" slot at its own address.
+    ev = _event(byte_length=9, values=[])
+    ev.address = 0x7507
+    ev.tech = ev.token = ev.name = "Error_Time"
+    entries = gc._error_history_entries(ev)
+    assert len(entries) == 1
+    assert entries[0]["name"] == "Letzter Fehler" and entries[0]["system"] is True

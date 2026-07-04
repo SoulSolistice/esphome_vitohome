@@ -392,11 +392,13 @@ async def to_code(config):
     # P300/KW/GWG, the tokens the adapter's #if chain actually checks.
     protocol = PROTOCOLS[str(config[CONF_PROTOCOL])]
     cg.add_build_flag(f"-DVITOHOME_PROTOCOL_{protocol}")
-    if protocol != "P300":
+    if protocol == "GWG":
+        # KW graduated to hardware-confirmed (VScotHO1_72 field logs 2026-07:
+        # reads, multi-byte clock writes after THIRD_PARTY.md #11, Schaltzeiten,
+        # Betriebsart round-trips). GWG remains implemented + host-proven only.
         _LOGGER.warning(
-            "vitohome protocol '%s' is selectable but UNTESTED on hardware; "
-            "P300 (VS2) is the validated protocol. Please report results.",
-            protocol,
+            "vitohome protocol 'GWG' is selectable but UNTESTED on hardware; "
+            "P300 and KW are the validated protocols. Please report results.",
         )
 
     var = cg.new_Pvariable(config[CONF_ID])

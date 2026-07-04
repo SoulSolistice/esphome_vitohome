@@ -308,11 +308,11 @@ void VitoHomeComponent::dump_config() {
   this->check_uart_settings(4800, 2, uart::UART_CONFIG_PARITY_EVEN, 8);
   if (this->is_failed()) {
     ESP_LOGE(TAG, "  Setup FAILED");
-    return;
   }
-  for (auto* e : this->entities_) {
-    e->dump_config();
-  }
+  // Deliberately NO loop over entities_ here: every entity is a registered
+  // component, so ESPHome core already calls each one's dump_config() --
+  // the old loop printed the entire entity list twice at boot
+  // (hardware-observed, 2026-07-03 log).
 }
 
 bool VitoHomeComponent::request_write(VitoEntityBase* entity) {

@@ -1212,10 +1212,21 @@ def _is_identification(ev: Event) -> bool:
 
 
 def _is_error_history(ev: Event) -> bool:
-    """An error-history slot: the generic ecnsysEventType~Error slot, OR a
-    device-specific FehlerHis* slot (e.g. FehlerHisFA01..20 at 0x7590..0x763B on
-    VScotHO1_72, which has NO 0x7507 event), OR the hardcoded 0x7507 fallback.
-    The 'Index'/pointer slot is excluded."""
+    """An error-history slot: the generic ecnsysEventType~Error block, OR a
+    device-specific FehlerHis* slot, OR the hardcoded 0x7507 fallback. The
+    'Index'/pointer slot is excluded.
+
+    NOTE: these are TWO DIFFERENT archives, not two addresses for one. On
+    VScotHO1_72 the export carries BOTH: ecnsysEventType~Error at 0x7507
+    (length 90 = the 10-slot x 9-byte Vitotronic SYSTEM fault history -- the
+    one the Bedienteil shows and vcontrold's getError0..9 read;
+    hardware-confirmed correct) AND FehlerHisFA01..20 at 0x7590..0x763B --
+    the Feuerungsautomat (GFA burner control unit) history, a different
+    subsystem with a different code space (GFA_Kennung sits at 0x7650, K38
+    is KonfiFehlerByteGFA). An earlier revision falsely assumed this unit
+    had no 0x7507 event and crowned FA01 "Letzter Fehler"; on hardware that
+    read the wrong archive. See _error_history_entries for the emission
+    rules."""
     if ev.address is None:
         return False
     tok = ev.token or ev.tech or ev.name or ""
@@ -1235,6 +1246,74 @@ def _error_history_slot(ev: Event) -> int | None:
     """Slot number for a FehlerHis* token (FehlerHisFA01 -> 1), else None."""
     m = _FEHLERHIS_SLOT_RE.search(ev.token or ev.tech or ev.name or "")
     return int(m.group(1)) if m else None
+
+
+def _error_history_entries(ev: Event) -> list[dict]:
+    """Expand one error-history event into per-slot emission specs.
+
+    Returns dicts with: address, name, seed, disabled, system (bool),
+    comment (list of lines). Rules:
+    - FehlerHisFA* -> ONE slot of the Feuerungsautomat (GFA burner control
+      unit) history: named "GFA Fehler NN", ALL disabled by default, and
+      flagged system=False so the Vitotronic fault-code map is NOT attached
+      (the GFA lockout codes are a different code space).
+    - ecnsysEventType~Error with a 90-byte block -> TEN system slots at
+      base + i*9 (vcontrold getError0..9, "Ermittle Fehlerhistory Eintrag
+      1..10"); slot 1 is "Letzter Fehler" (newest first --
+      hardware-confirmed on VScotHO1_72 @ 0x7507), slots 2..10 disabled.
+    - any other system-history event (single slot, e.g. the 0x7507 address
+      fallback) -> one enabled "Letzter Fehler" slot at its own address.
+    """
+    fa_slot = _error_history_slot(ev)
+    if fa_slot is not None:
+        return [
+            {
+                "address": ev.address,
+                "name": f"GFA Fehler {fa_slot:02d}",
+                "seed": f"gfa_fehler_{fa_slot:02d}",
+                "disabled": True,
+                "system": False,
+                "comment": [
+                    f"# Feuerungsautomat (GFA burner control unit) history slot {fa_slot}:",
+                    "# a DIFFERENT archive from the Vitotronic system history -- GFA",
+                    "# lockout codes, NOT the F-codes, so no codes map is attached and",
+                    "# the code byte displays as raw hex. Slot ordering unverified.",
+                ],
+            }
+        ]
+    blen = ev.byte_length or ev.block_length or 9
+    if blen >= 90:
+        entries = []
+        for i in range(10):
+            slot = i + 1
+            entries.append(
+                {
+                    "address": (ev.address or 0) + i * 9,
+                    "name": "Letzter Fehler" if slot == 1 else f"Fehler {slot:02d}",
+                    "seed": "letzter_fehler" if slot == 1 else f"fehler_{slot:02d}",
+                    "disabled": slot > 1,
+                    "system": True,
+                    "comment": [
+                        f"# System fault history slot {slot} of 10 (ecnsysEventType~Error,",
+                        f"# 90-byte block at 0x{ev.address:04X} + {i}*9; vcontrold getError{i}).",
+                    ]
+                    + (["# Slot 1 = newest entry -- hardware-confirmed on VScotHO1_72."] if slot == 1 else []),
+                }
+            )
+        return entries
+    return [
+        {
+            "address": ev.address,
+            "name": "Letzter Fehler",
+            "seed": "letzter_fehler",
+            "disabled": False,
+            "system": True,
+            "comment": [
+                "# System fault history, most-recent slot (code byte + 8-byte BCD",
+                "# timestamp).",
+            ],
+        }
+    ]
 
 
 def _is_mode_select(ev: Event) -> bool:
@@ -1282,45 +1361,33 @@ def _device_id_lines(oid: str) -> list[str]:
     ]
 
 
-def _error_history_lines(ev: Event, oid: str, codes_map: dict | None, set_name: str = "") -> list[str]:
-    """One error-history slot as a 9-byte block (code byte + 8-byte BCD
-    timestamp), decoded by the component's error_history type. For per-slot
-    FehlerHis* tokens, the slot's own address and number are used (slot 1 ->
-    "Letzter Fehler", later slots -> "Fehler N", disabled by default). The legacy
-    0x7507 path reads slot 0 of the 90-byte block. ``codes_map`` is the selected
-    fault-code map (or None to emit a placeholder); ``set_name`` labels it."""
-    slot = _error_history_slot(ev)
-    blen = ev.byte_length or ev.block_length or 9
-    if slot is not None:
-        name = "Letzter Fehler" if slot <= 1 else f"Fehler {slot:02d}"
-        lines = [f"# Error-history slot {slot} (FehlerHis*): code byte + 8-byte BCD timestamp."]
-    else:
-        name = "Letzter Fehler"
-        lines = [
-            "# Error history. Full block is 90 bytes (10 slots x 9) at this address,",
-            "# plus a slot index at 0x7561; this reads the most-recent slot only.",
-        ]
+def _error_history_lines(entry: dict, oid: str, codes_map: dict | None, set_name: str = "") -> list[str]:
+    """One error-history slot (from _error_history_entries) as a 9-byte block
+    (code byte + 8-byte BCD timestamp), decoded by the component's
+    error_history type. ``codes_map`` is attached only to SYSTEM slots -- the
+    GFA archive is a different code space and renders raw hex instead."""
+    lines = list(entry["comment"])
     lines += [
         "# If the device NAKs the 9-byte block read, drop length to 1 (code only).",
         "- platform: vitohome",
         "  type: error_history",
-        f"  name: {_yaml_str(name)}",
+        f"  name: {_yaml_str(entry['name'])}",
         f"  id: {oid}",
-        f"  address: 0x{ev.address:04X}",
-        f"  length: {blen if blen in (1, 9) else 9}",
+        f"  address: 0x{entry['address']:04X}",
+        "  length: 9",
         '  icon: "mdi:alert-circle"',
         "  entity_category: diagnostic",
     ]
-    if slot is not None and slot > 1:
+    if entry["disabled"]:
         lines.append("  disabled_by_default: true")
     lines.append(f"  update_interval: {POLL_ERROR}s")
-    if codes_map:
+    if entry["system"] and codes_map:
         label = f"'{set_name}' set" if set_name else "set"
         lines.append(f"  # Fault-code map ({label}) - DEFAULT, verify for this unit (see fault_codes.CONFLICTS):")
         lines.append("  codes:")
         for code, text in sorted(codes_map.items()):
             lines.append(f"    0x{code:02X}: {_yaml_str(text)}")
-    else:
+    elif entry["system"]:
         lines.append('  # codes: { 0x00: "kein Fehler", ... }  # add a code->text map')
     return lines
 
@@ -1402,7 +1469,6 @@ def generate(
     # When the device defines its own per-slot fault log (FehlerHis*), those are
     # authoritative; suppress the generic ecnsysEventType~Error / 0x7507 slot so
     # we don't emit a duplicate "Letzter Fehler" (and a possibly-phantom 0x7507).
-    has_fehlerhis = any(_error_history_slot(ev) is not None for ev in events)
 
     # Resolve the fault-code map once: the chosen set, or None when codes are off.
     codes_map = fault_codes.SETS.get(error_code_set) if error_codes else None
@@ -1449,20 +1515,23 @@ def generate(
         if emit_device_id and _is_identification(ev):
             continue  # represented by the device_id entity above
         if emit_error_history and _is_error_history(ev):
-            slot = _error_history_slot(ev)
-            # Device-specific FehlerHis* slots win over the generic 0x7507 slot.
-            if has_fehlerhis and slot is None:
-                continue
-            if ev.address is not None and _field_key(ev) in seen_addr:
-                continue
-            if ev.address is not None:
-                seen_addr.add(_field_key(ev))
-            seed = "letzter_fehler" if not slot or slot <= 1 else f"fehler_{slot:02d}"
-            oid = _make_obj_id(seed, used_ids)
-            buckets["text_sensor"].extend(
-                "  " + ln if ln else "" for ln in _error_history_lines(ev, oid, codes_map, codes_set_name)
-            )
-            kept += 1
+            # The SYSTEM history (ecnsysEventType~Error / the 0x7507 fallback)
+            # and the GFA (Feuerungsautomat) FehlerHis* archive are different
+            # subsystems and BOTH emit -- the system one owns "Letzter Fehler"
+            # and the fault-code map; GFA slots are named, disabled, and
+            # code-map-free. A 90-byte system block expands into its 10 slots.
+            for entry in _error_history_entries(ev):
+                if entry["address"] is None:
+                    continue
+                key = (entry["address"], 0, 0)
+                if key in seen_addr:
+                    continue
+                seen_addr.add(key)
+                oid = _make_obj_id(entry["seed"], used_ids)
+                buckets["text_sensor"].extend(
+                    "  " + ln if ln else "" for ln in _error_history_lines(entry, oid, codes_map, codes_set_name)
+                )
+                kept += 1
             continue
 
         if not _profile_keep(ev, profile):

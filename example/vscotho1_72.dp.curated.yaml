@@ -221,6 +221,11 @@ sensor:
     state_class: measurement
     icon: "mdi:fan"
     update_interval: 60s
+    # Hardware shows 255 (0xFF) here while the pump is off -- reading it
+    # as a "no PWM feedback" sentinel (model-derived); map to unavailable
+    # rather than charting a fake 255 %.
+    filters:
+      - lambda: "return x >= 255.0 ? NAN : x;"
 
   - platform: vitohome
     name: "Heizkreispumpe Drehzahl"
@@ -232,6 +237,11 @@ sensor:
     state_class: measurement
     icon: "mdi:fan"
     update_interval: 60s
+    # Hardware shows 255 (0xFF) here while the pump is off -- reading it
+    # as a "no PWM feedback" sentinel (model-derived); map to unavailable
+    # rather than charting a fake 255 %.
+    filters:
+      - lambda: "return x >= 255.0 ? NAN : x;"
 
 binary_sensor:
   - platform: vitohome
@@ -302,10 +312,14 @@ text_sensor:
     entity_category: diagnostic
     icon: "mdi:label"
 
-  # Most-recent fault (error-history slot 1, FehlerHis*): code byte + 8-byte
-  # BCD timestamp. Address per the regenerated catalog (0x7590; the earlier
-  # openv-convention 0x7507 was superseded by the Vitosoft export for this
-  # unit). If the device NAKs the 9-byte block read, drop length to 1.
+  # Most-recent SYSTEM fault (slot 1 of the 90-byte ecnsysEventType~Error
+  # block; vcontrold getError0; code byte + 8-byte BCD timestamp).
+  # HARDWARE-CONFIRMED at 0x7507 (2026-07-03 log: 0x38 Unterbrechung
+  # Kesseltemperatursensor with valid timestamp). NOTE: the FehlerHisFA01..20
+  # slots at 0x7590+ are a DIFFERENT archive -- the Feuerungsautomat (GFA
+  # burner control unit) history with its own code space -- see the disabled
+  # "GFA Letzter Fehler" entity below. An earlier revision confused the two.
+  # If the device NAKs the 9-byte block read, drop length to 1.
   # The codes map is the 'vd300' set (B3HA Serviceanleitung, 94 codes) and is
   # shared with the fault EVENT below via the YAML anchor.
   - platform: vitohome
@@ -413,6 +427,21 @@ text_sensor:
       0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
       0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
 
+  # Newest slot of the GFA (Feuerungsautomat / burner control unit) fault
+  # history -- a different archive and code space from the system history
+  # above, so NO codes map: the code byte displays as raw hex. Disabled by
+  # default; enable to investigate burner lockouts.
+  - platform: vitohome
+    type: error_history
+    name: "GFA Letzter Fehler"
+    id: gfa_letzter_fehler
+    address: 0x7590
+    length: 9
+    icon: "mdi:alert-circle-outline"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 300s
+
   # Device identity (ASCII byte-strings, HexByte2AsciiByte) - read-only,
   # diagnostic. Surfaced by the vcontrold cross-check as worthwhile reads.
   - platform: vitohome
@@ -449,7 +478,7 @@ event:
   - platform: vitohome
     name: "Heizung Störung"
     id: fault_event
-    address: 0x7590
+    address: 0x7507   # SYSTEM history slot 1 -- same slot as "Letzter Fehler"
     length: 9
     update_interval: 300s
     codes: *vd300_codes
@@ -572,9 +601,11 @@ climate:
   # Room climate for heating circuit 1: the slider edits the room setpoint
   # (0x2306, applied through the heat curve); Betriebsart rides along as
   # presets. `write` bytes are the hardware-confirmed 0x2323 command
-  # round-trip set; the `read` (0x2301) bytes are partly predicted - confirm
-  # on the wire (example/vitohome-scanner-raw.yaml) before relying on the
-  # panel-initiated state display.
+  # round-trip set; of the `read` (0x2301) bytes, 0x05 (Abschaltbetrieb) is
+  # HARDWARE-CONFIRMED (2026-07-03 log, cross-checked against the 0x2323
+  # dropdown reading 0x00 at the same moment); the other read values follow
+  # the same predicted map - confirm each on the wire when the mode is
+  # actually active before relying on the panel-initiated state display.
   - platform: vitohome
     name: "Heizkreis 1"
     id: hk1_climate
@@ -595,11 +626,11 @@ climate:
 
 # Per-day switching-time program for heating circuit 1 as editable text
 # ("06:00-22:00 08:30-12:00", up to four ON-OFF pairs, "--" disabled, device
-# stores on a 10-minute grid). Addresses follow the vcontrold P300 convention
-# (base + day*8, Monday first) - SOURCE-CONFIRMED against vcontrold
-# xml/300/vito.xml, NOT yet confirmed on this unit; verify the base on the
-# wire before relying on it. Other programs stride the same way from their
-# own bases: DHW 0x2100, circulation 0x2200 (vcontrold convention).
+# stores on a 10-minute grid). Addresses follow the vcontrold convention
+# (base + day*8, Monday first) - HARDWARE-CONFIRMED on this unit
+# (2026-07-03 log: all seven days decode "04:30-22:30"). Other programs
+# stride the same way from their own bases: DHW 0x2100, circulation 0x2200
+# (vcontrold convention, those bases not yet read on this unit).
 text:
   - platform: vitohome
     name: "HK1 Schaltzeit Montag"
@@ -637,7 +668,11 @@ text:
     address: 0x2030
     update_interval: 1h
 
-# DHW as a native HA water-heater card, wrapping the entities above:
+# DHW as a native HA water-heater card, wrapping the entities above.
+# Boot note: until the first sensor/number reads land (~5 s), the lambdas
+# return NAN and the template platform re-publishes every loop (NAN != NAN
+# in its change check) -- brief log chatter, settles by itself; the template
+# lambda type is a plain float, so it cannot return "no update".
 # current temperature from the tank sensor, target from the writable
 # setpoint number (whose read-back keeps the card honest after the
 # controller clamps a write). DHW on/off stays with Betriebsart by design.
