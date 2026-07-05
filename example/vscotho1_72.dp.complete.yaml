@@ -7840,9 +7840,13 @@ text_sensor:
       0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
       0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
   # Feuerungsautomat (GFA burner control unit) history slot 1:
-  # a DIFFERENT archive from the Vitotronic system history -- GFA
-  # lockout codes, NOT the F-codes, so no codes map is attached and
-  # the code byte displays as raw hex. Slot ordering unverified.
+  # a DIFFERENT archive from the Vitotronic system history
+  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
+  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
+  # codes are a different code space from the F-codes, so no codes map
+  # is attached and the code byte displays as raw hex. No public GFA
+  # code enumeration is known (export + community search both empty);
+  # a populated slot from a real burner lockout would seed one.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -7855,9 +7859,13 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 2:
-  # a DIFFERENT archive from the Vitotronic system history -- GFA
-  # lockout codes, NOT the F-codes, so no codes map is attached and
-  # the code byte displays as raw hex. Slot ordering unverified.
+  # a DIFFERENT archive from the Vitotronic system history
+  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
+  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
+  # codes are a different code space from the F-codes, so no codes map
+  # is attached and the code byte displays as raw hex. No public GFA
+  # code enumeration is known (export + community search both empty);
+  # a populated slot from a real burner lockout would seed one.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -7870,9 +7878,13 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 3:
-  # a DIFFERENT archive from the Vitotronic system history -- GFA
-  # lockout codes, NOT the F-codes, so no codes map is attached and
-  # the code byte displays as raw hex. Slot ordering unverified.
+  # a DIFFERENT archive from the Vitotronic system history
+  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
+  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
+  # codes are a different code space from the F-codes, so no codes map
+  # is attached and the code byte displays as raw hex. No public GFA
+  # code enumeration is known (export + community search both empty);
+  # a populated slot from a real burner lockout would seed one.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -7885,9 +7897,13 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 4:
-  # a DIFFERENT archive from the Vitotronic system history -- GFA
-  # lockout codes, NOT the F-codes, so no codes map is attached and
-  # the code byte displays as raw hex. Slot ordering unverified.
+  # a DIFFERENT archive from the Vitotronic system history
+  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
+  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
+  # codes are a different code space from the F-codes, so no codes map
+  # is attached and the code byte displays as raw hex. No public GFA
+  # code enumeration is known (export + community search both empty);
+  # a populated slot from a real burner lockout would seed one.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -7900,9 +7916,13 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 5:
-  # a DIFFERENT archive from the Vitotronic system history -- GFA
-  # lockout codes, NOT the F-codes, so no codes map is attached and
-  # the code byte displays as raw hex. Slot ordering unverified.
+  # a DIFFERENT archive from the Vitotronic system history
+  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
+  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
+  # codes are a different code space from the F-codes, so no codes map
+  # is attached and the code byte displays as raw hex. No public GFA
+  # code enumeration is known (export + community search both empty);
+  # a populated slot from a real burner lockout would seed one.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -7915,9 +7935,13 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 6:
-  # a DIFFERENT archive from the Vitotronic system history -- GFA
-  # lockout codes, NOT the F-codes, so no codes map is attached and
-  # the code byte displays as raw hex. Slot ordering unverified.
+  # a DIFFERENT archive from the Vitotronic system history
+  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
+  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
+  # codes are a different code space from the F-codes, so no codes map
+  # is attached and the code byte displays as raw hex. No public GFA
+  # code enumeration is known (export + community search both empty);
+  # a populated slot from a real burner lockout would seed one.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -7930,9 +7954,13 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 7:
-  # a DIFFERENT archive from the Vitotronic system history -- GFA
-  # lockout codes, NOT the F-codes, so no codes map is attached and
-  # the code byte displays as raw hex. Slot ordering unverified.
+  # a DIFFERENT archive from the Vitotronic system history
+  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
+  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
+  # codes are a different code space from the F-codes, so no codes map
+  # is attached and the code byte displays as raw hex. No public GFA
+  # code enumeration is known (export + community search both empty);
+  # a populated slot from a real burner lockout would seed one.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -7945,9 +7973,13 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 8:
-  # a DIFFERENT archive from the Vitotronic system history -- GFA
-  # lockout codes, NOT the F-codes, so no codes map is attached and
-  # the code byte displays as raw hex. Slot ordering unverified.
+  # a DIFFERENT archive from the Vitotronic system history
+  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
+  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
+  # codes are a different code space from the F-codes, so no codes map
+  # is attached and the code byte displays as raw hex. No public GFA
+  # code enumeration is known (export + community search both empty);
+  # a populated slot from a real burner lockout would seed one.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -7960,9 +7992,13 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 9:
-  # a DIFFERENT archive from the Vitotronic system history -- GFA
-  # lockout codes, NOT the F-codes, so no codes map is attached and
-  # the code byte displays as raw hex. Slot ordering unverified.
+  # a DIFFERENT archive from the Vitotronic system history
+  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
+  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
+  # codes are a different code space from the F-codes, so no codes map
+  # is attached and the code byte displays as raw hex. No public GFA
+  # code enumeration is known (export + community search both empty);
+  # a populated slot from a real burner lockout would seed one.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -7975,9 +8011,13 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 10:
-  # a DIFFERENT archive from the Vitotronic system history -- GFA
-  # lockout codes, NOT the F-codes, so no codes map is attached and
-  # the code byte displays as raw hex. Slot ordering unverified.
+  # a DIFFERENT archive from the Vitotronic system history
+  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
+  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
+  # codes are a different code space from the F-codes, so no codes map
+  # is attached and the code byte displays as raw hex. No public GFA
+  # code enumeration is known (export + community search both empty);
+  # a populated slot from a real burner lockout would seed one.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -7990,9 +8030,13 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 11:
-  # a DIFFERENT archive from the Vitotronic system history -- GFA
-  # lockout codes, NOT the F-codes, so no codes map is attached and
-  # the code byte displays as raw hex. Slot ordering unverified.
+  # a DIFFERENT archive from the Vitotronic system history
+  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
+  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
+  # codes are a different code space from the F-codes, so no codes map
+  # is attached and the code byte displays as raw hex. No public GFA
+  # code enumeration is known (export + community search both empty);
+  # a populated slot from a real burner lockout would seed one.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -8005,9 +8049,13 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 12:
-  # a DIFFERENT archive from the Vitotronic system history -- GFA
-  # lockout codes, NOT the F-codes, so no codes map is attached and
-  # the code byte displays as raw hex. Slot ordering unverified.
+  # a DIFFERENT archive from the Vitotronic system history
+  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
+  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
+  # codes are a different code space from the F-codes, so no codes map
+  # is attached and the code byte displays as raw hex. No public GFA
+  # code enumeration is known (export + community search both empty);
+  # a populated slot from a real burner lockout would seed one.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -8020,9 +8068,13 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 13:
-  # a DIFFERENT archive from the Vitotronic system history -- GFA
-  # lockout codes, NOT the F-codes, so no codes map is attached and
-  # the code byte displays as raw hex. Slot ordering unverified.
+  # a DIFFERENT archive from the Vitotronic system history
+  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
+  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
+  # codes are a different code space from the F-codes, so no codes map
+  # is attached and the code byte displays as raw hex. No public GFA
+  # code enumeration is known (export + community search both empty);
+  # a populated slot from a real burner lockout would seed one.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -8035,9 +8087,13 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 14:
-  # a DIFFERENT archive from the Vitotronic system history -- GFA
-  # lockout codes, NOT the F-codes, so no codes map is attached and
-  # the code byte displays as raw hex. Slot ordering unverified.
+  # a DIFFERENT archive from the Vitotronic system history
+  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
+  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
+  # codes are a different code space from the F-codes, so no codes map
+  # is attached and the code byte displays as raw hex. No public GFA
+  # code enumeration is known (export + community search both empty);
+  # a populated slot from a real burner lockout would seed one.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -8050,9 +8106,13 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 15:
-  # a DIFFERENT archive from the Vitotronic system history -- GFA
-  # lockout codes, NOT the F-codes, so no codes map is attached and
-  # the code byte displays as raw hex. Slot ordering unverified.
+  # a DIFFERENT archive from the Vitotronic system history
+  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
+  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
+  # codes are a different code space from the F-codes, so no codes map
+  # is attached and the code byte displays as raw hex. No public GFA
+  # code enumeration is known (export + community search both empty);
+  # a populated slot from a real burner lockout would seed one.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -8065,9 +8125,13 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 16:
-  # a DIFFERENT archive from the Vitotronic system history -- GFA
-  # lockout codes, NOT the F-codes, so no codes map is attached and
-  # the code byte displays as raw hex. Slot ordering unverified.
+  # a DIFFERENT archive from the Vitotronic system history
+  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
+  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
+  # codes are a different code space from the F-codes, so no codes map
+  # is attached and the code byte displays as raw hex. No public GFA
+  # code enumeration is known (export + community search both empty);
+  # a populated slot from a real burner lockout would seed one.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -8080,9 +8144,13 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 17:
-  # a DIFFERENT archive from the Vitotronic system history -- GFA
-  # lockout codes, NOT the F-codes, so no codes map is attached and
-  # the code byte displays as raw hex. Slot ordering unverified.
+  # a DIFFERENT archive from the Vitotronic system history
+  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
+  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
+  # codes are a different code space from the F-codes, so no codes map
+  # is attached and the code byte displays as raw hex. No public GFA
+  # code enumeration is known (export + community search both empty);
+  # a populated slot from a real burner lockout would seed one.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -8095,9 +8163,13 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 18:
-  # a DIFFERENT archive from the Vitotronic system history -- GFA
-  # lockout codes, NOT the F-codes, so no codes map is attached and
-  # the code byte displays as raw hex. Slot ordering unverified.
+  # a DIFFERENT archive from the Vitotronic system history
+  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
+  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
+  # codes are a different code space from the F-codes, so no codes map
+  # is attached and the code byte displays as raw hex. No public GFA
+  # code enumeration is known (export + community search both empty);
+  # a populated slot from a real burner lockout would seed one.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -8110,9 +8182,13 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 19:
-  # a DIFFERENT archive from the Vitotronic system history -- GFA
-  # lockout codes, NOT the F-codes, so no codes map is attached and
-  # the code byte displays as raw hex. Slot ordering unverified.
+  # a DIFFERENT archive from the Vitotronic system history
+  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
+  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
+  # codes are a different code space from the F-codes, so no codes map
+  # is attached and the code byte displays as raw hex. No public GFA
+  # code enumeration is known (export + community search both empty);
+  # a populated slot from a real burner lockout would seed one.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -8125,9 +8201,13 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 20:
-  # a DIFFERENT archive from the Vitotronic system history -- GFA
-  # lockout codes, NOT the F-codes, so no codes map is attached and
-  # the code byte displays as raw hex. Slot ordering unverified.
+  # a DIFFERENT archive from the Vitotronic system history
+  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
+  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
+  # codes are a different code space from the F-codes, so no codes map
+  # is attached and the code byte displays as raw hex. No public GFA
+  # code enumeration is known (export + community search both empty);
+  # a populated slot from a real burner lockout would seed one.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history

@@ -31,7 +31,7 @@ from esphome.core import CORE
 
 _LOGGER = logging.getLogger(__name__)
 
-CODEOWNERS = ["@yourhandle"]  # TODO: replace with your actual GitHub handle
+CODEOWNERS = ["@SoulSolistice"]  # TODO: replace with your actual GitHub handle
 DEPENDENCIES = ["uart"]
 # Every vito_*.cpp in this directory is always compiled, so each platform's
 # base component must be available even when the user's config declares no
@@ -405,11 +405,16 @@ async def to_code(config):
     await cg.register_component(var, config)
     await uart.register_uart_device(var, config)
 
-    # Identification (0xF8..0xFB) is a P300-era scheme; default it off for
-    # KW/GWG unless the user explicitly enables it.
+    # Identification reads 0xF8..0xFB once at boot. Default ON for P300 and
+    # KW: on KW the block read at 0x00F8 falls back to four length-1 reads,
+    # and this is HARDWARE-CONFIRMED on VScotHO1_72 (0x20CB) over BOTH
+    # protocols -- P300 log 2026-07-04 and KW log 2026-07-03 both dump
+    # "Device: 0x20CB (VScotHO1) HW=0x03 SW=0x51". GWG stays default-off
+    # (its single-byte scheme is untested on hardware); users can still opt
+    # in explicitly there.
     identify = config.get(CONF_IDENTIFY_DEVICE)
     if identify is None:
-        identify = protocol == "P300"
+        identify = protocol in ("P300", "KW")
     cg.add(var.set_identify_device(identify))
 
     # Optional system-time sync. The build flag compiles the now()-using paths

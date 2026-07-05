@@ -1275,9 +1275,13 @@ def _error_history_entries(ev: Event) -> list[dict]:
                 "system": False,
                 "comment": [
                     f"# Feuerungsautomat (GFA burner control unit) history slot {fa_slot}:",
-                    "# a DIFFERENT archive from the Vitotronic system history -- GFA",
-                    "# lockout codes, NOT the F-codes, so no codes map is attached and",
-                    "# the code byte displays as raw hex. Slot ordering unverified.",
+                    "# a DIFFERENT archive from the Vitotronic system history",
+                    "# (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with",
+                    "# its own timestamp 42 s after the system slot's 0x38). GFA lockout",
+                    "# codes are a different code space from the F-codes, so no codes map",
+                    "# is attached and the code byte displays as raw hex. No public GFA",
+                    "# code enumeration is known (export + community search both empty);",
+                    "# a populated slot from a real burner lockout would seed one.",
                 ],
             }
         ]

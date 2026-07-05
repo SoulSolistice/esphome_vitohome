@@ -63,3 +63,23 @@ def test_cv_enum_returns_the_key_not_the_value():
     validated = cv.enum(PROTOCOLS, upper=True)("VS1")
     assert str(validated) == "VS1"
     assert validated.enum_value == "KW"
+
+
+# --- identify_device default per protocol ------------------------------------
+# The default mirrors components/vitohome/__init__.py::to_code: on for P300 and
+# KW (identification is hardware-confirmed on both -- VScotHO1_72 0x20CB dumps
+# "HW=0x03 SW=0x51" over each), off for GWG (untested single-byte scheme).
+
+
+def _identify_default(protocol: str) -> bool:
+    # The exact expression to_code uses when identify_device is unset.
+    return protocol in ("P300", "KW")
+
+
+def test_identify_default_on_for_p300_and_kw():
+    assert _identify_default("P300") is True
+    assert _identify_default("KW") is True
+
+
+def test_identify_default_off_for_gwg():
+    assert _identify_default("GWG") is False

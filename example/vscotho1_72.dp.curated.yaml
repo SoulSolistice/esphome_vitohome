@@ -214,8 +214,14 @@ sensor:
   - platform: vitohome
     name: "Interne Pumpe Drehzahl"
     id: InternePumpeDrehzahl
-    address: 0x7661            # byte 1 of the 2-byte block @ 0x7660; verify on hardware
-    length: 1
+    # Read the 2-byte block at its BASE (0x7660) and extract byte 1 via
+    # byte_offset. The interior address 0x7661 works on KW (byte-oriented)
+    # but P300 rejects the unaligned single-byte read with an error frame
+    # (hardware-confirmed, P300 log 2026-07-04: "03:01:76:61:01:01" error);
+    # reading the aligned block is portable across both protocols.
+    address: 0x7660
+    length: 2
+    byte_offset: 1
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
@@ -230,8 +236,12 @@ sensor:
   - platform: vitohome
     name: "Heizkreispumpe Drehzahl"
     id: HKP_A1Drehzahl
-    address: 0x7664            # byte 1 of the 2-byte block @ 0x7663; verify on hardware
-    length: 1
+    # Block base 0x7663 + byte_offset 1 (see Interne Pumpe above): the
+    # interior address 0x7664 errors on P300 (hardware-confirmed,
+    # "03:01:76:64:01:01"). Aligned block read is portable.
+    address: 0x7663
+    length: 2
+    byte_offset: 1
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
@@ -302,13 +312,19 @@ text_sensor:
       0x00: "Off"
       0x01: "On"
 
-  # Owner-set circuit label, UTF-16LE (Beschriftung HK1).
+  # Owner-set circuit label, UTF-16LE (Beschriftung HK1, byte 2 of the
+  # 42-byte block @ 0x7360). DISABLED by default: the 40-byte read succeeds
+  # on KW but EXCEEDS the P300/VS2 single-telegram payload cap -- P300
+  # returns an error frame (hardware-confirmed 2026-07-04) and the entity
+  # goes NAN/unavailable there. Enable only on KW, or shorten `length` to
+  # fit a single P300 telegram if you only need the first few characters.
   - platform: vitohome
     type: utf16
     name: "Beschriftung HK1"
     id: Beschriftung_HK1
-    address: 0x7362            # byte 2 of the 42-byte block @ 0x7360; verify on hardware
+    address: 0x7362
     length: 40
+    disabled_by_default: true
     entity_category: diagnostic
     icon: "mdi:label"
 
@@ -428,9 +444,14 @@ text_sensor:
       0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
 
   # Newest slot of the GFA (Feuerungsautomat / burner control unit) fault
-  # history -- a different archive and code space from the system history
-  # above, so NO codes map: the code byte displays as raw hex. Disabled by
-  # default; enable to investigate burner lockouts.
+  # history. HARDWARE-CONFIRMED as a distinct archive from the system
+  # history above (P300 log 2026-07-04: this slot read code 0x00 with
+  # timestamp 2026-03-29 10:50:46 -- 42 s AFTER the system slot's 0x38 @
+  # 10:50:04, same power-cycle, different code byte). Different code space
+  # from the F-codes, so NO codes map: the byte displays as raw hex. No
+  # public GFA code list is known; a populated slot from a real burner
+  # lockout would let us build one. Enabled here (unlike the generated
+  # catalog's default-disabled GFA slots) so the distinction is visible.
   - platform: vitohome
     type: error_history
     name: "GFA Letzter Fehler"
@@ -439,7 +460,6 @@ text_sensor:
     length: 9
     icon: "mdi:alert-circle-outline"
     entity_category: diagnostic
-    disabled_by_default: true
     update_interval: 300s
 
   # Device identity (ASCII byte-strings, HexByte2AsciiByte) - read-only,

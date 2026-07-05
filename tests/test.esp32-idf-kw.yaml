@@ -1,7 +1,9 @@
 # KW (VS1) protocol on esp-idf. Build-time selectable through ProtocolAdapter.
 # Compile gate for the OptolinkEngine<KW>/VS1Engine instantiation and the KW
 # branch of ProtocolAdapter through the real ESPHome+PlatformIO build.
-# identify_device off (P300-era scheme); KW uses its natural default.
+# Force identify_device off to exercise the disabled path in CI. NOTE: the
+# DEFAULT for KW is now ON (identification is hardware-confirmed on KW); this
+# "false" is a test override, not the default.
 substitutions:
   name: vitohome-test-idf-kw
   protocol: KW
