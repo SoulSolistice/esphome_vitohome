@@ -259,9 +259,9 @@ falling back to four length-1 reads at `0xF8/F9/FA/FB` if the block read comes
 up short. The default is **on for P300 and KW**, off for GWG — the fallback
 path makes identification work on KW's byte-oriented protocol
 (hardware-confirmed on `0x20CB` over both P300 and KW: `HW=0x03 SW=0x51`),
-whereas GWG's scheme is untested, so it must be enabled explicitly there. 
-Each field that can't be read is left unknown; the result (`group`, 
-`controller`, `hw`, `sw`) is logged at INFO and pushed to any `device_id` 
+whereas GWG's scheme is untested, so it must be enabled explicitly there.
+Each field that can't be read is left unknown; the result (`group`,
+`controller`, `hw`, `sw`) is logged at INFO and pushed to any `device_id`
 text sensors. A small built-in table names the families seen on the
 wire (`0x20CB` → VScotHO1, plus `0x2098`/`0x2094`/`0x2053`); everything else is
 reported as raw hex.

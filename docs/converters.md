@@ -59,7 +59,7 @@ A `converter:` is one of several ways a value is read. The full set:
 
 | platform | how the value is read | key options |
 |---|---|---|
-| `sensor` | scaled integer | `converter`, `length`, `signed` |
+| `sensor` | scaled integer | `converter`, `length`, `signed`, `byte_offset`, `byte_length` |
 | `number` (write) | scaled integer, encodable converters only | `converter`, `length`, `min_value` / `max_value` / `step` |
 | `binary_sensor` | one bit of a byte | `bit_mask`, `length` |
 | `text_sensor` `type: ascii` | raw bytes as an ASCII string | `length` |
@@ -68,6 +68,37 @@ A `converter:` is one of several ways a value is read. The full set:
 | `text_sensor` `type: enum` | raw value mapped to a label | `options` |
 | `text_sensor` `type: device_id` | the device identification string | (none) |
 | `text` | 8-byte-per-day switching-time program, read/write as a canonical `"HH:MM-HH:MM ..."` string | `address`, `read_back` |
+
+### Aligned field extraction (`byte_offset` / `byte_length`)
+
+Many datapoints are a small field carved from a larger firmware block. The
+KW protocol is byte-oriented and tolerates reading such a field directly at
+`block_base + offset`, but **P300/VS2 rejects an unaligned interior read** and
+returns an error frame (hardware-confirmed on the pump-speed bytes at
+`0x7661`/`0x7664`). To stay portable, a `sensor` can read the whole block and
+extract the field:
+
+- `length` is then the **block read** (bytes fetched from the wire, at the
+  block base), not the field width.
+- `byte_offset` selects the field's start byte within that block.
+- `byte_length` (default 1) is the field width in bytes (1–4); the converter
+  is checked against this width, not the block length.
+
+So a 2-byte `div10` room-setpoint at offset 12 of a 22-byte block is:
+
+```yaml
+- platform: vitohome
+  name: "Room setpoint"
+  address: 0x2500      # block base — aligned, so P300 accepts it
+  length: 22           # read the whole block
+  byte_offset: 12      # field starts at byte 12
+  byte_length: 2       # 2-byte field
+  converter: div10
+```
+
+The block read must stay within the P300 single-telegram cap (37 bytes); a
+field in a larger block, or wider than 4 bytes, can't be a scalar extract.
+`scripts/gen_catalog.py` emits this form automatically for interior fields.
 | `select` | raw value mapped to a label, writable | `options`, `address`, `state_address` |
 | `switch` | boolean register, writable | `on_value` / `off_value`, `on_values`, `address`, `state_address` |
 | `binary_sensor` `type: connectivity` | hub-fed Optolink link state, no address | (none) |

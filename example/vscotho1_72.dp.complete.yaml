@@ -199,8 +199,9 @@ sensor:
   - platform: vitohome
     name: "SWIndex Solar"
     id: SWIndex_Solar
-    address: 0x0A43  # byte 3 of the 4-byte block @ 0x0A40; verify on hardware
-    length: 1
+    address: 0x0A40
+    length: 4
+    byte_offset: 3
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -208,8 +209,9 @@ sensor:
   - platform: vitohome
     name: "SWIndex extAE"
     id: SWIndex_extAE
-    address: 0x0A4B  # byte 3 of the 4-byte block @ 0x0A48; verify on hardware
-    length: 1
+    address: 0x0A48
+    length: 4
+    byte_offset: 3
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -217,8 +219,9 @@ sensor:
   - platform: vitohome
     name: "SWIndex Pumpe1"
     id: SWIndex_Pumpe1
-    address: 0x0A4F  # byte 3 of the 4-byte block @ 0x0A4C; verify on hardware
-    length: 1
+    address: 0x0A4C
+    length: 4
+    byte_offset: 3
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -226,8 +229,9 @@ sensor:
   - platform: vitohome
     name: "SWIndex Pumpe2"
     id: SWIndex_Pumpe2
-    address: 0x0A53  # byte 3 of the 4-byte block @ 0x0A50; verify on hardware
-    length: 1
+    address: 0x0A50
+    length: 4
+    byte_offset: 3
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -235,8 +239,9 @@ sensor:
   - platform: vitohome
     name: "SWIndex IntPumpe"
     id: SWIndex_IntPumpe
-    address: 0x0A57  # byte 3 of the 4-byte block @ 0x0A54; verify on hardware
-    length: 1
+    address: 0x0A54
+    length: 4
+    byte_offset: 3
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -244,8 +249,9 @@ sensor:
   - platform: vitohome
     name: "SWIndex Vitocom"
     id: SWIndex_Vitocom
-    address: 0x0A5B  # byte 3 of the 4-byte block @ 0x0A58; verify on hardware
-    length: 1
+    address: 0x0A58
+    length: 4
+    byte_offset: 3
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -253,8 +259,9 @@ sensor:
   - platform: vitohome
     name: "SWIndex FB1"
     id: SWIndex_FB1
-    address: 0x0A5F  # byte 3 of the 4-byte block @ 0x0A5C; verify on hardware
-    length: 1
+    address: 0x0A5C
+    length: 4
+    byte_offset: 3
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -262,8 +269,9 @@ sensor:
   - platform: vitohome
     name: "SWIndex FB2"
     id: SWIndex_FB2
-    address: 0x0A63  # byte 3 of the 4-byte block @ 0x0A60; verify on hardware
-    length: 1
+    address: 0x0A60
+    length: 4
+    byte_offset: 3
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -271,8 +279,9 @@ sensor:
   - platform: vitohome
     name: "SWIndex FB3"
     id: SWIndex_FB3
-    address: 0x0A67  # byte 3 of the 4-byte block @ 0x0A64; verify on hardware
-    length: 1
+    address: 0x0A64
+    length: 4
+    byte_offset: 3
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -280,8 +289,9 @@ sensor:
   - platform: vitohome
     name: "SWIndex Solarmodul"
     id: SWIndex_Solarmodul
-    address: 0x0A6B  # byte 3 of the 4-byte block @ 0x0A68; verify on hardware
-    length: 1
+    address: 0x0A68
+    length: 4
+    byte_offset: 3
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -289,8 +299,9 @@ sensor:
   - platform: vitohome
     name: "SWIndex EA1"
     id: SWIndex_EA1
-    address: 0x0A73  # byte 3 of the 4-byte block @ 0x0A70; verify on hardware
-    length: 1
+    address: 0x0A70
+    length: 4
+    byte_offset: 3
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -298,8 +309,9 @@ sensor:
   - platform: vitohome
     name: "SWIndex AM1"
     id: SWIndex_AM1
-    address: 0x0A77  # byte 3 of the 4-byte block @ 0x0A74; verify on hardware
-    length: 1
+    address: 0x0A74
+    length: 4
+    byte_offset: 3
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -329,8 +341,9 @@ sensor:
   - platform: vitohome
     name: "SWIndex Pumpe3"
     id: SWIndex_Pumpe3
-    address: 0x0B05  # byte 3 of the 4-byte block @ 0x0B02; verify on hardware
-    length: 1
+    address: 0x0B02
+    length: 4
+    byte_offset: 3
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -388,8 +401,9 @@ sensor:
   - platform: vitohome
     name: "RF TeilnehmerInfo 0 Pegel"
     id: RF_TeilnehmerInfo_0_Pegel
-    address: 0x0D06  # byte 6 of the 8-byte block @ 0x0D00; verify on hardware
-    length: 1
+    address: 0x0D00
+    length: 8
+    byte_offset: 6
     converter: noconv
     unit_of_measurement: "dBm"
     device_class: signal_strength
@@ -399,8 +413,9 @@ sensor:
   - platform: vitohome
     name: "RF TeilnehmerInfo 1 Pegel"
     id: RF_TeilnehmerInfo_1_Pegel
-    address: 0x0D0E  # byte 6 of the 8-byte block @ 0x0D08; verify on hardware
-    length: 1
+    address: 0x0D08
+    length: 8
+    byte_offset: 6
     converter: noconv
     unit_of_measurement: "dBm"
     device_class: signal_strength
@@ -410,8 +425,9 @@ sensor:
   - platform: vitohome
     name: "RF TeilnehmerInfo 2 Pegel"
     id: RF_TeilnehmerInfo_2_Pegel
-    address: 0x0D16  # byte 6 of the 8-byte block @ 0x0D10; verify on hardware
-    length: 1
+    address: 0x0D10
+    length: 8
+    byte_offset: 6
     converter: noconv
     unit_of_measurement: "dBm"
     device_class: signal_strength
@@ -421,8 +437,9 @@ sensor:
   - platform: vitohome
     name: "RF TeilnehmerInfo 3 Pegel"
     id: RF_TeilnehmerInfo_3_Pegel
-    address: 0x0D1E  # byte 6 of the 8-byte block @ 0x0D18; verify on hardware
-    length: 1
+    address: 0x0D18
+    length: 8
+    byte_offset: 6
     converter: noconv
     unit_of_measurement: "dBm"
     device_class: signal_strength
@@ -432,8 +449,9 @@ sensor:
   - platform: vitohome
     name: "RF TeilnehmerInfo 4 Pegel"
     id: RF_TeilnehmerInfo_4_Pegel
-    address: 0x0D26  # byte 6 of the 8-byte block @ 0x0D20; verify on hardware
-    length: 1
+    address: 0x0D20
+    length: 8
+    byte_offset: 6
     converter: noconv
     unit_of_measurement: "dBm"
     device_class: signal_strength
@@ -443,8 +461,9 @@ sensor:
   - platform: vitohome
     name: "RF TeilnehmerInfo 5 Pegel"
     id: RF_TeilnehmerInfo_5_Pegel
-    address: 0x0D2E  # byte 6 of the 8-byte block @ 0x0D28; verify on hardware
-    length: 1
+    address: 0x0D28
+    length: 8
+    byte_offset: 6
     converter: noconv
     unit_of_measurement: "dBm"
     device_class: signal_strength
@@ -454,8 +473,9 @@ sensor:
   - platform: vitohome
     name: "RF AllgemeinInfo Kanalbelegung1"
     id: RF_AllgemeinInfo_Kanalbelegung1
-    address: 0x0D35  # byte 5 of the 12-byte block @ 0x0D30; verify on hardware
-    length: 1
+    address: 0x0D30
+    length: 12
+    byte_offset: 5
     converter: noconv
     unit_of_measurement: "sech"
     state_class: measurement
@@ -474,8 +494,9 @@ sensor:
   - platform: vitohome
     name: "RF AllgemeinInfo Kanalbelegung2"
     id: RF_AllgemeinInfo_Kanalbelegung2
-    address: 0x0D36  # byte 6 of the 12-byte block @ 0x0D30; verify on hardware
-    length: 1
+    address: 0x0D30
+    length: 12
+    byte_offset: 6
     converter: noconv
     unit_of_measurement: "sech"
     state_class: measurement
@@ -484,8 +505,9 @@ sensor:
   - platform: vitohome
     name: "RF AllgemeinInfo Kanalbelegungaktuell"
     id: RF_AllgemeinInfo_Kanalbelegungaktuell
-    address: 0x0D34  # byte 4 of the 12-byte block @ 0x0D30; verify on hardware
-    length: 1
+    address: 0x0D30
+    length: 12
+    byte_offset: 4
     converter: noconv
     unit_of_measurement: "sech"
     state_class: measurement
@@ -494,8 +516,9 @@ sensor:
   - platform: vitohome
     name: "RF AllgemeinInfo Kanalbelegung3"
     id: RF_AllgemeinInfo_Kanalbelegung3
-    address: 0x0D37  # byte 7 of the 12-byte block @ 0x0D30; verify on hardware
-    length: 1
+    address: 0x0D30
+    length: 12
+    byte_offset: 7
     converter: noconv
     unit_of_measurement: "sech"
     state_class: measurement
@@ -514,8 +537,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker Jahr"
     id: GWG_Codierstecker_Jahr
-    address: 0x1024  # byte 4 of the 16-byte block @ 0x1020; verify on hardware
-    length: 1
+    address: 0x1020
+    length: 16
+    byte_offset: 4
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -523,8 +547,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker Tag"
     id: GWG_Codierstecker_Tag
-    address: 0x1022  # byte 2 of the 16-byte block @ 0x1020; verify on hardware
-    length: 1
+    address: 0x1020
+    length: 16
+    byte_offset: 2
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -532,8 +557,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker Monat"
     id: GWG_Codierstecker_Monat
-    address: 0x1023  # byte 3 of the 16-byte block @ 0x1020; verify on hardware
-    length: 1
+    address: 0x1020
+    length: 16
+    byte_offset: 3
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -541,8 +567,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker maxHZ Leistung"
     id: GWG_Codierstecker_maxHZ_Leistung
-    address: 0x1032  # byte 2 of the 16-byte block @ 0x1030; verify on hardware
-    length: 1
+    address: 0x1030
+    length: 16
+    byte_offset: 2
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
@@ -570,8 +597,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker BereichKTSollMin"
     id: GWG_Codierstecker_BereichKTSollMin
-    address: 0x1059  # byte 9 of the 16-byte block @ 0x1050; verify on hardware
-    length: 1
+    address: 0x1050
+    length: 16
+    byte_offset: 9
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
@@ -581,8 +609,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker WWmaxLeistung"
     id: GWG_Codierstecker_WWmaxLeistung
-    address: 0x105C  # byte 12 of the 16-byte block @ 0x1050; verify on hardware
-    length: 1
+    address: 0x1050
+    length: 16
+    byte_offset: 12
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
@@ -591,8 +620,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker BereichWWSollMax"
     id: GWG_Codierstecker_BereichWWSollMax
-    address: 0x105A  # byte 10 of the 16-byte block @ 0x1050; verify on hardware
-    length: 1
+    address: 0x1050
+    length: 16
+    byte_offset: 10
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
@@ -611,8 +641,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker BereichKTSollMax"
     id: GWG_Codierstecker_BereichKTSollMax
-    address: 0x1058  # byte 8 of the 16-byte block @ 0x1050; verify on hardware
-    length: 1
+    address: 0x1050
+    length: 16
+    byte_offset: 8
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
@@ -622,8 +653,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker BereichWWSollMin"
     id: GWG_Codierstecker_BereichWWSollMin
-    address: 0x105B  # byte 11 of the 16-byte block @ 0x1050; verify on hardware
-    length: 1
+    address: 0x1050
+    length: 16
+    byte_offset: 11
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
@@ -633,8 +665,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker HZmaxLeistung"
     id: GWG_Codierstecker_HZmaxLeistung
-    address: 0x105D  # byte 13 of the 16-byte block @ 0x1050; verify on hardware
-    length: 1
+    address: 0x1050
+    length: 16
+    byte_offset: 13
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
@@ -643,8 +676,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker AusMax"
     id: GWG_Codierstecker_AusMax
-    address: 0x1064  # byte 4 of the 16-byte block @ 0x1060; verify on hardware
-    length: 1
+    address: 0x1060
+    length: 16
+    byte_offset: 4
     converter: noconv
     unit_of_measurement: "K"
     state_class: measurement
@@ -653,8 +687,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker N KT Regler"
     id: GWG_Codierstecker_N_KT_Regler
-    address: 0x1063  # byte 3 of the 16-byte block @ 0x1060; verify on hardware
-    length: 1
+    address: 0x1060
+    length: 16
+    byte_offset: 3
     converter: mult10
     unit_of_measurement: "s"
     device_class: duration
@@ -664,8 +699,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker Pause Abbruch"
     id: GWG_Codierstecker_Pause_Abbruch
-    address: 0x1066  # byte 6 of the 16-byte block @ 0x1060; verify on hardware
-    length: 1
+    address: 0x1060
+    length: 16
+    byte_offset: 6
     converter: noconv
     unit_of_measurement: "K"
     state_class: measurement
@@ -674,8 +710,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker Pause"
     id: GWG_Codierstecker_Pause
-    address: 0x1065  # byte 5 of the 16-byte block @ 0x1060; verify on hardware
-    length: 1
+    address: 0x1060
+    length: 16
+    byte_offset: 5
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
@@ -685,8 +722,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker Pause AbbruchT"
     id: GWG_Codierstecker_Pause_AbbruchT
-    address: 0x1067  # byte 7 of the 16-byte block @ 0x1060; verify on hardware
-    length: 1
+    address: 0x1060
+    length: 16
+    byte_offset: 7
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
@@ -706,8 +744,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker KT Regler"
     id: GWG_Codierstecker_KT_Regler
-    address: 0x1062  # byte 2 of the 16-byte block @ 0x1060; verify on hardware
-    length: 1
+    address: 0x1060
+    length: 16
+    byte_offset: 2
     converter: div10
     unit_of_measurement: "Prozent pro K"
     state_class: measurement
@@ -716,8 +755,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker AusDiff"
     id: GWG_Codierstecker_AusDiff
-    address: 0x1061  # byte 1 of the 16-byte block @ 0x1060; verify on hardware
-    length: 1
+    address: 0x1060
+    length: 16
+    byte_offset: 1
     converter: noconv
     unit_of_measurement: "K"
     state_class: measurement
@@ -737,8 +777,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker PSollSP"
     id: GWG_Codierstecker_PSollSP
-    address: 0x1074  # byte 4 of the 16-byte block @ 0x1070; verify on hardware
-    length: 1
+    address: 0x1070
+    length: 16
+    byte_offset: 4
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
@@ -747,8 +788,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker BRMin"
     id: GWG_Codierstecker_BRMin
-    address: 0x1071  # byte 1 of the 16-byte block @ 0x1070; verify on hardware
-    length: 1
+    address: 0x1070
+    length: 16
+    byte_offset: 1
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
@@ -757,8 +799,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker DrehzMin"
     id: GWG_Codierstecker_DrehzMin
-    address: 0x1075  # byte 5 of the 16-byte block @ 0x1070; verify on hardware
-    length: 1
+    address: 0x1070
+    length: 16
+    byte_offset: 5
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
@@ -767,8 +810,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker BROpt"
     id: GWG_Codierstecker_BROpt
-    address: 0x1073  # byte 3 of the 16-byte block @ 0x1070; verify on hardware
-    length: 1
+    address: 0x1070
+    length: 16
+    byte_offset: 3
     converter: mult10
     unit_of_measurement: "s"
     device_class: duration
@@ -778,8 +822,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker BROffset"
     id: GWG_Codierstecker_BROffset
-    address: 0x1072  # byte 2 of the 16-byte block @ 0x1070; verify on hardware
-    length: 1
+    address: 0x1070
+    length: 16
+    byte_offset: 2
     converter: noconv
     unit_of_measurement: "K"
     state_class: measurement
@@ -788,8 +833,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker Nach"
     id: GWG_Codierstecker_Nach
-    address: 0x1076  # byte 6 of the 16-byte block @ 0x1070; verify on hardware
-    length: 1
+    address: 0x1070
+    length: 16
+    byte_offset: 6
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
@@ -799,8 +845,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWG85"
     id: GWG_Codierstecker_GWG85
-    address: 0x1085  # byte 5 of the 16-byte block @ 0x1080; verify on hardware
-    length: 1
+    address: 0x1080
+    length: 16
+    byte_offset: 5
     converter: mult10
     unit_of_measurement: "s"
     device_class: duration
@@ -820,8 +867,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWG83"
     id: GWG_Codierstecker_GWG83
-    address: 0x1083  # byte 3 of the 16-byte block @ 0x1080; verify on hardware
-    length: 1
+    address: 0x1080
+    length: 16
+    byte_offset: 3
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
@@ -831,8 +879,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWG82"
     id: GWG_Codierstecker_GWG82
-    address: 0x1082  # byte 2 of the 16-byte block @ 0x1080; verify on hardware
-    length: 1
+    address: 0x1080
+    length: 16
+    byte_offset: 2
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
@@ -842,8 +891,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWG81"
     id: GWG_Codierstecker_GWG81
-    address: 0x1081  # byte 1 of the 16-byte block @ 0x1080; verify on hardware
-    length: 1
+    address: 0x1080
+    length: 16
+    byte_offset: 1
     converter: noconv
     unit_of_measurement: "K"
     state_class: measurement
@@ -852,8 +902,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWG84"
     id: GWG_Codierstecker_GWG84
-    address: 0x1084  # byte 4 of the 16-byte block @ 0x1080; verify on hardware
-    length: 1
+    address: 0x1080
+    length: 16
+    byte_offset: 4
     converter: div10
     unit_of_measurement: "Prozent pro K"
     state_class: measurement
@@ -862,8 +913,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWG87"
     id: GWG_Codierstecker_GWG87
-    address: 0x1087  # byte 7 of the 16-byte block @ 0x1080; verify on hardware
-    length: 1
+    address: 0x1080
+    length: 16
+    byte_offset: 7
     converter: noconv
     unit_of_measurement: "K"
     state_class: measurement
@@ -872,8 +924,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWG86"
     id: GWG_Codierstecker_GWG86
-    address: 0x1086  # byte 6 of the 16-byte block @ 0x1080; verify on hardware
-    length: 1
+    address: 0x1080
+    length: 16
+    byte_offset: 6
     converter: mult10
     unit_of_measurement: "s"
     device_class: duration
@@ -883,8 +936,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWG92"
     id: GWG_Codierstecker_GWG92
-    address: 0x1092  # byte 2 of the 16-byte block @ 0x1090; verify on hardware
-    length: 1
+    address: 0x1090
+    length: 16
+    byte_offset: 2
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
@@ -893,8 +947,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWG95"
     id: GWG_Codierstecker_GWG95
-    address: 0x1095  # byte 5 of the 16-byte block @ 0x1090; verify on hardware
-    length: 1
+    address: 0x1090
+    length: 16
+    byte_offset: 5
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
@@ -903,8 +958,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWG93"
     id: GWG_Codierstecker_GWG93
-    address: 0x1093  # byte 3 of the 16-byte block @ 0x1090; verify on hardware
-    length: 1
+    address: 0x1090
+    length: 16
+    byte_offset: 3
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
@@ -913,8 +969,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWG96"
     id: GWG_Codierstecker_GWG96
-    address: 0x1096  # byte 6 of the 16-byte block @ 0x1090; verify on hardware
-    length: 1
+    address: 0x1090
+    length: 16
+    byte_offset: 6
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
@@ -923,8 +980,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWG99"
     id: GWG_Codierstecker_GWG99
-    address: 0x1099  # byte 9 of the 16-byte block @ 0x1090; verify on hardware
-    length: 1
+    address: 0x1090
+    length: 16
+    byte_offset: 9
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
@@ -933,8 +991,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWG98"
     id: GWG_Codierstecker_GWG98
-    address: 0x1098  # byte 8 of the 16-byte block @ 0x1090; verify on hardware
-    length: 1
+    address: 0x1090
+    length: 16
+    byte_offset: 8
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
@@ -943,8 +1002,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWG97"
     id: GWG_Codierstecker_GWG97
-    address: 0x1097  # byte 7 of the 16-byte block @ 0x1090; verify on hardware
-    length: 1
+    address: 0x1090
+    length: 16
+    byte_offset: 7
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
@@ -953,8 +1013,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWG9A"
     id: GWG_Codierstecker_GWG9A
-    address: 0x109A  # byte 10 of the 16-byte block @ 0x1090; verify on hardware
-    length: 1
+    address: 0x1090
+    length: 16
+    byte_offset: 10
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
@@ -963,8 +1024,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWG91"
     id: GWG_Codierstecker_GWG91
-    address: 0x1091  # byte 1 of the 16-byte block @ 0x1090; verify on hardware
-    length: 1
+    address: 0x1090
+    length: 16
+    byte_offset: 1
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
@@ -973,8 +1035,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWG94"
     id: GWG_Codierstecker_GWG94
-    address: 0x1094  # byte 4 of the 16-byte block @ 0x1090; verify on hardware
-    length: 1
+    address: 0x1090
+    length: 16
+    byte_offset: 4
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
@@ -983,8 +1046,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGA6"
     id: GWG_Codierstecker_GWGA6
-    address: 0x10A6  # byte 6 of the 16-byte block @ 0x10A0; verify on hardware
-    length: 1
+    address: 0x10A0
+    length: 16
+    byte_offset: 6
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -992,8 +1056,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGA9"
     id: GWG_Codierstecker_GWGA9
-    address: 0x10A9  # byte 9 of the 16-byte block @ 0x10A0; verify on hardware
-    length: 1
+    address: 0x10A0
+    length: 16
+    byte_offset: 9
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1001,8 +1066,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGA1"
     id: GWG_Codierstecker_GWGA1
-    address: 0x10A1  # byte 1 of the 16-byte block @ 0x10A0; verify on hardware
-    length: 1
+    address: 0x10A0
+    length: 16
+    byte_offset: 1
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1010,8 +1076,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGA4"
     id: GWG_Codierstecker_GWGA4
-    address: 0x10A4  # byte 4 of the 16-byte block @ 0x10A0; verify on hardware
-    length: 1
+    address: 0x10A0
+    length: 16
+    byte_offset: 4
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1028,8 +1095,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGA3"
     id: GWG_Codierstecker_GWGA3
-    address: 0x10A3  # byte 3 of the 16-byte block @ 0x10A0; verify on hardware
-    length: 1
+    address: 0x10A0
+    length: 16
+    byte_offset: 3
     converter: mult2
     state_class: measurement
     disabled_by_default: true
@@ -1037,8 +1105,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGA2"
     id: GWG_Codierstecker_GWGA2
-    address: 0x10A2  # byte 2 of the 16-byte block @ 0x10A0; verify on hardware
-    length: 1
+    address: 0x10A0
+    length: 16
+    byte_offset: 2
     converter: mult2
     state_class: measurement
     disabled_by_default: true
@@ -1046,8 +1115,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGA5"
     id: GWG_Codierstecker_GWGA5
-    address: 0x10A5  # byte 5 of the 16-byte block @ 0x10A0; verify on hardware
-    length: 1
+    address: 0x10A0
+    length: 16
+    byte_offset: 5
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1055,8 +1125,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGA8"
     id: GWG_Codierstecker_GWGA8
-    address: 0x10A8  # byte 8 of the 16-byte block @ 0x10A0; verify on hardware
-    length: 1
+    address: 0x10A0
+    length: 16
+    byte_offset: 8
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1064,8 +1135,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGA7"
     id: GWG_Codierstecker_GWGA7
-    address: 0x10A7  # byte 7 of the 16-byte block @ 0x10A0; verify on hardware
-    length: 1
+    address: 0x10A0
+    length: 16
+    byte_offset: 7
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1073,8 +1145,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGAA"
     id: GWG_Codierstecker_GWGAA
-    address: 0x10AA  # byte 10 of the 16-byte block @ 0x10A0; verify on hardware
-    length: 1
+    address: 0x10A0
+    length: 16
+    byte_offset: 10
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1091,8 +1164,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGB1"
     id: GWG_Codierstecker_GWGB1
-    address: 0x10B1  # byte 1 of the 16-byte block @ 0x10B0; verify on hardware
-    length: 1
+    address: 0x10B0
+    length: 16
+    byte_offset: 1
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1100,8 +1174,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGB3"
     id: GWG_Codierstecker_GWGB3
-    address: 0x10B3  # byte 3 of the 16-byte block @ 0x10B0; verify on hardware
-    length: 1
+    address: 0x10B0
+    length: 16
+    byte_offset: 3
     converter: mult2
     state_class: measurement
     disabled_by_default: true
@@ -1109,8 +1184,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGB6"
     id: GWG_Codierstecker_GWGB6
-    address: 0x10B6  # byte 6 of the 16-byte block @ 0x10B0; verify on hardware
-    length: 1
+    address: 0x10B0
+    length: 16
+    byte_offset: 6
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1118,8 +1194,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGBA"
     id: GWG_Codierstecker_GWGBA
-    address: 0x10BA  # byte 10 of the 16-byte block @ 0x10B0; verify on hardware
-    length: 1
+    address: 0x10B0
+    length: 16
+    byte_offset: 10
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1127,8 +1204,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGB4"
     id: GWG_Codierstecker_GWGB4
-    address: 0x10B4  # byte 4 of the 16-byte block @ 0x10B0; verify on hardware
-    length: 1
+    address: 0x10B0
+    length: 16
+    byte_offset: 4
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1136,8 +1214,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGB7"
     id: GWG_Codierstecker_GWGB7
-    address: 0x10B7  # byte 7 of the 16-byte block @ 0x10B0; verify on hardware
-    length: 1
+    address: 0x10B0
+    length: 16
+    byte_offset: 7
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1145,8 +1224,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGB9"
     id: GWG_Codierstecker_GWGB9
-    address: 0x10B9  # byte 9 of the 16-byte block @ 0x10B0; verify on hardware
-    length: 1
+    address: 0x10B0
+    length: 16
+    byte_offset: 9
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1154,8 +1234,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGB5"
     id: GWG_Codierstecker_GWGB5
-    address: 0x10B5  # byte 5 of the 16-byte block @ 0x10B0; verify on hardware
-    length: 1
+    address: 0x10B0
+    length: 16
+    byte_offset: 5
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1163,8 +1244,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGB8"
     id: GWG_Codierstecker_GWGB8
-    address: 0x10B8  # byte 8 of the 16-byte block @ 0x10B0; verify on hardware
-    length: 1
+    address: 0x10B0
+    length: 16
+    byte_offset: 8
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1172,8 +1254,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGB2"
     id: GWG_Codierstecker_GWGB2
-    address: 0x10B2  # byte 2 of the 16-byte block @ 0x10B0; verify on hardware
-    length: 1
+    address: 0x10B0
+    length: 16
+    byte_offset: 2
     converter: mult2
     state_class: measurement
     disabled_by_default: true
@@ -1181,8 +1264,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGC4"
     id: GWG_Codierstecker_GWGC4
-    address: 0x10C4  # byte 4 of the 16-byte block @ 0x10C0; verify on hardware
-    length: 1
+    address: 0x10C0
+    length: 16
+    byte_offset: 4
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1190,8 +1274,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGC7"
     id: GWG_Codierstecker_GWGC7
-    address: 0x10C7  # byte 7 of the 16-byte block @ 0x10C0; verify on hardware
-    length: 1
+    address: 0x10C0
+    length: 16
+    byte_offset: 7
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1199,8 +1284,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGC9"
     id: GWG_Codierstecker_GWGC9
-    address: 0x10C9  # byte 9 of the 16-byte block @ 0x10C0; verify on hardware
-    length: 1
+    address: 0x10C0
+    length: 16
+    byte_offset: 9
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1208,8 +1294,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGCA"
     id: GWG_Codierstecker_GWGCA
-    address: 0x10CA  # byte 10 of the 16-byte block @ 0x10C0; verify on hardware
-    length: 1
+    address: 0x10C0
+    length: 16
+    byte_offset: 10
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1217,8 +1304,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGC2"
     id: GWG_Codierstecker_GWGC2
-    address: 0x10C2  # byte 2 of the 16-byte block @ 0x10C0; verify on hardware
-    length: 1
+    address: 0x10C0
+    length: 16
+    byte_offset: 2
     converter: mult2
     state_class: measurement
     disabled_by_default: true
@@ -1226,8 +1314,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGC5"
     id: GWG_Codierstecker_GWGC5
-    address: 0x10C5  # byte 5 of the 16-byte block @ 0x10C0; verify on hardware
-    length: 1
+    address: 0x10C0
+    length: 16
+    byte_offset: 5
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1235,8 +1324,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGC1"
     id: GWG_Codierstecker_GWGC1
-    address: 0x10C1  # byte 1 of the 16-byte block @ 0x10C0; verify on hardware
-    length: 1
+    address: 0x10C0
+    length: 16
+    byte_offset: 1
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1244,8 +1334,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGC3"
     id: GWG_Codierstecker_GWGC3
-    address: 0x10C3  # byte 3 of the 16-byte block @ 0x10C0; verify on hardware
-    length: 1
+    address: 0x10C0
+    length: 16
+    byte_offset: 3
     converter: mult2
     state_class: measurement
     disabled_by_default: true
@@ -1253,8 +1344,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGC6"
     id: GWG_Codierstecker_GWGC6
-    address: 0x10C6  # byte 6 of the 16-byte block @ 0x10C0; verify on hardware
-    length: 1
+    address: 0x10C0
+    length: 16
+    byte_offset: 6
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1271,8 +1363,9 @@ sensor:
   - platform: vitohome
     name: "GWG Codierstecker GWGC8"
     id: GWG_Codierstecker_GWGC8
-    address: 0x10C8  # byte 8 of the 16-byte block @ 0x10C0; verify on hardware
-    length: 1
+    address: 0x10C0
+    length: 16
+    byte_offset: 8
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1280,8 +1373,10 @@ sensor:
   - platform: vitohome
     name: "HK RaumsolltemperaturaktuellA1M1"
     id: HK_RaumsolltemperaturaktuellA1M1
-    address: 0x250C  # byte 12 of the 22-byte block @ 0x2500; verify on hardware
-    length: 2
+    address: 0x2500
+    length: 22
+    byte_offset: 12
+    byte_length: 2
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
@@ -1313,8 +1408,10 @@ sensor:
   - platform: vitohome
     name: "HK RaumsolltemperaturaktuellM2"
     id: HK_RaumsolltemperaturaktuellM2
-    address: 0x350C  # byte 12 of the 22-byte block @ 0x3500; verify on hardware
-    length: 2
+    address: 0x3500
+    length: 22
+    byte_offset: 12
+    byte_length: 2
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
@@ -1346,8 +1443,10 @@ sensor:
   - platform: vitohome
     name: "HK RaumsolltemperaturaktuellM3"
     id: HK_RaumsolltemperaturaktuellM3
-    address: 0x450C  # byte 12 of the 22-byte block @ 0x4500; verify on hardware
-    length: 2
+    address: 0x4500
+    length: 22
+    byte_offset: 12
+    byte_length: 2
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
@@ -1540,8 +1639,9 @@ sensor:
   - platform: vitohome
     name: "KS Karte GWG Kennung"
     id: KS_Karte_GWG_Kennung
-    address: 0x7657  # byte 1 of the 4-byte block @ 0x7656; verify on hardware
-    length: 1
+    address: 0x7656
+    length: 4
+    byte_offset: 1
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1558,8 +1658,9 @@ sensor:
   - platform: vitohome
     name: "KS Karte GWG Rev R"
     id: KS_Karte_GWG_Rev_R
-    address: 0x7658  # byte 2 of the 4-byte block @ 0x7656; verify on hardware
-    length: 1
+    address: 0x7656
+    length: 4
+    byte_offset: 2
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1567,8 +1668,9 @@ sensor:
   - platform: vitohome
     name: "KS Karte GWG Rev F"
     id: KS_Karte_GWG_Rev_F
-    address: 0x7659  # byte 3 of the 4-byte block @ 0x7656; verify on hardware
-    length: 1
+    address: 0x7656
+    length: 4
+    byte_offset: 3
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1576,8 +1678,9 @@ sensor:
   - platform: vitohome
     name: "InternePumpeDrehzahl"
     id: InternePumpeDrehzahl
-    address: 0x7661  # byte 1 of the 2-byte block @ 0x7660; verify on hardware
-    length: 1
+    address: 0x7660
+    length: 2
+    byte_offset: 1
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
@@ -1586,8 +1689,9 @@ sensor:
   - platform: vitohome
     name: "HKP A1Drehzahl"
     id: HKP_A1Drehzahl
-    address: 0x7664  # byte 1 of the 2-byte block @ 0x7663; verify on hardware
-    length: 1
+    address: 0x7663
+    length: 2
+    byte_offset: 1
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
@@ -1596,8 +1700,9 @@ sensor:
   - platform: vitohome
     name: "HKP M2Drehzahl"
     id: HKP_M2Drehzahl
-    address: 0x7666  # byte 1 of the 2-byte block @ 0x7665; verify on hardware
-    length: 1
+    address: 0x7665
+    length: 2
+    byte_offset: 1
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
@@ -1606,8 +1711,9 @@ sensor:
   - platform: vitohome
     name: "HKP M3Drehzahl"
     id: HKP_M3Drehzahl
-    address: 0x7668  # byte 1 of the 2-byte block @ 0x7667; verify on hardware
-    length: 1
+    address: 0x7667
+    length: 2
+    byte_offset: 1
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
@@ -1738,8 +1844,9 @@ sensor:
   - platform: vitohome
     name: "Node Subnet"
     id: Node_Subnet
-    address: 0xA007  # byte 7 of the 9-byte block @ 0xA000; verify on hardware
-    length: 1
+    address: 0xA000
+    length: 9
+    byte_offset: 7
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1747,8 +1854,9 @@ sensor:
   - platform: vitohome
     name: "Node Node"
     id: Node_Node
-    address: 0xA008  # byte 8 of the 9-byte block @ 0xA000; verify on hardware
-    length: 1
+    address: 0xA000
+    length: 9
+    byte_offset: 8
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1756,8 +1864,9 @@ sensor:
   - platform: vitohome
     name: "nvoTimeSet Monat"
     id: nvoTimeSet_Monat
-    address: 0xA12D  # byte 2 of the 7-byte block @ 0xA12B; verify on hardware
-    length: 1
+    address: 0xA12B
+    length: 7
+    byte_offset: 2
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1774,8 +1883,9 @@ sensor:
   - platform: vitohome
     name: "nvoTimeSet Sekunde"
     id: nvoTimeSet_Sekunde
-    address: 0xA131  # byte 6 of the 7-byte block @ 0xA12B; verify on hardware
-    length: 1
+    address: 0xA12B
+    length: 7
+    byte_offset: 6
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1783,8 +1893,9 @@ sensor:
   - platform: vitohome
     name: "nvoTimeSet Tag"
     id: nvoTimeSet_Tag
-    address: 0xA12E  # byte 3 of the 7-byte block @ 0xA12B; verify on hardware
-    length: 1
+    address: 0xA12B
+    length: 7
+    byte_offset: 3
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1792,8 +1903,9 @@ sensor:
   - platform: vitohome
     name: "nvoTimeSet Stunde"
     id: nvoTimeSet_Stunde
-    address: 0xA12F  # byte 4 of the 7-byte block @ 0xA12B; verify on hardware
-    length: 1
+    address: 0xA12B
+    length: 7
+    byte_offset: 4
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1801,8 +1913,9 @@ sensor:
   - platform: vitohome
     name: "nvoTimeSet Minute"
     id: nvoTimeSet_Minute
-    address: 0xA130  # byte 5 of the 7-byte block @ 0xA12B; verify on hardware
-    length: 1
+    address: 0xA12B
+    length: 7
+    byte_offset: 5
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1811,8 +1924,9 @@ sensor:
     name: "nvoAlarm Teilnehmernummer"
     id: nvoAlarm_Teilnehmernummer
     entity_category: diagnostic
-    address: 0xA141  # byte 15 of the 29-byte block @ 0xA132; verify on hardware
-    length: 1
+    address: 0xA132
+    length: 29
+    byte_offset: 15
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1821,8 +1935,9 @@ sensor:
     name: "nvoAlarm Minute"
     id: nvoAlarm_Minute
     entity_category: diagnostic
-    address: 0xA147  # byte 21 of the 29-byte block @ 0xA132; verify on hardware
-    length: 1
+    address: 0xA132
+    length: 29
+    byte_offset: 21
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1831,8 +1946,9 @@ sensor:
     name: "nvoAlarm Sekunde"
     id: nvoAlarm_Sekunde
     entity_category: diagnostic
-    address: 0xA148  # byte 22 of the 29-byte block @ 0xA132; verify on hardware
-    length: 1
+    address: 0xA132
+    length: 29
+    byte_offset: 22
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1841,8 +1957,9 @@ sensor:
     name: "nvoAlarm Nr gestoerterTeilnehmer"
     id: nvoAlarm_Nr_gestoerterTeilnehmer
     entity_category: diagnostic
-    address: 0xA14D  # byte 27 of the 29-byte block @ 0xA132; verify on hardware
-    length: 1
+    address: 0xA132
+    length: 29
+    byte_offset: 27
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1851,8 +1968,9 @@ sensor:
     name: "nvoAlarm Tag"
     id: nvoAlarm_Tag
     entity_category: diagnostic
-    address: 0xA145  # byte 19 of the 29-byte block @ 0xA132; verify on hardware
-    length: 1
+    address: 0xA132
+    length: 29
+    byte_offset: 19
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1861,8 +1979,9 @@ sensor:
     name: "nvoAlarm Monat"
     id: nvoAlarm_Monat
     entity_category: diagnostic
-    address: 0xA144  # byte 18 of the 29-byte block @ 0xA132; verify on hardware
-    length: 1
+    address: 0xA132
+    length: 29
+    byte_offset: 18
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1871,8 +1990,9 @@ sensor:
     name: "nvoAlarm Stunde"
     id: nvoAlarm_Stunde
     entity_category: diagnostic
-    address: 0xA146  # byte 20 of the 29-byte block @ 0xA132; verify on hardware
-    length: 1
+    address: 0xA132
+    length: 29
+    byte_offset: 20
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1881,8 +2001,9 @@ sensor:
     name: "nvoAlarm Fehlercode"
     id: nvoAlarm_Fehlercode
     entity_category: diagnostic
-    address: 0xA14E  # byte 28 of the 29-byte block @ 0xA132; verify on hardware
-    length: 1
+    address: 0xA132
+    length: 29
+    byte_offset: 28
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -1891,8 +2012,10 @@ sensor:
     name: "nvoAlarm Jahr"
     id: nvoAlarm_Jahr
     entity_category: diagnostic
-    address: 0xA142  # byte 16 of the 29-byte block @ 0xA132; verify on hardware
-    length: 2
+    address: 0xA132
+    length: 29
+    byte_offset: 16
+    byte_length: 2
     converter: noconv
     state_class: measurement
     disabled_by_default: true
@@ -2006,8 +2129,10 @@ sensor:
   - platform: vitohome
     name: "NRx SolarErtrag 1"
     id: NRx_SolarErtrag_1
-    address: 0xCF34  # byte 4 of the 32-byte block @ 0xCF30; verify on hardware
-    length: 4
+    address: 0xCF30
+    length: 32
+    byte_offset: 4
+    byte_length: 4
     converter: noconv
     unit_of_measurement: "Wh"
     device_class: energy
@@ -2017,8 +2142,10 @@ sensor:
   - platform: vitohome
     name: "NRx SolarErtrag 2"
     id: NRx_SolarErtrag_2
-    address: 0xCF38  # byte 8 of the 32-byte block @ 0xCF30; verify on hardware
-    length: 4
+    address: 0xCF30
+    length: 32
+    byte_offset: 8
+    byte_length: 4
     converter: noconv
     unit_of_measurement: "Wh"
     device_class: energy
@@ -2028,8 +2155,10 @@ sensor:
   - platform: vitohome
     name: "NRx SolarErtrag 5"
     id: NRx_SolarErtrag_5
-    address: 0xCF44  # byte 20 of the 32-byte block @ 0xCF30; verify on hardware
-    length: 4
+    address: 0xCF30
+    length: 32
+    byte_offset: 20
+    byte_length: 4
     converter: noconv
     unit_of_measurement: "Wh"
     device_class: energy
@@ -2039,8 +2168,10 @@ sensor:
   - platform: vitohome
     name: "NRx SolarErtrag 4"
     id: NRx_SolarErtrag_4
-    address: 0xCF40  # byte 16 of the 32-byte block @ 0xCF30; verify on hardware
-    length: 4
+    address: 0xCF30
+    length: 32
+    byte_offset: 16
+    byte_length: 4
     converter: noconv
     unit_of_measurement: "Wh"
     device_class: energy
@@ -2050,8 +2181,10 @@ sensor:
   - platform: vitohome
     name: "NRx SolarErtrag 7"
     id: NRx_SolarErtrag_7
-    address: 0xCF4C  # byte 28 of the 32-byte block @ 0xCF30; verify on hardware
-    length: 4
+    address: 0xCF30
+    length: 32
+    byte_offset: 28
+    byte_length: 4
     converter: noconv
     unit_of_measurement: "Wh"
     device_class: energy
@@ -2061,8 +2194,10 @@ sensor:
   - platform: vitohome
     name: "NRx SolarErtrag 3"
     id: NRx_SolarErtrag_3
-    address: 0xCF3C  # byte 12 of the 32-byte block @ 0xCF30; verify on hardware
-    length: 4
+    address: 0xCF30
+    length: 32
+    byte_offset: 12
+    byte_length: 4
     converter: noconv
     unit_of_measurement: "Wh"
     device_class: energy
@@ -2072,8 +2207,10 @@ sensor:
   - platform: vitohome
     name: "NRx SolarErtrag 6"
     id: NRx_SolarErtrag_6
-    address: 0xCF48  # byte 24 of the 32-byte block @ 0xCF30; verify on hardware
-    length: 4
+    address: 0xCF30
+    length: 32
+    byte_offset: 24
+    byte_length: 4
     converter: noconv
     unit_of_measurement: "Wh"
     device_class: energy
@@ -2094,8 +2231,10 @@ sensor:
   - platform: vitohome
     name: "SM1 Sensor 7 GWG"
     id: SM1_Sensor_7_GWG
-    address: 0xCF96  # byte 6 of the 20-byte block @ 0xCF90; verify on hardware
-    length: 2
+    address: 0xCF90
+    length: 20
+    byte_offset: 6
+    byte_length: 2
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
@@ -2105,8 +2244,10 @@ sensor:
   - platform: vitohome
     name: "SM1 DigitalAusgang 22 GWG Laufzeit"
     id: SM1_DigitalAusgang_22_GWG_Laufzeit
-    address: 0xCF9C  # byte 12 of the 20-byte block @ 0xCF90; verify on hardware
-    length: 4
+    address: 0xCF90
+    length: 20
+    byte_offset: 12
+    byte_length: 4
     converter: sec2hour
     unit_of_measurement: "h"
     device_class: duration
@@ -2117,8 +2258,10 @@ sensor:
   - platform: vitohome
     name: "SM1 Sensor 10 GWG"
     id: SM1_Sensor_10_GWG
-    address: 0xCF98  # byte 8 of the 20-byte block @ 0xCF90; verify on hardware
-    length: 2
+    address: 0xCF90
+    length: 20
+    byte_offset: 8
+    byte_length: 2
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
@@ -3566,7 +3709,7 @@ number:
   - platform: vitohome
     name: "Neptun Interne Pumpe Drehzahl"
     id: Neptun_Interne_Pumpe_Drehzahl
-    address: 0x7952  # byte 1 of the 2-byte block @ 0x7951; verify on hardware
+    address: 0x7951
     length: 1
     converter: noconv
     # Borders absent, or out of range for this byte width, in
@@ -3581,7 +3724,7 @@ number:
   - platform: vitohome
     name: "Neptun ZP Drehzahl"
     id: Neptun_ZP_Drehzahl
-    address: 0x7954  # byte 1 of the 2-byte block @ 0x7953; verify on hardware
+    address: 0x7953
     length: 1
     converter: noconv
     # Borders absent, or out of range for this byte width, in
@@ -3596,7 +3739,7 @@ number:
   - platform: vitohome
     name: "Neptun SLP Drehzahl"
     id: Neptun_SLP_Drehzahl
-    address: 0x7956  # byte 1 of the 2-byte block @ 0x7955; verify on hardware
+    address: 0x7955
     length: 1
     converter: noconv
     # Borders absent, or out of range for this byte width, in
@@ -3611,7 +3754,7 @@ number:
   - platform: vitohome
     name: "Neptun LP Drehzahl"
     id: Neptun_LP_Drehzahl
-    address: 0x7958  # byte 1 of the 2-byte block @ 0x7957; verify on hardware
+    address: 0x7957
     length: 1
     converter: noconv
     # Borders absent, or out of range for this byte width, in
@@ -3626,7 +3769,7 @@ number:
   - platform: vitohome
     name: "Neptun HKP1 Drehzahl"
     id: Neptun_HKP1_Drehzahl
-    address: 0x795B  # byte 1 of the 2-byte block @ 0x795A; verify on hardware
+    address: 0x795A
     length: 1
     converter: noconv
     # Borders absent, or out of range for this byte width, in
@@ -3641,7 +3784,7 @@ number:
   - platform: vitohome
     name: "Neptun HKP2 Drehzahl"
     id: Neptun_HKP2_Drehzahl
-    address: 0x795D  # byte 1 of the 2-byte block @ 0x795C; verify on hardware
+    address: 0x795C
     length: 1
     converter: noconv
     # Borders absent, or out of range for this byte width, in
@@ -3656,7 +3799,7 @@ number:
   - platform: vitohome
     name: "Neptun HKP3 Drehzahl"
     id: Neptun_HKP3_Drehzahl
-    address: 0x795F  # byte 1 of the 2-byte block @ 0x795E; verify on hardware
+    address: 0x795E
     length: 1
     converter: noconv
     # Borders absent, or out of range for this byte width, in
@@ -4468,15 +4611,15 @@ select:
       0x04: "Diagramm 4"
       0x05: "Diagramm 5"
       0x06: "Default"
-      0x07: "Default"
-      0x08: "Default"
-      0x09: "Default"
-      0x0A: "Default"
-      0x0B: "Default"
-      0x0C: "Default"
-      0x0D: "Default"
-      0x0E: "Default"
-      0x0F: "Default"
+      0x07: "Default (0x07)"
+      0x08: "Default (0x08)"
+      0x09: "Default (0x09)"
+      0x0A: "Default (0x0A)"
+      0x0B: "Default (0x0B)"
+      0x0C: "Default (0x0C)"
+      0x0D: "Default (0x0D)"
+      0x0E: "Default (0x0E)"
+      0x0F: "Default (0x0F)"
   # Writable operating-mode (Betriebsart). KNOWN ISSUES on real 0x20CB /
   # VScotHO1 units (see project notes / hardware audit):
   #  * openv/community drives the mode at 0x2301 with 6 options
@@ -4703,15 +4846,15 @@ select:
       0x04: "Diagramm 4"
       0x05: "Diagramm 5"
       0x06: "Default"
-      0x07: "Default"
-      0x08: "Default"
-      0x09: "Default"
-      0x0A: "Default"
-      0x0B: "Default"
-      0x0C: "Default"
-      0x0D: "Default"
-      0x0E: "Default"
-      0x0F: "Default"
+      0x07: "Default (0x07)"
+      0x08: "Default (0x08)"
+      0x09: "Default (0x09)"
+      0x0A: "Default (0x0A)"
+      0x0B: "Default (0x0B)"
+      0x0C: "Default (0x0C)"
+      0x0D: "Default (0x0D)"
+      0x0E: "Default (0x0E)"
+      0x0F: "Default (0x0F)"
   # Writable operating-mode (Betriebsart). KNOWN ISSUES on real 0x20CB /
   # VScotHO1 units (see project notes / hardware audit):
   #  * openv/community drives the mode at 0x2301 with 6 options
@@ -4936,15 +5079,15 @@ select:
       0x04: "Diagramm 4"
       0x05: "Diagramm 5"
       0x06: "Default"
-      0x07: "Default"
-      0x08: "Default"
-      0x09: "Default"
-      0x0A: "Default"
-      0x0B: "Default"
-      0x0C: "Default"
-      0x0D: "Default"
-      0x0E: "Default"
-      0x0F: "Default"
+      0x07: "Default (0x07)"
+      0x08: "Default (0x08)"
+      0x09: "Default (0x09)"
+      0x0A: "Default (0x0A)"
+      0x0B: "Default (0x0B)"
+      0x0C: "Default (0x0C)"
+      0x0D: "Default (0x0D)"
+      0x0E: "Default (0x0E)"
+      0x0F: "Default (0x0F)"
   - platform: vitohome
     name: "K2E KonfiKennungAnschluss"
     id: K2E_KonfiKennungAnschluss
@@ -5513,7 +5656,7 @@ select:
   - platform: vitohome
     name: "nviProdCmd CFDM state"
     id: nviProdCmd_CFDM_state
-    address: 0xA381  # byte 1 of the 2-byte block @ 0xA380; verify on hardware
+    address: 0xA380
     length: 1
     disabled_by_default: true
     update_interval: 3600s
@@ -5914,7 +6057,7 @@ text_sensor:
       0x01: "Kurzschluss"
       0x02: "Unterbrechung"
       0x03: "Referenzfehler"
-      0x04: "Referenzfehler"
+      0x04: "Referenzfehler (0x04)"
       0x05: "Allgemein_Sensorstatus~5"
       0x06: "Nicht vorhanden"
   - platform: vitohome
@@ -5931,7 +6074,7 @@ text_sensor:
       0x01: "Kurzschluss"
       0x02: "Unterbrechung"
       0x03: "Referenzfehler"
-      0x04: "Referenzfehler"
+      0x04: "Referenzfehler (0x04)"
       0x05: "Allgemein_Sensorstatus~5"
       0x06: "Nicht vorhanden"
   - platform: vitohome
@@ -5948,7 +6091,7 @@ text_sensor:
       0x01: "Kurzschluss"
       0x02: "Unterbrechung"
       0x03: "Referenzfehler"
-      0x04: "Referenzfehler"
+      0x04: "Referenzfehler (0x04)"
       0x05: "Allgemein_Sensorstatus~5"
       0x06: "Nicht vorhanden"
   - platform: vitohome
@@ -5965,8 +6108,8 @@ text_sensor:
       0x01: "Kurzschluss"
       0x02: "Unterbrechung"
       0x03: "Referenzfehler"
-      0x04: "Referenzfehler"
-      0x05: "Referenzfehler"
+      0x04: "Referenzfehler (0x04)"
+      0x05: "Referenzfehler (0x05)"
       0x06: "nicht vorhanden"
   - platform: vitohome
     type: enum
@@ -5982,8 +6125,8 @@ text_sensor:
       0x01: "Kurzschluss"
       0x02: "Unterbrechung"
       0x03: "Referenzfehler"
-      0x04: "Referenzfehler"
-      0x05: "Referenzfehler"
+      0x04: "Referenzfehler (0x04)"
+      0x05: "Referenzfehler (0x05)"
       0x06: "nicht vorhanden"
   - platform: vitohome
     type: enum
@@ -5999,7 +6142,7 @@ text_sensor:
       0x01: "Kurzschluss"
       0x02: "Unterbrechung"
       0x03: "Referenzfehler"
-      0x04: "Referenzfehler"
+      0x04: "Referenzfehler (0x04)"
       0x05: "Allgemein_Sensorstatus~5"
       0x06: "Nicht vorhanden"
   - platform: vitohome
@@ -6027,7 +6170,7 @@ text_sensor:
       0x01: "Kurzschluss"
       0x02: "Unterbrechung"
       0x03: "Referenzfehler"
-      0x04: "Referenzfehler"
+      0x04: "Referenzfehler (0x04)"
       0x05: "Allgemein_Sensorstatus~5"
       0x06: "Nicht vorhanden"
   - platform: vitohome
@@ -6044,7 +6187,7 @@ text_sensor:
       0x01: "Kurzschluss"
       0x02: "Unterbrechung"
       0x03: "Referenzfehler"
-      0x04: "Referenzfehler"
+      0x04: "Referenzfehler (0x04)"
       0x05: "Allgemein_Sensorstatus~5"
       0x06: "Nicht vorhanden"
   - platform: vitohome
@@ -6061,7 +6204,7 @@ text_sensor:
       0x01: "Kurzschluss"
       0x02: "Unterbrechung"
       0x03: "Referenzfehler"
-      0x04: "Referenzfehler"
+      0x04: "Referenzfehler (0x04)"
       0x05: "Allgemein_Sensorstatus~5"
       0x06: "Nicht vorhanden"
   - platform: vitohome
@@ -6088,7 +6231,7 @@ text_sensor:
     type: enum
     name: "HWIndex SM1"
     id: HWIndex_SM1
-    address: 0x0A6A  # byte 2 of the 4-byte block @ 0x0A68; verify on hardware
+    address: 0x0A68
     length: 1
     disabled_by_default: true
     update_interval: 60s
@@ -6202,7 +6345,7 @@ text_sensor:
     type: enum
     name: "RF TeilnehmerInfo 0 fuer HK"
     id: RF_TeilnehmerInfo_0_fuer_HK
-    address: 0x0D07  # byte 7 of the 8-byte block @ 0x0D00; verify on hardware
+    address: 0x0D00
     length: 1
     disabled_by_default: true
     update_interval: 60s
@@ -6227,7 +6370,7 @@ text_sensor:
     type: enum
     name: "RF TeilnehmerInfo 1 fuer HK"
     id: RF_TeilnehmerInfo_1_fuer_HK
-    address: 0x0D0F  # byte 7 of the 8-byte block @ 0x0D08; verify on hardware
+    address: 0x0D08
     length: 1
     disabled_by_default: true
     update_interval: 60s
@@ -6265,7 +6408,7 @@ text_sensor:
     type: enum
     name: "RF TeilnehmerInfo 2 fuer HK"
     id: RF_TeilnehmerInfo_2_fuer_HK
-    address: 0x0D17  # byte 7 of the 8-byte block @ 0x0D10; verify on hardware
+    address: 0x0D10
     length: 1
     disabled_by_default: true
     update_interval: 60s
@@ -6277,7 +6420,7 @@ text_sensor:
     type: enum
     name: "RF TeilnehmerInfo 3 fuer HK"
     id: RF_TeilnehmerInfo_3_fuer_HK
-    address: 0x0D1F  # byte 7 of the 8-byte block @ 0x0D18; verify on hardware
+    address: 0x0D18
     length: 1
     disabled_by_default: true
     update_interval: 60s
@@ -6315,7 +6458,7 @@ text_sensor:
     type: enum
     name: "RF TeilnehmerInfo 4 fuer HK"
     id: RF_TeilnehmerInfo_4_fuer_HK
-    address: 0x0D27  # byte 7 of the 8-byte block @ 0x0D20; verify on hardware
+    address: 0x0D20
     length: 1
     disabled_by_default: true
     update_interval: 60s
@@ -6340,7 +6483,7 @@ text_sensor:
     type: enum
     name: "RF TeilnehmerInfo 5 fuer HK"
     id: RF_TeilnehmerInfo_5_fuer_HK
-    address: 0x0D2F  # byte 7 of the 8-byte block @ 0x0D28; verify on hardware
+    address: 0x0D28
     length: 1
     disabled_by_default: true
     update_interval: 60s
@@ -6359,7 +6502,7 @@ text_sensor:
     type: enum
     name: "GWG Codierstecker UV"
     id: GWG_Codierstecker_UV
-    address: 0x1034  # byte 4 of the 16-byte block @ 0x1030; verify on hardware
+    address: 0x1030
     length: 1
     disabled_by_default: true
     update_interval: 60s
@@ -6372,7 +6515,7 @@ text_sensor:
     type: enum
     name: "GWG Codierstecker BauartWW"
     id: GWG_Codierstecker_BauartWW
-    address: 0x1051  # byte 1 of the 16-byte block @ 0x1050; verify on hardware
+    address: 0x1050
     length: 1
     disabled_by_default: true
     update_interval: 60s
@@ -6386,7 +6529,7 @@ text_sensor:
     type: enum
     name: "GWG Codierstecker Brennertyp"
     id: GWG_Codierstecker_Brennertyp
-    address: 0x1053  # byte 3 of the 16-byte block @ 0x1050; verify on hardware
+    address: 0x1050
     length: 1
     disabled_by_default: true
     update_interval: 60s
@@ -6398,7 +6541,7 @@ text_sensor:
     type: enum
     name: "GWG Codierstecker GWG88"
     id: GWG_Codierstecker_GWG88
-    address: 0x1088  # byte 8 of the 16-byte block @ 0x1080; verify on hardware
+    address: 0x1080
     length: 1
     disabled_by_default: true
     update_interval: 60s
@@ -6432,7 +6575,7 @@ text_sensor:
     type: enum
     name: "HK AktuelleBetriebsartA1M1"
     id: HK_AktuelleBetriebsartA1M1
-    address: 0x2501  # byte 1 of the 22-byte block @ 0x2500; verify on hardware
+    address: 0x2500
     length: 1
     disabled_by_default: true
     update_interval: 60s
@@ -6440,7 +6583,7 @@ text_sensor:
       0x00: "Abschaltbetrieb"
       0x01: "Reduzierter Betrieb"
       0x02: "Normalbetrieb"
-      0x03: "Normalbetrieb"
+      0x03: "Normalbetrieb (0x03)"
   - platform: vitohome
     type: enum
     name: "HK1 Kennung"
@@ -6493,9 +6636,9 @@ text_sensor:
       0x01: "Kurzschluss"
       0x02: "nicht vorhanden"
       0x03: "Referenzfehler"
-      0x04: "Referenzfehler"
-      0x05: "Referenzfehler"
-      0x06: "nicht vorhanden"
+      0x04: "Referenzfehler (0x04)"
+      0x05: "Referenzfehler (0x05)"
+      0x06: "nicht vorhanden (0x06)"
   - platform: vitohome
     type: enum
     name: "HK PumpenzustandA1M1"
@@ -6533,7 +6676,7 @@ text_sensor:
     type: enum
     name: "HK AktuelleBetriebsartM2"
     id: HK_AktuelleBetriebsartM2
-    address: 0x3501  # byte 1 of the 22-byte block @ 0x3500; verify on hardware
+    address: 0x3500
     length: 1
     disabled_by_default: true
     update_interval: 60s
@@ -6541,7 +6684,7 @@ text_sensor:
       0x00: "Abschaltbetrieb"
       0x01: "Reduzierter Betrieb"
       0x02: "Normalbetrieb"
-      0x03: "Normalbetrieb"
+      0x03: "Normalbetrieb (0x03)"
   - platform: vitohome
     type: enum
     name: "HK ReglervarianteM2"
@@ -6582,9 +6725,9 @@ text_sensor:
       0x01: "Kurzschluss"
       0x02: "nicht vorhanden"
       0x03: "Referenzfehler"
-      0x04: "Referenzfehler"
-      0x05: "Referenzfehler"
-      0x06: "nicht vorhanden"
+      0x04: "Referenzfehler (0x04)"
+      0x05: "Referenzfehler (0x05)"
+      0x06: "nicht vorhanden (0x06)"
   - platform: vitohome
     type: enum
     name: "HK PumpenzustandM2"
@@ -6622,7 +6765,7 @@ text_sensor:
     type: enum
     name: "HK AktuelleBetriebsartM3"
     id: HK_AktuelleBetriebsartM3
-    address: 0x4501  # byte 1 of the 22-byte block @ 0x4500; verify on hardware
+    address: 0x4500
     length: 1
     disabled_by_default: true
     update_interval: 60s
@@ -6630,7 +6773,7 @@ text_sensor:
       0x00: "Abschaltbetrieb"
       0x01: "Reduzierter Betrieb"
       0x02: "Normalbetrieb"
-      0x03: "Normalbetrieb"
+      0x03: "Normalbetrieb (0x03)"
   - platform: vitohome
     type: enum
     name: "HK ReglervarianteM3"
@@ -6671,9 +6814,9 @@ text_sensor:
       0x01: "Kurzschluss"
       0x02: "nicht vorhanden"
       0x03: "Referenzfehler"
-      0x04: "Referenzfehler"
-      0x05: "Referenzfehler"
-      0x06: "nicht vorhanden"
+      0x04: "Referenzfehler (0x04)"
+      0x05: "Referenzfehler (0x05)"
+      0x06: "nicht vorhanden (0x06)"
   - platform: vitohome
     type: enum
     name: "HK PumpenzustandM3"
@@ -6735,20 +6878,26 @@ text_sensor:
     type: utf16
     name: "Beschriftung HK1"
     id: Beschriftung_HK1
-    address: 0x7362  # byte 2 of the 42-byte block @ 0x7360; verify on hardware
+    address: 0x7362
     length: 40
+    disabled_by_default: true
+    # 40-byte read exceeds the P300 single-telegram cap (37); works on KW, NAKs on P300. Enable on KW or shorten length.
   - platform: vitohome
     type: utf16
     name: "Beschriftung HK2"
     id: Beschriftung_HK2
-    address: 0x738C  # byte 2 of the 42-byte block @ 0x738A; verify on hardware
+    address: 0x738C
     length: 40
+    disabled_by_default: true
+    # 40-byte read exceeds the P300 single-telegram cap (37); works on KW, NAKs on P300. Enable on KW or shorten length.
   - platform: vitohome
     type: utf16
     name: "Beschriftung HK3"
     id: Beschriftung_HK3
-    address: 0x73B6  # byte 2 of the 42-byte block @ 0x73B4; verify on hardware
+    address: 0x73B6
     length: 40
+    disabled_by_default: true
+    # 40-byte read exceeds the P300 single-telegram cap (37); works on KW, NAKs on P300. Enable on KW or shorten length.
   # System fault history slot 1 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 0*9; vcontrold getError0).
   # Slot 1 = newest entry -- hardware-confirmed on VScotHO1_72.
@@ -7840,13 +7989,9 @@ text_sensor:
       0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
       0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
   # Feuerungsautomat (GFA burner control unit) history slot 1:
-  # a DIFFERENT archive from the Vitotronic system history
-  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
-  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
-  # codes are a different code space from the F-codes, so no codes map
-  # is attached and the code byte displays as raw hex. No public GFA
-  # code enumeration is known (export + community search both empty);
-  # a populated slot from a real burner lockout would seed one.
+  # a DIFFERENT archive from the Vitotronic system history -- GFA
+  # lockout codes, NOT the F-codes, so no codes map is attached and
+  # the code byte displays as raw hex. Slot ordering unverified.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -7859,13 +8004,9 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 2:
-  # a DIFFERENT archive from the Vitotronic system history
-  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
-  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
-  # codes are a different code space from the F-codes, so no codes map
-  # is attached and the code byte displays as raw hex. No public GFA
-  # code enumeration is known (export + community search both empty);
-  # a populated slot from a real burner lockout would seed one.
+  # a DIFFERENT archive from the Vitotronic system history -- GFA
+  # lockout codes, NOT the F-codes, so no codes map is attached and
+  # the code byte displays as raw hex. Slot ordering unverified.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -7878,13 +8019,9 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 3:
-  # a DIFFERENT archive from the Vitotronic system history
-  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
-  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
-  # codes are a different code space from the F-codes, so no codes map
-  # is attached and the code byte displays as raw hex. No public GFA
-  # code enumeration is known (export + community search both empty);
-  # a populated slot from a real burner lockout would seed one.
+  # a DIFFERENT archive from the Vitotronic system history -- GFA
+  # lockout codes, NOT the F-codes, so no codes map is attached and
+  # the code byte displays as raw hex. Slot ordering unverified.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -7897,13 +8034,9 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 4:
-  # a DIFFERENT archive from the Vitotronic system history
-  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
-  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
-  # codes are a different code space from the F-codes, so no codes map
-  # is attached and the code byte displays as raw hex. No public GFA
-  # code enumeration is known (export + community search both empty);
-  # a populated slot from a real burner lockout would seed one.
+  # a DIFFERENT archive from the Vitotronic system history -- GFA
+  # lockout codes, NOT the F-codes, so no codes map is attached and
+  # the code byte displays as raw hex. Slot ordering unverified.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -7916,13 +8049,9 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 5:
-  # a DIFFERENT archive from the Vitotronic system history
-  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
-  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
-  # codes are a different code space from the F-codes, so no codes map
-  # is attached and the code byte displays as raw hex. No public GFA
-  # code enumeration is known (export + community search both empty);
-  # a populated slot from a real burner lockout would seed one.
+  # a DIFFERENT archive from the Vitotronic system history -- GFA
+  # lockout codes, NOT the F-codes, so no codes map is attached and
+  # the code byte displays as raw hex. Slot ordering unverified.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -7935,13 +8064,9 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 6:
-  # a DIFFERENT archive from the Vitotronic system history
-  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
-  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
-  # codes are a different code space from the F-codes, so no codes map
-  # is attached and the code byte displays as raw hex. No public GFA
-  # code enumeration is known (export + community search both empty);
-  # a populated slot from a real burner lockout would seed one.
+  # a DIFFERENT archive from the Vitotronic system history -- GFA
+  # lockout codes, NOT the F-codes, so no codes map is attached and
+  # the code byte displays as raw hex. Slot ordering unverified.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -7954,13 +8079,9 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 7:
-  # a DIFFERENT archive from the Vitotronic system history
-  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
-  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
-  # codes are a different code space from the F-codes, so no codes map
-  # is attached and the code byte displays as raw hex. No public GFA
-  # code enumeration is known (export + community search both empty);
-  # a populated slot from a real burner lockout would seed one.
+  # a DIFFERENT archive from the Vitotronic system history -- GFA
+  # lockout codes, NOT the F-codes, so no codes map is attached and
+  # the code byte displays as raw hex. Slot ordering unverified.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -7973,13 +8094,9 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 8:
-  # a DIFFERENT archive from the Vitotronic system history
-  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
-  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
-  # codes are a different code space from the F-codes, so no codes map
-  # is attached and the code byte displays as raw hex. No public GFA
-  # code enumeration is known (export + community search both empty);
-  # a populated slot from a real burner lockout would seed one.
+  # a DIFFERENT archive from the Vitotronic system history -- GFA
+  # lockout codes, NOT the F-codes, so no codes map is attached and
+  # the code byte displays as raw hex. Slot ordering unverified.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -7992,13 +8109,9 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 9:
-  # a DIFFERENT archive from the Vitotronic system history
-  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
-  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
-  # codes are a different code space from the F-codes, so no codes map
-  # is attached and the code byte displays as raw hex. No public GFA
-  # code enumeration is known (export + community search both empty);
-  # a populated slot from a real burner lockout would seed one.
+  # a DIFFERENT archive from the Vitotronic system history -- GFA
+  # lockout codes, NOT the F-codes, so no codes map is attached and
+  # the code byte displays as raw hex. Slot ordering unverified.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -8011,13 +8124,9 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 10:
-  # a DIFFERENT archive from the Vitotronic system history
-  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
-  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
-  # codes are a different code space from the F-codes, so no codes map
-  # is attached and the code byte displays as raw hex. No public GFA
-  # code enumeration is known (export + community search both empty);
-  # a populated slot from a real burner lockout would seed one.
+  # a DIFFERENT archive from the Vitotronic system history -- GFA
+  # lockout codes, NOT the F-codes, so no codes map is attached and
+  # the code byte displays as raw hex. Slot ordering unverified.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -8030,13 +8139,9 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 11:
-  # a DIFFERENT archive from the Vitotronic system history
-  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
-  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
-  # codes are a different code space from the F-codes, so no codes map
-  # is attached and the code byte displays as raw hex. No public GFA
-  # code enumeration is known (export + community search both empty);
-  # a populated slot from a real burner lockout would seed one.
+  # a DIFFERENT archive from the Vitotronic system history -- GFA
+  # lockout codes, NOT the F-codes, so no codes map is attached and
+  # the code byte displays as raw hex. Slot ordering unverified.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -8049,13 +8154,9 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 12:
-  # a DIFFERENT archive from the Vitotronic system history
-  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
-  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
-  # codes are a different code space from the F-codes, so no codes map
-  # is attached and the code byte displays as raw hex. No public GFA
-  # code enumeration is known (export + community search both empty);
-  # a populated slot from a real burner lockout would seed one.
+  # a DIFFERENT archive from the Vitotronic system history -- GFA
+  # lockout codes, NOT the F-codes, so no codes map is attached and
+  # the code byte displays as raw hex. Slot ordering unverified.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -8068,13 +8169,9 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 13:
-  # a DIFFERENT archive from the Vitotronic system history
-  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
-  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
-  # codes are a different code space from the F-codes, so no codes map
-  # is attached and the code byte displays as raw hex. No public GFA
-  # code enumeration is known (export + community search both empty);
-  # a populated slot from a real burner lockout would seed one.
+  # a DIFFERENT archive from the Vitotronic system history -- GFA
+  # lockout codes, NOT the F-codes, so no codes map is attached and
+  # the code byte displays as raw hex. Slot ordering unverified.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -8087,13 +8184,9 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 14:
-  # a DIFFERENT archive from the Vitotronic system history
-  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
-  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
-  # codes are a different code space from the F-codes, so no codes map
-  # is attached and the code byte displays as raw hex. No public GFA
-  # code enumeration is known (export + community search both empty);
-  # a populated slot from a real burner lockout would seed one.
+  # a DIFFERENT archive from the Vitotronic system history -- GFA
+  # lockout codes, NOT the F-codes, so no codes map is attached and
+  # the code byte displays as raw hex. Slot ordering unverified.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -8106,13 +8199,9 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 15:
-  # a DIFFERENT archive from the Vitotronic system history
-  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
-  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
-  # codes are a different code space from the F-codes, so no codes map
-  # is attached and the code byte displays as raw hex. No public GFA
-  # code enumeration is known (export + community search both empty);
-  # a populated slot from a real burner lockout would seed one.
+  # a DIFFERENT archive from the Vitotronic system history -- GFA
+  # lockout codes, NOT the F-codes, so no codes map is attached and
+  # the code byte displays as raw hex. Slot ordering unverified.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -8125,13 +8214,9 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 16:
-  # a DIFFERENT archive from the Vitotronic system history
-  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
-  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
-  # codes are a different code space from the F-codes, so no codes map
-  # is attached and the code byte displays as raw hex. No public GFA
-  # code enumeration is known (export + community search both empty);
-  # a populated slot from a real burner lockout would seed one.
+  # a DIFFERENT archive from the Vitotronic system history -- GFA
+  # lockout codes, NOT the F-codes, so no codes map is attached and
+  # the code byte displays as raw hex. Slot ordering unverified.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -8144,13 +8229,9 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 17:
-  # a DIFFERENT archive from the Vitotronic system history
-  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
-  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
-  # codes are a different code space from the F-codes, so no codes map
-  # is attached and the code byte displays as raw hex. No public GFA
-  # code enumeration is known (export + community search both empty);
-  # a populated slot from a real burner lockout would seed one.
+  # a DIFFERENT archive from the Vitotronic system history -- GFA
+  # lockout codes, NOT the F-codes, so no codes map is attached and
+  # the code byte displays as raw hex. Slot ordering unverified.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -8163,13 +8244,9 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 18:
-  # a DIFFERENT archive from the Vitotronic system history
-  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
-  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
-  # codes are a different code space from the F-codes, so no codes map
-  # is attached and the code byte displays as raw hex. No public GFA
-  # code enumeration is known (export + community search both empty);
-  # a populated slot from a real burner lockout would seed one.
+  # a DIFFERENT archive from the Vitotronic system history -- GFA
+  # lockout codes, NOT the F-codes, so no codes map is attached and
+  # the code byte displays as raw hex. Slot ordering unverified.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -8182,13 +8259,9 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 19:
-  # a DIFFERENT archive from the Vitotronic system history
-  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
-  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
-  # codes are a different code space from the F-codes, so no codes map
-  # is attached and the code byte displays as raw hex. No public GFA
-  # code enumeration is known (export + community search both empty);
-  # a populated slot from a real burner lockout would seed one.
+  # a DIFFERENT archive from the Vitotronic system history -- GFA
+  # lockout codes, NOT the F-codes, so no codes map is attached and
+  # the code byte displays as raw hex. Slot ordering unverified.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -8201,13 +8274,9 @@ text_sensor:
     disabled_by_default: true
     update_interval: 300s
   # Feuerungsautomat (GFA burner control unit) history slot 20:
-  # a DIFFERENT archive from the Vitotronic system history
-  # (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with
-  # its own timestamp 42 s after the system slot's 0x38). GFA lockout
-  # codes are a different code space from the F-codes, so no codes map
-  # is attached and the code byte displays as raw hex. No public GFA
-  # code enumeration is known (export + community search both empty);
-  # a populated slot from a real burner lockout would seed one.
+  # a DIFFERENT archive from the Vitotronic system history -- GFA
+  # lockout codes, NOT the F-codes, so no codes map is attached and
+  # the code byte displays as raw hex. Slot ordering unverified.
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
   - platform: vitohome
     type: error_history
@@ -8230,8 +8299,8 @@ text_sensor:
     options:
       0x00: "AUS"
       0x01: "EIN"
-      0x02: "AUS"
-      0x03: "EIN"
+      0x02: "AUS (0x02)"
+      0x03: "EIN (0x03)"
   - platform: vitohome
     type: enum
     name: "Ausgang HKP A1"
@@ -8243,8 +8312,8 @@ text_sensor:
     options:
       0x00: "AUS"
       0x01: "EIN"
-      0x02: "AUS"
-      0x03: "EIN"
+      0x02: "AUS (0x02)"
+      0x03: "EIN (0x03)"
   - platform: vitohome
     type: enum
     name: "Ausgang HKP M2"
@@ -8256,8 +8325,8 @@ text_sensor:
     options:
       0x00: "AUS"
       0x01: "EIN"
-      0x02: "AUS"
-      0x03: "EIN"
+      0x02: "AUS (0x02)"
+      0x03: "EIN (0x03)"
   - platform: vitohome
     type: enum
     name: "Ausgang HKP M3"
@@ -8269,8 +8338,8 @@ text_sensor:
     options:
       0x00: "AUS"
       0x01: "EIN"
-      0x02: "AUS"
-      0x03: "EIN"
+      0x02: "AUS (0x02)"
+      0x03: "EIN (0x03)"
   - platform: vitohome
     type: enum
     name: "K50 Reglervariante"
@@ -8294,8 +8363,8 @@ text_sensor:
     update_interval: 60s
     options:
       0x00: "nicht uebernehmen"
-      0x01: "nicht uebernehmen"
-      0x02: "nicht uebernehmen"
+      0x01: "nicht uebernehmen (0x01)"
+      0x02: "nicht uebernehmen (0x02)"
       0x03: "uebernehmen"
   - platform: vitohome
     type: enum
@@ -8409,7 +8478,7 @@ text_sensor:
     type: enum
     name: "nvoPWRState CFDM state"
     id: nvoPWRState_CFDM_state
-    address: 0xA390  # byte 1 of the 2-byte block @ 0xA38F; verify on hardware
+    address: 0xA38F
     length: 1
     disabled_by_default: true
     update_interval: 60s

@@ -14,7 +14,8 @@ void VitoSensor::dump_config() {
   ESP_LOGCONFIG(TAG, "    Address: 0x%04X  Length: %u  scale: %g  signed: %s", this->datapoint_.address(),
                 this->datapoint_.length(), this->scale_, this->signed_ ? "yes" : "no");
   if (this->extract_byte_ >= 0) {
-    ESP_LOGCONFIG(TAG, "    Extract byte: %d", this->extract_byte_);
+    ESP_LOGCONFIG(TAG, "    Extract: %u byte(s) at offset %d of a %u-byte block read", this->extract_len_,
+                  this->extract_byte_, this->datapoint_.length());
   }
 }
 
@@ -27,8 +28,14 @@ void VitoSensor::handle_response(const ResponseView& response) {
   double value = NAN;
   bool ok;
   if (this->extract_byte_ >= 0) {
-    ok = static_cast<uint8_t>(this->extract_byte_) < have &&
-         decode_scaled(data + this->extract_byte_, 1, 1, this->signed_, this->scale_, &value);
+    // Fetch the whole block (datapoint length), then scale/sign the field of
+    // extract_len_ bytes at the offset. The bound check is against the bytes
+    // actually received, so a short response fail-softs instead of reading
+    // past the end. Little-endian only: every extracted field in the Vitosoft
+    // data is LE (the big-endian RotateBytes converter never uses extraction).
+    const uint16_t off = static_cast<uint16_t>(this->extract_byte_);
+    ok = off + this->extract_len_ <= have &&
+         decode_scaled(data + off, this->extract_len_, this->extract_len_, this->signed_, this->scale_, &value);
   } else {
     ok = this->big_endian_
              ? decode_scaled_be(data, have, this->datapoint_.length(), this->signed_, this->scale_, &value)
@@ -36,7 +43,8 @@ void VitoSensor::handle_response(const ResponseView& response) {
   }
   if (!ok) {
     ESP_LOGW(TAG, "%s: response too short (have %u bytes, need %u)", this->datapoint_.name(), have,
-             this->extract_byte_ >= 0 ? this->extract_byte_ + 1 : this->datapoint_.length());
+             this->extract_byte_ >= 0 ? static_cast<unsigned>(this->extract_byte_ + this->extract_len_)
+                                      : this->datapoint_.length());
     return;
   }
 

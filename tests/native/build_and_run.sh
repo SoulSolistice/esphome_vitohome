@@ -28,5 +28,10 @@ g++ -std=c++17 -Wall -Wextra \
 # VITOHOME_DEBUG_OPTOLINK && ESP_PLATFORM), so stdout is the harness only.
 ./vs2_transaction_harness
 
+# Decode proof: multi-byte field extraction from a wide block read (the
+# P300-portable pattern gen_catalog emits for interior fields).
+g++ -std=gnu++20 -Wall -Wextra -I"$ROOT" -I"$OPTO" proof_extract.cpp -o proof_extract
+./proof_extract
+
 # Protocol-adapter proofs: all three engines compile + the GWG poke stays off.
 bash "$(dirname "$0")/build_and_run_protocols.sh" "$ROOT"

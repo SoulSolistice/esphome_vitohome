@@ -189,6 +189,17 @@ def converter_lengths(name: str) -> tuple:
     return CONVERTERS[name].lengths
 
 
+# Conservative single-telegram READ payload cap for P300/VS2. The protocol
+# frame allows 255 data bytes, but Vitotronic firmwares reject an over-long
+# single read (hardware-observed on VScotHO1_72: a 40-byte read at 0x7362
+# NAKs on P300 while the same read succeeds on KW). 37 is the widely-cited
+# safe maximum for a single Vitotronic read telegram; the generator uses it to
+# gate block reads, and a byte_offset block read may fetch up to this many
+# bytes so a single field deep inside a large coding block is reachable with
+# an aligned read.
+MAX_P300_READ_LENGTH = 37
+
+
 def validate_length_in(min_len: int, max_len: int):
     """Return a validator accepting an integer byte-length in [min_len, max_len]."""
 

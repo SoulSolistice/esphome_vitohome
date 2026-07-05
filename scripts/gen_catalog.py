@@ -767,6 +767,25 @@ def _enum_options(ev: Event) -> list:
     return out
 
 
+def _dedup_option_labels(opts: list) -> list:
+    """ESPHome `select` (and our enum text_sensor for consistency) require
+    UNIQUE option labels, but the export can map several values to the same
+    string -- e.g. KF1_KonfiTemperaturprogramm has values 6..15 all labelled
+    "Default" (untranslated placeholders). Disambiguate a repeated label by
+    appending its raw value ("Default (0x06)"); first occurrence is left as-is
+    so the common case stays clean. Order and values are preserved.
+    """
+    seen: dict[str, int] = {}
+    result = []
+    for value, label in opts:
+        if label in seen and seen[label] != value:
+            result.append((value, f"{label} (0x{value:02X})"))
+        else:
+            seen[label] = value
+            result.append((value, label))
+    return result
+
+
 _BOOLEAN_ON_OFF_PAIRS = [
     ("ein", "aus"),
     ("an", "aus"),
@@ -920,6 +939,13 @@ def _bound_fits(value_str: str, length: int, conv: str, is_signed: bool) -> bool
     return 0 <= raw <= (1 << (8 * length)) - 1
 
 
+# Single-telegram READ payload cap for P300/VS2 (mirror of
+# components/vitohome/__init__.py::MAX_P300_READ_LENGTH). A block read wider
+# than this NAKs on P300 (hardware-observed: 40-byte read at 0x7362), so the
+# generator emits a commented hint instead of config that errors on the wire.
+MAX_P300_READ_LENGTH = 37
+
+
 def emit_entity(ev: Event, profile: str):
     """Return (platform, yaml_lines) for one event, or None to skip it.
     ev.name is the resolved friendly name; the stable technical ``id:`` is added
@@ -952,11 +978,30 @@ def emit_entity(ev: Event, profile: str):
     block_len = ev.block_length or ev.byte_length or 1
     length = ev.byte_length or ev.block_length or 1
     field_off = ev.byte_position or 0
-    field_addr = addr + field_off
-    addr_line = f"  address: 0x{field_addr:04X}"
-    if field_off:
-        addr_line += f"  # byte {field_off} of the {block_len}-byte block @ 0x{addr:04X}; verify on hardware"
-    enum_opts = _enum_options(ev)
+    # Alignment for P300: a scalar field is carved from a block at `addr`.
+    # KW (byte-oriented) tolerates an interior read at addr+offset, but P300
+    # NAKs an unaligned single-byte read (hardware-confirmed on the pump-speed
+    # bytes 0x7661/0x7664). So for a SINGLE-byte field at a non-zero offset,
+    # emit an aligned BLOCK read at the base with `byte_offset` -- the
+    # component fetches the whole block and extracts the one byte, which is
+    # portable across both protocols. Multi-byte interior fields (rare) can't
+    # be a single-byte extract; they keep the interior address with the old
+    # caveat. Both are gated by the P300 read-length cap below.
+    field_width = ev.byte_length or block_len
+    # Align to the block base for ANY field (1..4 bytes wide) at a non-zero
+    # offset whose block fits the P300 single-telegram cap: fetch the whole
+    # block, extract the field via byte_offset (+ byte_length for a multi-byte
+    # field). Portable across KW and P300. Fields wider than 4 bytes, or in a
+    # block over the cap, can't be a scalar extract -> interior read w/ caveat.
+    use_block_extract = field_off > 0 and 1 <= field_width <= 4 and block_len <= MAX_P300_READ_LENGTH
+    if use_block_extract:
+        addr_line = f"  address: 0x{addr:04X}"
+    else:
+        field_addr = addr + field_off
+        addr_line = f"  address: 0x{field_addr:04X}"
+        if field_off:
+            addr_line += f"  # byte {field_off} of the {block_len}-byte block @ 0x{addr:04X} (interior read; P300 may NAK)"
+    enum_opts = _dedup_option_labels(_enum_options(ev))
     is_bit = (ev.bit_length or 0) > 0
     writable = _is_writable(ev)
     # A writable datapoint whose converter has no encode path (sec2hour,
@@ -977,13 +1022,17 @@ def emit_entity(ev: Event, profile: str):
                 "comment",
                 [f"# {name} @ 0x{addr:04X}: HexByte2AsciiByte length {length} > 32 -> custom decode"],
             )
+        # A string field reads `length` bytes from addr+offset; the offset is
+        # part of the field layout (not a scalar alignment issue), so use a
+        # plain address line. P300 length concerns are handled by the >32 cap.
+        str_addr = f"  address: 0x{addr + field_off:04X}"
         return (
             "text_sensor",
             [
                 "- platform: vitohome",
                 "  type: ascii",
                 f"  name: {_yaml_str(name)}",
-                addr_line,
+                str_addr,
                 f"  length: {length}",
                 "  entity_category: diagnostic",
             ],
@@ -999,16 +1048,25 @@ def emit_entity(ev: Event, profile: str):
                 "comment",
                 [f"# {name} @ 0x{addr:04X}: HexByte2UTF16Byte length {length} (>40 or odd) -> custom decode"],
             )
-        return (
-            "text_sensor",
-            [
-                "- platform: vitohome",
-                "  type: utf16",
-                f"  name: {_yaml_str(name)}",
-                addr_line,
-                f"  length: {length}",
-            ],
-        )
+        str_addr = f"  address: 0x{addr + field_off:04X}"
+        utf_lines = [
+            "- platform: vitohome",
+            "  type: utf16",
+            f"  name: {_yaml_str(name)}",
+            str_addr,
+            f"  length: {length}",
+        ]
+        if length > MAX_P300_READ_LENGTH:
+            # A single read this wide NAKs on P300 (hardware-confirmed at
+            # 0x7362); fine on KW. Ship it disabled with the reason so the
+            # generated catalog is P300-safe out of the box.
+            utf_lines.append("  disabled_by_default: true")
+            utf_lines.append(
+                f"  # {length}-byte read exceeds the P300 single-telegram cap "
+                f"({MAX_P300_READ_LENGTH}); works on KW, NAKs on P300. Enable on KW "
+                "or shorten length."
+            )
+        return ("text_sensor", utf_lines)
 
     # A field wider than 4 bytes can't go through the 1..4-byte scalar converters.
     if length > 4 and not is_bit and not enum_opts:
@@ -1186,9 +1244,16 @@ def emit_entity(ev: Event, profile: str):
         "- platform: vitohome",
         f"  name: {_yaml_str(name)}",
         addr_line,
-        f"  length: {length}",
-        f"  converter: {conv}",
     ]
+    if use_block_extract:
+        # Aligned block read + field extract (P300-portable).
+        lines.append(f"  length: {block_len}")
+        lines.append(f"  byte_offset: {field_off}")
+        if field_width != 1:
+            lines.append(f"  byte_length: {field_width}")
+    else:
+        lines.append(f"  length: {length}")
+    lines.append(f"  converter: {conv}")
     if signed and conv == "noconv":
         lines.append("  signed: true")
     unit = _unit_for(ev)
