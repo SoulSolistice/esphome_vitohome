@@ -49,6 +49,13 @@ Typical use::
     # ...or name the datapoint-type token directly
     python3 scripts/gen_catalog.py --data <export-dir> --device VScotHO1_72 ...
 
+    # generate a catalog for EVERY device token at once (one file per unit),
+    # named unit_swIndex[_variant].yaml (vscotho1_72.yaml, gwg_vbes_00.yaml, ...)
+    # with an index.csv manifest; narrow with --export-filter if wanted:
+    python3 scripts/gen_catalog.py --data <export-dir> --export-all --out ./catalogs
+    python3 scripts/gen_catalog.py --data <export-dir> --export-all --out ./catalogs \
+        --export-filter '^V' --no-error-codes
+
 Include the emitted file from your device YAML::
 
     packages:
@@ -65,6 +72,7 @@ stdlib only; runs in CI and in a bare Python install.
 from __future__ import annotations
 
 import argparse
+import csv
 import math
 import os
 import re
@@ -1679,6 +1687,216 @@ def generate(
     return "\n".join(out)
 
 
+# --- bulk export -----------------------------------------------------------
+# One catalog file per device token. The Vitosoft token IDs already follow
+# Viessmann's ``unit_swIndex[_variant]`` naming -- e.g. ``VScotHO1_72`` is unit
+# ``VScotHO1`` at software index 72 (its IdentificationExtension low byte 0x48 =
+# 72), and hardware variants are *distinct* unit names (``GWG_VBES`` vs
+# ``GWG_VWMS`` vs ``GWG_VBT2``), not a numeric suffix. So the token itself is the
+# ``unit[_swIndex][_variant]`` key: the file name is just the lower-cased token.
+
+_FILENAME_SAFE_RE = re.compile(r"[^a-z0-9._-]+")
+
+
+def _export_stem(token: str) -> str:
+    """Filesystem-safe, lower-cased file stem for a device token.
+
+    The token already encodes ``unit`` and (where Viessmann assigns one) the
+    software index, so no parsing is needed: lower-case it and replace any
+    character outside ``[a-z0-9._-]`` so the name is portable. ``VScotHO1_72``
+    -> ``vscotho1_72``.
+    """
+    stem = _FILENAME_SAFE_RE.sub("_", token.strip().lower())
+    return stem.strip("._-") or "device"
+
+
+def _identity_fields(row: dict) -> dict:
+    """Identification indices for one ``ecnDataPointType`` row, for the manifest.
+
+    ``ident`` is the device Identification (0xF8F9). The hardware index and the
+    software-index range are reported ONLY when the extension is the ordinary
+    2-byte ``HW<<8 | SW`` boiler/controller form (matches ``Catalog.resolve()``):
+    the high byte is the categorical hardware generation, the low byte the
+    software index. A handful of device types -- M-Bus meters, some telecom
+    modules -- carry a longer serial-number extension instead; for those the
+    numeric columns stay blank and the raw extension string is preserved so the
+    row is still traceable. Everything here is read straight from the export --
+    nothing is inferred.
+    """
+    ext = row.get("ext")
+    extt = row.get("extt")
+    ident = row.get("ident")
+    out = {
+        "ident": f"0x{ident:04X}" if ident is not None else "",
+        "hw_index": "",
+        "sw_lo": "",
+        "sw_hi": "",
+        "f0_lo": "",
+        "f0_hi": "",
+        "ext_raw": row.get("IdentificationExtension") or "",
+    }
+    if ext is not None and 0 <= ext <= 0xFFFF:
+        out["hw_index"] = ext >> 8
+        out["sw_lo"] = ext & 0xFF
+        out["sw_hi"] = (extt & 0xFF) if (extt is not None and 0 <= extt <= 0xFFFF) else ext & 0xFF
+    f0 = row.get("f0")
+    if f0 is not None:
+        f0t = row.get("f0t")
+        out["f0_lo"] = f0
+        out["f0_hi"] = f0t if f0t is not None else f0
+    return out
+
+
+_MANIFEST_COLUMNS = (
+    "file",
+    "token",
+    "ident",
+    "hw_index",
+    "sw_lo",
+    "sw_hi",
+    "f0_lo",
+    "f0_hi",
+    "events",
+    "bytes",
+    "status",
+    "ext_raw",
+)
+
+
+def export_all(
+    catalog: Catalog,
+    out_dir: str,
+    *,
+    profile: str,
+    include_re: str | None,
+    exclude_re: str | None,
+    token_filter: str | None,
+    suffix: str,
+    emit_device_id: bool,
+    emit_error_history: bool,
+    error_codes: bool,
+    error_code_set: str,
+    reachable_only: bool,
+) -> int:
+    """Write one catalog per device token into *out_dir* (created if needed).
+
+    Files are named ``<token><suffix>`` (lower-cased, sanitised) -- Viessmann's
+    ``unit_swIndex[_variant]`` key -- and an ``index.csv`` manifest is written
+    alongside mapping every file back to its identification signature (ident /
+    hardware index / software-index range / F0 range / event count / status).
+
+    Each device is generated with the SAME options the single-device path uses,
+    so ``--export-all`` is "run the generator for every unit with these flags".
+    One unit that fails to generate is recorded and skipped; it does not abort
+    the batch. Returns a process exit code (0 if at least one file was written,
+    1 otherwise).
+    """
+    if os.path.exists(out_dir) and not os.path.isdir(out_dir):
+        print(f"--out {out_dir!r} exists and is not a directory", file=sys.stderr)
+        return 1
+    os.makedirs(out_dir, exist_ok=True)
+
+    pat = re.compile(token_filter) if token_filter else None
+    ident_by_token = {r["token"]: r for r in catalog._ident if r.get("token")}
+
+    tokens = sorted(catalog.devices)
+    if pat:
+        tokens = [t for t in tokens if pat.search(t)]
+    if not tokens:
+        where = f" matching {token_filter!r}" if token_filter else ""
+        print(f"no device tokens{where} to export", file=sys.stderr)
+        return 1
+
+    if error_codes:
+        print(
+            f"note: --export-all attaches the same fault-code map ({error_code_set!r}) to "
+            "every unit, but fault-code semantics are device-variant-specific -- pass "
+            "--no-error-codes for a neutral bulk export, or regenerate an individual unit "
+            "with the correct --error-code-set. See index.csv for what was written.",
+            file=sys.stderr,
+        )
+
+    manifest: list[dict] = []
+    used: dict[str, str] = {}  # stem -> token, to catch sanitiser collisions
+    written = skipped = failed = 0
+
+    for token in tokens:
+        row = ident_by_token.get(token, {})
+        n_events = len(catalog.events_for(token))
+        rec = {
+            "file": "",
+            "token": token,
+            **_identity_fields(row),
+            "events": n_events,
+            "bytes": "",
+            "status": "",
+        }
+
+        if n_events == 0:
+            rec["status"] = "skipped: no events"
+            manifest.append(rec)
+            skipped += 1
+            continue
+
+        stem = _export_stem(token)
+        if used.get(stem, token) != token:  # distinct token collided after sanitising
+            n = 2
+            while f"{stem}-{n}" in used:
+                n += 1
+            stem = f"{stem}-{n}"
+        used[stem] = token
+        fname = stem + suffix
+
+        try:
+            text = generate(
+                catalog,
+                token,
+                profile,
+                include_re,
+                exclude_re,
+                emit_device_id=emit_device_id,
+                emit_error_history=emit_error_history,
+                error_codes=error_codes,
+                error_code_set=error_code_set,
+                reachable_only=reachable_only,
+            )
+        except SystemExit as exc:  # generate() uses this for "no emittable events"
+            rec["status"] = f"skipped: {exc}"
+            manifest.append(rec)
+            skipped += 1
+            continue
+        except Exception as exc:  # noqa: BLE001 -- one bad unit must not abort the batch
+            rec["status"] = f"error: {type(exc).__name__}: {exc}"
+            manifest.append(rec)
+            failed += 1
+            continue
+
+        data = text.encode("utf-8")
+        with open(os.path.join(out_dir, fname), "wb") as fh:
+            fh.write(data)
+        rec["file"] = fname
+        rec["bytes"] = len(data)
+        rec["status"] = "ok"
+        manifest.append(rec)
+        written += 1
+
+    manifest.sort(key=lambda r: r["token"])
+    index_path = os.path.join(out_dir, "index.csv")
+    with open(index_path, "w", encoding="utf-8", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=_MANIFEST_COLUMNS)
+        w.writeheader()
+        for rec in manifest:
+            w.writerow({k: rec.get(k, "") for k in _MANIFEST_COLUMNS})
+
+    print(
+        f"wrote {written} catalog(s) to {out_dir}  (skipped {skipped}, failed {failed}); manifest: {index_path}",
+        file=sys.stderr,
+    )
+    if failed:
+        print(f"warning: {failed} unit(s) failed to generate -- see 'error:' rows in index.csv", file=sys.stderr)
+    return 0 if written else 1
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument(
@@ -1727,10 +1945,45 @@ def main(argv=None):
         help="emit only datapoints VitoWiFi can read over Optolink (FCRead Virtual_READ); "
         "drop GFA_READ/RPC/PROZESS/KBUS/OT (default: on)",
     )
-    p.add_argument("--out", help="output file (default: stdout)")
+    p.add_argument(
+        "--export-all",
+        action="store_true",
+        help="generate one catalog per device token into --out (a directory); file names follow "
+        "Viessmann's unit_swIndex[_variant] token (e.g. vscotho1_72.yaml) plus a fault-code note, "
+        "and an index.csv manifest maps each file to its ident/HW/SW signature",
+    )
+    p.add_argument(
+        "--export-filter",
+        help="with --export-all: regex; only export tokens whose ID matches "
+        "(e.g. '^V' for Vitotronic controllers, '^GWG_' for GWG units)",
+    )
+    p.add_argument(
+        "--export-suffix",
+        default=".yaml",
+        help="with --export-all: file-name extension for each catalog (default: .yaml)",
+    )
+    p.add_argument("--out", help="output file (default: stdout); with --export-all, the output DIRECTORY")
     args = p.parse_args(argv)
 
     catalog = load_catalog(args.data, culture=args.culture)
+
+    if args.export_all:
+        if not args.out:
+            p.error("--export-all requires --out <directory>")
+        return export_all(
+            catalog,
+            args.out,
+            profile=args.profile,
+            include_re=args.include,
+            exclude_re=args.exclude,
+            token_filter=args.export_filter,
+            suffix=args.export_suffix,
+            emit_device_id=args.device_id,
+            emit_error_history=args.error_history,
+            error_codes=args.error_codes,
+            error_code_set=args.error_code_set,
+            reachable_only=args.reachable_only,
+        )
 
     if args.list_devices:
         for token in sorted(catalog.devices):

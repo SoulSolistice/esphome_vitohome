@@ -280,3 +280,163 @@ def test_command_state_split_emits_state_address(catalog):
     assert "address: 0x2330" in body  # command (write) address
     assert "state_address: 0x2303" in body  # live-state (read) address
     assert "on 0x01" in body and "off 0x00" in body  # default 1/0 documented
+
+
+# --- bulk export (--export-all) --------------------------------------------
+
+
+def test_export_stem_matches_viessmann_token():
+    # The Viessmann token already is the unit_swIndex[_variant] key; we only
+    # lower-case it. VScotHO1_72 -> vscotho1_72 (Tom's family), as specified.
+    assert gc._export_stem("VScotHO1_72") == "vscotho1_72"
+    assert gc._export_stem("GWG_VBES_00") == "gwg_vbes_00"
+    assert gc._export_stem("VScotHO1_200_10") == "vscotho1_200_10"
+
+
+def test_export_stem_sanitises_unsafe_chars():
+    # Anything outside [a-z0-9._-] collapses to '_'; leading/trailing junk trimmed.
+    assert gc._export_stem("Dev/One") == "dev_one"
+    assert gc._export_stem("  A B:C  ") == "a_b_c"
+    assert gc._export_stem("///") == "device"  # never empty
+
+
+def test_identity_fields_boiler_2byte_extension():
+    # Real VScotHO1_72 identification row shape: ident 0x20CB, ext 0x0148 (HW high
+    # byte 0x01, SW low byte 0x48 = 72), till 0x0159 (SW 0x59 = 89).
+    row = {
+        "ident": 0x20CB,
+        "ext": 0x0148,
+        "extt": 0x0159,
+        "f0": None,
+        "f0t": None,
+        "IdentificationExtension": "0148",
+    }
+    f = gc._identity_fields(row)
+    assert f["ident"] == "0x20CB"
+    assert f["hw_index"] == 1
+    assert f["sw_lo"] == 72
+    assert f["sw_hi"] == 89
+    assert f["f0_lo"] == "" and f["f0_hi"] == ""
+
+
+def test_identity_fields_serial_extension_left_blank():
+    # M-Bus meters carry a 6-byte serial in the extension, not HW<<8|SW; the
+    # numeric columns must stay blank and the raw string is preserved.
+    row = {
+        "ident": 0x0611,
+        "ext": 0x343230343038,  # > 0xFFFF -> not a 2-byte HW/SW extension
+        "extt": None,
+        "f0": None,
+        "f0t": None,
+        "IdentificationExtension": "343230343038",
+    }
+    f = gc._identity_fields(row)
+    assert f["ident"] == "0x0611"
+    assert f["hw_index"] == "" and f["sw_lo"] == "" and f["sw_hi"] == ""
+    assert f["ext_raw"] == "343230343038"
+
+
+def test_identity_fields_f0_range():
+    row = {
+        "ident": 0x20CB,
+        "ext": 0x01C8,
+        "extt": 0x01FF,
+        "f0": 20,
+        "f0t": 29,
+        "IdentificationExtension": "01C8",
+    }
+    f = gc._identity_fields(row)
+    assert (f["sw_lo"], f["sw_hi"]) == (200, 255)
+    assert (f["f0_lo"], f["f0_hi"]) == (20, 29)
+
+
+def test_identity_fields_empty_row_is_all_blank():
+    f = gc._identity_fields({})
+    assert f["ident"] == "" and f["hw_index"] == "" and f["ext_raw"] == ""
+
+
+def _read_index(out_dir):
+    import csv
+
+    with open(os.path.join(out_dir, "index.csv"), encoding="utf-8", newline="") as fh:
+        return {r["token"]: r for r in csv.DictReader(fh)}
+
+
+def test_export_all_writes_per_device_and_skips_empty(catalog, tmp_path):
+    rc = gc.export_all(
+        catalog,
+        str(tmp_path),
+        profile="standard",
+        include_re=None,
+        exclude_re=None,
+        token_filter=None,
+        suffix=".yaml",
+        emit_device_id=True,
+        emit_error_history=True,
+        error_codes=False,
+        error_code_set="vd300",
+        reachable_only=True,
+    )
+    assert rc == 0
+    # VTestHO1_99 has 14 events -> written; VOther_01 has none -> skipped, no file.
+    assert (tmp_path / "vtestho1_99.yaml").is_file()
+    assert not (tmp_path / "vother_01.yaml").exists()
+    idx = _read_index(str(tmp_path))
+    assert idx["VTestHO1_99"]["file"] == "vtestho1_99.yaml"
+    assert idx["VTestHO1_99"]["status"] == "ok"
+    assert idx["VTestHO1_99"]["events"] == "14"
+    assert idx["VOther_01"]["status"] == "skipped: no events"
+    assert idx["VOther_01"]["file"] == ""
+
+
+def test_export_all_filter_selects_subset(catalog, tmp_path):
+    rc = gc.export_all(
+        catalog,
+        str(tmp_path),
+        profile="standard",
+        include_re=None,
+        exclude_re=None,
+        token_filter="^VOther",
+        suffix=".yaml",
+        emit_device_id=True,
+        emit_error_history=True,
+        error_codes=False,
+        error_code_set="vd300",
+        reachable_only=True,
+    )
+    # Only VOther_01 matches, and it has no events -> nothing written -> rc 1.
+    assert rc == 1
+    idx = _read_index(str(tmp_path))
+    assert set(idx) == {"VOther_01"}
+
+
+def test_export_all_custom_suffix(catalog, tmp_path):
+    gc.export_all(
+        catalog,
+        str(tmp_path),
+        profile="standard",
+        include_re=None,
+        exclude_re=None,
+        token_filter="^VTestHO1",
+        suffix=".dp.yaml",
+        emit_device_id=True,
+        emit_error_history=True,
+        error_codes=False,
+        error_code_set="vd300",
+        reachable_only=True,
+    )
+    assert (tmp_path / "vtestho1_99.dp.yaml").is_file()
+
+
+def test_export_all_via_main_cli(tmp_path):
+    out = tmp_path / "catalogs"
+    rc = gc.main(["--data", _FIXTURE_DIR, "--export-all", "--out", str(out), "--no-error-codes"])
+    assert rc == 0
+    assert (out / "vtestho1_99.yaml").is_file()
+    assert (out / "index.csv").is_file()
+
+
+def test_export_all_requires_out(capsys):
+    # argparse .error() raises SystemExit(2); --export-all without --out must fail.
+    with pytest.raises(SystemExit):
+        gc.main(["--data", _FIXTURE_DIR, "--export-all"])
