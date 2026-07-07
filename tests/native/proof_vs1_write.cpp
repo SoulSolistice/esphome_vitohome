@@ -17,9 +17,10 @@
 #include <vector>
 
 #include "fake_optolink.h"
-#include "protocol_adapter.h"
+#include "protocol_select.h"
 
 using namespace esphome::vitohome;
+using Engine = optolink::OptolinkEngine<SelectedProtocol>;
 
 namespace {
 int g_responses = 0;
@@ -28,7 +29,7 @@ uint8_t g_last_len = 0;
 uint8_t g_last_payload[8] = {0};
 }  // namespace
 
-static void pump(ProtocolAdapter& a, int n = 8) {
+static void pump(Engine& a, int n = 8) {
   for (int i = 0; i < n; ++i) a.loop();
 }
 
@@ -39,15 +40,15 @@ static bool ends_with(const std::vector<uint8_t>& hay, const std::vector<uint8_t
 
 int main() {
   FakeOptolink uart;
-  ProtocolAdapter adapter(&uart);  // VS1Engine under -DVITOHOME_PROTOCOL_KW
-  adapter.on_response([](const ResponseView& r, uint16_t) {
+  Engine adapter(&uart);  // VS1Engine under -DVITOHOME_PROTOCOL_KW
+  adapter.onResponse([](const uint8_t* data, uint8_t length, uint16_t) {
     g_responses++;
-    g_last_len = r.data_length;
-    if (r.data != nullptr && r.data_length <= sizeof(g_last_payload)) {
-      std::memcpy(g_last_payload, r.data, r.data_length);
+    g_last_len = length;
+    if (data != nullptr && length <= sizeof(g_last_payload)) {
+      std::memcpy(g_last_payload, data, length);
     }
   });
-  adapter.on_error([](optolink::OptolinkResult, uint16_t) { g_errors++; });
+  adapter.onError([](optolink::OptolinkResult, uint16_t) { g_errors++; });
   adapter.begin();
 
   int failures = 0;
@@ -57,9 +58,8 @@ int main() {
   };
 
   // --- the capture's clock write: 8 BCD bytes to 0x088E ---------------------
-  optolink::Datapoint clock("system_time", 0x088E, 8, optolink::noconv);
   const uint8_t bcd[8] = {0x20, 0x26, 0x07, 0x02, 0x04, 0x18, 0x19, 0x35};
-  check(adapter.write(clock, bcd, 8), "write accepted");
+  check(adapter.write(0x088E, bcd, 8), "write accepted");
   uart.feed({0x05});  // device ENQ
   pump(adapter);
   const std::vector<uint8_t> frame = {0xF4, 0x08, 0x8E, 0x08, 0x20, 0x26, 0x07, 0x02, 0x04, 0x18, 0x19, 0x35};
@@ -69,11 +69,10 @@ int main() {
   pump(adapter);
   check(g_responses == 1 && g_errors == 0, "write completed on single 0x00 ack");
   check(g_last_len == 1, "ack surfaced with length 1");
-  check(!adapter.is_busy(), "engine idle after write ack");
+  check(!adapter.isBusy(), "engine idle after write ack");
 
   // --- chained read afterwards (stay-synced, as in the capture) -------------
-  optolink::Datapoint outside("aussentemp", 0x5525, 2, optolink::noconv);
-  check(adapter.read(outside), "chained read accepted");
+  check(adapter.read(0x5525, 2), "chained read accepted");
   pump(adapter);
   check(ends_with(uart.written(), {0xF7, 0x55, 0x25, 0x02}), "read frame = F7 55 25 02");
   uart.feed({0x54, 0x01});  // 0x0154 = 340 -> 34.0 degC, as captured

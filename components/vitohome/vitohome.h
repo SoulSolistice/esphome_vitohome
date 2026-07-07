@@ -9,7 +9,8 @@
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/component.h"
 #include "optolink/optolink.h"
-#include "protocol_adapter.h"
+#include "protocol_select.h"
+#include "response_view.h"
 #include "vito_entity.h"
 #include "vito_uart_interface.h"
 
@@ -169,11 +170,16 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
 
  private:
   ESPHomeUARTInterface iface_;
-  // The protocol engine is build-time-selected and wrapped by ProtocolAdapter,
-  // which presents a uniform, protocol-blind interface (ResponseView callbacks +
-  // read/write/begin/loop) regardless of P300/KW/GWG. The adapter is the only
-  // place that touches a concrete packet type.
-  std::unique_ptr<ProtocolAdapter> vito_;
+  // The protocol engine, build-time-selected via protocol_select.h. All three
+  // engines share one byte-mover API (read/write on address/length primitives,
+  // callbacks delivering (data, length, address)), so the hub drives the
+  // selected engine directly; setup() wraps each callback's raw payload in a
+  // ResponseView for the entities.
+  std::unique_ptr<optolink::OptolinkEngine<SelectedProtocol>> vito_;
+  // True once the engine has produced at least one valid response since
+  // begin(). A valid response means the device speaks the configured protocol,
+  // so this is the start-up verification signal.
+  bool link_established_{false};
 
   std::vector<VitoEntityBase*> entities_;
   std::vector<text_sensor::TextSensor*> device_id_sensors_;

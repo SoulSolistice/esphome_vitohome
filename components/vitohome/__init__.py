@@ -85,7 +85,7 @@ VitoHomeComponent = vitohome_ns.class_("VitoHomeComponent", cg.PollingComponent,
 # Selectable protocols. P300 (VS2) is the only one exercised on hardware; KW
 # (VS1) and GWG are wired through the same adapter but untested -- selecting
 # either emits a warning at compile time. The value is the build-flag token
-# (P300/KW/GWG) that selects the engine inside ProtocolAdapter.
+# (P300/KW/GWG) that selects the engine via protocol_select.h.
 PROTOCOLS = {
     "P300": "P300",
     "VS2": "P300",
@@ -393,11 +393,11 @@ async def to_code(config):
     cg.add_build_flag(f"-I{component_dir}")
 
     # Build-time protocol selection: emit exactly one VITOHOME_PROTOCOL_* flag,
-    # which selects the engine inside ProtocolAdapter.
+    # which selects the engine via protocol_select.h.
     #
     # NOTE: cv.enum returns the *key* the user typed (an EnumValue str), with the
     # mapped value only in .enum_value. Interpolating the key directly emitted
-    # -DVITOHOME_PROTOCOL_VS1 for `protocol: VS1`, a flag protocol_adapter.h does
+    # -DVITOHOME_PROTOCOL_VS1 for `protocol: VS1`, a flag protocol_select.h does
     # not recognise -- so the VS1/VS2 aliases silently built the default P300
     # engine. Normalise through PROTOCOLS so the flag is always one of
     # P300/KW/GWG, the tokens the adapter's #if chain actually checks.

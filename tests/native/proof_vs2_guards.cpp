@@ -22,9 +22,10 @@
 #include <vector>
 
 #include "fake_optolink.h"
-#include "protocol_adapter.h"
+#include "protocol_select.h"
 
 using namespace esphome::vitohome;
+using Engine = optolink::OptolinkEngine<SelectedProtocol>;  // P300: no protocol flag
 
 namespace {
 int g_responses = 0;
@@ -34,7 +35,7 @@ uint8_t g_last_payload[8] = {0};
 uint8_t g_last_len = 0;
 }  // namespace
 
-static void pump(ProtocolAdapter& a, int n = 8) {
+static void pump(Engine& a, int n = 8) {
   for (int i = 0; i < n; ++i) a.loop();
 }
 
@@ -50,7 +51,7 @@ static std::vector<uint8_t> frame(std::vector<uint8_t> body) {
 
 // Drive RESET/INIT to IDLE: engine writes EOT, expects ENQ, writes SYNC,
 // expects ACK.
-static void handshake(ProtocolAdapter& a, FakeOptolink& u) {
+static void handshake(Engine& a, FakeOptolink& u) {
   pump(a);         // RESET: engine writes EOT (0x04)
   u.feed({0x05});  // device ENQ
   pump(a);         // INIT: engine writes SYNC 16 00 00
@@ -61,15 +62,15 @@ static void handshake(ProtocolAdapter& a, FakeOptolink& u) {
 
 int main() {
   FakeOptolink uart;
-  ProtocolAdapter adapter(&uart);
-  adapter.on_response([](const ResponseView& r, uint16_t) {
+  Engine adapter(&uart);
+  adapter.onResponse([](const uint8_t* data, uint8_t length, uint16_t) {
     g_responses++;
-    g_last_len = r.data_length;
-    if (r.data != nullptr && r.data_length <= sizeof(g_last_payload)) {
-      std::memcpy(g_last_payload, r.data, r.data_length);
+    g_last_len = length;
+    if (data != nullptr && length <= sizeof(g_last_payload)) {
+      std::memcpy(g_last_payload, data, length);
     }
   });
-  adapter.on_error([](optolink::OptolinkResult e, uint16_t) {
+  adapter.onError([](optolink::OptolinkResult e, uint16_t) {
     g_errors++;
     g_last_error = e;
   });
@@ -82,10 +83,8 @@ int main() {
     if (!ok) failures++;
   };
 
-  optolink::Datapoint dp("outside", 0x0800, 2, optolink::noconv);
-
   // --- A. ERROR-type frame must not be delivered as data --------------------
-  check(adapter.read(dp), "A: read accepted");
+  check(adapter.read(0x0800, 2), "A: read accepted");
   pump(adapter);      // SENDSTART/SENDPACKET/SEND_CRC -> SEND_ACK
   uart.feed({0x06});  // device ACKs our request
   pump(adapter);      // -> RECEIVE
@@ -94,11 +93,11 @@ int main() {
   pump(adapter);
   check(g_errors == 1 && g_last_error == optolink::OptolinkResult::ERROR, "A: ERROR frame -> onError(ERROR)");
   check(g_responses == 0, "A: ERROR frame NOT delivered as response");
-  check(!adapter.is_busy(), "A: engine freed for the next request");
+  check(!adapter.isBusy(), "A: engine freed for the next request");
   uart.clear_written();
 
   // The choreography must survive: the very next transaction succeeds.
-  check(adapter.read(dp), "A: follow-up read accepted");
+  check(adapter.read(0x0800, 2), "A: follow-up read accepted");
   pump(adapter);
   uart.feed({0x06});
   pump(adapter);
@@ -110,7 +109,7 @@ int main() {
   // --- B. mid-frame timeout must reset the parser ---------------------------
   g_responses = 0;
   g_errors = 0;
-  check(adapter.read(dp), "B: read accepted");
+  check(adapter.read(0x0800, 2), "B: read accepted");
   pump(adapter);
   uart.feed({0x06});              // request ACKed
   pump(adapter);                  // -> RECEIVE
@@ -122,7 +121,7 @@ int main() {
   check(g_errors == 1 && g_last_error == optolink::OptolinkResult::TIMEOUT, "B: mid-frame timeout surfaced");
   handshake(adapter, uart);  // engine re-handshakes after RESET
 
-  check(adapter.read(dp), "B: post-recovery read accepted");
+  check(adapter.read(0x0800, 2), "B: post-recovery read accepted");
   pump(adapter);
   uart.feed({0x06});
   pump(adapter);

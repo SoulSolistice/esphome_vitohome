@@ -12,6 +12,10 @@ void VitoSwitch::dump_config() {
   LOG_SWITCH("  ", "VitoHome Switch", this);
   ESP_LOGCONFIG(TAG, "    Address: 0x%04X  Length: %u  On: 0x%02X  Off: 0x%02X", this->datapoint_.address(),
                 this->datapoint_.length(), this->on_value_, this->off_value_);
+  if (this->extract_byte_ >= 0) {
+    ESP_LOGCONFIG(TAG, "    Extract: %u byte(s) at offset %d of a %u-byte block read", this->extract_len_,
+                  this->extract_byte_, this->datapoint_.length());
+  }
 }
 
 void VitoSwitch::write_state(bool state) {
@@ -36,13 +40,26 @@ void VitoSwitch::write_state(bool state) {
 }
 
 void VitoSwitch::handle_response(const ResponseView& response) {
-  const uint8_t len = this->datapoint_.length();
-  if (response.data_length < len) {
+  // With extraction the response is the whole block read at the state
+  // address; the field is extract_len_ bytes at extract_byte_ (see
+  // VitoSelect::handle_response for the identical pattern).
+  const uint8_t* p = response.data;
+  uint8_t len = this->datapoint_.length();
+  if (this->extract_byte_ >= 0) {
+    const uint16_t off = static_cast<uint16_t>(this->extract_byte_);
+    if (off + this->extract_len_ > response.data_length) {
+      ESP_LOGW(TAG, "%s: response too short (have %u bytes, need %u)", this->datapoint_.name(), response.data_length,
+               static_cast<unsigned>(off + this->extract_len_));
+      return;
+    }
+    p += off;
+    len = this->extract_len_;
+  } else if (response.data_length < len) {
     ESP_LOGW(TAG, "%s: response too short (have %u bytes, need %u)", this->datapoint_.name(), response.data_length,
              len);
     return;
   }
-  const uint32_t raw = static_cast<uint32_t>(read_le(response.data, len > 4 ? 4 : len));
+  const uint32_t raw = static_cast<uint32_t>(read_le(p, len > 4 ? 4 : len));
   for (uint32_t on : this->on_state_values_) {
     if (raw == on) {
       ESP_LOGD(TAG, "%s = ON (raw 0x%02X)", this->datapoint_.name(), raw);

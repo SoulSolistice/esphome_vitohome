@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
-# Host build + run of the protocol-adapter proofs against all three vendored
-# engines (P300 / KW / GWG). Proves ProtocolAdapter + ResponseView compile and
-# link for every build-time-selected protocol, and asserts the GWG sync-poke
-# switch (GWGEngine::SEND_ENQ_POKE) is OFF by default (no EOT emitted). Does not
+# Host build + run of the per-protocol engine proofs against all three vendored
+# engines (P300 / KW / GWG). Proves OptolinkEngine<SelectedProtocol> compiles
+# and links for every build-time-selected protocol flag with the uniform
+# byte-mover callback shape (the hub drives the engine directly; there is no
+# adapter layer), and asserts the GWG sync-poke switch
+# (GWGEngine::SEND_ENQ_POKE) is OFF by default (no EOT emitted). Does not
 # exercise real wire behaviour.
+#
+# Deliberately compiled WITHOUT the datapoint/converter translation units:
+# the engine layer has no Datapoint/Converter dependency, and this script is
+# the proof.
 #
 # The poke-ON path (EOT 0x04 emitted) is verified separately by flipping the
 # switch; this script guards the default-off invariant so it can't regress.
@@ -12,9 +18,6 @@ ROOT="${1:-../../components/vitohome}"
 OPTO="$ROOT/optolink"
 SRCS=(
   "$OPTO/constants.cpp"
-  "$OPTO/datapoint/datapoint.cpp"
-  "$OPTO/datapoint/converter.cpp"
-  "$OPTO/datapoint/conversion_helpers.cpp"
   "$OPTO/protocol/vs2/vs2.cpp"
   "$OPTO/protocol/vs2/parser_vs2.cpp"
   "$OPTO/protocol/vs2/packet_vs2.cpp"
@@ -24,14 +27,14 @@ SRCS=(
   "$OPTO/protocol/gwg/packet_gwg.cpp"
 )
 
-echo "== protocol adapter: compile + link for each protocol =="
+echo "== protocol engine: compile + link for each protocol =="
 for sel in "P300:" "KW:-DVITOHOME_PROTOCOL_KW" "GWG:-DVITOHOME_PROTOCOL_GWG"; do
   name="${sel%%:*}"
   flag="${sel#*:}"
   g++ -std=c++17 -Wall -Wextra -pthread $flag -I"$ROOT" -I"$OPTO" \
-    adapter_compile_proof.cpp "${SRCS[@]}" -o adapter_proof
+    engine_compile_proof.cpp "${SRCS[@]}" -o engine_proof
   printf '  %-5s ' "$name"
-  ./adapter_proof
+  ./engine_proof
 done
 
 echo "== GWG read/write completion (THIRD_PARTY.md #8 fix) =="

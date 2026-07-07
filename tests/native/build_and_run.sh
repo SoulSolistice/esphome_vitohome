@@ -17,9 +17,6 @@ g++ -std=c++17 -Wall -Wextra \
   -I"$ROOT" -I"$OPTO" \
   test_vs2_transaction.cpp \
   "$OPTO/constants.cpp" \
-  "$OPTO/datapoint/datapoint.cpp" \
-  "$OPTO/datapoint/converter.cpp" \
-  "$OPTO/datapoint/conversion_helpers.cpp" \
   "$OPTO/protocol/vs2/vs2.cpp" \
   "$OPTO/protocol/vs2/parser_vs2.cpp" \
   "$OPTO/protocol/vs2/packet_vs2.cpp" \

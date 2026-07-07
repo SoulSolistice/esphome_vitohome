@@ -37,22 +37,26 @@ void VitoHomeComponent::setup() {
   this->validate_uart_();
   if (this->is_failed()) return;
 
-  // The adapter wraps the build-time-selected engine and deduces the interface
-  // type, wrapping &iface_ in a GenericInterface internally.
-  this->vito_ = std::make_unique<ProtocolAdapter>(&this->iface_);
+  // The engine is build-time-selected (protocol_select.h) and deduces the
+  // interface type, wrapping &iface_ in a GenericInterface internally.
+  this->vito_ = std::make_unique<optolink::OptolinkEngine<SelectedProtocol>>(&this->iface_);
 
-  // The adapter normalises each protocol's callback shape to a ResponseView, so
-  // the hub registers one uniform handler regardless of P300/KW/GWG. The engine
-  // is strictly single-in-flight and the hub tracks its own in-flight context
-  // (in_flight_ / ident_in_flight_ / raw_in_flight_), so the callback carries
-  // only the echoed request address as a wire-level cross-check -- no datapoint.
-  this->vito_->on_response([this](const ResponseView& response, uint16_t request_address) {
-    // Any successful response is proof of link liveness.
+  // All three engines share one byte-mover callback shape, so the hub registers
+  // directly with the engine and wraps the raw payload in a ResponseView here.
+  // On P300 `address` is the one echoed in the device's own response frame (a
+  // real wire-level datum); on KW/GWG the engine echoes the retained request
+  // address. The engine is strictly single-in-flight and the hub tracks its own
+  // in-flight context (in_flight_ / ident_in_flight_ / raw_in_flight_), so the
+  // callback carries only that address as a wire-level cross-check.
+  this->vito_->onResponse([this](const uint8_t* data, uint8_t length, uint16_t address) {
+    // Any successful response is proof of link liveness -- and of the
+    // configured protocol (start-up verification below).
+    this->link_established_ = true;
     this->link_error_streak_ = 0;
     this->publish_link_(true);
-    this->on_response_(response, request_address);
+    this->on_response_(ResponseView{data, length, address}, address);
   });
-  this->vito_->on_error([this](optolink::OptolinkResult error, uint16_t request_address) {
+  this->vito_->onError([this](optolink::OptolinkResult error, uint16_t request_address) {
     // Link health tracks a real, persistent link-down -- not every protocol
     // hiccup. A NACK (the device actively transmitted a negative ack) and a
     // device ERROR frame (a complete, link-layer-acked reply) both PROVE the
@@ -138,13 +142,12 @@ void VitoHomeComponent::loop() {
   // Start-up protocol verification: confirm the configured protocol actually
   // established a link, or fail the component with a clear message.
   if (this->protocol_verify_pending_) {
-    if (this->vito_->established()) {
+    if (this->link_established_) {
       this->protocol_verify_pending_ = false;
-      ESP_LOGI(TAG, "%s link established", ProtocolAdapter::protocol_name());
+      ESP_LOGI(TAG, "%s link established", PROTOCOL_NAME);
     } else if (millis() >= this->protocol_verify_deadline_ms_) {
       this->protocol_verify_pending_ = false;
-      ESP_LOGE(TAG, "%s link not established; check wiring and that the device speaks this protocol",
-               ProtocolAdapter::protocol_name());
+      ESP_LOGE(TAG, "%s link not established; check wiring and that the device speaks this protocol", PROTOCOL_NAME);
       this->publish_link_(false);
       this->mark_failed();
     }
@@ -196,11 +199,11 @@ void VitoHomeComponent::dispatch_raw_front_() {
   bool dispatched;
   if (op.is_write) {
     this->raw_write_buf_ = op.bytes;
-    dispatched = this->vito_->write(this->raw_dp_, this->raw_write_buf_.data(),
+    dispatched = this->vito_->write(this->raw_dp_.address(), this->raw_write_buf_.data(),
                                     static_cast<uint8_t>(this->raw_write_buf_.size()));
   } else {
     this->raw_write_buf_.clear();
-    dispatched = this->vito_->read(this->raw_dp_);
+    dispatched = this->vito_->read(this->raw_dp_.address(), this->raw_dp_.length());
   }
   if (dispatched) {
     this->raw_in_flight_ = true;
@@ -216,7 +219,7 @@ void VitoHomeComponent::dispatch_next_() {
   // Identification runs before regular traffic so the user sees the device
   // tuple in the first seconds of the log.
   if (this->ident_state_ != IdentState::IDLE && this->ident_state_ != IdentState::DONE) {
-    if (this->vito_->read(this->ident_dp_)) {
+    if (this->vito_->read(this->ident_dp_.address(), this->ident_dp_.length())) {
       this->ident_in_flight_ = true;
       this->in_flight_started_ms_ = millis();
       ESP_LOGV(TAG, "Dispatched identification read 0x%04X len %u", this->ident_dp_.address(),
@@ -245,7 +248,7 @@ void VitoHomeComponent::dispatch_next_() {
   // a multi-second delay to a write is not.
   if (!this->write_queue_.empty()) {
     VitoEntityBase* entity = this->write_queue_.front();
-    if (this->vito_->write(entity->get_write_datapoint(), entity->write_data(), entity->write_length())) {
+    if (this->vito_->write(entity->get_write_datapoint().address(), entity->write_data(), entity->write_length())) {
       this->in_flight_ = entity;
       this->in_flight_op_ = OpType::WRITE;
       this->in_flight_started_ms_ = millis();
@@ -270,7 +273,8 @@ void VitoHomeComponent::dispatch_next_() {
 
   if (this->read_queue_.empty()) return;
   VitoEntityBase* entity = this->read_queue_.front();
-  if (this->vito_->read(entity->get_datapoint())) {
+  const optolink::Datapoint& dp = entity->get_datapoint();
+  if (this->vito_->read(dp.address(), dp.length())) {
     this->in_flight_ = entity;
     this->in_flight_op_ = OpType::READ;
     this->in_flight_started_ms_ = millis();
@@ -312,7 +316,7 @@ void VitoHomeComponent::update() {
 
 void VitoHomeComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "VitoHome:");
-  ESP_LOGCONFIG(TAG, "  Protocol: %s", ProtocolAdapter::protocol_name());
+  ESP_LOGCONFIG(TAG, "  Protocol: %s", PROTOCOL_NAME);
   ESP_LOGCONFIG(TAG, "  Entities: %zu", this->entities_.size());
   if (this->ident_state_ == IdentState::DONE) {
     ESP_LOGCONFIG(TAG, "  Device: %s", this->ident_string_().c_str());
@@ -546,8 +550,9 @@ void VitoHomeComponent::on_response_(const ResponseView& response, uint16_t requ
   // address. Match the response against whichever this op used (they differ
   // only for two-address controls; otherwise both are datapoint_). The
   // response.address is the address echoed in the device's own frame on P300
-  // (see ProtocolAdapter), so this is a live wire-level check there; on
-  // KW/GWG the adapter fills it from the request and the check is a no-op.
+  // (see the onResponse registration in setup()), so this is a live wire-level
+  // check there; on KW/GWG the engine echoes the request address and the check
+  // is a no-op.
   // (It previously compared request.address() against the entity's own
   // datapoint -- the same value by construction -- and could never fire.)
   const uint16_t expected_addr =

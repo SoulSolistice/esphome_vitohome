@@ -57,7 +57,7 @@ needs per entity — a `Datapoint(noconv)`, a decode scale, and a signedness fla
 YAML ──Python codegen──▶ Datapoint(noconv) + scale + signed
                               │
    bus bytes ◀── optolink engine (frame/CRC/seq) ──▶ raw payload
-                              │  (ProtocolAdapter → ResponseView)
+                              │  (byte-mover callback → ResponseView)
                        decode.h (double) ──▶ float32 state
 ```
 
@@ -109,22 +109,24 @@ signedness rules.
   baud/data-bit/stop-bit/parity mismatch rather than emitting silent bus errors.
 - **Protocol is selected at compile time.** Codegen emits exactly one
   `VITOHOME_PROTOCOL_*` flag from the `protocol:` option (no flag → P300, the
-  default and only hardware-exercised path). `protocol_adapter.h` resolves this
+  default and only hardware-exercised path). `protocol_select.h` resolves this
   to `SelectedProtocol = optolink::P300 | KW | GWG`.
-- **The hub is protocol-agnostic by construction.** `ProtocolAdapter` wraps the
-  selected engine and normalises each protocol's differing callback/packet shape
-  into a single `ResponseView { data, data_length, address }` (`response_view.h`),
-  so the hub registers **one** uniform response handler regardless of which engine
-  is built. KW/GWG deliver raw bytes and the request datapoint carries the
-  address; P300 surfaces the address in its packet — both collapse to the same
-  `ResponseView`. On P300 the `address` field is the one **echoed in the
-  response frame itself** (the device echoes it on read responses and write
-  acks alike — hardware-confirmed by the transaction-harness fixtures), so the
-  hub's response-address match is a live wire-level check there; on KW/GWG no
-  address travels in the response, the adapter fills in the request's, and the
-  check degenerates to a tautology. This indirection is what makes adding/maintaining a second
-  protocol cheap, and it is exercised host-side without hardware by
-  `tests/native/adapter_compile_proof.cpp`.
+- **The hub is protocol-agnostic by construction.** All three engines speak
+  one byte-mover API — `read(address, length)` / `write(address, data, length)`
+  and callbacks delivering `(data, length, address)` — so the hub drives
+  `OptolinkEngine<SelectedProtocol>` directly and wraps each response in a
+  single `ResponseView { data, data_length, address }` (`response_view.h`);
+  the entities never see the engine callback shape. On P300 the `address`
+  field is the one **echoed in the response frame itself** (the device echoes
+  it on read responses and write acks alike — hardware-confirmed by the
+  transaction-harness fixtures), so the hub's response-address match is a live
+  wire-level check there; on KW/GWG no address travels in the response, the
+  engine echoes the request's, and the check degenerates to a tautology. The
+  uniform engine API is what makes adding/maintaining a second protocol cheap,
+  and it is exercised host-side without hardware by
+  `tests/native/engine_compile_proof.cpp` (deliberately compiled without the
+  datapoint/converter translation units — the engine layer has no Datapoint
+  dependency).
 - **Link is verified at runtime.** After `begin()`, the hub watches for the first
   successful exchange within a window; it logs the established link, or fails
   fast if the configured protocol never establishes one — so a wrong `protocol:`
@@ -429,7 +431,7 @@ not vouch for a later one:
 ```
 host C++ : decode/encode tests           tests/native/test_decode.cpp   (380 checks)
 host C++ : VS2 transaction harness        tests/native/test_vs2_transaction.cpp (8/8)
-host C++ : adapter / GWG compile-proofs   adapter_compile_proof.cpp, proof_gwg_poke.cpp
+host C++ : engine / GWG compile-proofs    engine_compile_proof.cpp, proof_gwg_poke.cpp
 host C++ : VS2 parser zero-payload (OOB)  tests/native/proof_vs2_zero_payload.cpp  (ASan/UBSan)
 python   : validators + catalog generator tests/unit/  (pytest)
 lint     : ruff check / ruff format

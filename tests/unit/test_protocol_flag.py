@@ -3,13 +3,13 @@
 ``cv.enum`` returns the *key* the user typed (an ``EnumValue`` str subclass),
 with the mapped value only in ``.enum_value``. ``to_code`` used to interpolate
 that key directly into the build flag, so ``protocol: VS1`` emitted
-``-DVITOHOME_PROTOCOL_VS1`` -- a flag ``protocol_adapter.h`` does not know --
+``-DVITOHOME_PROTOCOL_VS1`` -- a flag ``protocol_select.h`` does not know --
 and silently built the default P300 engine instead of KW.
 
 These tests lock the invariant that every accepted ``protocol:`` spelling
-normalizes to one of the three tokens the adapter's ``#if`` chain actually
-checks (P300 / KW / GWG), using the real ESPHome ``cv.enum`` (not a stub), so a
-future cv.enum behaviour change would surface here too.
+normalizes to one of the three tokens protocol_select.h's ``#if`` chain
+actually checks (P300 / KW / GWG), using the real ESPHome ``cv.enum`` (not a
+stub), so a future cv.enum behaviour change would surface here too.
 """
 
 import os
@@ -23,26 +23,26 @@ import esphome.config_validation as cv  # noqa: E402
 
 from components.vitohome import PROTOCOLS  # noqa: E402
 
-# The only tokens protocol_adapter.h's #if chain recognises. Keep in sync with
-# components/vitohome/protocol_adapter.h (VITOHOME_PROTOCOL_KW / _GWG; anything
+# The only tokens protocol_select.h's #if chain recognises. Keep in sync with
+# components/vitohome/protocol_select.h (VITOHOME_PROTOCOL_KW / _GWG; anything
 # else falls through to P300).
-_ADAPTER_TOKENS = {"P300", "KW", "GWG"}
+_SELECT_TOKENS = {"P300", "KW", "GWG"}
 
 
 def _normalize(user_value: str) -> str:
     """What to_code does: validate through the real cv.enum, then map the
-    returned key through PROTOCOLS to the adapter token."""
+    returned key through PROTOCOLS to the protocol_select.h token."""
     validated = cv.enum(PROTOCOLS, upper=True)(user_value)
     return PROTOCOLS[str(validated)]
 
 
-def test_every_protocols_value_is_an_adapter_token():
-    # The mapping's *values* must all be flags the adapter recognises; a typo'd
+def test_every_protocols_value_is_a_protocol_select_token():
+    # The mapping's *values* must all be flags protocol_select.h recognises; a typo'd
     # or new-but-unwired value would silently select P300.
-    assert set(PROTOCOLS.values()) <= _ADAPTER_TOKENS
+    assert set(PROTOCOLS.values()) <= _SELECT_TOKENS
 
 
-def test_aliases_normalize_to_adapter_tokens():
+def test_aliases_normalize_to_protocol_select_tokens():
     assert _normalize("P300") == "P300"
     assert _normalize("VS2") == "P300"
     assert _normalize("KW") == "KW"

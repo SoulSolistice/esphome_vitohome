@@ -7,19 +7,19 @@
 #include <thread>
 
 #include "fake_optolink.h"
-#include "protocol_adapter.h"
+#include "protocol_select.h"
 
 using namespace esphome::vitohome;
 
 int main() {
   FakeOptolink uart;
-  ProtocolAdapter adapter(&uart);  // GWGEngine under -DVITOHOME_PROTOCOL_GWG
-  adapter.on_response([](const ResponseView&, uint16_t) {});
-  adapter.on_error([](optolink::OptolinkResult, uint16_t) {});
+  esphome::vitohome::optolink::OptolinkEngine<esphome::vitohome::SelectedProtocol> adapter(
+      &uart);  // GWGEngine under -DVITOHOME_PROTOCOL_GWG
+  adapter.onResponse([](const uint8_t*, uint8_t, uint16_t) {});
+  adapter.onError([](optolink::OptolinkResult, uint16_t) {});
   adapter.begin();
 
-  optolink::Datapoint dp("probe", 0x0000, 2, optolink::noconv);
-  adapter.read(dp);
+  adapter.read(0x0000, 2);
 
   // Pump the loop across a >2ms window with no ENQ ever fed by the fake device.
   for (int i = 0; i < 50; ++i) {
@@ -31,7 +31,7 @@ int main() {
   for (uint8_t b : uart.written()) {
     if (b == 0x04) eot = true;
   }
-  std::printf("protocol=%s eot_poke_emitted=%d bytes_written=%zu\n", ProtocolAdapter::protocol_name(), eot ? 1 : 0,
+  std::printf("protocol=%s eot_poke_emitted=%d bytes_written=%zu\n", esphome::vitohome::PROTOCOL_NAME, eot ? 1 : 0,
               uart.written().size());
   return 0;
 }

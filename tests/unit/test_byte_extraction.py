@@ -17,7 +17,9 @@ import gen_catalog as gc  # noqa: E402
 from esphome.core import CORE  # noqa: E402
 
 from components.vitohome import MAX_P300_READ_LENGTH  # noqa: E402
+from components.vitohome.select import CONFIG_SCHEMA as SELECT_SCHEMA  # noqa: E402
 from components.vitohome.sensor import CONFIG_SCHEMA as SENSOR_SCHEMA  # noqa: E402
+from components.vitohome.switch import CONFIG_SCHEMA as SWITCH_SCHEMA  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -166,3 +168,100 @@ def test_dedup_preserves_values_and_order():
     opts = [(3, "X"), (1, "X"), (2, "Y")]
     out = gc._dedup_option_labels(opts)
     assert [v for v, _ in out] == [3, 1, 2]  # order/values intact
+
+
+# --- schema: select/switch state-read extraction ------------------------------
+# byte_offset/byte_length on the writable platforms mirror the sensor: with
+# byte_offset, `length` is the block read at state_address and the enum /
+# boolean field is byte_length (default 1) bytes at byte_offset. state_address
+# is REQUIRED with byte_offset -- the write stays at `address`, the field's
+# own register; writing field-width bytes at the block base would hit the
+# wrong register.
+
+
+def _select(**extra):
+    cfg = {
+        "name": _name(),
+        "address": 0x7661,
+        "options": {0x00: "Aus", 0x02: "Heizen"},
+    }
+    cfg.update(extra)
+    return cfg
+
+
+def _switch(**extra):
+    cfg = {"name": _name(), "address": 0x7662}
+    cfg.update(extra)
+    return cfg
+
+
+def test_select_accepts_block_extraction_with_state_address():
+    cfg = SELECT_SCHEMA(_select(state_address=0x7660, length=2, byte_offset=1))
+    assert cfg["length"] == 2
+    assert cfg["byte_offset"] == 1
+
+
+def test_select_byte_offset_requires_state_address():
+    with pytest.raises(cv.Invalid, match="requires state_address"):
+        SELECT_SCHEMA(_select(length=2, byte_offset=1))
+
+
+def test_select_byte_length_requires_byte_offset():
+    with pytest.raises(cv.Invalid, match="byte_length requires byte_offset"):
+        SELECT_SCHEMA(_select(length=2, byte_length=2))
+
+
+def test_select_options_checked_against_field_width_not_block():
+    # A 2-byte option value in a 1-byte extracted field must be rejected even
+    # though the block read is 6 bytes wide.
+    with pytest.raises(cv.Invalid, match="does not fit 1 unsigned byte"):
+        SELECT_SCHEMA(
+            _select(
+                state_address=0x7660,
+                length=6,
+                byte_offset=1,
+                options={0x0100: "Zwei Byte"},
+            )
+        )
+    # ...and a 2-byte field accepts it.
+    SELECT_SCHEMA(
+        _select(
+            state_address=0x7660,
+            length=6,
+            byte_offset=4,
+            byte_length=2,
+            options={0x0100: "Zwei Byte"},
+        )
+    )
+
+
+def test_select_field_must_fit_the_block():
+    with pytest.raises(cv.Invalid, match="must be <= length"):
+        SELECT_SCHEMA(_select(state_address=0x7660, length=2, byte_offset=1, byte_length=2))
+
+
+def test_select_block_read_capped_at_p300_telegram():
+    with pytest.raises(cv.Invalid, match="block read"):
+        SELECT_SCHEMA(_select(state_address=0x7660, length=MAX_P300_READ_LENGTH + 1, byte_offset=0))
+
+
+def test_select_plain_length_still_capped_at_two():
+    with pytest.raises(cv.Invalid, match="length must be 1 or 2"):
+        SELECT_SCHEMA(_select(length=3))
+
+
+def test_switch_accepts_block_extraction_with_state_address():
+    cfg = SWITCH_SCHEMA(_switch(state_address=0x7660, length=4, byte_offset=2))
+    assert cfg["length"] == 4
+    assert cfg["byte_offset"] == 2
+
+
+def test_switch_byte_offset_requires_state_address():
+    with pytest.raises(cv.Invalid, match="requires state_address"):
+        SWITCH_SCHEMA(_switch(length=4, byte_offset=2))
+
+
+def test_switch_values_checked_against_field_width_not_block():
+    with pytest.raises(cv.Invalid, match="does not fit 1 unsigned byte"):
+        SWITCH_SCHEMA(_switch(state_address=0x7660, length=4, byte_offset=2, on_value=0x0100))
+    SWITCH_SCHEMA(_switch(state_address=0x7660, length=6, byte_offset=2, byte_length=2, on_value=0x0100))

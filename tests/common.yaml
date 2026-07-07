@@ -150,6 +150,17 @@ select:
       0x01: "Reduced"
       0x02: "Normal"
       0x03: "Heating + DHW"
+  # interior enum field: aligned block read at the base (state_address +
+  # byte_offset), write to the field's own register
+  - platform: vitohome
+    name: "Test Interior Select"
+    address: 0x7661
+    state_address: 0x7660
+    length: 2
+    byte_offset: 1
+    options:
+      0x00: "Aus"
+      0x02: "Heizen"
 
 switch:
   # write/state address split (command 0x2330, live state 0x2303) with the
@@ -166,6 +177,13 @@ switch:
     on_value: 0xAF
     off_value: 0xB0
     entity_category: config
+  # interior boolean field: same block-extract form as the select above
+  - platform: vitohome
+    name: "Test Interior Switch"
+    address: 0x7662
+    state_address: 0x7660
+    length: 4
+    byte_offset: 2
 
 event:
   # fault-code slot FA01: fires on code change (hex type / cleared / unknown)

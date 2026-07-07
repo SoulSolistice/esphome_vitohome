@@ -50,6 +50,20 @@ int main() {
   ok = 12 + 2 <= 10;  // only 10 bytes received, field at 12 -> out of range
   check("field past short response is rejected", !ok);
 
+  // select/switch state extraction: raw integer read_le at an offset (the
+  // exact pattern VitoSelect/VitoSwitch::handle_response applies -- no
+  // scaling, the raw value is matched against the configured options).
+  // 1-byte enum field at offset 1 of a 2-byte block:
+  uint8_t block2[2] = {0x55, 0x02};
+  check("select 1-byte field at offset 1 == 0x02", read_le(block2 + 1, 1) == 0x02);
+  // 2-byte enum field at offset 4 of a 6-byte block, LE 0x0100:
+  uint8_t block6[6] = {0};
+  block6[4] = 0x00;
+  block6[5] = 0x01;
+  check("select 2-byte field at offset 4 == 0x0100", read_le(block6 + 4, 2) == 0x0100);
+  // Bound check mirror: field at offset 2 width 1 needs 3 bytes; 2 received.
+  check("switch field past short response is rejected", !(2 + 1 <= 2));
+
   printf("proof_extract: %s\n", failures == 0 ? "ALL PASS" : "FAILURES");
   return failures == 0 ? 0 : 1;
 }

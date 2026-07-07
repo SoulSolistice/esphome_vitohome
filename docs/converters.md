@@ -99,8 +99,21 @@ So a 2-byte `div10` room-setpoint at offset 12 of a 22-byte block is:
 The block read must stay within the P300 single-telegram cap (37 bytes); a
 field in a larger block, or wider than 4 bytes, can't be a scalar extract.
 `scripts/gen_catalog.py` emits this form automatically for interior fields.
-| `select` | raw value mapped to a label, writable | `options`, `address`, `state_address` |
-| `switch` | boolean register, writable | `on_value` / `off_value`, `on_values`, `address`, `state_address` |
+
+A writable `select` or `switch` supports the same extraction on its **state
+read**: with `byte_offset`, `length` is the block read at `state_address` and
+the enum/boolean field is the `byte_length` (default 1, max 2) bytes at
+`byte_offset`; option / on-off values are checked against `byte_length`.
+`state_address` is **required** with `byte_offset` — the aligned block is read
+there, while `address` stays the field's own write register (writing
+field-width bytes at the block base would hit the wrong register). The write
+therefore targets an interior address; P300's rejection of unaligned access is
+hardware-confirmed for reads only, so verify interior **writes** on hardware.
+A writable `number` has no extraction (and no `state_address`); the generator
+emits interior-field numbers at the field's own address with a P300-may-NAK
+caveat instead.
+| `select` | raw value mapped to a label, writable | `options`, `address`, `state_address`, `byte_offset`, `byte_length` |
+| `switch` | boolean register, writable | `on_value` / `off_value`, `on_values`, `address`, `state_address`, `byte_offset`, `byte_length` |
 | `binary_sensor` `type: connectivity` | hub-fed Optolink link state, no address | (none) |
 | `event` | fault-code slot; fires an HA event on code change | `address`, `length`, `codes` |
 | `button` | force-refresh: marks all datapoints due | (none) |

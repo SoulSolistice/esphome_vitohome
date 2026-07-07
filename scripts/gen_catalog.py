@@ -1009,6 +1009,19 @@ def emit_entity(ev: Event, profile: str):
         addr_line = f"  address: 0x{field_addr:04X}"
         if field_off:
             addr_line += f"  # byte {field_off} of the {block_len}-byte block @ 0x{addr:04X} (interior read; P300 may NAK)"
+    # Interior form for the branches WITHOUT block-extraction support (number,
+    # read-only enum text_sensor): always the field's own address, with the
+    # P300 caveat. addr_line above is the block BASE when use_block_extract is
+    # set and is only correct for platforms that also emit byte_offset (sensor;
+    # select/switch use their own two-address block form below) -- using it
+    # without byte_offset reads the wrong bytes.
+    if field_off:
+        interior_addr_line = (
+            f"  address: 0x{addr + field_off:04X}"
+            f"  # byte {field_off} of the {block_len}-byte block @ 0x{addr:04X} (interior read; P300 may NAK)"
+        )
+    else:
+        interior_addr_line = f"  address: 0x{addr:04X}"
     enum_opts = _dedup_option_labels(_enum_options(ev))
     is_bit = (ev.bit_length or 0) > 0
     writable = _is_writable(ev)
@@ -1105,17 +1118,34 @@ def emit_entity(ev: Event, profile: str):
     bool_pair = _boolean_pair(enum_opts) if enum_opts else None
     if writable and bool_pair and length in (1, 2) and all(0 <= v < (1 << (8 * length)) for v, _ in enum_opts):
         on_v, off_v, on_l, off_l = bool_pair
+        state_addr = COMMAND_STATE_ADDR.get(ev.address)
         lines += [
             "- platform: vitohome",
             f"  name: {_yaml_str(name)}",
-            addr_line,
-            f"  length: {length}",
         ]
-        state_addr = COMMAND_STATE_ADDR.get(ev.address)
-        if state_addr is not None:
-            lines.append(
-                f"  state_address: 0x{state_addr:04X}  # live state read here; address above is the write/command target"
-            )
+        if use_block_extract and state_addr is None:
+            # Interior field: aligned block read (P300-safe) at the base via
+            # state_address + byte_offset; the write/command goes to the
+            # field's own register. P300 interior WRITE behaviour is
+            # unverified (the hardware-confirmed NAK evidence covers reads).
+            lines += [
+                f"  address: 0x{addr + field_off:04X}"
+                "  # write target: the field's own register (interior write; verify on hardware)",
+                f"  state_address: 0x{addr:04X}  # aligned block read at the base (P300-safe)",
+                f"  length: {block_len}",
+                f"  byte_offset: {field_off}",
+            ]
+            if length != 1:
+                lines.append(f"  byte_length: {length}")
+        else:
+            lines += [
+                interior_addr_line,
+                f"  length: {length}",
+            ]
+            if state_addr is not None:
+                lines.append(
+                    f"  state_address: 0x{state_addr:04X}  # live state read here; address above is the write/command target"
+                )
         if (on_v, off_v) != (1, 0):
             lines.append(f"  on_value: 0x{on_v:0{2 * length}X}  # {on_l}")
             lines.append(f"  off_value: 0x{off_v:0{2 * length}X}  # {off_l}")
@@ -1128,17 +1158,32 @@ def emit_entity(ev: Event, profile: str):
         return ("switch", lines)
 
     if writable and enum_opts and length in (1, 2) and all(0 <= v < (1 << (8 * length)) for v, _ in enum_opts):
+        state_addr = COMMAND_STATE_ADDR.get(ev.address)
         lines += [
             "- platform: vitohome",
             f"  name: {_yaml_str(name)}",
-            addr_line,
-            f"  length: {length}",
         ]
-        state_addr = COMMAND_STATE_ADDR.get(ev.address)
-        if state_addr is not None:
-            lines.append(
-                f"  state_address: 0x{state_addr:04X}  # live state read here; address above is the write/command target"
-            )
+        if use_block_extract and state_addr is None:
+            # Interior field: see the switch branch above -- aligned block
+            # read at the base, write to the field's own register.
+            lines += [
+                f"  address: 0x{addr + field_off:04X}"
+                "  # write target: the field's own register (interior write; verify on hardware)",
+                f"  state_address: 0x{addr:04X}  # aligned block read at the base (P300-safe)",
+                f"  length: {block_len}",
+                f"  byte_offset: {field_off}",
+            ]
+            if length != 1:
+                lines.append(f"  byte_length: {length}")
+        else:
+            lines += [
+                interior_addr_line,
+                f"  length: {length}",
+            ]
+            if state_addr is not None:
+                lines.append(
+                    f"  state_address: 0x{state_addr:04X}  # live state read here; address above is the write/command target"
+                )
         lines += [
             "  disabled_by_default: true",
             f"  update_interval: {poll}s",
@@ -1155,7 +1200,7 @@ def emit_entity(ev: Event, profile: str):
         lines += [
             "- platform: vitohome",
             f"  name: {_yaml_str(name)}",
-            addr_line,
+            interior_addr_line,
             f"  length: {length}",
             f"  converter: {conv}",
         ]
@@ -1236,7 +1281,7 @@ def emit_entity(ev: Event, profile: str):
             "- platform: vitohome",
             "  type: enum",
             f"  name: {_yaml_str(name)}",
-            addr_line,
+            interior_addr_line,
             f"  length: {enum_len}",
             "  disabled_by_default: true",
             f"  update_interval: {poll}s",

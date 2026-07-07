@@ -187,8 +187,10 @@ These are intentional divergences from upstream `edc059a7`:
     `_currentAddress`; correlation of a response to its request stays the
     caller's job (the hub already tracks its own in-flight context). P300 still
     surfaces the address echoed in the response frame; KW/GWG echo the retained
-    request address. The `ProtocolAdapter` collapses its former per-protocol
-    `#if` response branch into one uniform path. Behavior on the wire is
+    request address. The component-level `ProtocolAdapter` first collapsed its
+    former per-protocol `#if` response branch into one uniform path, and was
+    then removed entirely: the hub drives `OptolinkEngine<SelectedProtocol>`
+    directly (`protocol_select.h` holds the compile-time selection). Behavior on the wire is
     unchanged -- proven by the existing transaction/guard/completion harnesses,
     which pass against the reshaped engines.
 

@@ -29,6 +29,11 @@ class VitoSwitch : public switch_::Switch, public Component, public VitoEntityBa
   void set_off_value(uint32_t v) { this->off_value_ = v; }
   void add_on_state_value(uint32_t v) { this->on_state_values_.push_back(v); }
   void set_read_back(bool v) { this->read_back_ = v; }
+  // Aligned block extraction on the state read -- identical semantics to
+  // VitoSelect: the field is extract_len_ bytes (default 1) at extract_byte_
+  // inside the block read; the write datapoint carries the field width.
+  void set_extract_byte(int16_t byte) { this->extract_byte_ = byte; }
+  void set_extract_len(uint8_t len) { this->extract_len_ = len; }
 
   void dump_config() override;
   void handle_response(const ResponseView& response) override;
@@ -43,6 +48,8 @@ class VitoSwitch : public switch_::Switch, public Component, public VitoEntityBa
   uint32_t off_value_{0};
   std::vector<uint32_t> on_state_values_;
   bool pending_state_{false};
+  int16_t extract_byte_{-1};
+  uint8_t extract_len_{1};  // field width to slice at extract_byte_ (1..2)
 };
 
 }  // namespace esphome::vitohome
