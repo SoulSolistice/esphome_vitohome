@@ -89,7 +89,25 @@ OPERATING_MODE_SCHEMA = cv.Schema(
     }
 )
 
-CONFIG_SCHEMA = (
+
+def _validate_setpoint_range(config):
+    """The setpoint is encoded as a single unsigned degC byte
+    (vito_climate.cpp: static_cast<uint8_t>(lroundf(t))), so a negative clamp
+    bound would wrap to a large positive value on write. Viessmann room
+    setpoints are always >= 0, so reject a negative visual min_temperature at
+    config time rather than letting it wrap silently on the wire."""
+    visual = config.get(CONF_VISUAL, {})
+    if CONF_MIN_TEMPERATURE in visual and float(visual[CONF_MIN_TEMPERATURE]) < 0:
+        raise cv.Invalid(
+            "visual.min_temperature must be >= 0: the vitohome climate setpoint "
+            "is written as an unsigned degC byte, so a negative bound would wrap "
+            "to a large positive temperature on the wire",
+            [CONF_VISUAL, CONF_MIN_TEMPERATURE],
+        )
+    return config
+
+
+CONFIG_SCHEMA = cv.All(
     climate.climate_schema(VitoClimate)
     .extend(
         {
@@ -99,7 +117,8 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_UPDATE_INTERVAL): cv.update_interval,
         }
     )
-    .extend(cv.COMPONENT_SCHEMA)
+    .extend(cv.COMPONENT_SCHEMA),
+    _validate_setpoint_range,
 )
 
 

@@ -32,6 +32,13 @@ class VitoSensor : public sensor::Sensor, public Component, public VitoEntityBas
   const char* entity_kind() const override { return "sensor"; }
 
  protected:
+  // Advance the consecutive-read-error streak and blank the entity (publish
+  // NAN) once it crosses the threshold. Shared by handle_error (protocol error)
+  // and handle_response (a decode failure -- short or non-finite payload), so a
+  // persistently bad read eventually goes unavailable instead of pinning the
+  // last good value.
+  void note_read_failure_();
+
   // A single transient bus error (CRC glitch, one timeout) used to publish NAN
   // immediately, blanking an hourly-polled entity in Home Assistant until its
   // next poll. Go unavailable only after this many CONSECUTIVE read errors; a

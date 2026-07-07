@@ -16,13 +16,14 @@ VS2Engine::~VS2Engine() { delete _interface; }
 void VS2Engine::onResponse(OnResponseCallback callback) { _onResponseCallback = callback; }
 void VS2Engine::onError(OnErrorCallback callback) { _onErrorCallback = callback; }
 
-bool VS2Engine::read(const Datapoint& datapoint) {
-  if (_currentDatapoint) {
+bool VS2Engine::read(uint16_t address, uint8_t length) {
+  if (_busy) {
     return false;
   }
-  if (_currentPacket.createPacket(PacketType::REQUEST, FunctionCode::READ, 0, datapoint.address(),
-                                  datapoint.length())) {
-    _currentDatapoint = datapoint;
+  if (_currentPacket.createPacket(PacketType::REQUEST, FunctionCode::READ, 0, address, length)) {
+    _currentAddress = address;
+    _currentLength = length;
+    _busy = true;
     _requestTime = _currentMillis;
     optolink_log_i("reading packet OK");
     return true;
@@ -31,29 +32,14 @@ bool VS2Engine::read(const Datapoint& datapoint) {
   return false;
 }
 
-bool VS2Engine::write(const Datapoint& datapoint, const VariantValue& value) {
-  if (_currentDatapoint) {
+bool VS2Engine::write(uint16_t address, const uint8_t* data, uint8_t length) {
+  if (_busy) {
     return false;
   }
-  uint8_t* payload = reinterpret_cast<uint8_t*>(malloc(datapoint.length()));
-  if (!payload) return false;
-  datapoint.encode(payload, datapoint.length(), value);
-  bool result = write(datapoint, payload, datapoint.length());
-  free(payload);
-  return result;
-}
-
-bool VS2Engine::write(const Datapoint& datapoint, const uint8_t* data, uint8_t length) {
-  if (_currentDatapoint) {
-    return false;
-  }
-  if (length != datapoint.length()) {
-    optolink_log_i("writing not possible, length error");
-    return false;
-  }
-  if (_currentPacket.createPacket(PacketType::REQUEST, FunctionCode::WRITE, 0, datapoint.address(), datapoint.length(),
-                                  data)) {
-    _currentDatapoint = datapoint;
+  if (_currentPacket.createPacket(PacketType::REQUEST, FunctionCode::WRITE, 0, address, length, data)) {
+    _currentAddress = address;
+    _currentLength = length;
+    _busy = true;
     _requestTime = _currentMillis;
     optolink_log_i("writing packet OK");
     return true;
@@ -107,7 +93,7 @@ void VS2Engine::loop() {
       // begin() not yet called
       break;
   }
-  if (_currentDatapoint && _currentMillis - _requestTime > REQUEST_TIMEOUT_MS) {
+  if (_busy && _currentMillis - _requestTime > REQUEST_TIMEOUT_MS) {
     _setState(State::RESET);
     _tryOnError(OptolinkResult::TIMEOUT);
   }
@@ -116,17 +102,12 @@ void VS2Engine::loop() {
 void VS2Engine::end() {
   _interface->end();
   _setState(State::UNDEFINED);
-  _currentDatapoint = Datapoint(nullptr, 0, 0, noconv);
+  _busy = false;
 }
 
 int VS2Engine::getState() const { return static_cast<std::underlying_type<State>::type>(_state); }
 
-bool VS2Engine::isBusy() const {
-  if (_currentDatapoint) {
-    return true;
-  }
-  return false;
-}
+bool VS2Engine::isBusy() const { return _busy; }
 
 void VS2Engine::_setState(State state) {
   optolink_log_i("state %i --> %i", static_cast<std::underlying_type<State>::type>(_state),
@@ -187,7 +168,7 @@ void VS2Engine::_initAck() {
 }
 
 void VS2Engine::_idle() {
-  if (_currentDatapoint) {
+  if (_busy) {
     _setState(State::SENDSTART);
   }
   // send INIT every KEEPALIVE_INTERVAL_MS to keep communication alive
@@ -276,16 +257,21 @@ void VS2Engine::_receiveAck() {
 
 void VS2Engine::_tryOnResponse() {
   if (_onResponseCallback) {
-    _onResponseCallback(_parser.packet(), _currentDatapoint);
+    // Surface the payload and the address ECHOED in the response frame (not
+    // the request's) so the caller's response-address match is a real
+    // wire-level check on P300. A write ack has data()==nullptr by design but
+    // a non-zero dataLength(); the caller must guard on data() before reading.
+    const PacketVS2& packet = _parser.packet();
+    _onResponseCallback(packet.data(), packet.dataLength(), packet.address());
   }
-  _currentDatapoint = Datapoint(nullptr, 0, 0, noconv);
+  _busy = false;
 }
 
 void VS2Engine::_tryOnError(OptolinkResult result) {
   if (_onErrorCallback) {
-    _onErrorCallback(result, _currentDatapoint);
+    _onErrorCallback(result, _currentAddress);
   }
-  _currentDatapoint = Datapoint(nullptr, 0, 0, noconv);
+  _busy = false;
 }
 
 }  // namespace esphome::vitohome::optolink

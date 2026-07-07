@@ -34,7 +34,7 @@ static void pump(ProtocolAdapter& a, int n = 6) {
 int main() {
   FakeOptolink uart;
   ProtocolAdapter adapter(&uart);  // GWGEngine under -DVITOHOME_PROTOCOL_GWG
-  adapter.on_response([](const ResponseView& r, const optolink::Datapoint&) {
+  adapter.on_response([](const ResponseView& r, uint16_t) {
     g_responses++;
     g_last_len = r.data_length;
     g_last_addr = r.address;
@@ -42,7 +42,7 @@ int main() {
       std::memcpy(g_last_payload, r.data, r.data_length);
     }
   });
-  adapter.on_error([](optolink::OptolinkResult, const optolink::Datapoint&) { g_errors++; });
+  adapter.on_error([](optolink::OptolinkResult, uint16_t) { g_errors++; });
   adapter.begin();
 
   int failures = 0;

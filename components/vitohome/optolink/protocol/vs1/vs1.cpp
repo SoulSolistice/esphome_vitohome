@@ -16,16 +16,14 @@ VS1Engine::~VS1Engine() { delete _interface; }
 void VS1Engine::onResponse(OnResponseCallback callback) { _onResponseCallback = callback; }
 void VS1Engine::onError(OnErrorCallback callback) { _onErrorCallback = callback; }
 
-bool VS1Engine::read(const Datapoint& datapoint) {
-  if (_currentDatapoint) {
+bool VS1Engine::read(uint16_t address, uint8_t length) {
+  if (_busy) {
     return false;
   }
-  if (datapoint.length() > kResponseBufferSize) {
-    optolink_log_i("reading not possible, datapoint too large");
-    return false;
-  }
-  if (_currentRequest.createPacket(PacketVS1Type.READ, datapoint.address(), datapoint.length())) {
-    _currentDatapoint = datapoint;
+  if (_currentRequest.createPacket(PacketVS1Type.READ, address, length)) {
+    _currentAddress = address;
+    _currentLength = length;
+    _busy = true;
     _requestTime = _currentMillis;
     optolink_log_i("reading packet OK");
     return true;
@@ -34,32 +32,14 @@ bool VS1Engine::read(const Datapoint& datapoint) {
   return false;
 }
 
-bool VS1Engine::write(const Datapoint& datapoint, const VariantValue& value) {
-  if (_currentDatapoint) {
+bool VS1Engine::write(uint16_t address, const uint8_t* data, uint8_t length) {
+  if (_busy) {
     return false;
   }
-  uint8_t* payload = reinterpret_cast<uint8_t*>(malloc(datapoint.length()));
-  if (!payload) return false;
-  datapoint.encode(payload, datapoint.length(), value);
-  bool result = write(datapoint, payload, datapoint.length());
-  free(payload);
-  return result;
-}
-
-bool VS1Engine::write(const Datapoint& datapoint, const uint8_t* data, uint8_t length) {
-  if (_currentDatapoint) {
-    return false;
-  }
-  if (length != datapoint.length()) {
-    optolink_log_i("writing not possible, length mismatch");
-    return false;
-  }
-  if (datapoint.length() > kResponseBufferSize) {
-    optolink_log_i("writing not possible, datapoint too large");
-    return false;
-  }
-  if (_currentRequest.createPacket(PacketVS1Type.WRITE, datapoint.address(), datapoint.length(), data)) {
-    _currentDatapoint = datapoint;
+  if (_currentRequest.createPacket(PacketVS1Type.WRITE, address, length, data)) {
+    _currentAddress = address;
+    _currentLength = length;
+    _busy = true;
     _requestTime = _currentMillis;
     optolink_log_i("writing packet OK");
     return true;
@@ -102,7 +82,7 @@ void VS1Engine::loop() {
       break;
   }
   // double timeout to accomodate for connection initialization
-  if (_currentDatapoint && _currentMillis - _requestTime > REQUEST_TIMEOUT_MS) {
+  if (_busy && _currentMillis - _requestTime > REQUEST_TIMEOUT_MS) {
     _bytesTransferred = 0;
     _setState(State::INIT);
     _tryOnError(OptolinkResult::TIMEOUT);
@@ -112,17 +92,12 @@ void VS1Engine::loop() {
 void VS1Engine::end() {
   _interface->end();
   _setState(State::UNDEFINED);
-  _currentDatapoint = Datapoint(nullptr, 0x0000, 0, noconv);
+  _busy = false;
 }
 
 int VS1Engine::getState() const { return static_cast<std::underlying_type<State>::type>(_state); }
 
-bool VS1Engine::isBusy() const {
-  if (_currentDatapoint) {
-    return true;
-  }
-  return false;
-}
+bool VS1Engine::isBusy() const { return _busy; }
 
 void VS1Engine::_setState(State state) {
   optolink_log_i("state %i --> %i", static_cast<std::underlying_type<State>::type>(_state),
@@ -149,7 +124,7 @@ void VS1Engine::_init() {
 // if longer, return to INIT
 void VS1Engine::_syncEnq() {
   if (_currentMillis - _lastMillis < SYNC_WINDOW_MS) {
-    if (_currentDatapoint && _interface->write(&internals::ProtocolBytes.ENQ_ACK, 1) == 1) {
+    if (_busy && _interface->write(&internals::ProtocolBytes.ENQ_ACK, 1) == 1) {
       _setState(State::SEND);
       _send();  // speed up things
     }
@@ -162,7 +137,7 @@ void VS1Engine::_syncEnq() {
 // if longer, return to INIT
 void VS1Engine::_syncRecv() {
   if (_currentMillis - _lastMillis < SYNC_WINDOW_MS) {
-    if (_currentDatapoint) {
+    if (_busy) {
       _setState(State::SEND);
     }
   } else {
@@ -198,7 +173,7 @@ void VS1Engine::_receive() {
   // (Betriebsart, setpoints) is what masked this. vcontrold's KW setaddr
   // ("RECV 1 SR") also reads exactly one byte and does not validate its
   // value; we complete on it and warn if it is not the documented 0x00.
-  const uint8_t expected = (_currentRequest.packetType() == PacketVS1Type.WRITE) ? 1 : _currentDatapoint.length();
+  const uint8_t expected = (_currentRequest.packetType() == PacketVS1Type.WRITE) ? 1 : _currentLength;
   if (_bytesTransferred == expected) {
     if (_currentRequest.packetType() == PacketVS1Type.WRITE && _responseBuffer[0] != 0x00) {
       optolink_log_w("write ack byte 0x%02x (expected 0x00)", static_cast<unsigned>(_responseBuffer[0]));
@@ -211,16 +186,16 @@ void VS1Engine::_receive() {
 
 void VS1Engine::_tryOnResponse(uint8_t length) {
   if (_onResponseCallback) {
-    _onResponseCallback(_responseBuffer.data(), length, _currentDatapoint);
+    _onResponseCallback(_responseBuffer.data(), length, _currentAddress);
   }
-  _currentDatapoint = Datapoint(nullptr, 0, 0, noconv);
+  _busy = false;
 }
 
 void VS1Engine::_tryOnError(OptolinkResult result) {
   if (_onErrorCallback) {
-    _onErrorCallback(result, _currentDatapoint);
+    _onErrorCallback(result, _currentAddress);
   }
-  _currentDatapoint = Datapoint(nullptr, 0, 0, noconv);
+  _busy = false;
 }
 
 }  // namespace esphome::vitohome::optolink

@@ -62,14 +62,14 @@ static void handshake(ProtocolAdapter& a, FakeOptolink& u) {
 int main() {
   FakeOptolink uart;
   ProtocolAdapter adapter(&uart);
-  adapter.on_response([](const ResponseView& r, const optolink::Datapoint&) {
+  adapter.on_response([](const ResponseView& r, uint16_t) {
     g_responses++;
     g_last_len = r.data_length;
     if (r.data != nullptr && r.data_length <= sizeof(g_last_payload)) {
       std::memcpy(g_last_payload, r.data, r.data_length);
     }
   });
-  adapter.on_error([](optolink::OptolinkResult e, const optolink::Datapoint&) {
+  adapter.on_error([](optolink::OptolinkResult e, uint16_t) {
     g_errors++;
     g_last_error = e;
   });

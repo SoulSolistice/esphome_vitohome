@@ -31,7 +31,7 @@ from esphome.core import CORE
 
 _LOGGER = logging.getLogger(__name__)
 
-CODEOWNERS = ["@SoulSolistice"]  # TODO: replace with your actual GitHub handle
+CODEOWNERS = ["@SoulSolistice"]
 DEPENDENCIES = ["uart"]
 # Every vito_*.cpp in this directory is always compiled, so each platform's
 # base component must be available even when the user's config declares no

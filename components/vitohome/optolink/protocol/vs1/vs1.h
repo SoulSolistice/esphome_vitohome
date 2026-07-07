@@ -19,7 +19,6 @@ constexpr members (values unchanged), including the two 50ms sync windows.
 #include <functional>
 
 #include "../../constants.h"
-#include "../../datapoint/datapoint.h"
 #include "../../helpers.h"
 #include "../../interface/generic_interface.h"
 #include "../../logging.h"
@@ -29,8 +28,10 @@ namespace esphome::vitohome::optolink {
 
 class VS1Engine {
  public:
-  typedef std::function<void(const uint8_t* data, uint8_t length, const Datapoint& request)> OnResponseCallback;
-  typedef std::function<void(OptolinkResult error, const Datapoint& request)> OnErrorCallback;
+  // Byte-mover API (see vs2.h). KW/VS1 carries no address in the response, so
+  // the engine echoes the request address back to the caller unchanged.
+  typedef std::function<void(const uint8_t* data, uint8_t length, uint16_t address)> OnResponseCallback;
+  typedef std::function<void(OptolinkResult error, uint16_t address)> OnErrorCallback;
 
   // Named timeouts (ms). Values byte-identical to the previous inline
   // literals; kept per-engine (do not unify across protocols).
@@ -50,7 +51,9 @@ class VS1Engine {
         _requestTime(0),
         _bytesTransferred(0),
         _interface(nullptr),
-        _currentDatapoint(Datapoint(nullptr, 0x0000, 0, noconv)),
+        _currentAddress(0),
+        _currentLength(0),
+        _busy(false),
         _currentRequest(),
         _responseBuffer{},
         _onResponseCallback(nullptr),
@@ -69,9 +72,8 @@ class VS1Engine {
   void onResponse(OnResponseCallback callback);
   void onError(OnErrorCallback callback);
 
-  bool read(const Datapoint& datapoint);
-  bool write(const Datapoint& datapoint, const VariantValue& value);
-  bool write(const Datapoint& datapoint, const uint8_t* data, uint8_t length);
+  bool read(uint16_t address, uint8_t length);
+  bool write(uint16_t address, const uint8_t* data, uint8_t length);
 
   bool begin();
   void loop();
@@ -87,7 +89,9 @@ class VS1Engine {
   uint32_t _requestTime;
   uint8_t _bytesTransferred;
   internals::SerialInterface* _interface;
-  Datapoint _currentDatapoint;
+  uint16_t _currentAddress;
+  uint8_t _currentLength;
+  bool _busy;
   PacketVS1 _currentRequest;
   std::array<uint8_t, kResponseBufferSize> _responseBuffer;
   OnResponseCallback _onResponseCallback;

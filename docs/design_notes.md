@@ -324,9 +324,10 @@ has **no** event at `0x7507`. `gen_catalog.py` therefore emits one
 authoritative and the generic `ecnsysEventType~Error` / `0x7507` slot is
 **suppressed**, so there is exactly one "Letzter Fehler". The `codes:` map is
 selected with `--error-code-set` from `scripts/fault_codes.py` (the single
-source of truth: `openv`, `vd200` (manual-verified, default), or `union`;
-openv-vs-VD200 disagreements are kept in `fault_codes.CONFLICTS`, not
-overwritten — see `NOTICE.md`). It maps
+source of truth: `openv` (41 codes), `vd200` (59), `vd300` (94, the Vitodens
+300-W B3HA = VScotHO1_72 set and the **default**), or `union` (105, all merged,
+most-specific manual wins); openv-vs-VD200 disagreements are kept in
+`fault_codes.CONFLICTS`, not overwritten — see `NOTICE.md`). It maps
 the display-Stoerungscode space (byte[0]) only, not the GFA byte (`0x5738`), the
 LON alarm record, or the self-describing sensor-status enums.
 
@@ -429,9 +430,10 @@ not vouch for a later one:
 host C++ : decode/encode tests           tests/native/test_decode.cpp   (380 checks)
 host C++ : VS2 transaction harness        tests/native/test_vs2_transaction.cpp (8/8)
 host C++ : adapter / GWG compile-proofs   adapter_compile_proof.cpp, proof_gwg_poke.cpp
+host C++ : VS2 parser zero-payload (OOB)  tests/native/proof_vs2_zero_payload.cpp  (ASan/UBSan)
 python   : validators + catalog generator tests/unit/  (pytest)
 lint     : ruff check / ruff format
-format   : clang-format  (pinned v19.1.4)
+format   : clang-format  (pinned v22.1.5)
 config   : esphome config   (both test YAMLs)
 compile  : esphome compile  (esp-idf AND arduino)
 run      : esphome run       (real heater — the definitive gate)

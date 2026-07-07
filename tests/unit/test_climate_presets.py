@@ -66,3 +66,39 @@ def test_duplicate_write_values_are_allowed():
         ]
     )
     assert len(value) == 2
+
+
+# --- setpoint range guard (Audit SS4.4) ------------------------------------
+# The climate setpoint is written as a single UNSIGNED degC byte
+# (vito_climate.cpp: static_cast<uint8_t>(lroundf(t))), so a negative visual
+# min_temperature would wrap to a large positive temperature on the wire.
+# _validate_setpoint_range rejects it at config time.
+
+from esphome.const import (  # noqa: E402
+    CONF_MAX_TEMPERATURE,
+    CONF_MIN_TEMPERATURE,
+    CONF_VISUAL,
+)
+
+from components.vitohome.climate import _validate_setpoint_range  # noqa: E402
+
+
+def test_negative_min_temperature_rejected():
+    with pytest.raises(cv.Invalid, match="min_temperature must be >= 0"):
+        _validate_setpoint_range({CONF_VISUAL: {CONF_MIN_TEMPERATURE: -5}})
+
+
+def test_zero_min_temperature_allowed():
+    cfg = {CONF_VISUAL: {CONF_MIN_TEMPERATURE: 0, CONF_MAX_TEMPERATURE: 37}}
+    assert _validate_setpoint_range(cfg) is cfg
+
+
+def test_positive_min_temperature_allowed():
+    cfg = {CONF_VISUAL: {CONF_MIN_TEMPERATURE: 10}}
+    assert _validate_setpoint_range(cfg) is cfg
+
+
+def test_absent_visual_block_allowed():
+    # No visual block -> the to_code default (3) applies; nothing to reject.
+    cfg = {}
+    assert _validate_setpoint_range(cfg) is cfg

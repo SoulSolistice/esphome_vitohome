@@ -18,7 +18,6 @@ timeouts are lifted to named constexpr members (values unchanged).
 #include <functional>
 
 #include "../../constants.h"
-#include "../../datapoint/datapoint.h"
 #include "../../helpers.h"
 #include "../../interface/generic_interface.h"
 #include "../../logging.h"
@@ -28,8 +27,14 @@ namespace esphome::vitohome::optolink {
 
 class VS2Engine {
  public:
-  typedef std::function<void(const PacketVS2& response, const Datapoint& request)> OnResponseCallback;
-  typedef std::function<void(OptolinkResult error, const Datapoint& request)> OnErrorCallback;
+  // Byte-mover API: the engine moves raw payloads over the wire and knows
+  // nothing about datapoints, converters or scaling. A response is surfaced as
+  // (data, length, address); on P300 `address` is the one ECHOED in the
+  // response frame (a real wire-level datum), so a caller can match it against
+  // the request it dispatched. Correlation of a response to its originating
+  // request is the caller's job (the engine is strictly single-in-flight).
+  typedef std::function<void(const uint8_t* data, uint8_t length, uint16_t address)> OnResponseCallback;
+  typedef std::function<void(OptolinkResult error, uint16_t address)> OnErrorCallback;
 
   // Named timeouts (ms). Values are byte-identical to the previous inline
   // literals; kept per-engine (do not unify across protocols).
@@ -46,7 +51,9 @@ class VS2Engine {
         _bytesTransferred(0),
         _interface(nullptr),
         _parser(),
-        _currentDatapoint(Datapoint(nullptr, 0, 0, noconv)),
+        _currentAddress(0),
+        _currentLength(0),
+        _busy(false),
         _currentPacket(),
         _onResponseCallback(nullptr),
         _onErrorCallback(nullptr) {
@@ -64,9 +71,8 @@ class VS2Engine {
   void onResponse(OnResponseCallback callback);
   void onError(OnErrorCallback callback);
 
-  bool read(const Datapoint& datapoint);
-  bool write(const Datapoint& datapoint, const VariantValue& value);
-  bool write(const Datapoint& datapoint, const uint8_t* data, uint8_t length);
+  bool read(uint16_t address, uint8_t length);
+  bool write(uint16_t address, const uint8_t* data, uint8_t length);
 
   bool begin();
   void loop();
@@ -96,7 +102,12 @@ class VS2Engine {
   uint8_t _bytesTransferred;
   internals::SerialInterface* _interface;
   internals::ParserVS2 _parser;
-  Datapoint _currentDatapoint;
+  // In-flight request context (no Datapoint): the address is echoed back to
+  // the caller, the length is retained for symmetry with the byte-oriented
+  // engines, and _busy is the single-in-flight guard.
+  uint16_t _currentAddress;
+  uint8_t _currentLength;
+  bool _busy;
   PacketVS2 _currentPacket;
   OnResponseCallback _onResponseCallback;
   OnErrorCallback _onErrorCallback;

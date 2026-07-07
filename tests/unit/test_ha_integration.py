@@ -113,3 +113,50 @@ def test_unit_for_normalizes_mbar():
 
     ev = SimpleNamespace(values=[], unit="mBar")
     assert _unit_for(ev) == "mbar"
+
+
+# --- error_history fault-code key range (Audit SS4.5) ----------------------
+# The error_history codes map is keyed by the decoded wire code BYTE, so keys
+# must fit 0..0xFF -- parity with event.py::_validate_codes. A wider key is a
+# dead entry that can never match the 8-bit code. text_sensor.py validates this
+# via the _validate_code_bytes post-validator on the error_history schema (a
+# key-marker that raises is swallowed by voluptuous into a generic "extra keys
+# not allowed" error, hence the post-validator).
+
+from components.vitohome.text_sensor import CONFIG_SCHEMA as TS_SCHEMA  # noqa: E402
+
+
+def test_error_history_accepts_byte_codes():
+    cfg = TS_SCHEMA(
+        {
+            "type": "error_history",
+            "name": _name(),
+            "address": 0x7507,
+            "codes": {0x00: "kein Fehler", 0xFF: "max"},
+        }
+    )
+    assert cfg["type"] == "error_history"
+
+
+def test_error_history_rejects_out_of_range_code():
+    with pytest.raises(cv.Invalid, match="does not fit one byte"):
+        TS_SCHEMA(
+            {
+                "type": "error_history",
+                "name": _name(),
+                "address": 0x7507,
+                "codes": {0x100: "zu gross"},
+            }
+        )
+
+
+def test_error_history_codes_optional():
+    # codes: is optional (defaults to empty); a bare error_history is valid.
+    cfg = TS_SCHEMA(
+        {
+            "type": "error_history",
+            "name": _name(),
+            "address": 0x7507,
+        }
+    )
+    assert cfg["codes"] == {}

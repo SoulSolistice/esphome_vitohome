@@ -16,16 +16,14 @@ GWGEngine::~GWGEngine() { delete _interface; }
 void GWGEngine::onResponse(OnResponseCallback callback) { _onResponseCallback = callback; }
 void GWGEngine::onError(OnErrorCallback callback) { _onErrorCallback = callback; }
 
-bool GWGEngine::read(const Datapoint& datapoint) {
-  if (_currentDatapoint) {
+bool GWGEngine::read(uint16_t address, uint8_t length) {
+  if (_busy) {
     return false;
   }
-  if (datapoint.length() > kResponseBufferSize) {
-    optolink_log_i("reading not possible, datapoint too large");
-    return false;
-  }
-  if (_currentRequest.createPacket(PacketGWGType.READ, datapoint.address(), datapoint.length())) {
-    _currentDatapoint = datapoint;
+  if (_currentRequest.createPacket(PacketGWGType.READ, address, length)) {
+    _currentAddress = address;
+    _currentLength = length;
+    _busy = true;
     _requestTime = _currentMillis;
     optolink_log_i("reading packet OK");
     return true;
@@ -34,32 +32,14 @@ bool GWGEngine::read(const Datapoint& datapoint) {
   return false;
 }
 
-bool GWGEngine::write(const Datapoint& datapoint, const VariantValue& value) {
-  if (_currentDatapoint) {
+bool GWGEngine::write(uint16_t address, const uint8_t* data, uint8_t length) {
+  if (_busy) {
     return false;
   }
-  uint8_t* payload = reinterpret_cast<uint8_t*>(malloc(datapoint.length()));
-  if (!payload) return false;
-  datapoint.encode(payload, datapoint.length(), value);
-  bool result = write(datapoint, payload, datapoint.length());
-  free(payload);
-  return result;
-}
-
-bool GWGEngine::write(const Datapoint& datapoint, const uint8_t* data, uint8_t length) {
-  if (_currentDatapoint) {
-    return false;
-  }
-  if (length != datapoint.length()) {
-    optolink_log_i("writing not possible, length mismatch");
-    return false;
-  }
-  if (datapoint.length() > kResponseBufferSize) {
-    optolink_log_i("writing not possible, datapoint too large");
-    return false;
-  }
-  if (_currentRequest.createPacket(PacketGWGType.WRITE, datapoint.address(), datapoint.length(), data)) {
-    _currentDatapoint = datapoint;
+  if (_currentRequest.createPacket(PacketGWGType.WRITE, address, length, data)) {
+    _currentAddress = address;
+    _currentLength = length;
+    _busy = true;
     _requestTime = _currentMillis;
     optolink_log_i("writing packet OK");
     return true;
@@ -90,7 +70,7 @@ void GWGEngine::loop() {
       break;
   }
   // double timeout to accomodate for connection initialization
-  if (_currentDatapoint && _currentMillis - _requestTime > REQUEST_TIMEOUT_MS) {
+  if (_busy && _currentMillis - _requestTime > REQUEST_TIMEOUT_MS) {
     _setState(State::INIT);
     _tryOnError(OptolinkResult::TIMEOUT);
   }
@@ -99,17 +79,12 @@ void GWGEngine::loop() {
 void GWGEngine::end() {
   _interface->end();
   _setState(State::UNDEFINED);
-  _currentDatapoint = Datapoint(nullptr, 0x0000, 0, noconv);
+  _busy = false;
 }
 
 int GWGEngine::getState() const { return static_cast<std::underlying_type<State>::type>(_state); }
 
-bool GWGEngine::isBusy() const {
-  if (_currentDatapoint) {
-    return true;
-  }
-  return false;
-}
+bool GWGEngine::isBusy() const { return _busy; }
 
 void GWGEngine::_setState(State state) {
   optolink_log_i("state %i --> %i", static_cast<std::underlying_type<State>::type>(_state),
@@ -119,7 +94,7 @@ void GWGEngine::_setState(State state) {
 
 void GWGEngine::_init() {
   if (_interface->available()) {
-    if (_interface->read() == internals::ProtocolBytes.ENQ && _currentDatapoint) {
+    if (_interface->read() == internals::ProtocolBytes.ENQ && _busy) {
       _bytesTransferred = 0;
       _setState(State::SEND);
       return;
@@ -130,7 +105,7 @@ void GWGEngine::_init() {
     // (0x04) while waiting for its ENQ (0x05). Mirrors vcontrold's GWG sync
     // (SEND 04; WAIT 05) and the VS1 EOT fallback. The default build discards
     // this branch, so passive-wait behaviour is unchanged.
-    if (_currentDatapoint && (_currentMillis - _lastMillis) > ENQ_POKE_INTERVAL_MS) {
+    if (_busy && (_currentMillis - _lastMillis) > ENQ_POKE_INTERVAL_MS) {
       _interface->write(&internals::ProtocolBytes.EOT, 1);
       _lastMillis = _currentMillis;
     }
@@ -163,7 +138,7 @@ void GWGEngine::_receive() {
   // GWG setaddr entry is a stub -- but the 1-byte-ack convention is hardware-
   // confirmed on the KW sibling protocol, THIRD_PARTY.md #11; GWG remains
   // unverified on hardware).
-  const uint8_t expected = (_currentRequest.packetType() == PacketGWGType.WRITE) ? 1 : _currentDatapoint.length();
+  const uint8_t expected = (_currentRequest.packetType() == PacketGWGType.WRITE) ? 1 : _currentLength;
   if (_bytesTransferred == expected) {
     _bytesTransferred = 0;  // VS1 parity; _init() also resets before SEND
     _setState(State::INIT);
@@ -173,19 +148,19 @@ void GWGEngine::_receive() {
 
 void GWGEngine::_tryOnResponse(uint8_t length) {
   if (_onResponseCallback) {
-    _onResponseCallback(_responseBuffer.data(), length, _currentDatapoint);
+    _onResponseCallback(_responseBuffer.data(), length, _currentAddress);
   }
-  // Bugfix vs. upstream: clear the current datapoint after a successful
-  // response, matching VS1/VS2. Without this, GWG refuses every read/write
-  // after the first success (one-shot). See THIRD_PARTY.md.
-  _currentDatapoint = Datapoint(nullptr, 0, 0, noconv);
+  // Bugfix vs. upstream: clear the in-flight state after a successful response,
+  // matching VS1/VS2. Without this, GWG refuses every read/write after the
+  // first success (one-shot). See THIRD_PARTY.md.
+  _busy = false;
 }
 
 void GWGEngine::_tryOnError(OptolinkResult result) {
   if (_onErrorCallback) {
-    _onErrorCallback(result, _currentDatapoint);
+    _onErrorCallback(result, _currentAddress);
   }
-  _currentDatapoint = Datapoint(nullptr, 0, 0, noconv);
+  _busy = false;
 }
 
 }  // namespace esphome::vitohome::optolink

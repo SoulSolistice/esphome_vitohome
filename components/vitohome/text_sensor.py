@@ -43,6 +43,23 @@ TEXT_SENSOR_TYPES = {
 # are the human-readable labels. Order is irrelevant (lookup is by value).
 _VALUE_MAP = cv.Schema({cv.uint32_t: cv.string})
 
+
+def _validate_code_bytes(config):
+    """The error_history codes map is keyed by the decoded wire code BYTE, so
+    every key must fit 0..0xFF -- a wider key is a dead entry that can never
+    match the 8-bit code. Mirrors event.py::_validate_codes so both fault
+    surfaces reject the same out-of-range keys, with a clear message. Applied as
+    a post-validator (a voluptuous key-marker that RAISES is swallowed into a
+    generic 'extra keys' error, so the range check must run after key parsing)."""
+    for code in config.get(CONF_CODES, {}):
+        if not 0 <= code <= 0xFF:
+            raise cv.Invalid(
+                f"fault code 0x{code:X} does not fit one byte (0..0xFF)",
+                path=[CONF_CODES],
+            )
+    return config
+
+
 _BASE = {
     cv.GenerateID(CONF_VITOCONNECT_ID): cv.use_id(VitoHomeComponent),
 }
@@ -85,15 +102,18 @@ CONFIG_SCHEMA = cv.typed_schema(
                 cv.Required(CONF_OPTIONS): _VALUE_MAP,
             }
         ),
-        "error_history": _addressed(
-            {
-                # Fixed by the wire layout; accept it explicitly so a typo is a
-                # config error, not a silent wrong read.
-                cv.Optional(CONF_LENGTH, default=ERROR_HISTORY_LENGTH): cv.int_range(
-                    min=ERROR_HISTORY_LENGTH, max=ERROR_HISTORY_LENGTH
-                ),
-                cv.Optional(CONF_CODES, default={}): _VALUE_MAP,
-            }
+        "error_history": cv.All(
+            _addressed(
+                {
+                    # Fixed by the wire layout; accept it explicitly so a typo is a
+                    # config error, not a silent wrong read.
+                    cv.Optional(CONF_LENGTH, default=ERROR_HISTORY_LENGTH): cv.int_range(
+                        min=ERROR_HISTORY_LENGTH, max=ERROR_HISTORY_LENGTH
+                    ),
+                    cv.Optional(CONF_CODES, default={}): _VALUE_MAP,
+                }
+            ),
+            _validate_code_bytes,
         ),
         "device_id": (text_sensor.text_sensor_schema(VitoTextSensor).extend(_BASE).extend(cv.COMPONENT_SCHEMA)),
         # No address: the hub feeds it the raw scan-console result line

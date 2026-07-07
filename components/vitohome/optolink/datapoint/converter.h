@@ -57,33 +57,18 @@ class Converter {
   bool operator==(const Converter& rhs) const { return (this == &rhs); }
 };
 
-class Div10Convert : public Converter {
- public:
-  VariantValue decode(const uint8_t* data, uint8_t len) const override;
-  void encode(uint8_t* buf, uint8_t len, const VariantValue& val) const override;
-};
-
-class Div2Convert : public Converter {
- public:
-  VariantValue decode(const uint8_t* data, uint8_t len) const override;
-  void encode(uint8_t* buf, uint8_t len, const VariantValue& val) const override;
-};
-
-class Div3600Convert : public Converter {
- public:
-  VariantValue decode(const uint8_t* data, uint8_t len) const override;
-  void encode(uint8_t* buf, uint8_t len, const VariantValue& val) const override;
-};
-
+// The only converter the component ever instantiates. Every Datapoint is built
+// with `noconv`; the component decodes/encodes raw payloads itself in
+// components/vitohome/decode.h (see docs/design_notes.md SS1). The upstream
+// scaling converters (Div10/Div2/Div3600) were unused dead code and were
+// removed during vendoring -- their scaling now lives, host-tested and in
+// double precision, in decode.h.
 class NoconvConvert : public Converter {
  public:
   VariantValue decode(const uint8_t* data, uint8_t len) const override;
   void encode(uint8_t* buf, uint8_t len, const VariantValue& val) const override;
 };
 
-extern Div10Convert div10;
-extern Div2Convert div2;
-extern Div3600Convert div3600;
 extern NoconvConvert noconv;
 
 }  // namespace esphome::vitohome::optolink

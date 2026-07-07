@@ -14,8 +14,8 @@ using namespace esphome::vitohome;
 int main() {
   FakeOptolink uart;
   ProtocolAdapter adapter(&uart);  // GWGEngine under -DVITOHOME_PROTOCOL_GWG
-  adapter.on_response([](const ResponseView&, const optolink::Datapoint&) {});
-  adapter.on_error([](optolink::OptolinkResult, const optolink::Datapoint&) {});
+  adapter.on_response([](const ResponseView&, uint16_t) {});
+  adapter.on_error([](optolink::OptolinkResult, uint16_t) {});
   adapter.begin();
 
   optolink::Datapoint dp("probe", 0x0000, 2, optolink::noconv);

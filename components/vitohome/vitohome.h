@@ -132,8 +132,8 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   // call sites in dispatch_next_() -- see the priority split there.
   void dispatch_raw_front_();
   void schedule_due_entities_();
-  void on_response_(const ResponseView& response, const optolink::Datapoint& request);
-  void on_error_(optolink::OptolinkResult error, const optolink::Datapoint& request);
+  void on_response_(const ResponseView& response, uint16_t request_address);
+  void on_error_(optolink::OptolinkResult error, uint16_t request_address);
 
   // identification
   void ident_start_();

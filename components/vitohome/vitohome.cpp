@@ -42,16 +42,31 @@ void VitoHomeComponent::setup() {
   this->vito_ = std::make_unique<ProtocolAdapter>(&this->iface_);
 
   // The adapter normalises each protocol's callback shape to a ResponseView, so
-  // the hub registers one uniform handler regardless of P300/KW/GWG.
-  this->vito_->on_response([this](const ResponseView& response, const optolink::Datapoint& request) {
+  // the hub registers one uniform handler regardless of P300/KW/GWG. The engine
+  // is strictly single-in-flight and the hub tracks its own in-flight context
+  // (in_flight_ / ident_in_flight_ / raw_in_flight_), so the callback carries
+  // only the echoed request address as a wire-level cross-check -- no datapoint.
+  this->vito_->on_response([this](const ResponseView& response, uint16_t request_address) {
     // Any successful response is proof of link liveness.
     this->link_error_streak_ = 0;
     this->publish_link_(true);
-    this->on_response_(response, request);
+    this->on_response_(response, request_address);
   });
-  this->vito_->on_error([this](optolink::OptolinkResult error, const optolink::Datapoint& request) {
-    this->link_note_error_();
-    this->on_error_(error, request);
+  this->vito_->on_error([this](optolink::OptolinkResult error, uint16_t request_address) {
+    // Link health tracks a real, persistent link-down -- not every protocol
+    // hiccup. A NACK (the device actively transmitted a negative ack) and a
+    // device ERROR frame (a complete, link-layer-acked reply) both PROVE the
+    // optical link is alive: the device received the request and answered. Only
+    // a TIMEOUT -- no bytes at all within the watchdog -- indicates the link
+    // itself may be down, so only TIMEOUT feeds the offline streak. Feeding
+    // NACK/ERROR here made the connectivity sensor flap offline whenever a few
+    // consecutively-polled addresses were unsupported (e.g. a scan sweep or a
+    // generated catalog with NAKing addresses). CRC (a received-but-corrupt
+    // frame) is transient bus noise and is likewise not counted.
+    if (error == optolink::OptolinkResult::TIMEOUT) {
+      this->link_note_error_();
+    }
+    this->on_error_(error, request_address);
   });
 
   if (!this->vito_->begin()) {
@@ -506,7 +521,7 @@ void VitoHomeComponent::clock_handle_verify_(const ResponseView& response) {
   }
 }
 
-void VitoHomeComponent::on_response_(const ResponseView& response, const optolink::Datapoint& request) {
+void VitoHomeComponent::on_response_(const ResponseView& response, uint16_t request_address) {
   if (this->ident_in_flight_) {
     this->ident_in_flight_ = false;
     this->ident_handle_response_(response);
@@ -524,7 +539,7 @@ void VitoHomeComponent::on_response_(const ResponseView& response, const optolin
   this->in_flight_ = nullptr;
   this->in_flight_op_ = OpType::NONE;
   if (entity == nullptr) {
-    ESP_LOGW(TAG, "Response received for 0x%04X but no in-flight request", request.address());
+    ESP_LOGW(TAG, "Response received for 0x%04X but no in-flight request", request_address);
     return;
   }
   // A write was dispatched to the command address; a read to the state
@@ -597,11 +612,10 @@ void VitoHomeComponent::link_note_error_() {
   if (this->link_error_streak_ == LINK_OFFLINE_AFTER_ERRORS) this->publish_link_(false);
 }
 
-void VitoHomeComponent::on_error_(optolink::OptolinkResult error, const optolink::Datapoint& request) {
+void VitoHomeComponent::on_error_(optolink::OptolinkResult error, uint16_t request_address) {
   if (this->ident_in_flight_) {
     this->ident_in_flight_ = false;
-    ESP_LOGD(TAG, "Identification read 0x%04X len %u failed (%s)", request.address(), request.length(),
-             optolink::errorToString(error));
+    ESP_LOGD(TAG, "Identification read 0x%04X failed (%s)", request_address, optolink::errorToString(error));
     this->ident_handle_error_();
     return;
   }
@@ -617,26 +631,28 @@ void VitoHomeComponent::on_error_(optolink::OptolinkResult error, const optolink
   this->in_flight_ = nullptr;
   this->in_flight_op_ = OpType::NONE;
 
-  const char* name = request.name();
+  // Name for the log line: the in-flight entity's datapoint when there is one,
+  // else the echoed request address (a stray error with no in-flight op).
+  const char* name = (entity != nullptr) ? entity->get_datapoint().name() : "?";
   switch (error) {
     case optolink::OptolinkResult::TIMEOUT:
-      ESP_LOGE(TAG, "[TIMEOUT] %s — Optolink not responding", name);
+      ESP_LOGE(TAG, "[TIMEOUT] %s (0x%04X) — Optolink not responding", name, request_address);
       break;
     case optolink::OptolinkResult::LENGTH:
-      ESP_LOGE(TAG, "[LENGTH]  %s — invalid payload length", name);
+      ESP_LOGE(TAG, "[LENGTH]  %s (0x%04X) — invalid payload length", name, request_address);
       break;
     case optolink::OptolinkResult::NACK:
       ESP_LOGW(TAG,
-               "[NACK]    %s — heater rejected request "
+               "[NACK]    %s (0x%04X) — heater rejected request "
                "(unsupported address?)",
-               name);
+               name, request_address);
       break;
     case optolink::OptolinkResult::CRC:
-      ESP_LOGE(TAG, "[CRC]     %s — checksum mismatch (wiring?)", name);
+      ESP_LOGE(TAG, "[CRC]     %s (0x%04X) — checksum mismatch (wiring?)", name, request_address);
       break;
     case optolink::OptolinkResult::ERROR:
     default:
-      ESP_LOGE(TAG, "[ERROR]   %s — protocol error", name);
+      ESP_LOGE(TAG, "[ERROR]   %s (0x%04X) — protocol error", name, request_address);
       break;
   }
   if (entity != nullptr) {

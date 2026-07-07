@@ -7,11 +7,11 @@
 #include "optolink/optolink.h"  // vendored in-tree engine
 
 // The harness lives at global scope, so alias the engine namespace to keep the
-// optolink:: spellings used by the component. Post-de-branding the class-name /
-// namespace collision is gone (engine is OptolinkEngine in esphome::vitohome::
-// optolink), so no fully-qualified workaround is needed. PacketVS2 is copyable
-// since §1c (std::array buffer), but data() points into engine-owned storage
-// that is only valid during the callback, so copy the payload out there.
+// optolink:: spellings used by the component. The engine is a pure byte-mover:
+// its response callback delivers (data, length, address), and read/write take
+// (address, length) / (address, data, length) primitives -- no Datapoint. The
+// payload pointer is engine-owned storage valid only during the callback, so
+// copy it out there.
 namespace optolink = esphome::vitohome::optolink;
 
 template <class Pump>
@@ -29,10 +29,10 @@ static bool run_vector(const TransactionVector& tv) {
   optolink::OptolinkEngine<optolink::P300> vito(&io);
   std::vector<uint8_t> got_payload;
   bool got_resp = false;
-  vito.onResponse([&](const optolink::PacketVS2& r, const optolink::Datapoint&) {
-    // data() is nullptr for write-ack responses (by design); only read payload
-    // for read responses. This is the correct consumer guard.
-    if (r.data()) got_payload.assign(r.data(), r.data() + r.dataLength());
+  vito.onResponse([&](const uint8_t* data, uint8_t length, uint16_t /*address*/) {
+    // data is nullptr for write-ack responses (by design); only read the
+    // payload for read responses. This is the correct consumer guard.
+    if (data) got_payload.assign(data, data + length);
     got_resp = true;
   });
   vito.begin();
@@ -41,11 +41,10 @@ static bool run_vector(const TransactionVector& tv) {
   };
   handshake(io, pump);
 
-  optolink::Datapoint dp(tv.name, tv.address, tv.read_len, optolink::noconv);
   if (tv.kind == Kind::WRITE)
-    vito.write(dp, tv.write_data.data(), static_cast<uint8_t>(tv.write_data.size()));
+    vito.write(tv.address, tv.write_data.data(), static_cast<uint8_t>(tv.write_data.size()));
   else
-    vito.read(dp);
+    vito.read(tv.address, tv.read_len);
 
   pump(8);  // engine emits request, lands in SEND_ACK
   for (const auto& chunk : tv.device_chunks) {

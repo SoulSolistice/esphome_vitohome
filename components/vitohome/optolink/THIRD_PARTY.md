@@ -144,10 +144,59 @@ These are intentional divergences from upstream `edc059a7`:
     by `tests/native/proof_vs1_write.cpp`, whose vector mirrors the capture
     byte-for-byte; it fails 7 checks against the upstream behaviour.
 
-Items 7-11 are the only intentional changes to on-wire/runtime behavior;
-everything else preserves upstream protocol behavior. Each is covered by a
-host proof that fails against the upstream code, so none of them rests on
-inspection alone.
+12. **VS2 parser zero-payload out-of-bounds write fix (behavioral divergence,
+    host-proven).** Upstream `ParserVS2::parse()` enters the `PAYLOAD` step for
+    any payload-bearing frame type whose payload-length byte passes the
+    `b != length()-6` guard -- including a **zero-length** payload, where
+    `length()-6 == 0 == b` passes. With `_payloadLength == 0`, the first payload
+    byte post-decrements it to `255`, so the `== 0` completion check never fires
+    and every subsequent byte writes `_packet[6 + dataLength() - _payloadLength]`
+    at a wildly negative index: an out-of-bounds write through
+    `std::array::operator[]` (upstream: a `malloc` buffer), reachable from
+    garbled RX **before the checksum is verified**. Inherited byte-identical from
+    `edc059a`; the `std::array` buffer modernization (item 4) changed the failure
+    mode but not the arithmetic. The vendored parser routes a zero-length payload
+    straight to `CHECKSUM`. Host-proven by `tests/native/proof_vs2_zero_payload.cpp`
+    under AddressSanitizer/UBSan: against the pre-fix parser the valid-frame
+    scenario never completes (the checksum byte is consumed as phantom payload)
+    and ASan traps the out-of-bounds write on the stray-byte scenario; the fix
+    completes cleanly with `dataLength() == 0` and rejects stray bytes as a
+    checksum error.
+
+13. **Dead scaling converters removed (structural, no behavior change).**
+    `Div10Convert` / `Div2Convert` / `Div3600Convert` and their `div10` / `div2`
+    / `div3600` globals were unreferenced dead code -- every `Datapoint` uses
+    `noconv`, and all scaling is done host-tested and in `double` by
+    `decode.h`. They are removed from `datapoint/converter.{h,cpp}`; only
+    `NoconvConvert` / `noconv` remains. This deletes the last runtime `malloc`'s
+    only reachable-in-principle sibling and shrinks the tagless-`VariantValue`
+    surface (see Part 2 A/B). No on-wire or runtime behavior changes.
+
+14. **Engine API reshaped to a byte-mover (structural, no behavior change).**
+    The three engines (`VS2Engine` / `VS1Engine` / `GWGEngine`) no longer take a
+    `Datapoint`. `read(uint16_t address, uint8_t length)` and
+    `write(uint16_t address, const uint8_t* data, uint8_t length)` take
+    primitives, and the response/error callbacks deliver
+    `(const uint8_t* data, uint8_t length, uint16_t address)` /
+    `(OptolinkResult, uint16_t address)` -- so the engine headers no longer
+    include `datapoint.h`, and the engine knows nothing about datapoints,
+    converters or scaling. The dead `write(const Datapoint&, const VariantValue&)`
+    overload (one per engine -- its `malloc` was each engine's only runtime
+    allocation) is deleted. The single-in-flight guard
+    moves from a `_currentDatapoint` sentinel to a `_busy` flag plus a retained
+    `_currentAddress`; correlation of a response to its request stays the
+    caller's job (the hub already tracks its own in-flight context). P300 still
+    surfaces the address echoed in the response frame; KW/GWG echo the retained
+    request address. The `ProtocolAdapter` collapses its former per-protocol
+    `#if` response branch into one uniform path. Behavior on the wire is
+    unchanged -- proven by the existing transaction/guard/completion harnesses,
+    which pass against the reshaped engines.
+
+Items 7-12 are the only intentional changes to on-wire/runtime behavior;
+items 13-14 are structural (no behavior change). Everything else preserves
+upstream protocol behavior. Each behavioral item is covered by a host proof
+that fails against the upstream code, so none of them rests on inspection
+alone.
 
 ---
 
@@ -182,7 +231,10 @@ to propose upstream, so the workarounds could eventually be retired. The line
   accessors check the tag, or return `std::optional<T>` / an explicit type enum
   alongside the value, so "read as the wrong type" becomes a detectable error.
 - **vitohome status.** Worked around by never using the converters: every
-  `Datapoint` is `noconv` and the component decodes the raw payload itself.
+  `Datapoint` is `noconv` and the component decodes the raw payload itself. The
+  unused scaling converters have since been removed (Part 1, item 13), so the
+  only converter left in `datapoint/converter.h` is `NoconvConvert`; `VariantValue`
+  remains as its return type but is never read as a scaled value.
 
 ### C. Missing built-in converters for common Vitosoft conversions
 

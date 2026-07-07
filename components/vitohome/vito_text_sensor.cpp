@@ -158,6 +158,9 @@ void VitoTextSensor::handle_response(const ResponseView& response) {
     case TextSensorType::DEVICE_ID:
       // Never polled — fed by the hub. Nothing to do.
       return;
+    case TextSensorType::SCAN_RESULT:
+      // Never polled — fed by the hub's raw-scan lane. Nothing to do here.
+      return;
     case TextSensorType::ASCII:
       this->publish_ascii_(data, len);
       return;

@@ -40,14 +40,14 @@ static bool ends_with(const std::vector<uint8_t>& hay, const std::vector<uint8_t
 int main() {
   FakeOptolink uart;
   ProtocolAdapter adapter(&uart);  // VS1Engine under -DVITOHOME_PROTOCOL_KW
-  adapter.on_response([](const ResponseView& r, const optolink::Datapoint&) {
+  adapter.on_response([](const ResponseView& r, uint16_t) {
     g_responses++;
     g_last_len = r.data_length;
     if (r.data != nullptr && r.data_length <= sizeof(g_last_payload)) {
       std::memcpy(g_last_payload, r.data, r.data_length);
     }
   });
-  adapter.on_error([](optolink::OptolinkResult, const optolink::Datapoint&) { g_errors++; });
+  adapter.on_error([](optolink::OptolinkResult, uint16_t) { g_errors++; });
   adapter.begin();
 
   int failures = 0;
