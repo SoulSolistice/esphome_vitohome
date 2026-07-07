@@ -20,9 +20,11 @@ void VitoSensor::dump_config() {
 }
 
 void VitoSensor::handle_response(const ResponseView& response) {
-  // Stage-2 decode path: vitohome bypasses the optolink engine's converters entirely
-  // (their VariantValue is a tagless union and their math is float32 — see
-  // decode.h and docs/design_notes.md SS1) and decodes the raw payload itself.
+  // Stage-2 decode path: vitohome decodes the raw payload itself in decode.h
+  // (uint64_t read, double math, float32 only at publish). Upstream's converter
+  // layer — float math and the tagless VariantValue union — is fully removed
+  // from the vendored engine (THIRD_PARTY.md items 13/15); see
+  // docs/design_notes.md SS1 for why this path exists.
   const uint8_t* data = response.data;
   const uint8_t have = response.data_length;
   double value = NAN;

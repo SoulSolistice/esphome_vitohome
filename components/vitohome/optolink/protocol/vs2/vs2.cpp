@@ -105,8 +105,6 @@ void VS2Engine::end() {
   _busy = false;
 }
 
-int VS2Engine::getState() const { return static_cast<std::underlying_type<State>::type>(_state); }
-
 bool VS2Engine::isBusy() const { return _busy; }
 
 void VS2Engine::_setState(State state) {

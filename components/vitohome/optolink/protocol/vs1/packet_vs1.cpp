@@ -59,6 +59,9 @@ bool PacketVS1::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, con
 uint8_t PacketVS1::length() const {
   if (_buffer[3] == 0) return 0;
   if (_buffer[0] == PacketVS1Type.READ) return 4;
+  // NOTE: uint8_t arithmetic -- wraps for a payload length >= 252.
+  // Unreachable today (the raw lane caps writes at 32 bytes; entity writes are
+  // <= 8), but a live trap if those caps are ever raised.
   if (_buffer[0] == PacketVS1Type.WRITE) return _buffer[3] + 4;
   return 0;  // should not be possible
 }

@@ -38,7 +38,6 @@
 idf_component_register(
     SRCS
         "constants.cpp"
-        "datapoint/conversion_helpers.cpp"
         "datapoint/converter.cpp"
         "datapoint/datapoint.cpp"
         "protocol/vs1/packet_vs1.cpp"

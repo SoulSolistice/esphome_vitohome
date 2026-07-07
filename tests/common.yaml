@@ -117,6 +117,19 @@ number:
     unit_of_measurement: "C"
     mode: box
     update_interval: 3600s
+  # interior numeric field (the pump-speed shape): aligned block read at the
+  # base (state_address + byte_offset), write to the field's own register
+  - platform: vitohome
+    name: "Test Interior Number"
+    address: 0x7952
+    state_address: 0x7951
+    length: 2
+    byte_offset: 1
+    converter: noconv
+    min_value: 0
+    max_value: 100
+    step: 1
+    mode: box
   # div10 (signed by converter), natural units
   - platform: vitohome
     name: "Test Slope"
@@ -216,6 +229,17 @@ text_sensor:
     options:
       0x00: "Off"
       0x01: "On"
+  # interior enum field: aligned block read at the base, decode the byte at
+  # byte_offset (read-only, so the base is simply the address)
+  - platform: vitohome
+    type: enum
+    name: "Test Interior Enum"
+    address: 0x2500
+    length: 22
+    byte_offset: 1
+    options:
+      0x00: "Aus"
+      0x02: "Heizen"
   # error history (9-byte block, full timestamp) with a small code map
   - platform: vitohome
     type: error_history

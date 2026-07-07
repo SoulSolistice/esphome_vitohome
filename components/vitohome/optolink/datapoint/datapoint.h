@@ -9,24 +9,22 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 #pragma once
 
-#include "../protocol/vs2/packet_vs2.h"
+#include <cstdint>
+
 #include "converter.h"
 
 namespace esphome::vitohome::optolink {
 
 class Datapoint {
  public:
+  // The Converter argument is a vestigial tag (always `noconv`; see
+  // converter.h) -- stored but never read. Kept so the constructor signature
+  // and the Python codegen that emits it stay stable.
   Datapoint(const char* name, uint16_t address, uint8_t length, const Converter& converter);
 
-  explicit operator bool() const;
   const char* name() const;
   uint16_t address() const;
   uint8_t length() const;
-  const Converter& converter() const;
-
-  VariantValue decode(const uint8_t* data, uint8_t length) const;
-  VariantValue decode(const PacketVS2& packet) const;
-  void encode(uint8_t* buf, uint8_t len, const VariantValue& value) const;
 
  protected:
   const char* _name;

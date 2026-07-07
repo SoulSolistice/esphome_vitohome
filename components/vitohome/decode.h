@@ -108,7 +108,10 @@ inline bool encode_scaled(double value, double scale, bool is_signed, uint8_t le
     const int64_t hi = (1LL << (8 * len - 1)) - 1;
     if (raw < lo || raw > hi) return false;
   } else {
-    if (raw < 0 || static_cast<uint64_t>(raw) > ((len == 4) ? 0xFFFFFFFFULL : ((1ULL << (8 * len)) - 1))) return false;
+    // 1ULL is >= 64 bits on any conforming compiler, so the shift is
+    // well-defined for len == 4 too ((1ULL << 32) - 1 == 0xFFFFFFFF); no
+    // special case needed.
+    if (raw < 0 || static_cast<uint64_t>(raw) > ((1ULL << (8 * len)) - 1)) return false;
   }
   const uint64_t u = static_cast<uint64_t>(raw);  // two's complement bit pattern
   for (uint8_t i = 0; i < len; i++) {

@@ -12,13 +12,7 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 #include <cstddef>
 #include <cstdint>
 
-#ifndef VITOHOME_OPTOLINK_START_PAYLOAD_LENGTH
-#define VITOHOME_OPTOLINK_START_PAYLOAD_LENGTH 10
-#endif
-
 namespace esphome::vitohome::optolink {
-
-constexpr size_t START_PAYLOAD_LENGTH = VITOHOME_OPTOLINK_START_PAYLOAD_LENGTH;
 
 enum class FunctionCode : uint8_t {
   READ = 0x01,

@@ -78,6 +78,9 @@ bool PacketVS2::setLength(uint8_t length) {
   return true;
 }
 
+// NOTE: uint8_t arithmetic -- wraps to 0 when the length byte is 255.
+// Unreachable today (createPacket caps write payloads at 250 and the raw lane
+// at 32), but a live trap if those caps are ever raised.
 uint8_t PacketVS2::length() const { return _buffer[0] + 1; }
 
 PacketType PacketVS2::packetType() const { return static_cast<PacketType>(_buffer[1]); }

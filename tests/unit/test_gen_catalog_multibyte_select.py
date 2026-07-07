@@ -269,9 +269,12 @@ def test_interior_field_with_command_state_mapping_keeps_interior_form():
     assert f"state_address: 0x{gc.COMMAND_STATE_ADDR[addr]:04X}" in body
 
 
-def test_interior_writable_number_reverts_to_interior_address():
+def test_interior_writable_number_emits_two_address_form():
+    # The pump-speed shape (Neptun * Drehzahl): a writable 1-byte numeric at
+    # byte 1 of a 2-byte block. Read = aligned block at the base via
+    # state_address + byte_offset; write = the field's own register.
     ev = _event(
-        address=0x7660,
+        address=0x7951,
         block_length=2,
         byte_length=1,
         byte_position=1,
@@ -281,17 +284,58 @@ def test_interior_writable_number_reverts_to_interior_address():
     platform, lines = gc.emit_entity(ev, "full")
     body = "\n".join(lines)
     assert platform == "number"
-    assert "address: 0x7661" in body  # the field's own address...
-    assert "P300 may NAK" in body  # ...with the caveat
-    assert "byte_offset" not in body  # number has no extraction
-    assert "length: 1" in body  # field width, never the block
+    assert "address: 0x7952" in body  # write target: the field's own register
+    assert "state_address: 0x7951" in body
+    assert "length: 2" in body  # the block read
+    assert "byte_offset: 1" in body
+    assert "byte_length" not in body  # 1-byte field -> component default
+    assert "P300 may NAK" not in body  # the read is aligned now
 
 
-def test_interior_readonly_enum_reverts_to_interior_address():
+def test_interior_multibyte_number_field_emits_byte_length():
+    ev = _event(
+        address=0x1189,
+        block_length=6,
+        byte_length=2,
+        byte_position=4,
+        values=[],
+        enum_type=False,
+    )
+    platform, lines = gc.emit_entity(ev, "full")
+    body = "\n".join(lines)
+    assert platform == "number"
+    assert "address: 0x118D" in body
+    assert "state_address: 0x1189" in body
+    assert "length: 6" in body
+    assert "byte_offset: 4" in body
+    assert "byte_length: 2" in body
+
+
+def test_interior_number_in_oversize_block_falls_back_to_interior():
     ev = _event(
         address=0x7660,
+        block_length=gc.MAX_P300_READ_LENGTH + 5,
+        byte_length=1,
+        byte_position=40,
+        values=[],
+        enum_type=False,
+    )
+    platform, lines = gc.emit_entity(ev, "full")
+    body = "\n".join(lines)
+    assert platform == "number"
+    assert "byte_offset" not in body
+    assert "state_address" not in body
+    assert "P300 may NAK" in body  # honest interior fallback
+
+
+def test_interior_readonly_enum_emits_block_extraction():
+    # Read-only: the block base IS the read address -- no write side, no
+    # state_address. The AktuelleBetriebsart shape: byte 1 of the 22-byte
+    # 0x2500 block.
+    ev = _event(
+        address=0x2500,
         access_type=1,  # read-only
-        block_length=2,
+        block_length=22,
         byte_length=1,
         byte_position=1,
         values=[_enum_value(0x00, "Aus"), _enum_value(0x02, "Heizen")],
@@ -300,6 +344,25 @@ def test_interior_readonly_enum_reverts_to_interior_address():
     body = "\n".join(lines)
     assert platform == "text_sensor"
     assert "type: enum" in body
-    assert "address: 0x7661" in body
-    assert "P300 may NAK" in body
+    assert "address: 0x2500" in body  # the block base, plain
+    assert "state_address" not in body
+    assert "length: 22" in body
+    assert "byte_offset: 1" in body
+    assert "byte_length" not in body  # enum_len 1 -> component default
+    assert "P300 may NAK" not in body
+
+
+def test_interior_readonly_enum_in_oversize_block_falls_back_to_interior():
+    ev = _event(
+        address=0x7660,
+        access_type=1,
+        block_length=gc.MAX_P300_READ_LENGTH + 5,
+        byte_length=1,
+        byte_position=40,
+        values=[_enum_value(0x00, "Aus"), _enum_value(0x02, "Heizen")],
+    )
+    platform, lines = gc.emit_entity(ev, "full")
+    body = "\n".join(lines)
+    assert platform == "text_sensor"
     assert "byte_offset" not in body
+    assert "P300 may NAK" in body

@@ -24,6 +24,11 @@ class VitoTextSensor : public text_sensor::TextSensor, public Component, public 
   // ENUM labels / ERROR_HISTORY code texts. Codegen feeds these one by one;
   // labels are string literals from codegen (static storage).
   void add_option(uint32_t value, const char* label) { this->options_.emplace_back(value, label); }
+  // Aligned block extraction for the enum type (read-only twin of the
+  // sensor's byte_offset): the enum field is extract_len_ bytes (default 1)
+  // at extract_byte_ inside the block read.
+  void set_extract_byte(int16_t byte) { this->extract_byte_ = byte; }
+  void set_extract_len(uint8_t len) { this->extract_len_ = len; }
 
   void dump_config() override;
   void handle_response(const ResponseView& response) override;
@@ -40,6 +45,8 @@ class VitoTextSensor : public text_sensor::TextSensor, public Component, public 
 
   TextSensorType type_{TextSensorType::RAW_HEX};
   std::vector<std::pair<uint32_t, const char*>> options_;
+  int16_t extract_byte_{-1};
+  uint8_t extract_len_{1};  // enum field width to slice at extract_byte_ (1..4)
 };
 
 }  // namespace esphome::vitohome

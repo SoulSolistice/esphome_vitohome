@@ -194,8 +194,26 @@ These are intentional divergences from upstream `edc059a7`:
     unchanged -- proven by the existing transaction/guard/completion harnesses,
     which pass against the reshaped engines.
 
+15. **Residual dead-code sweep (structural, no behavior change).** The last
+    unreferenced upstream surfaces are removed: `conversion_helpers.{h,cpp}`
+    (the `encodeSchedule`/`decodeSchedule` codec -- superseded by `decode.h`'s
+    Schaltzeiten codec; the dead `encodeSchedule` also carried an upstream
+    logic bug, `if (hour <= 23 || minutes <= 59)` is always true and should
+    have been `&&`); `Datapoint::decode()` (both overloads),
+    `Datapoint::encode()`, `Datapoint::operator bool()` and the `converter()`
+    accessor (all zero call sites -- decode/encode happen in the component's
+    `decode.h`); the tagless `VariantValue` union and the `Converter`
+    decode/encode virtuals (see Part 2 B -- the hazard class is now deleted,
+    not merely avoided; `Converter`/`NoconvConvert`/`noconv` remain only as an
+    empty vestigial tag keeping the `Datapoint` constructor signature and the
+    Python codegen stable); `getState()` on all three engines; and the
+    unreferenced `START_PAYLOAD_LENGTH` constant with its configuration macro.
+    `ParserVS2` now checks the frame's function code against the
+    `FunctionCode::READ/WRITE/RPC` constants instead of bare literals, which
+    also puts the previously-unreferenced `RPC` constant to use.
+
 Items 7-12 are the only intentional changes to on-wire/runtime behavior;
-items 13-14 are structural (no behavior change). Everything else preserves
+items 13-15 are structural (no behavior change). Everything else preserves
 upstream protocol behavior. Each behavioral item is covered by a host proof
 that fails against the upstream code, so none of them rests on inspection
 alone.
@@ -232,11 +250,11 @@ to propose upstream, so the workarounds could eventually be retired. The line
 - **Upstream proposal.** Tag the union (store which member is active) and have
   accessors check the tag, or return `std::optional<T>` / an explicit type enum
   alongside the value, so "read as the wrong type" becomes a detectable error.
-- **vitohome status.** Worked around by never using the converters: every
-  `Datapoint` is `noconv` and the component decodes the raw payload itself. The
-  unused scaling converters have since been removed (Part 1, item 13), so the
-  only converter left in `datapoint/converter.h` is `NoconvConvert`; `VariantValue`
-  remains as its return type but is never read as a scaled value.
+- **vitohome status.** Resolved by removal: every `Datapoint` is `noconv` and
+  the component decodes the raw payload itself, and the vendored copy has now
+  deleted `VariantValue` and the converter decode/encode virtuals outright
+  (Part 1, items 13/15). `Converter`/`NoconvConvert` survive only as an empty
+  vestigial tag; the proposal above remains relevant to upstream.
 
 ### C. Missing built-in converters for common Vitosoft conversions
 

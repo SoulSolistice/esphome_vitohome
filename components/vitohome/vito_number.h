@@ -15,6 +15,12 @@ class VitoNumber : public number::Number, public Component, public VitoEntityBas
   void set_scale(double scale) { this->scale_ = scale; }
   void set_signed(bool s) { this->signed_ = s; }
   void set_read_back(bool v) { this->read_back_ = v; }
+  // Aligned block extraction on the state read -- identical semantics to
+  // VitoSelect/VitoSwitch: the field is extract_len_ bytes (default 1) at
+  // extract_byte_ inside the block read; the write datapoint carries the
+  // field width (set by codegen), so control() encodes the field only.
+  void set_extract_byte(int16_t byte) { this->extract_byte_ = byte; }
+  void set_extract_len(uint8_t len) { this->extract_len_ = len; }
 
   void dump_config() override;
   void handle_response(const ResponseView& response) override;
@@ -34,6 +40,8 @@ class VitoNumber : public number::Number, public Component, public VitoEntityBas
   bool signed_{false};
   float pending_value_{0.0f};
   uint8_t consecutive_read_errors_{0};
+  int16_t extract_byte_{-1};
+  uint8_t extract_len_{1};  // field width to slice at extract_byte_ (1..4)
 };
 
 }  // namespace esphome::vitohome

@@ -2,6 +2,7 @@
 
 #include <cinttypes>
 #include <cstdio>
+#include <cstring>
 
 #include "decode.h"
 #include "esphome/core/hal.h"
@@ -145,7 +146,9 @@ void VitoHomeComponent::loop() {
     if (this->link_established_) {
       this->protocol_verify_pending_ = false;
       ESP_LOGI(TAG, "%s link established", PROTOCOL_NAME);
-    } else if (millis() >= this->protocol_verify_deadline_ms_) {
+    } else if (static_cast<int32_t>(millis() - this->protocol_verify_deadline_ms_) >= 0) {
+      // Rollover-safe signed-diff compare, matching the scheduler and the
+      // time-sync tick (a direct >= compares wrong across the 49.7-day wrap).
       this->protocol_verify_pending_ = false;
       ESP_LOGE(TAG, "%s link not established; check wiring and that the device speaks this protocol", PROTOCOL_NAME);
       this->publish_link_(false);
@@ -198,14 +201,15 @@ void VitoHomeComponent::dispatch_raw_front_() {
   this->raw_purpose_ = op.purpose;
   bool dispatched;
   if (op.is_write) {
-    this->raw_write_buf_ = op.bytes;
-    dispatched = this->vito_->write(this->raw_dp_.address(), this->raw_write_buf_.data(),
-                                    static_cast<uint8_t>(this->raw_write_buf_.size()));
+    // The engine serializes op.bytes into its own packet buffer inside
+    // write(), so the payload need not outlive this call; only the length is
+    // retained (raw_write_len_) for the ack log line.
+    dispatched = this->vito_->write(this->raw_dp_.address(), op.bytes, op.bytes_len);
   } else {
-    this->raw_write_buf_.clear();
     dispatched = this->vito_->read(this->raw_dp_.address(), this->raw_dp_.length());
   }
   if (dispatched) {
+    this->raw_write_len_ = op.is_write ? op.bytes_len : 0;
     this->raw_in_flight_ = true;
     this->in_flight_started_ms_ = millis();
     ESP_LOGV(TAG, "Dispatched raw %s 0x%04X len %u", op.is_write ? "write" : "read", op.address, op.length);
@@ -360,25 +364,43 @@ void VitoHomeComponent::queue_raw_read(uint16_t address, uint8_t length) {
     ESP_LOGW(TAG, "queue_raw_read: length %u out of range (1..32)", length);
     return;
   }
-  this->enqueue_raw_(address, length, false, {}, RawPurpose::SCAN);
+  this->enqueue_raw_(address, length, false, nullptr, 0, RawPurpose::SCAN);
 }
 
 void VitoHomeComponent::queue_raw_write(uint16_t address, const std::vector<uint8_t>& bytes) {
-  if (bytes.empty() || bytes.size() > 32) {
-    ESP_LOGW(TAG, "queue_raw_write: %zu bytes out of range (1..32)", bytes.size());
+  // The 32-byte cap also keeps the packet length() arithmetic safe: the VS2
+  // length byte is 0x05 + len (uint8_t, wraps for len > 250) and the VS1
+  // frame length is payload + 4 (wraps for len >= 252) -- see the comments at
+  // PacketVS2::length() / PacketVS1::length() before ever raising this cap.
+  if (bytes.empty() || bytes.size() > RAW_WRITE_MAX) {
+    ESP_LOGW(TAG, "queue_raw_write: %zu bytes out of range (1..%u)", bytes.size(), RAW_WRITE_MAX);
     return;
   }
-  this->enqueue_raw_(address, static_cast<uint8_t>(bytes.size()), true, bytes, RawPurpose::SCAN);
+  this->enqueue_raw_(address, static_cast<uint8_t>(bytes.size()), true, bytes.data(),
+                     static_cast<uint8_t>(bytes.size()), RawPurpose::SCAN);
 }
 
-void VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const std::vector<uint8_t>& bytes,
-                                     RawPurpose purpose) {
+void VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t* bytes,
+                                     uint8_t bytes_len, RawPurpose purpose) {
   if (this->raw_queue_.size() >= RAW_QUEUE_MAX) {
     ESP_LOGW(TAG, "raw queue full (%zu); dropping %s 0x%04X", this->raw_queue_.size(), is_write ? "write" : "read",
              address);
     return;
   }
-  this->raw_queue_.push_back(RawOp{address, length, is_write, bytes, purpose});
+  if (bytes_len > RAW_WRITE_MAX) {  // callers cap earlier; defend anyway
+    ESP_LOGW(TAG, "enqueue_raw_: %u bytes exceeds %u; dropping", bytes_len, RAW_WRITE_MAX);
+    return;
+  }
+  RawOp op{};
+  op.address = address;
+  op.length = length;
+  op.is_write = is_write;
+  op.bytes_len = bytes_len;
+  if (bytes != nullptr && bytes_len > 0) {
+    std::memcpy(op.bytes, bytes, bytes_len);
+  }
+  op.purpose = purpose;
+  this->raw_queue_.push_back(op);
   ESP_LOGD(TAG, "Queued raw %s 0x%04X len %u", is_write ? "write" : "read", address, length);
 }
 
@@ -399,8 +421,8 @@ void VitoHomeComponent::raw_handle_response_(const ResponseView& response) {
   }
   char buf[160];
   if (this->raw_is_write_) {
-    snprintf(buf, sizeof(buf), "0x%04X: write ACK (%zu byte%s)", this->raw_dp_.address(), this->raw_write_buf_.size(),
-             this->raw_write_buf_.size() == 1 ? "" : "s");
+    snprintf(buf, sizeof(buf), "0x%04X: write ACK (%u byte%s)", this->raw_dp_.address(), this->raw_write_len_,
+             this->raw_write_len_ == 1 ? "" : "s");
   } else {
     format_raw_dump(response.address, response.data, response.data_length, buf, sizeof(buf));
   }
@@ -460,7 +482,7 @@ void VitoHomeComponent::sync_system_time_() {
   }
   // Read the device clock first; clock_handle_read_ compares it with the time
   // source and only writes when the drift exceeds the threshold.
-  this->enqueue_raw_(CLOCK_ADDRESS, CLOCK_LEN, false, {}, RawPurpose::CLOCK_READ);
+  this->enqueue_raw_(CLOCK_ADDRESS, CLOCK_LEN, false, nullptr, 0, RawPurpose::CLOCK_READ);
 #endif
 }
 
@@ -503,8 +525,7 @@ void VitoHomeComponent::clock_handle_read_(const ResponseView& response) {
     ESP_LOGW(TAG, "System-time sync: time source out of range, skipping");
     return;
   }
-  this->enqueue_raw_(CLOCK_ADDRESS, CLOCK_LEN, true, std::vector<uint8_t>(buf, buf + CLOCK_LEN),
-                     RawPurpose::CLOCK_WRITE);
+  this->enqueue_raw_(CLOCK_ADDRESS, CLOCK_LEN, true, buf, CLOCK_LEN, RawPurpose::CLOCK_WRITE);
 #else
   (void)response;
 #endif
@@ -512,7 +533,7 @@ void VitoHomeComponent::clock_handle_read_(const ResponseView& response) {
 
 void VitoHomeComponent::clock_handle_write_ack_() {
   ESP_LOGI(TAG, "System-time sync: device clock set; reading back to confirm");
-  this->enqueue_raw_(CLOCK_ADDRESS, CLOCK_LEN, false, {}, RawPurpose::CLOCK_VERIFY);
+  this->enqueue_raw_(CLOCK_ADDRESS, CLOCK_LEN, false, nullptr, 0, RawPurpose::CLOCK_VERIFY);
 }
 
 void VitoHomeComponent::clock_handle_verify_(const ResponseView& response) {

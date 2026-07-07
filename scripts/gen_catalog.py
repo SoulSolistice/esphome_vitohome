@@ -1009,12 +1009,12 @@ def emit_entity(ev: Event, profile: str):
         addr_line = f"  address: 0x{field_addr:04X}"
         if field_off:
             addr_line += f"  # byte {field_off} of the {block_len}-byte block @ 0x{addr:04X} (interior read; P300 may NAK)"
-    # Interior form for the branches WITHOUT block-extraction support (number,
-    # read-only enum text_sensor): always the field's own address, with the
-    # P300 caveat. addr_line above is the block BASE when use_block_extract is
-    # set and is only correct for platforms that also emit byte_offset (sensor;
-    # select/switch use their own two-address block form below) -- using it
-    # without byte_offset reads the wrong bytes.
+    # Interior fallback form: the field's own address, with the P300 caveat.
+    # Used whenever a branch cannot express the aligned block extraction
+    # (block over the cap, field too wide, or a COMMAND_STATE_ADDR conflict on
+    # the writable branches). addr_line above is the block BASE when
+    # use_block_extract is set and is only correct together with byte_offset
+    # -- using it without byte_offset reads the wrong bytes.
     if field_off:
         interior_addr_line = (
             f"  address: 0x{addr + field_off:04X}"
@@ -1200,10 +1200,27 @@ def emit_entity(ev: Event, profile: str):
         lines += [
             "- platform: vitohome",
             f"  name: {_yaml_str(name)}",
-            interior_addr_line,
-            f"  length: {length}",
-            f"  converter: {conv}",
         ]
+        if use_block_extract:
+            # Interior numeric field: aligned block read (P300-safe) at the
+            # base via state_address + byte_offset; the write goes to the
+            # field's own register. P300 interior WRITE behaviour is
+            # unverified (the hardware-confirmed NAK evidence covers reads).
+            lines += [
+                f"  address: 0x{addr + field_off:04X}"
+                "  # write target: the field's own register (interior write; verify on hardware)",
+                f"  state_address: 0x{addr:04X}  # aligned block read at the base (P300-safe)",
+                f"  length: {block_len}",
+                f"  byte_offset: {field_off}",
+            ]
+            if length != 1:
+                lines.append(f"  byte_length: {length}")
+        else:
+            lines += [
+                interior_addr_line,
+                f"  length: {length}",
+            ]
+        lines.append(f"  converter: {conv}")
         # A negative lower border means the raw byte(s) are two's-complement.
         # div2/div10 are already signed in the component; noconv is unsigned by
         # default, so it needs an explicit signed: true to decode/accept a
@@ -1277,12 +1294,30 @@ def emit_entity(ev: Event, profile: str):
 
     if enum_opts:
         enum_len = _enum_read_length(enum_opts, num_length)
+        # Aligned block extraction for an interior enum field: read-only, so
+        # the block base is simply the read address -- no write side, no
+        # state_address. The extracted width stays enum_len (derived from the
+        # option values, the same bytes the interior form read at addr+off).
+        enum_extract = field_off > 0 and field_off + enum_len <= block_len and block_len <= MAX_P300_READ_LENGTH
         lines += [
             "- platform: vitohome",
             "  type: enum",
             f"  name: {_yaml_str(name)}",
-            interior_addr_line,
-            f"  length: {enum_len}",
+        ]
+        if enum_extract:
+            lines += [
+                f"  address: 0x{addr:04X}",
+                f"  length: {block_len}",
+                f"  byte_offset: {field_off}",
+            ]
+            if enum_len != 1:
+                lines.append(f"  byte_length: {enum_len}")
+        else:
+            lines += [
+                interior_addr_line,
+                f"  length: {enum_len}",
+            ]
+        lines += [
             "  disabled_by_default: true",
             f"  update_interval: {poll}s",
             "  options:",

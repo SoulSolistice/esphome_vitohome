@@ -17,9 +17,11 @@ import gen_catalog as gc  # noqa: E402
 from esphome.core import CORE  # noqa: E402
 
 from components.vitohome import MAX_P300_READ_LENGTH  # noqa: E402
+from components.vitohome.number import CONFIG_SCHEMA as NUMBER_SCHEMA  # noqa: E402
 from components.vitohome.select import CONFIG_SCHEMA as SELECT_SCHEMA  # noqa: E402
 from components.vitohome.sensor import CONFIG_SCHEMA as SENSOR_SCHEMA  # noqa: E402
 from components.vitohome.switch import CONFIG_SCHEMA as SWITCH_SCHEMA  # noqa: E402
+from components.vitohome.text_sensor import CONFIG_SCHEMA as TEXT_SENSOR_SCHEMA  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -265,3 +267,134 @@ def test_switch_values_checked_against_field_width_not_block():
     with pytest.raises(cv.Invalid, match="does not fit 1 unsigned byte"):
         SWITCH_SCHEMA(_switch(state_address=0x7660, length=4, byte_offset=2, on_value=0x0100))
     SWITCH_SCHEMA(_switch(state_address=0x7660, length=6, byte_offset=2, byte_length=2, on_value=0x0100))
+
+
+# --- schema: number state-read extraction + read/write split -----------------
+# Same semantics as select/switch: byte_offset requires state_address; with it,
+# `length` is the block read and the numeric field is byte_length (default 1,
+# max 4) bytes at byte_offset. The converter and the min/max encode checks run
+# against the FIELD width, and codegen gives the write datapoint that width.
+
+
+def _number(**extra):
+    cfg = {
+        "name": _name(),
+        "address": 0x7952,
+        "min_value": 0,
+        "max_value": 100,
+        "step": 1,
+    }
+    cfg.update(extra)
+    return cfg
+
+
+def test_number_accepts_block_extraction_with_state_address():
+    cfg = NUMBER_SCHEMA(_number(state_address=0x7951, length=2, byte_offset=1))
+    assert cfg["length"] == 2
+    assert cfg["byte_offset"] == 1
+
+
+def test_number_byte_offset_requires_state_address():
+    with pytest.raises(cv.Invalid, match="requires state_address"):
+        NUMBER_SCHEMA(_number(length=2, byte_offset=1))
+
+
+def test_number_byte_length_requires_byte_offset():
+    with pytest.raises(cv.Invalid, match="byte_length requires byte_offset"):
+        NUMBER_SCHEMA(_number(length=2, byte_length=2))
+
+
+def test_number_converter_checked_against_field_width_not_block():
+    # div10 decodes 1-2 byte fields; a 2-byte extract inside a 22-byte block
+    # is fine, the 22 must not hit the converter check.
+    NUMBER_SCHEMA(
+        _number(
+            state_address=0x2500,
+            length=22,
+            byte_offset=12,
+            byte_length=2,
+            converter="div10",
+            min_value=0,
+            max_value=30,
+            step=0.1,
+        )
+    )
+    # ...but a field width the converter cannot encode is rejected.
+    with pytest.raises(cv.Invalid, match="cannot encode/decode"):
+        NUMBER_SCHEMA(
+            _number(
+                state_address=0x2500,
+                length=22,
+                byte_offset=12,
+                byte_length=3,
+                converter="div10",
+            )
+        )
+
+
+def test_number_bounds_checked_against_field_width_not_block():
+    # max 300 needs 2 raw bytes; a 1-byte extracted field must reject it even
+    # though the block read is 4 bytes wide.
+    with pytest.raises(cv.Invalid, match="does not fit 1 unsigned"):
+        NUMBER_SCHEMA(_number(state_address=0x7951, length=4, byte_offset=1, max_value=300))
+
+
+def test_number_field_must_fit_the_block():
+    with pytest.raises(cv.Invalid, match="must be <= length"):
+        NUMBER_SCHEMA(_number(state_address=0x7951, length=2, byte_offset=1, byte_length=2))
+
+
+def test_number_block_read_capped_at_p300_telegram():
+    with pytest.raises(cv.Invalid, match="block read"):
+        NUMBER_SCHEMA(_number(state_address=0x7951, length=MAX_P300_READ_LENGTH + 1, byte_offset=0))
+
+
+def test_number_plain_length_still_capped_at_four():
+    with pytest.raises(cv.Invalid, match="between 1 and 4"):
+        NUMBER_SCHEMA(_number(length=5))
+
+
+def test_number_accepts_standalone_state_address_split():
+    # The read/write split without extraction -- same as select/switch.
+    cfg = NUMBER_SCHEMA(_number(address=0x2323, state_address=0x2501, length=1))
+    assert cfg["state_address"] == 0x2501
+
+
+# --- schema: read-only enum text_sensor extraction ----------------------------
+
+
+def _enum_ts(**extra):
+    cfg = {
+        "type": "enum",
+        "name": _name(),
+        "address": 0x2500,
+        "options": {0x00: "Aus", 0x02: "Heizen"},
+    }
+    cfg.update(extra)
+    return cfg
+
+
+def test_enum_text_sensor_accepts_block_extraction():
+    cfg = TEXT_SENSOR_SCHEMA(_enum_ts(length=22, byte_offset=1))
+    assert cfg["length"] == 22
+    assert cfg["byte_offset"] == 1
+
+
+def test_enum_text_sensor_field_must_fit_the_block():
+    with pytest.raises(cv.Invalid, match="must be <= length"):
+        TEXT_SENSOR_SCHEMA(_enum_ts(length=4, byte_offset=3, byte_length=2))
+
+
+def test_enum_text_sensor_block_read_capped_at_p300_telegram():
+    with pytest.raises(cv.Invalid, match="block read"):
+        TEXT_SENSOR_SCHEMA(_enum_ts(length=MAX_P300_READ_LENGTH + 1, byte_offset=0))
+
+
+def test_enum_text_sensor_plain_length_still_capped_at_four():
+    with pytest.raises(cv.Invalid, match="between 1 and 4"):
+        TEXT_SENSOR_SCHEMA(_enum_ts(length=22))
+
+
+def test_enum_text_sensor_byte_length_requires_byte_offset():
+    with pytest.raises(cv.Invalid, match="byte_length requires byte_offset"):
+        TEXT_SENSOR_SCHEMA(_enum_ts(length=2, byte_length=2))

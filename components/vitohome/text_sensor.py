@@ -12,6 +12,7 @@ from esphome.const import (
 from . import (
     CONF_LENGTH,
     CONF_VITOCONNECT_ID,
+    MAX_P300_READ_LENGTH,
     VitoHomeComponent,
     datapoint_expression,
     validate_length_in,
@@ -42,6 +43,35 @@ TEXT_SENSOR_TYPES = {
 # A {raw_value: label} map. Keys are integers (the decoded wire value), values
 # are the human-readable labels. Order is irrelevant (lookup is by value).
 _VALUE_MAP = cv.Schema({cv.uint32_t: cv.string})
+
+# Aligned block extraction for `type: enum` (read-only twin of the sensor's
+# byte_offset): with byte_offset, `length` is the block read at `address` (the
+# block base) and the enum field is the byte_length (default 1, max 4) bytes
+# at byte_offset. Read-only, so there is no write side and no state_address.
+CONF_BYTE_OFFSET = "byte_offset"
+CONF_BYTE_LENGTH = "byte_length"  # enum field width at byte_offset (1..4)
+
+
+def _validate_enum_extraction(config):
+    length = config[CONF_LENGTH]
+    if CONF_BYTE_OFFSET in config:
+        if not 1 <= length <= MAX_P300_READ_LENGTH:
+            raise cv.Invalid(
+                f"with byte_offset, length is a block read and must be 1..{MAX_P300_READ_LENGTH} (got {length})",
+                path=[CONF_LENGTH],
+            )
+        field_width = config.get(CONF_BYTE_LENGTH, 1)
+        if config[CONF_BYTE_OFFSET] + field_width > length:
+            raise cv.Invalid(
+                f"byte_offset ({config[CONF_BYTE_OFFSET]}) + byte_length ({field_width}) must be <= length ({length})",
+                path=[CONF_BYTE_OFFSET],
+            )
+    else:
+        if CONF_BYTE_LENGTH in config:
+            raise cv.Invalid("byte_length requires byte_offset", path=[CONF_BYTE_LENGTH])
+        if not 1 <= length <= 4:
+            raise cv.Invalid(f"length must be between 1 and 4 bytes (got {length})", path=[CONF_LENGTH])
+    return config
 
 
 def _validate_code_bytes(config):
@@ -96,11 +126,16 @@ CONFIG_SCHEMA = cv.typed_schema(
                 cv.Optional(CONF_LENGTH, default=1): validate_length_in(1, 4),
             }
         ),
-        "enum": _addressed(
-            {
-                cv.Optional(CONF_LENGTH, default=1): validate_length_in(1, 4),
-                cv.Required(CONF_OPTIONS): _VALUE_MAP,
-            }
+        "enum": cv.All(
+            _addressed(
+                {
+                    cv.Optional(CONF_LENGTH, default=1): cv.positive_int,
+                    cv.Optional(CONF_BYTE_OFFSET): cv.int_range(min=0, max=MAX_P300_READ_LENGTH - 1),
+                    cv.Optional(CONF_BYTE_LENGTH): cv.int_range(min=1, max=4),
+                    cv.Required(CONF_OPTIONS): _VALUE_MAP,
+                }
+            ),
+            _validate_enum_extraction,
         ),
         "error_history": cv.All(
             _addressed(
@@ -164,6 +199,12 @@ async def to_code(config):
         return
 
     cg.add(var.set_datapoint(datapoint_expression(config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH])))
+    if CONF_BYTE_OFFSET in config:
+        # enum block extraction: read `length` bytes at the block base, decode
+        # the byte_length-wide field at byte_offset.
+        cg.add(var.set_extract_byte(config[CONF_BYTE_OFFSET]))
+        if CONF_BYTE_LENGTH in config:
+            cg.add(var.set_extract_len(config[CONF_BYTE_LENGTH]))
 
     # add_option(value, label) takes (uint32_t, const char*); ESPHome emits the
     # label as a properly-escaped C++ string literal, so no manual escaping here.

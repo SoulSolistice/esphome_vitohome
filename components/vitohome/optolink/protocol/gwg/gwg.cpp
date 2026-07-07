@@ -82,8 +82,6 @@ void GWGEngine::end() {
   _busy = false;
 }
 
-int GWGEngine::getState() const { return static_cast<std::underlying_type<State>::type>(_state); }
-
 bool GWGEngine::isBusy() const { return _busy; }
 
 void GWGEngine::_setState(State state) {

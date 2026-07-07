@@ -64,6 +64,19 @@ void VitoTextSensor::publish_raw_hex_(const uint8_t* data, uint8_t len) {
 }
 
 void VitoTextSensor::publish_enum_(const uint8_t* data, uint8_t len) {
+  // With extraction the response is the whole block read at the block base;
+  // the enum field is extract_len_ bytes at extract_byte_ (bound-checked
+  // against the bytes actually received, like the other extracting entities).
+  if (this->extract_byte_ >= 0) {
+    const uint16_t off = static_cast<uint16_t>(this->extract_byte_);
+    if (off + this->extract_len_ > len) {
+      ESP_LOGW(TAG, "%s: response too short (have %u bytes, need %u)", this->datapoint_.name(), len,
+               static_cast<unsigned>(off + this->extract_len_));
+      return;
+    }
+    data += off;
+    len = this->extract_len_;
+  }
   const uint8_t use = len > 4 ? 4 : len;
   const uint32_t raw = static_cast<uint32_t>(read_le(data, use));
   const char* label = this->lookup_(raw);

@@ -90,7 +90,6 @@ class GWGEngine {
   void loop();
   void end();
 
-  int getState() const;
   bool isBusy() const;
 
  private:

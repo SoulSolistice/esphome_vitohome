@@ -79,7 +79,6 @@ class VS1Engine {
   void loop();
   void end();
 
-  int getState() const;
   bool isBusy() const;
 
  private:

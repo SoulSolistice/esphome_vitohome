@@ -153,8 +153,9 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   void raw_handle_error_(optolink::OptolinkResult error);
   void raw_publish_(const std::string& line);
   // Shared enqueue for the raw lane; the scan console uses purpose SCAN, the
-  // clock sync uses the CLOCK_* purposes.
-  void enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const std::vector<uint8_t>& bytes,
+  // clock sync uses the CLOCK_* purposes. bytes/bytes_len is the write payload
+  // (nullptr/0 for reads), copied into the queued op -- the lane is heap-free.
+  void enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t* bytes, uint8_t bytes_len,
                     RawPurpose purpose);
 
   // system-time sync (rides the raw lane)
@@ -217,11 +218,17 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   // write_queue_ instead -- clock sync is a background task nobody is
   // watching, and it can take up to three sequential round trips, so it must
   // not be able to stall a user-initiated write for that long.
+  // Write payloads are stored inline (heap-free, no per-retry copy): the cap
+  // in queue_raw_write is 32 bytes and the engines serialize the payload into
+  // their own packet buffer synchronously inside write(), so nothing needs to
+  // outlive the dispatch.
+  static constexpr uint8_t RAW_WRITE_MAX = 32;
   struct RawOp {
     uint16_t address;
     uint8_t length;
     bool is_write;
-    std::vector<uint8_t> bytes;
+    uint8_t bytes[RAW_WRITE_MAX];
+    uint8_t bytes_len;
     RawPurpose purpose;
   };
   static constexpr size_t RAW_QUEUE_MAX = 256;
@@ -230,7 +237,9 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   bool raw_is_write_{false};
   RawPurpose raw_purpose_{RawPurpose::SCAN};
   optolink::Datapoint raw_dp_{"scan", 0, 1, optolink::noconv};
-  std::vector<uint8_t> raw_write_buf_;
+  // Length of the last dispatched raw write, kept only for the ack log line
+  // (the payload itself is copied into the engine's packet at dispatch).
+  uint8_t raw_write_len_{0};
   std::vector<text_sensor::TextSensor*> raw_result_sensors_;
 
   // System-time sync state. time_source_ == nullptr means the feature is off.

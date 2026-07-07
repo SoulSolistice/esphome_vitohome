@@ -52,9 +52,10 @@ ParserResult ParserVS2::parse(const uint8_t b) {
       break;
 
     case ParserStep::FLAGS: {
-      uint8_t fc = b & 0x1F;
-      if (fc != 0x01 && fc != 0x02 && fc != 0x07) {
-        optolink_log_w("Invalid packet fc: 0x%02x", fc);
+      // Low 5 bits carry the function code; only READ/WRITE/RPC are valid.
+      const auto fc = static_cast<FunctionCode>(b & 0x1F);
+      if (fc != FunctionCode::READ && fc != FunctionCode::WRITE && fc != FunctionCode::RPC) {
+        optolink_log_w("Invalid packet fc: 0x%02x", static_cast<uint8_t>(fc));
         _step = ParserStep::STARTBYTE;
         return ParserResult::ERROR;
       }

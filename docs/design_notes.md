@@ -72,7 +72,10 @@ which member was written, so reading the wrong member returns whatever bit
 pattern is there — a silent garbage value, not an error. Choosing the correct
 member requires knowing the converter that produced it, i.e. exactly the
 information the union throws away. Decoding the raw bytes ourselves removes the
-guessing entirely.
+guessing entirely -- and the vendored engine has since deleted `VariantValue`
+and the converter decode/encode layer outright (`THIRD_PARTY.md` items 13/15),
+so the hazard class no longer exists in-tree; this section records why the
+decode path was designed this way.
 
 > The canonical instance of this trap: an earlier revision called
 > `operator float()` on a `noconv` value, reading the `float` member over integer

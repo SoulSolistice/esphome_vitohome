@@ -42,6 +42,12 @@ reads up to four files from it:
 > `DPDefinitions.xml` (pre-resolved German, ~87% coverage), so an enum/`select`'s
 > `options:` are readable regardless of `--culture`. Entity `name:` falls back to
 > a snake_case derivation of the technical id where no UI name exists.
+>
+> One `--culture` side effect: the switch-vs-select decision
+> (`_boolean_pair`) recognises German/English on-off label pairs only
+> (EIN/AUS, ON/OFF, Ja/Nein, ...). Under other cultures a boolean pair whose
+> labels are localised differently is emitted as a two-option `select` instead
+> of a `switch` -- functionally equivalent, just not a native HA toggle.
 
 ### Options
 

@@ -19,7 +19,6 @@ P300 / KW / GWG and a small trait that maps each tag to its engine class.
 #pragma once
 
 #include "constants.h"
-#include "datapoint/conversion_helpers.h"
 #include "datapoint/converter.h"
 #include "datapoint/datapoint.h"
 #include "protocol/gwg/gwg.h"

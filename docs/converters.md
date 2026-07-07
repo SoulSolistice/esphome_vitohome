@@ -60,12 +60,12 @@ A `converter:` is one of several ways a value is read. The full set:
 | platform | how the value is read | key options |
 |---|---|---|
 | `sensor` | scaled integer | `converter`, `length`, `signed`, `byte_offset`, `byte_length` |
-| `number` (write) | scaled integer, encodable converters only | `converter`, `length`, `min_value` / `max_value` / `step` |
+| `number` (write) | scaled integer, encodable converters only | `converter`, `length`, `min_value` / `max_value` / `step`, `state_address`, `byte_offset`, `byte_length` |
 | `binary_sensor` | one bit of a byte | `bit_mask`, `length` |
 | `text_sensor` `type: ascii` | raw bytes as an ASCII string | `length` |
 | `text_sensor` `type: utf16` | raw bytes as a UTF-16LE string | `length` (even) |
 | `text_sensor` `type: error_history` | 9-byte slot: code byte + 8-byte BCD timestamp, mapped via `codes:` | `length`, `codes` |
-| `text_sensor` `type: enum` | raw value mapped to a label | `options` |
+| `text_sensor` `type: enum` | raw value mapped to a label | `options`, `byte_offset`, `byte_length` |
 | `text_sensor` `type: device_id` | the device identification string | (none) |
 | `text` | 8-byte-per-day switching-time program, read/write as a canonical `"HH:MM-HH:MM ..."` string | `address`, `read_back` |
 
@@ -100,18 +100,22 @@ The block read must stay within the P300 single-telegram cap (37 bytes); a
 field in a larger block, or wider than 4 bytes, can't be a scalar extract.
 `scripts/gen_catalog.py` emits this form automatically for interior fields.
 
-A writable `select` or `switch` supports the same extraction on its **state
-read**: with `byte_offset`, `length` is the block read at `state_address` and
-the enum/boolean field is the `byte_length` (default 1, max 2) bytes at
-`byte_offset`; option / on-off values are checked against `byte_length`.
+A writable `select`, `switch` or `number` supports the same extraction on its
+**state read**: with `byte_offset`, `length` is the block read at
+`state_address` and the field is the `byte_length` (default 1; max 2 for
+select/switch, 4 for number) bytes at `byte_offset`. Option / on-off values,
+the number's converter, and its `min_value`/`max_value` encode checks all run
+against `byte_length`, and the write encodes exactly `byte_length` bytes.
 `state_address` is **required** with `byte_offset` — the aligned block is read
 there, while `address` stays the field's own write register (writing
 field-width bytes at the block base would hit the wrong register). The write
 therefore targets an interior address; P300's rejection of unaligned access is
 hardware-confirmed for reads only, so verify interior **writes** on hardware.
-A writable `number` has no extraction (and no `state_address`); the generator
-emits interior-field numbers at the field's own address with a P300-may-NAK
-caveat instead.
+
+The read-only `text_sensor` `type: enum` supports the same extraction with no
+write side at all: `address` is simply the block base, `length` the block
+read, and the enum field the `byte_length` bytes at `byte_offset` matched
+against `options`.
 | `select` | raw value mapped to a label, writable | `options`, `address`, `state_address`, `byte_offset`, `byte_length` |
 | `switch` | boolean register, writable | `on_value` / `off_value`, `on_values`, `address`, `state_address`, `byte_offset`, `byte_length` |
 | `binary_sensor` `type: connectivity` | hub-fed Optolink link state, no address | (none) |
@@ -145,10 +149,11 @@ goes to the command address. For example, party mode is commanded at `0x2330`
 (`BedienPartybetrieb`). Omit `state_address:` for a single-address select, which
 reads and writes the one `address:`.
 
-This read/write-address split is available on `select` only. A writable `number`
-reads and writes a single `address`; a numeric datapoint whose live state is
-exposed at a different register than its command cannot be expressed today, and
-would need `number` to gain the same `state_address`.
+This read/write-address split is available on `select`, `switch` and `number`
+alike: all three read (poll, read-back, response matching) at `state_address`
+when it is given and write to `address`. It also underpins the block
+extraction above -- with `byte_offset`, `state_address` carries the aligned
+block read while `address` stays the field's own write register.
 
 **Schaltzeiten (`text`).** Each entity is one weekday's switching-time program
 -- a fixed 8-byte block (four ON/OFF switch-point pairs) at `address`, read and
