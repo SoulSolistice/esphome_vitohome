@@ -38,6 +38,12 @@
       <ecnDataPointTypeEventTypeLink><DataPointTypeId>101</DataPointTypeId><EventTypeId>12</EventTypeId></ecnDataPointTypeEventTypeLink>
       <ecnDataPointTypeEventTypeLink><DataPointTypeId>101</DataPointTypeId><EventTypeId>13</EventTypeId></ecnDataPointTypeEventTypeLink>
       <ecnDataPointTypeEventTypeLink><DataPointTypeId>101</DataPointTypeId><EventTypeId>14</EventTypeId></ecnDataPointTypeEventTypeLink>
+      <ecnDataPointTypeEventTypeLink><DataPointTypeId>101</DataPointTypeId><EventTypeId>15</EventTypeId></ecnDataPointTypeEventTypeLink>
+      <ecnDataPointTypeEventTypeLink><DataPointTypeId>101</DataPointTypeId><EventTypeId>16</EventTypeId></ecnDataPointTypeEventTypeLink>
+      <ecnDataPointTypeEventTypeLink><DataPointTypeId>101</DataPointTypeId><EventTypeId>17</EventTypeId></ecnDataPointTypeEventTypeLink>
+      <ecnDataPointTypeEventTypeLink><DataPointTypeId>101</DataPointTypeId><EventTypeId>18</EventTypeId></ecnDataPointTypeEventTypeLink>
+      <ecnDataPointTypeEventTypeLink><DataPointTypeId>101</DataPointTypeId><EventTypeId>19</EventTypeId></ecnDataPointTypeEventTypeLink>
+      <ecnDataPointTypeEventTypeLink><DataPointTypeId>101</DataPointTypeId><EventTypeId>20</EventTypeId></ecnDataPointTypeEventTypeLink>
 
       <!-- 1: read-only div10 SIGNED temperature -> sensor -->
       <ecnEventType>
@@ -86,12 +92,12 @@
       <ecnEventValueType><Id>41</Id><Name>off</Name><EnumAddressValue>0</EnumAddressValue><EnumReplaceValue>Aus</EnumReplaceValue></ecnEventValueType>
       <ecnEventValueType><Id>42</Id><Name>on</Name><EnumAddressValue>1</EnumAddressValue><EnumReplaceValue>Ein</EnumReplaceValue></ecnEventValueType>
 
-      <!-- 5: writable enum (Type 2, length 1) -> select -->
+      <!-- 5: writable enum (Type 3 = read+write, length 1) -> select -->
       <ecnEventType>
         <Id>5</Id>
         <Name>Operating_Mode~0x2301</Name>
         <Conversion>NoConversion</Conversion>
-        <Type>2</Type>
+        <Type>3</Type>
         <BlockLength>1</BlockLength>
         <ByteLength>1</ByteLength>
       </ecnEventType>
@@ -100,12 +106,12 @@
       <ecnEventValueType><Id>51</Id><Name>standby</Name><EnumAddressValue>0</EnumAddressValue><EnumReplaceValue>Standby</EnumReplaceValue></ecnEventValueType>
       <ecnEventValueType><Id>52</Id><Name>heating</Name><EnumAddressValue>2</EnumAddressValue><EnumReplaceValue>Heizen</EnumReplaceValue></ecnEventValueType>
 
-      <!-- 6: writable number WITH borders -> number with min/max/step -->
+      <!-- 6: writable number WITH borders (Type 3) -> number with min/max/step -->
       <ecnEventType>
         <Id>6</Id>
         <Name>DHW_Setpoint~0x6300</Name>
         <Conversion>NoConversion</Conversion>
-        <Type>2</Type>
+        <Type>3</Type>
         <BlockLength>1</BlockLength>
         <ByteLength>1</ByteLength>
         <LowerBorder>10</LowerBorder>
@@ -115,12 +121,12 @@
       <ecnEventTypeEventValueTypeLink><EventTypeId>6</EventTypeId><EventValueTypeId>61</EventValueTypeId></ecnEventTypeEventValueTypeLink>
       <ecnEventValueType><Id>61</Id><Name>celsius</Name><Unit>&#176;C</Unit><LowerBorder>10</LowerBorder><UpperBorder>60</UpperBorder><Stepping>1</Stepping></ecnEventValueType>
 
-      <!-- 7: writable number WITHOUT borders -> placeholder min/max/step path -->
+      <!-- 7: writable number WITHOUT borders (Type 3) -> placeholder min/max/step path -->
       <ecnEventType>
         <Id>7</Id>
         <Name>Slope~0x27D3</Name>
         <Conversion>Div10</Conversion>
-        <Type>2</Type>
+        <Type>3</Type>
         <BlockLength>1</BlockLength>
         <ByteLength>1</ByteLength>
       </ecnEventType>
@@ -157,14 +163,14 @@
         <FCRead>GFA_READ</FCRead>
       </ecnEventType>
 
-      <!-- 11: writable noconv number with a NEGATIVE lower border (a
+      <!-- 11: writable noconv number (Type 3) with a NEGATIVE lower border (a
            two's-complement byte, e.g. a frost limit) -> must emit signed: true
            so the component's number validator accepts it -->
       <ecnEventType>
         <Id>11</Id>
         <Name>Frost_Limit~0x27A3</Name>
         <Conversion>NoConversion</Conversion>
-        <Type>2</Type>
+        <Type>3</Type>
         <BlockLength>1</BlockLength>
         <ByteLength>1</ByteLength>
         <LowerBorder>-9</LowerBorder>
@@ -210,6 +216,114 @@
       </ecnEventType>
       <ecnEventTypeEventValueTypeLink><EventTypeId>14</EventTypeId><EventValueTypeId>41</EventValueTypeId></ecnEventTypeEventValueTypeLink>
       <ecnEventTypeEventValueTypeLink><EventTypeId>14</EventTypeId><EventValueTypeId>42</EventValueTypeId></ecnEventTypeEventValueTypeLink>
+
+      <!-- 15: WRITE-ONLY register (Type 2 = Vitosoft AccessMode 'Write': a
+           reset/trigger with no read-back) -> emitted as a comment hint, not a
+           polled number -->
+      <ecnEventType>
+        <Id>15</Id>
+        <Name>Maintenance_Reset~0x5724</Name>
+        <Conversion>NoConversion</Conversion>
+        <Type>2</Type>
+        <BlockLength>1</BlockLength>
+        <ByteLength>1</ByteLength>
+      </ecnEventType>
+
+      <!-- 16: read-only Div10 at 4 bytes: an UNSUPPORTED converter/width
+           pair (the component's div10 handles 1-2 bytes only) -> must fall
+           back to noconv + a multiply(0.1) filter + signed: true (div10's
+           default), never a rejected `converter: div10, length: 4` -->
+      <ecnEventType>
+        <Id>16</Id>
+        <Name>Energy_Total~0x0930</Name>
+        <Conversion>Div10</Conversion>
+        <Type>1</Type>
+        <BlockLength>4</BlockLength>
+        <ByteLength>4</ByteLength>
+      </ecnEventType>
+
+      <!-- 17: read-only enum carrying a NEGATIVE EnumAddressValue (-1). The
+           raw byte compares unsigned, so -1 can never match -> the -1 option
+           is dropped and a NOTE names the drop; the 0/1 options survive -->
+      <ecnEventType>
+        <Id>17</Id>
+        <Name>Sensor_State~0x0A10</Name>
+        <Conversion>NoConversion</Conversion>
+        <Type>1</Type>
+        <BlockLength>1</BlockLength>
+        <ByteLength>1</ByteLength>
+      </ecnEventType>
+      <ecnEventTypeEventValueTypeLink><EventTypeId>17</EventTypeId><EventValueTypeId>171</EventValueTypeId></ecnEventTypeEventValueTypeLink>
+      <ecnEventTypeEventValueTypeLink><EventTypeId>17</EventTypeId><EventValueTypeId>172</EventValueTypeId></ecnEventTypeEventValueTypeLink>
+      <ecnEventTypeEventValueTypeLink><EventTypeId>17</EventTypeId><EventValueTypeId>173</EventValueTypeId></ecnEventTypeEventValueTypeLink>
+      <ecnEventValueType><Id>171</Id><Name>invalid</Name><EnumAddressValue>-1</EnumAddressValue><EnumReplaceValue>Ungueltig</EnumReplaceValue></ecnEventValueType>
+      <ecnEventValueType><Id>172</Id><Name>ok</Name><EnumAddressValue>0</EnumAddressValue><EnumReplaceValue>OK</EnumReplaceValue></ecnEventValueType>
+      <ecnEventValueType><Id>173</Id><Name>fault</Name><EnumAddressValue>1</EnumAddressValue><EnumReplaceValue>Fehler</EnumReplaceValue></ecnEventValueType>
+
+      <!-- 18: MultOffset carrying ConversionFactor 10 / ConversionOffset 0.
+           value = raw * 10 maps exactly onto the mult10 preset -> converter:
+           mult10 (previously emitted as raw noconv: a 10x under-read) -->
+      <ecnEventType>
+        <Id>18</Id>
+        <Name>Time_Constant~0x7700</Name>
+        <Conversion>MultOffset</Conversion>
+        <Type>1</Type>
+        <BlockLength>1</BlockLength>
+        <ByteLength>1</ByteLength>
+        <ConversionFactor>10</ConversionFactor>
+        <ConversionOffset>0</ConversionOffset>
+      </ecnEventType>
+
+      <!-- 19: read-only noconv with a NEGATIVE LowerBorder (a two's-complement
+           temperature). noconv is unsigned by default, so a crossing-zero
+           range must force an explicit signed: true on the sensor -->
+      <ecnEventType>
+        <Id>19</Id>
+        <Name>Collector_Temp~0x0A20</Name>
+        <Conversion>NoConversion</Conversion>
+        <Type>1</Type>
+        <BlockLength>2</BlockLength>
+        <ByteLength>2</ByteLength>
+        <LowerBorder>-40</LowerBorder>
+        <UpperBorder>250</UpperBorder>
+      </ecnEventType>
+
+      <!-- Vitosoft navigation tree (ecnEventTypeGroup) for the group order mode.
+           DataPointTypeId 101 = VTestHO1_99. The Address embeds the readable
+           path; numeric segment prefixes carry the intended order. Two groups:
+           Bedienung (events 1, 5) and Warmwasser (event 6). -->
+      <ecnEventTypeGroup>
+        <Id>9001</Id>
+        <Name>@@viessmann.eventtypegroup.name.VTestHO1_99~10_Bedienung</Name>
+        <Address>VTestHO1_99~10_Bedienung~10_Betriebsdaten</Address>
+        <ParentId>-1</ParentId>
+        <DataPointTypeId>101</DataPointTypeId>
+        <OrderIndex>1</OrderIndex>
+      </ecnEventTypeGroup>
+      <ecnEventTypeGroup>
+        <Id>9002</Id>
+        <Name>@@viessmann.eventtypegroup.name.VTestHO1_99~20_Warmwasser</Name>
+        <Address>VTestHO1_99~20_Warmwasser~10_Sollwerte</Address>
+        <ParentId>-1</ParentId>
+        <DataPointTypeId>101</DataPointTypeId>
+        <OrderIndex>2</OrderIndex>
+      </ecnEventTypeGroup>
+      <ecnEventTypeEventTypeGroupLink><EventTypeId>1</EventTypeId><EventTypeGroupId>9001</EventTypeGroupId><EventTypeOrder>1</EventTypeOrder></ecnEventTypeEventTypeGroupLink>
+      <ecnEventTypeEventTypeGroupLink><EventTypeId>5</EventTypeId><EventTypeGroupId>9001</EventTypeGroupId><EventTypeOrder>2</EventTypeOrder></ecnEventTypeEventTypeGroupLink>
+      <ecnEventTypeEventTypeGroupLink><EventTypeId>6</EventTypeId><EventTypeGroupId>9002</EventTypeGroupId><EventTypeOrder>1</EventTypeOrder></ecnEventTypeEventTypeGroupLink>
+
+      <!-- 20: a 56-byte / BlockFactor-7 weekday switching-time program ->
+           must expand to 7 per-day `text` entities at base + day*8, NOT a
+           custom-decode comment. -->
+      <ecnEventType>
+        <Id>20</Id>
+        <Name>Schaltzeiten_Test~0x2000</Name>
+        <Conversion>NoConversion</Conversion>
+        <Type>3</Type>
+        <BlockLength>56</BlockLength>
+        <ByteLength>56</ByteLength>
+        <BlockFactor>7</BlockFactor>
+      </ecnEventType>
 
     </ECNDataSet>
   </diffgr:diffgram>

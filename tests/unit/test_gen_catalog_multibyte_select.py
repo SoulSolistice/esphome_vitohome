@@ -58,7 +58,7 @@ def _event(**overrides):
         name="Test Enum",
         address=0x2500,
         conversion="",
-        access_type=2,  # writable (2/3)
+        access_type=3,  # read+write (Vitosoft Type 3); 2 is WRITE-ONLY
         block_length=0,
         byte_length=2,
         byte_position=0,
@@ -73,6 +73,9 @@ def _event(**overrides):
         token="Test~0x2500",
         fc_read="",  # "" -> reachable
         fc_write="",  # "" -> writable (trusted to access_type)
+        conv_factor=None,
+        conv_offset=None,
+        block_factor=None,
         values=[],
     )
     base.update(overrides)

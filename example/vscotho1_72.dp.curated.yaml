@@ -25,7 +25,9 @@
 #
 # VERIFY ON HARDWARE: addresses come from the Vitosoft catalog for this
 # variant; confirm with `esphome config` then `esphome run` before relying
-# on a value. Sub-zero temperatures exercise the signed div10 path.
+# on a value. Sub-zero temperatures exercise the signed paths: div10 is
+# signed by default (Außen), but div100/noconv are not, so the return
+# sensor and the Niveau offset carry an explicit `signed: true`.
 # ============================================================
 
 sensor:
@@ -36,6 +38,10 @@ sensor:
     address: 0x5525            # ATS, low-pass filtered
     length: 2
     converter: div10
+    # Catalog border is -60..60 °C: the range crosses zero, so signedness
+    # matters. No explicit `signed:` needed here -- div10 is signed by default
+    # in the component (unlike div100/noconv), so sub-zero outdoor temps
+    # decode correctly. (source-confirmed: CONVERTERS['div10'].default_signed.)
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
@@ -114,6 +120,13 @@ sensor:
     address: 0x0C20            # STRS1 return sensor (div100!)
     length: 2
     converter: div100
+    signed: true
+    # div100 is UNSIGNED by default in the component (only div2/div10 are
+    # signed) and the Vitosoft catalog carries no border for this Neptun
+    # sensor, so the generator emits it unsigned. A return-water sensor can
+    # read sub-zero on a fault/disconnect, which would misdecode as ~+655 °C
+    # (0xFFxx read big); force signed so a negative reads correctly.
+    # (model-derived: domain knowledge the catalog does not encode.)
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
@@ -264,6 +277,18 @@ binary_sensor:
     icon: "mdi:fire"
     update_interval: 30s
 
+  - platform: vitohome
+    name: "Frostgefahr HK1"
+    id: HK_Frostgefahr_aktivA1M1
+    address: 0x2510
+    length: 1
+    byte_offset: 0
+    bit_mask: 0x80
+    device_class: cold
+    entity_category: diagnostic
+    icon: "mdi:snowflake-alert"
+    update_interval: 60s
+
   # Hub-fed Optolink link diagnostic: ONLINE on any successful response,
   # OFFLINE after 3 consecutive protocol errors or when start-up protocol
   # verification fails. Never polls; edge-published.
@@ -312,7 +337,7 @@ text_sensor:
       0x00: "Off"
       0x01: "On"
 
-  # Owner-set circuit label, UTF-16LE (Beschriftung HK1, byte 2 of the
+  # Not-in-catalog circuit label, UTF-16LE (Beschriftung HK1, byte 2 of the
   # 42-byte block @ 0x7360). DISABLED by default: the 40-byte read succeeds
   # on KW but EXCEEDS the P300/VS2 single-telegram payload cap -- P300
   # returns an error frame (hardware-confirmed 2026-07-04) and the entity
@@ -443,15 +468,7 @@ text_sensor:
       0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
       0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
 
-  # Newest slot of the GFA (Feuerungsautomat / burner control unit) fault
-  # history. HARDWARE-CONFIRMED as a distinct archive from the system
-  # history above (P300 log 2026-07-04: this slot read code 0x00 with
-  # timestamp 2026-03-29 10:50:46 -- 42 s AFTER the system slot's 0x38 @
-  # 10:50:04, same power-cycle, different code byte). Different code space
-  # from the F-codes, so NO codes map: the byte displays as raw hex. No
-  # public GFA code list is known; a populated slot from a real burner
-  # lockout would let us build one. Enabled here (unlike the generated
-  # catalog's default-disabled GFA slots) so the distinction is visible.
+
   - platform: vitohome
     type: error_history
     name: "GFA Letzter Fehler"

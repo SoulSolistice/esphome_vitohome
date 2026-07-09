@@ -89,13 +89,15 @@ after several consecutive read failures, not on a single transient glitch.
 **Catalog generator.** The repository ships a generator that turns a Viessmann
 Vitosoft export into a ready-to-use YAML datapoint catalog for a specific
 controller, complete with units, device classes, fault-code maps and the
-correct converters — see [`docs`](docs) and the `example/` catalogs.
+correct converters — see [`scripts/README.md`](scripts/README.md) and the
+`example/` catalogs.
 
 ## What you need
 
 - An ESP32-class board.
 - An Optolink read/write head, placed over the optical interface on the
-  Viessmann unit and wired to the board's UART. See https://github.com/JuergenLeber/home-assistant-optolink
+  Viessmann unit and wired to the board's UART. See
+  [JuergenLeber/home-assistant-optolink](https://github.com/JuergenLeber/home-assistant-optolink)
   for a nice example.
 - A UART configured for **4800 baud, 8 data bits, even parity, 2 stop bits
   (8E2)**. This is mandatory — the hub refuses to start on any mismatch.

@@ -122,7 +122,31 @@ NON_NUMERIC_CONVERSIONS = {
     "Convert4BytesToFloat": "IEEE-754 float -> not yet supported by vitohome",
     "HexToFloat": "IEEE-754 float -> not yet supported by vitohome",
     "MultOffsetFloat": "float -> custom decode",
+    "MultOffsetBCD": "BCD-coded value -> custom decode",
 }
+
+# ConversionFactor values that map 1:1 onto an existing component converter
+# when ConversionOffset is 0. Used for ``MultOffset`` (whose semantics are
+# value = raw * factor + offset) and for the handful of ``NoConversion`` rows
+# that carry a real factor (verified in the 2026 export: factors 0.1 and 10 on
+# Virtual_READ rows). Factors outside this map fall back to noconv plus an
+# ESPHome ``multiply:`` filter on read-only sensors (see emit_entity).
+_FACTOR_PRESETS = (
+    (2.0, "mult2"),
+    (5.0, "mult5"),
+    (10.0, "mult10"),
+    (100.0, "mult100"),
+    (0.5, "div2"),
+    (0.1, "div10"),
+    (0.01, "div100"),
+    (0.001, "div1000"),
+)
+
+# Vitosoft's placeholder junk pair: rows with no real conversion factor carry
+# the literal strings -0.1067 / 6992.58 (verified across the 2026 export --
+# they appear together on Phone2BCD, HexByte2AsciiByte, VitocomNV and other
+# non-numeric rows). Treat the pair as "no factor/offset present".
+_FACTOR_PLACEHOLDERS = ("-0.1067", "6992.58")
 
 # Mode commands whose live state is read at a DIFFERENT address than the
 # command register (see the read/write-split analysis). Maps the writable
@@ -185,8 +209,26 @@ POLL_ERROR = 300  # error history
 
 PROFILES = ("minimal", "standard", "full")
 
-# Culture name -> CultureId in Textresource.xml.
-_CULTURES = {"de": "1", "en": "2", "fr": "3", "it": "4", "ru": "5", "nl": "6"}
+# Culture name -> CultureId in Textresource.xml. Mirrors the full ecnCulture
+# table of the 2026 export (13 cultures). NOTE: the export ships only Vitosoft
+# UI strings in Textresource.xml -- no eventtype / eventvaluetype / ecnUnit
+# labels -- so the culture choice currently has no effect on entity naming;
+# the map is kept complete for exports that do carry translations.
+_CULTURES = {
+    "de": "1",
+    "en": "2",
+    "fr": "3",
+    "it": "4",
+    "ru": "5",
+    "nl": "6",
+    "pl": "7",
+    "da": "8",
+    "hu": "9",
+    "es": "10",
+    "tr": "11",
+    "lt": "12",
+    "cs": "13",
+}
 
 # Identification reads (0xF8 group, 0xF9 ident, 0xFA hardware, 0xFB software).
 # The hub reads these at boot and feeds the device_id text_sensor, so the raw
@@ -228,7 +270,13 @@ class Event:
     name: str  # human display (resolved label or technical token)
     address: int | None
     conversion: str
-    access_type: int  # 1=ro, 2=rw, 3=wo
+    # Vitosoft access semantics, verified against the full 2026 export (the
+    # DPDefinitions ``Type`` column agrees with the access layer's AccessMode
+    # on all 11582 rows): 1 = read-only, 2 = WRITE-ONLY (reset/trigger
+    # registers), 3 = read+write. NOTE 2/3 are the reverse of what an earlier
+    # comment here claimed; every writability check treats {2, 3} as writable,
+    # and write-only (2) additionally gets no polled state read (emit_entity).
+    access_type: int
     block_length: int | None
     byte_length: int | None
     byte_position: int | None
@@ -243,6 +291,16 @@ class Event:
     token: str = ""  # raw DPDefinitions Address token (e.g. "ecnsysEventType~Error")
     fc_read: str = ""  # access function code for reads (Virtual_READ, GFA_READ, ...)
     fc_write: str = ""  # access function code for writes (Virtual_WRITE, ...)
+    # Access-layer value transform: value = raw * conv_factor + conv_offset.
+    # None when absent or when the export carries its placeholder junk pair
+    # (see _FACTOR_PLACEHOLDERS). Consumed for MultOffset and for identity
+    # conversions with a real factor; never stacked on Div*/Mult* presets.
+    conv_factor: float | None = None
+    conv_offset: float | None = None
+    # Access-layer array structure: BlockLength bytes = block_factor records
+    # (e.g. ecnsysEventType~Error: BlockLength 90, BlockFactor 10 -> ten 9-byte
+    # fault slots; MappingType 3). 0/None when the datapoint is not an array.
+    block_factor: int | None = None
     values: list = field(default_factory=list)
 
 
@@ -445,6 +503,12 @@ def _load_access(path):
                 byte_position=_child(e, "BytePosition"),
                 conversion=_child(e, "Conversion"),
                 conversion_factor=_child(e, "ConversionFactor"),
+                conversion_offset=_child(e, "ConversionOffset"),
+                block_factor=_child(e, "BlockFactor"),
+                mapping_type=_child(e, "MappingType"),
+                lower_border=_child(e, "LowerBorder"),
+                upper_border=_child(e, "UpperBorder"),
+                stepping=_child(e, "Stepping"),
                 unit=_child(e, "Unit"),
                 fc_read=_child(e, "FCRead"),
                 fc_write=_child(e, "FCWrite"),
@@ -494,6 +558,8 @@ _WANTED_ROWS = {
     "ecnEventType",
     "ecnEventTypeEventValueTypeLink",
     "ecnEventValueType",
+    "ecnEventTypeGroup",
+    "ecnEventTypeEventTypeGroupLink",
 }
 
 
@@ -501,7 +567,9 @@ class Catalog:
     """Parsed Vitosoft export: device types + events (merged with the access
     layer) + value types + identification."""
 
-    def __init__(self, types, dp_name, links, raw_events, vlinks, raw_values, access, ident_rows, textmap):
+    def __init__(
+        self, types, dp_name, links, raw_events, vlinks, raw_values, access, ident_rows, textmap, groups=None, glinks=None
+    ):
         self.devices = types  # token -> datapoint-type Id
         self._dp_name = dp_name  # Id -> display name
         self._links = links  # dp_id -> [event_id]
@@ -509,8 +577,54 @@ class Catalog:
         self._access = access  # token -> access dict
         self._ident = ident_rows
         self._text = textmap
+        # Vitosoft navigation tree (ecnEventTypeGroup): group id -> {"path":
+        # readable "TOKEN~10_Bedienung_A1~20_Warmwasser", "dp": DataPointTypeId,
+        # "order": OrderIndex}; glinks: event id -> [(group id, EventTypeOrder)].
+        # Consumed only by --order group; both default empty.
+        self._groups = groups or {}
+        self._glinks = glinks or {}
+        self._group_cache: dict = {}
         self._values = {vid: self._mk_value(f) for vid, f in raw_values.items()}
         self._events = {eid: self._mk_event(eid, f) for eid, f in raw_events.items()}
+
+    def group_for(self, ev, device_token: str) -> tuple[tuple, str]:
+        """(sort_key, label) of the event's Vitosoft navigation group for this
+        device, from ecnEventTypeGroup. The group's Address embeds the full
+        readable path ("VScotHO1_72~10_Bedienung_A1~20_Warmwasser"); its
+        numeric segment prefixes carry Vitosoft's intended ordering, so the
+        raw segments are the sort key (all-str tuple; EventTypeOrder appended
+        zero-padded to order entities within a group). Events without a group
+        sort last under "(ohne Gruppenzuordnung)"."""
+        dp_id = self.devices.get(device_token)
+        cache_key = (ev.id, dp_id)
+        hit = self._group_cache.get(cache_key)
+        if hit is not None:
+            return hit
+        best = None
+        for gid, ev_order in self._glinks.get(ev.id, ()):
+            g = self._groups.get(gid)
+            if not g or g["dp"] != dp_id:
+                continue
+            segs = tuple(g["path"].split("~")[1:])
+            if not segs:
+                continue
+            cand = (segs, ev_order)
+            if best is None or cand < best:
+                best = cand
+        if best is None:
+            out = (("~ohne_gruppe", "~"), "(ohne Gruppenzuordnung)")  # '~' > alnum -> sorts last
+        else:
+            segs, ev_order = best
+            # "10_Bedienung_A1" -> "Bedienung A1"; consecutive duplicate
+            # segments collapse ("03_Identifikation~10_Identifikation").
+            clean: list[str] = []
+            for seg in segs:
+                c = re.sub(r"^\d+_", "", seg).replace("_", " ")
+                if not clean or clean[-1] != c:
+                    clean.append(c)
+            out = (segs + (f"{ev_order:06d}",), " / ".join(clean))
+        self._group_cache[cache_key] = out
+        return out
 
     # -- assembly --
     def _mk_value(self, f):
@@ -535,8 +649,40 @@ class Catalog:
                 v = f.get(dp_key)
             return _intval(v)
 
+        def pick_str(acc_key, dp_key):
+            """DPDefinitions first (fixture/old exports), else the access layer.
+            The 2026 export keeps borders ONLY in the access layer."""
+            v = f.get(dp_key, "") or ""
+            if v == "":
+                v = acc.get(acc_key) or ""
+            return v
+
         raw_name = f.get("Name", "") or ""
-        addr = _hexaddr(acc.get("address")) or _address_from_token(token) or _address_from_name(raw_name)
+        # Explicit None checks: 0x0000 is a valid Optolink address, and a
+        # falsy-zero `or` chain would silently treat it as absent.
+        addr = _hexaddr(acc.get("address"))
+        if addr is None:
+            addr = _address_from_token(token)
+        if addr is None:
+            addr = _address_from_name(raw_name)
+
+        # value = raw * factor + offset. The export writes the junk pair
+        # -0.1067 / 6992.58 on rows with no real transform; and ConversionFactor
+        # 0 is the dominant "no scaling" sentinel (4364 NoConversion rows in the
+        # 2026 export) -- a literal 0x multiplier is never meaningful, so treat
+        # both as absent. A real 0 offset is fine and handled at the call site.
+        def _fval(acc_key, dp_key, *, is_factor):
+            s = f.get(dp_key, "") or acc.get(acc_key) or ""
+            if s in _FACTOR_PLACEHOLDERS:
+                return None
+            try:
+                v = float(s)
+            except (TypeError, ValueError):
+                return None
+            if is_factor and v == 0.0:
+                return None
+            return v
+
         return Event(
             id=eid,
             name=_friendly(raw_name, self._text),
@@ -548,15 +694,18 @@ class Catalog:
             byte_position=pick("byte_position", "BytePosition"),
             bit_length=pick("bit_length", "BitLength"),
             bit_position=pick("bit_position", "BitPosition"),
-            lower=f.get("LowerBorder", "") or "",
-            upper=f.get("UpperBorder", "") or "",
-            stepping=f.get("Stepping", "") or "",
+            lower=pick_str("lower_border", "LowerBorder"),
+            upper=pick_str("upper_border", "UpperBorder"),
+            stepping=pick_str("stepping", "Stepping"),
             enum_type=(f.get("EnumType", "") or "").lower() in ("1", "true"),
             unit=_resolve_unit(acc.get("unit", ""), self._text),
             tech=_tech_id(raw_name, token),
             token=token,
             fc_read=(acc.get("fc_read") or f.get("FCRead") or ""),
             fc_write=(acc.get("fc_write") or f.get("FCWrite") or ""),
+            conv_factor=_fval("conversion_factor", "ConversionFactor", is_factor=True),
+            conv_offset=_fval("conversion_offset", "ConversionOffset", is_factor=False),
+            block_factor=pick("block_factor", "BlockFactor"),
         )
 
     # -- queries --
@@ -677,6 +826,8 @@ def load_catalog(data_dir: str, culture: str = "de") -> Catalog:
     types, dp_name = {}, {}
     links, vlinks = defaultdict(list), defaultdict(list)
     raw_events, raw_values = {}, {}
+    groups: dict = {}
+    glinks = defaultdict(list)
 
     for _event, el in ET.iterparse(dp_path, events=("end",)):
         ln = _local(el.tag)
@@ -703,10 +854,24 @@ def load_catalog(data_dir: str, culture: str = "de") -> Catalog:
             elif ln == "ecnEventValueType":
                 if f.get("Id"):
                     raw_values[f["Id"]] = f
+            elif ln == "ecnEventTypeGroup":
+                gid = f.get("Id")
+                if gid:
+                    groups[gid] = {
+                        "path": f.get("Address") or "",  # readable "TOKEN~10_Bedienung~..."
+                        "dp": f.get("DataPointTypeId") or "",
+                        "order": _intval(f.get("OrderIndex")) or 0,
+                    }
+            elif ln == "ecnEventTypeEventTypeGroupLink":
+                e, gid = f.get("EventTypeId"), f.get("EventTypeGroupId")
+                if e and gid:
+                    glinks[e].append((gid, _intval(f.get("EventTypeOrder")) or 0))
         if ln.startswith(_CONTAINER_PREFIXES):
             el.clear()  # free table rows / datasets we have finished reading
 
-    return Catalog(types, dp_name, links, raw_events, vlinks, raw_values, access, ident, textmap)
+    return Catalog(
+        types, dp_name, links, raw_events, vlinks, raw_values, access, ident, textmap, groups=groups, glinks=glinks
+    )
 
 
 # --- entity emission -------------------------------------------------------
@@ -768,11 +933,34 @@ def _enum_options(ev: Event) -> list:
     values carry a Description; the rest fall through to the old behaviour.
     """
     out = []
+    seen_values: set[int] = set()
     for v in ev.values:
-        if v.enum_address_value is not None:
-            label = v.description or v.enum_replace_value or v.name or f"0x{v.enum_address_value:02X}"
-            out.append((v.enum_address_value, label))
+        if v.enum_address_value is None:
+            continue
+        if v.enum_address_value < 0:
+            # A handful of value types (SNVTAlarm_*, WPR3_Mischer_*) carry
+            # EnumAddressValue -1. The raw bytes are compared unsigned, so a
+            # negative option can never match on the wire -- and emitting it
+            # produced invalid `0x-1` option keys that fail `esphome config`
+            # (verified on the CU401B/V333 bulk exports). Skipped; emit_entity
+            # adds a NOTE naming how many were dropped.
+            continue
+        if v.enum_address_value in seen_values:
+            # The export can map TWO options to the SAME value (LON/BACnet
+            # nodes: nvoNodeAlarm at 0x82E has value 3 for both
+            # "service alarm 2" and "service alarm 3"). Duplicate values become
+            # duplicate YAML option keys, which fail `esphome config`. Keep the
+            # first (deterministic by document order) and drop the rest.
+            continue
+        seen_values.add(v.enum_address_value)
+        label = v.description or v.enum_replace_value or v.name or f"0x{v.enum_address_value:02X}"
+        out.append((v.enum_address_value, label))
     return out
+
+
+def _negative_option_count(ev: Event) -> int:
+    """How many enum options _enum_options dropped for being negative."""
+    return sum(1 for v in ev.values if v.enum_address_value is not None and v.enum_address_value < 0)
 
 
 def _dedup_option_labels(opts: list) -> list:
@@ -917,6 +1105,27 @@ _CONV_SCALE = {
     "mult100": 100.0,
 }
 
+# Mirrors CONVERTERS[...].lengths in components/vitohome/__init__.py: the byte
+# widths each converter can decode. sensor.py/number.py REJECT a config whose
+# (converter, effective width) is outside this table, so the generator must
+# never emit such a pair -- verified failing shapes from the bulk export:
+# div10 at 4 bytes (HK_Aufheiztimer*), sec2hour at 1 byte (PartyTimer).
+# Unsupported combinations fall back to noconv plus a `multiply:` filter
+# carrying the true scale (read-only), or are demoted first (writables).
+_CONV_LENGTHS = {
+    "noconv": (1, 2, 3, 4),
+    "div2": (1, 2),
+    "div10": (1, 2),
+    "div100": (1, 2, 4),
+    "div1000": (2, 4),
+    "sec2hour": (4,),
+    "mult2": (1, 2, 4),
+    "mult5": (1, 2, 4),
+    "mult10": (1, 2, 4),
+    "mult100": (1, 2, 4),
+    "rotatebytes": (2,),
+}
+
 
 def _llround(x: float) -> int:
     """Round half away from zero -- the semantics of C++ ``std::llround`` and of
@@ -968,8 +1177,76 @@ def emit_entity(ev: Event, profile: str):
         hint = NON_NUMERIC_CONVERSIONS[ev.conversion]
         return ("comment", [f"# {name} @ 0x{addr:04X}: {ev.conversion} ({hint})"])
 
+    # WRITE-ONLY registers (Vitosoft access type 2: FunktionReset triggers,
+    # counter resets, the hydraulic-balance byte blob). There is no state to
+    # poll -- reading them returns garbage or NAKs -- and a number/switch card
+    # would show a meaningless value, so they are surfaced as a hint instead
+    # of a polled entity. (The COMMAND_STATE_ADDR command registers all carry
+    # access type 3 in the export -- verified -- so this cannot shadow them;
+    # the guard is belt-and-braces.)
+    if ev.access_type == 2 and COMMAND_STATE_ADDR.get(ev.address) is None:
+        return (
+            "comment",
+            [
+                f"# {name} @ 0x{addr:04X}: WRITE-ONLY register (Vitosoft AccessMode 'Write');"
+                " a trigger with no read-back -> not auto-emitted."
+            ],
+        )
+
     conv, conv_kind = CONVERSION_MAP.get(ev.conversion, (None, PLAIN))
     note = None
+    # Value-transform filters (multiply/offset) for READ-ONLY sensors whose
+    # factor cannot be expressed as a component converter. Writables never get
+    # filters (there is no encode-side transform); they keep raw noconv + note.
+    value_filters: list[tuple[str, float]] = []
+    force_signed = False
+    writable = _is_writable(ev)
+
+    # ConversionFactor/ConversionOffset (value = raw * factor + offset).
+    # Applied ONLY for MultOffset and for identity conversions carrying a real
+    # factor -- never stacked on Div*/Mult*/Sec2Hour presets (the export
+    # sometimes echoes the preset's own factor there; verified: Div2 rows with
+    # factor 0.5). Factor -> preset where possible (K90 MultOffset factor 10
+    # -> mult10: previously emitted as raw noconv, a 10x under-read).
+    # A factor of exactly 0 is the export's "no scaling" sentinel (the loader
+    # already maps it to None; this normalises Events built by other means too)
+    # -- never a literal 0x multiplier.
+    eff_factor = ev.conv_factor if ev.conv_factor not in (None, 0.0) else None
+    factor_driven = ev.conversion == "MultOffset" or (ev.conversion in ("", "NoConversion") and eff_factor is not None)
+    if factor_driven:
+        f_val = eff_factor
+        o_val = ev.conv_offset or 0.0
+        preset = None
+        if f_val is not None and o_val == 0.0 and f_val != 1.0:
+            for pf, pname in _FACTOR_PRESETS:
+                if abs(f_val - pf) < 1e-12:
+                    preset = pname
+                    break
+        if preset:
+            conv = preset
+            conv_kind = DIV if preset.startswith("div") else PLAIN
+            note = f"conversion {ev.conversion!r} (factor {f_val:g}) -> {preset}"
+        elif f_val is not None and (f_val != 1.0 or o_val != 0.0):
+            conv = "noconv"
+            if writable:
+                # No encode-side transform exists; the raw register value is
+                # what gets written. Surface the display transform in the note.
+                note = (
+                    f"conversion {ev.conversion!r}: display value = raw * {f_val:g}"
+                    + (f" + {o_val:g}" if o_val else "")
+                    + "; raw noconv emitted (no encode path for the transform)"
+                )
+            else:
+                if f_val != 1.0:
+                    value_filters.append(("multiply", f_val))
+                if o_val:
+                    value_filters.append(("offset", o_val))
+                note = f"conversion {ev.conversion!r} -> noconv + filter (value = raw * {f_val:g}" + (
+                    f" + {o_val:g})" if o_val else ")"
+                )
+        elif conv is None:
+            conv = "noconv"
+            note = f"conversion {ev.conversion!r} has no preset; raw noconv emitted"
     if conv is None:
         conv = "noconv"
         note = f"conversion {ev.conversion!r} has no preset; raw noconv emitted"
@@ -1023,8 +1300,10 @@ def emit_entity(ev: Event, profile: str):
     else:
         interior_addr_line = f"  address: 0x{addr:04X}"
     enum_opts = _dedup_option_labels(_enum_options(ev))
+    neg_opts = _negative_option_count(ev)
     is_bit = (ev.bit_length or 0) > 0
-    writable = _is_writable(ev)
+    # `writable` was resolved above (before conversion handling); demotions
+    # below narrow it further.
     # A writable datapoint whose converter has no encode path (sec2hour,
     # rotatebytes are read-only in the component -- number.py only accepts
     # encodable converters) must not be emitted as a `number`: the generated
@@ -1032,6 +1311,13 @@ def emit_entity(ev: Event, profile: str):
     if writable and conv in ("sec2hour", "rotatebytes"):
         writable = False
         note = (note + "; " if note else "") + f"converter {conv!r} is read-only -> demoted to sensor"
+    # A writable whose display value needs a multiply/offset filter has no
+    # encode-side transform either; keep it read-only so the filtered value is
+    # at least correct. (Filters were only collected for non-writables above,
+    # so this triggers only after a demotion path re-routes -- defensive.)
+    if writable and value_filters:
+        writable = False
+        note = (note + "; " if note else "") + "value transform has no encode path -> demoted to sensor"
 
     # Byte-array-as-string (HexByte2AsciiByte): emit the ascii text_sensor type
     # (Sachnummer, Herstellnummer, ...). Read-only device identity; the field
@@ -1098,10 +1384,48 @@ def emit_entity(ev: Event, profile: str):
     # Scalar reads are clamped to the converter-supported 1..4 bytes.
     num_length = length if length in (1, 2, 3, 4) else max(1, min(4, length))
 
+    # Converter-supported widths (mirror of the component's CONVERTERS[...]
+    # .lengths -- sensor.py/number.py REJECT unsupported pairs at `esphome
+    # config` time; the bulk export produced e.g. div10 at 4 bytes and
+    # sec2hour at 1 byte). The effective decode width is the FIELD width,
+    # which equals `length` on every scalar path (with or without block
+    # extraction). Enum and bit paths never consult the converter. Fallback:
+    # keep the raw bytes readable as noconv and carry the true scale as an
+    # ESPHome `multiply:` filter, so the reported value stays CORRECT; the
+    # signed div2/div10 default survives as an explicit `signed: true`.
+    # rotatebytes is big-endian -- a scale filter cannot fix byte order, so an
+    # unsupported width there stays a comment.
+    if not is_bit and not enum_opts and length not in _CONV_LENGTHS.get(conv, (1, 2, 3, 4)):
+        if conv == "rotatebytes":
+            return (
+                "comment",
+                [
+                    f"# {name} @ 0x{addr:04X}: RotateBytes (big-endian) at {length} bytes is not"
+                    " decodable by the component (rotatebytes supports 2) -> custom decode"
+                ],
+            )
+        if writable:
+            writable = False
+            note = (note + "; " if note else "") + (f"converter {conv!r} unsupported at {length} bytes -> demoted to sensor")
+        scale = _CONV_SCALE.get(conv, 1.0)
+        if scale != 1.0:
+            value_filters.append(("multiply", scale))
+        force_signed = force_signed or conv in ("div2", "div10")
+        note = (note + "; " if note else "") + (
+            f"converter {conv!r} unsupported at {length} bytes -> noconv"
+            + (f" + multiply filter ({scale:g})" if scale != 1.0 else "")
+        )
+        conv = "noconv"
+
     poll = _poll_for(ev, conv_kind)
     lines: list[str] = []
     if note:
         lines.append(f"  # NOTE: {note}")
+    if neg_opts:
+        lines.append(
+            f"  # NOTE: {neg_opts} negative enum option value(s) from the export omitted"
+            " (raw bytes compare unsigned; a negative option can never match)"
+        )
 
     # --- writable: select (enum) or number ---
     # A writable enum becomes a select when the field is 1-2 bytes AND every
@@ -1222,15 +1546,18 @@ def emit_entity(ev: Event, profile: str):
             ]
         lines.append(f"  converter: {conv}")
         # A negative lower border means the raw byte(s) are two's-complement.
-        # div2/div10 are already signed in the component; noconv is unsigned by
-        # default, so it needs an explicit signed: true to decode/accept a
-        # negative bound (otherwise the component's number validator rejects it).
+        # div2/div10 are already signed in the component; every other
+        # converter is unsigned by default, so it needs an explicit
+        # signed: true to decode/accept a negative bound (otherwise the
+        # component's number validator rejects it and the real borders would
+        # fall back to the useless 0/0/1 placeholders).
         try:
             _lo_neg = lo != "" and float(lo) < 0
         except (TypeError, ValueError):
             _lo_neg = False
-        is_signed = conv in ("div2", "div10") or (conv == "noconv" and _lo_neg)
-        if conv == "noconv" and _lo_neg:
+        _default_signed = conv in ("div2", "div10")
+        is_signed = _default_signed or _lo_neg
+        if _lo_neg and not _default_signed:
             lines.append("  signed: true")
         unit = _unit_for(ev)
         if unit:
@@ -1327,7 +1654,18 @@ def emit_entity(ev: Event, profile: str):
         return ("text_sensor", lines)
 
     # numeric sensor
-    signed = conv in ("div2", "div10")
+    # Signedness: div2/div10 are signed by component default. For every other
+    # converter (unsigned by default) an explicit `signed: true` is needed
+    # when the value range crosses zero -- the access layer's LowerBorder is
+    # the only signal for read-only datapoints (verified: nvoOATemp, Div100,
+    # border -30..50, would otherwise decode -1.00 as +654.36). force_signed
+    # carries a signed default over from a converter-width fallback.
+    default_signed = conv in ("div2", "div10")
+    lo_hint = ev.lower or (ev.values[0].lower if ev.values else "")
+    try:
+        neg_range = lo_hint != "" and float(lo_hint) < 0
+    except (TypeError, ValueError):
+        neg_range = False
     lines += [
         "- platform: vitohome",
         f"  name: {_yaml_str(name)}",
@@ -1342,7 +1680,7 @@ def emit_entity(ev: Event, profile: str):
     else:
         lines.append(f"  length: {length}")
     lines.append(f"  converter: {conv}")
-    if signed and conv == "noconv":
+    if (force_signed or neg_range) and not default_signed:
         lines.append("  signed: true")
     unit = _unit_for(ev)
     if unit:
@@ -1350,6 +1688,12 @@ def emit_entity(ev: Event, profile: str):
     dc = _device_class_for(unit)
     if dc:
         lines.append(f"  device_class: {dc}")
+    if value_filters:
+        # The true value transform (see the conversion resolution above); an
+        # ESPHome sensor filter, applied after the raw noconv decode.
+        lines.append("  filters:")
+        for f_name, f_arg in value_filters:
+            lines.append(f"    - {f_name}: {f_arg:.12g}")
     if conv_kind == COUNTER:
         lines.append("  state_class: total_increasing")
         lines.append("  accuracy_decimals: 1")
@@ -1362,6 +1706,89 @@ def emit_entity(ev: Event, profile: str):
 
 def _is_identification(ev: Event) -> bool:
     return ev.address in _IDENT_ADDRESSES
+
+
+# German weekday names for the per-day Schaltzeiten text entities (Monday
+# first, matching the vcontrold base+day*8 convention and the component's
+# decode). (label, id-suffix) pairs.
+_WEEKDAYS = (
+    ("Montag", "mo"),
+    ("Dienstag", "di"),
+    ("Mittwoch", "mi"),
+    ("Donnerstag", "do"),
+    ("Freitag", "fr"),
+    ("Samstag", "sa"),
+    ("Sonntag", "so"),
+)
+
+# The ONLY Schaltzeiten shape the component's `text` platform can decode: a
+# 56-byte weekday program = 7 records of 8 bytes (four ON/OFF switch-point
+# pairs per day). vito_text.cpp hardcodes SCHALTZEITEN_LEN = 8, so the other
+# shapes the export carries -- 168/56 (heat-pump, 3-byte records), 168/7
+# (ventilation, 24-byte records), the 24/25-byte LON vmarSchaltzeitenGroup
+# blocks, and the pre-decomposed 1-byte KBUS_HV_Schaltzeit_* fields -- must
+# NOT be routed here; they stay custom-decode comments.
+_SCHALTZEITEN_RECORD_LEN = 8
+_SCHALTZEITEN_DAYS = 7
+_SCHALTZEITEN_BLOCK_LEN = _SCHALTZEITEN_RECORD_LEN * _SCHALTZEITEN_DAYS  # 56
+
+
+def _is_schaltzeiten(ev: Event) -> bool:
+    """A weekday switching-time program the component's `text` platform can
+    decode: token names a Schaltzeiten block AND the access layer declares the
+    56-byte / BlockFactor-7 / 8-byte-record shape. Other Schaltzeiten shapes
+    (heat-pump, ventilation, LON group, pre-decomposed KBUS) return False and
+    fall through to the generic path (custom-decode comment)."""
+    if ev.address is None:
+        return False
+    tok = ev.token or ev.tech or ev.name or ""
+    if "Schaltzeit" not in tok:
+        return False
+    blen = ev.byte_length or ev.block_length or 0
+    bf = ev.block_factor or 0
+    return blen == _SCHALTZEITEN_BLOCK_LEN and bf == _SCHALTZEITEN_DAYS
+
+
+def _schaltzeiten_program_label(ev: Event) -> str:
+    """Human program label from the token: 'Schaltzeiten_A1M1_HK' -> 'A1M1 HK'.
+    Drops the leading 'Schaltzeiten' word, underscores -> spaces."""
+    tok = (ev.token or ev.tech or "").split("~", 1)[0]
+    label = re.sub(r"^Schaltzeiten_?", "", tok).replace("_", " ").strip()
+    return label or tok
+
+
+def _schaltzeiten_entries(ev: Event) -> list[dict]:
+    """Expand one 56-byte Schaltzeiten block into 7 per-day `text` specs at
+    base + day*8 (Monday first), matching the component's decode. Returns dicts
+    with: address, name, seed, program (the shared program label)."""
+    prog = _schaltzeiten_program_label(ev)
+    seed_prog = re.sub(r"[^a-z0-9]+", "_", prog.lower()).strip("_")
+    base = ev.address or 0
+    entries = []
+    for day, (label, sfx) in enumerate(_WEEKDAYS):
+        entries.append(
+            {
+                "address": base + day * _SCHALTZEITEN_RECORD_LEN,
+                "name": f"Schaltzeit {prog} {label}",
+                "seed": f"schaltzeit_{seed_prog}_{sfx}",
+                "program": prog,
+            }
+        )
+    return entries
+
+
+def _schaltzeiten_lines(entry: dict, oid: str) -> list[str]:
+    """YAML lines for one per-day Schaltzeiten `text` entity. read == write at
+    the same weekday address (the component re-reads what it wrote); polled
+    hourly and disabled by default like every generated entity."""
+    return [
+        "- platform: vitohome",
+        f"  name: {_yaml_str(entry['name'])}",
+        f"  id: {oid}",
+        f"  address: 0x{entry['address']:04X}",
+        "  disabled_by_default: true",
+        "  update_interval: 3600s",
+    ]
 
 
 def _is_error_history(ev: Event) -> bool:
@@ -1401,6 +1828,33 @@ def _error_history_slot(ev: Event) -> int | None:
     return int(m.group(1)) if m else None
 
 
+def _error_history_archive_tag(ev: Event) -> str:
+    """A short human tag distinguishing one system archive from another on
+    units that carry MORE THAN ONE (e.g. the Vitotwin gateway has both
+    ecnsysEventType~Error @ 0x7507 and ecnsysEventType~VitotwinErrorHistorySW02
+    @ 0x7000). The canonical archive returns "" so its entity names stay
+    "Letzter Fehler" / "Fehler NN" unchanged; a genuinely distinct secondary
+    archive contributes a suffix so the two do not collide (ESPHome requires
+    unique names per platform).
+
+    Only a ``prefix~subname`` token whose subname is NOT the canonical
+    ``Error`` is tagged: a bare token with no ``~`` (the fixture / 0x7507
+    address-fallback style) is the single canonical archive and stays
+    untagged.
+    """
+    tok = ev.token or ev.tech or ""
+    if "~" not in tok:
+        return ""  # single canonical archive (fixture / address fallback)
+    sub = tok.split("~", 1)[1]
+    if sub == "Error":
+        return ""  # the canonical ecnsysEventType~Error archive
+    # "VitotwinErrorHistorySW02" -> "Vitotwin SW02": strip the ErrorHistory
+    # word cluster down to something short and readable.
+    tag = re.sub(r"ErrorHistory|Fehlerhistorie|History|Error|Fehler", " ", sub).strip()
+    tag = re.sub(r"\s+", " ", tag)
+    return tag or sub
+
+
 def _error_history_entries(ev: Event) -> list[dict]:
     """Expand one error-history event into per-slot emission specs.
 
@@ -1410,49 +1864,96 @@ def _error_history_entries(ev: Event) -> list[dict]:
       unit) history: named "GFA Fehler NN", ALL disabled by default, and
       flagged system=False so the Vitotronic fault-code map is NOT attached
       (the GFA lockout codes are a different code space).
-    - ecnsysEventType~Error with a 90-byte block -> TEN system slots at
-      base + i*9 (vcontrold getError0..9, "Ermittle Fehlerhistory Eintrag
-      1..10"); slot 1 is "Letzter Fehler" (newest first --
-      hardware-confirmed on VScotHO1_72 @ 0x7507), slots 2..10 disabled.
+    - ecnsysEventType~Error -> its BlockFactor slot count (the access layer
+      declares BlockLength 90 / BlockFactor 10 -> ten 9-byte system slots at
+      base + i*stride; vcontrold getError0..9, "Ermittle Fehlerhistory Eintrag
+      1..10"); a >=90-byte block without BlockFactor keeps the legacy 10-slot
+      assumption. The per-slot STRIDE is BlockLength // BlockFactor (9 for the
+      standard archive, 12 for the Vitotwin's 120-byte archive); the component
+      reads the leading 9 bytes (code + 8-byte BCD) at each slot address. Slot
+      1 is "Letzter Fehler" (newest first -- hardware-confirmed on
+      VScotHO1_72 @ 0x7507), slots 2..N disabled.
+    - a SECOND system archive on the same unit gets a short tag appended to its
+      names/seeds so they do not collide with the first (see
+      _error_history_archive_tag).
     - any other system-history event (single slot, e.g. the 0x7507 address
       fallback) -> one enabled "Letzter Fehler" slot at its own address.
     """
     fa_slot = _error_history_slot(ev)
     if fa_slot is not None:
+        # Some units carry SEVERAL FehlerHis-style archives that all match the
+        # slot regex: Vitovalor has FehlerHisFA01..20 (the GFA burner archive),
+        # Fehlerhistorie_FCU_0..9 and Fehlerhist_FCU_0..9 (two fuel-cell-unit
+        # archives). Their slot-1 entries would all be named "GFA Fehler 01".
+        # Derive a family key from the token stem (everything before the slot
+        # digits) so distinct families get distinct names/seeds; the canonical
+        # FehlerHisFA family stays plain "GFA Fehler NN".
+        stem = re.split(r"\d", (ev.token or ev.tech or "").split("~", 1)[0], maxsplit=1)[0]
+        stem = stem.rstrip("_")
+        if re.fullmatch(r"FehlerHisFA", stem, re.I) or stem == "":
+            fam_name = "GFA"
+            fam_seed = "gfa"
+        else:
+            # The stems are already distinct across families (Fehlerhistorie_FCU
+            # vs Fehlerhist_FCU vs ...), so use the stem verbatim for the name to
+            # GUARANTEE uniqueness -- collapsing both to a friendly "FCU" would
+            # re-introduce the collision. Underscores -> spaces for display.
+            fam_name = stem.replace("_", " ").strip() or stem
+            fam_seed = re.sub(r"[^a-z0-9]+", "_", stem.lower()).strip("_")
         return [
             {
                 "address": ev.address,
-                "name": f"GFA Fehler {fa_slot:02d}",
-                "seed": f"gfa_fehler_{fa_slot:02d}",
+                "name": f"{fam_name} Fehler {fa_slot:02d}",
+                "seed": f"{fam_seed}_fehler_{fa_slot:02d}",
                 "disabled": True,
                 "system": False,
                 "comment": [
-                    f"# Feuerungsautomat (GFA burner control unit) history slot {fa_slot}:",
-                    "# a DIFFERENT archive from the Vitotronic system history",
-                    "# (HARDWARE-CONFIRMED distinct on VScotHO1_72: slot 1 read 0x00 with",
-                    "# its own timestamp 42 s after the system slot's 0x38). GFA lockout",
-                    "# codes are a different code space from the F-codes, so no codes map",
-                    "# is attached and the code byte displays as raw hex. No public GFA",
-                    "# code enumeration is known (export + community search both empty);",
-                    "# a populated slot from a real burner lockout would seed one.",
+                    f"# {fam_name} history slot {fa_slot} (a burner/subsystem fault archive",
+                    "# DISTINCT from the Vitotronic system history). Its lockout codes are",
+                    "# a different code space from the F-codes, so no codes map is attached",
+                    "# and the code byte displays as raw hex. On VScotHO1_72 the GFA slot 1",
+                    "# was HARDWARE-CONFIRMED distinct (read 0x00, its own timestamp 42 s",
+                    "# after the system slot's 0x38). No public GFA code enumeration is",
+                    "# known (export + community search both empty).",
                 ],
             }
         ]
     blen = ev.byte_length or ev.block_length or 9
-    if blen >= 90:
+    # The slot structure is explicit in the access layer where present:
+    # BlockLength = BlockFactor records (ecnsysEventType~Error: 90 bytes,
+    # BlockFactor 10, MappingType 3 -> ten slots). The per-slot stride is the
+    # record size BlockLength // BlockFactor; the component's error_history
+    # type reads the leading 9 bytes (code + 8-byte BCD timestamp) at each slot
+    # address, so a 12-byte-record archive (Vitotwin, 120/10) still advances by
+    # 12 even though only 9 are decoded. The legacy >=90 heuristic (stride 9)
+    # stays for exports/fixtures that carry no BlockFactor.
+    bf = ev.block_factor or 0
+    if bf > 1 and blen % bf == 0 and blen // bf >= 9:
+        slots = bf
+        stride = blen // bf
+    elif blen >= 90:
+        slots = 10
+        stride = 9
+    else:
+        slots = 1
+        stride = 9
+    tag = _error_history_archive_tag(ev)
+    name_suffix = f" ({tag})" if tag else ""
+    seed_suffix = "_" + re.sub(r"[^a-z0-9]+", "_", tag.lower()).strip("_") if tag else ""
+    if slots > 1:
         entries = []
-        for i in range(10):
+        for i in range(slots):
             slot = i + 1
             entries.append(
                 {
-                    "address": (ev.address or 0) + i * 9,
-                    "name": "Letzter Fehler" if slot == 1 else f"Fehler {slot:02d}",
-                    "seed": "letzter_fehler" if slot == 1 else f"fehler_{slot:02d}",
+                    "address": (ev.address or 0) + i * stride,
+                    "name": ("Letzter Fehler" if slot == 1 else f"Fehler {slot:02d}") + name_suffix,
+                    "seed": ("letzter_fehler" if slot == 1 else f"fehler_{slot:02d}") + seed_suffix,
                     "disabled": slot > 1,
                     "system": True,
                     "comment": [
-                        f"# System fault history slot {slot} of 10 (ecnsysEventType~Error,",
-                        f"# 90-byte block at 0x{ev.address:04X} + {i}*9; vcontrold getError{i}).",
+                        f"# System fault history slot {slot} of {slots} ({ev.token or 'ecnsysEventType~Error'},",
+                        f"# {blen}-byte block at 0x{ev.address:04X} + {i}*{stride}; vcontrold getError{i}).",
                     ]
                     + (["# Slot 1 = newest entry -- hardware-confirmed on VScotHO1_72."] if slot == 1 else []),
                 }
@@ -1461,8 +1962,8 @@ def _error_history_entries(ev: Event) -> list[dict]:
     return [
         {
             "address": ev.address,
-            "name": "Letzter Fehler",
-            "seed": "letzter_fehler",
+            "name": "Letzter Fehler" + name_suffix,
+            "seed": "letzter_fehler" + seed_suffix,
             "disabled": False,
             "system": True,
             "comment": [
@@ -1616,16 +2117,21 @@ def generate(
     error_codes: bool = True,
     error_code_set: str = "vd300",
     reachable_only: bool = True,
+    order: str = "address",
+    stats: dict | None = None,
 ) -> str:
+    """Render the package for one device token. ``order`` is "address"
+    (default; entities sorted by Optolink address, byte-identical to earlier
+    revisions) or "group" (entities sorted by the Vitosoft navigation tree --
+    ecnEventTypeGroup -- with a section comment per functional group).
+    ``stats``, if a dict is passed, receives {"entities": <emitted count>,
+    "comments": <custom-decode hint count>} so callers (export_all) can tell a
+    real catalog from an empty shell without parsing the output."""
     events = catalog.events_for(device)
     if not events:
         raise SystemExit(
             f"device {device!r} not found or has no events. Run with --list-devices to see available device tokens."
         )
-
-    # When the device defines its own per-slot fault log (FehlerHis*), those are
-    # authoritative; suppress the generic ecnsysEventType~Error / 0x7507 slot so
-    # we don't emit a duplicate "Letzter Fehler" (and a possibly-phantom 0x7507).
 
     # Resolve the fault-code map once: the chosen set, or None when codes are off.
     codes_map = fault_codes.SETS.get(error_code_set) if error_codes else None
@@ -1634,15 +2140,46 @@ def generate(
     inc = re.compile(include_re) if include_re else None
     exc = re.compile(exclude_re) if exclude_re else None
 
-    buckets: dict[str, list[str]] = {
+    # Whether this unit has any ordinary Optolink datapoint that actually
+    # emits a real entity. A unit whose every real datapoint needs KBUS/GFA/RPC
+    # access (Dekamatik cascades, M-Bus meters, ...) -- OR whose only reachable
+    # rows are things emit_entity turns into comments (a bare status enum with
+    # no options, a >4-byte blob) -- is not an Optolink device, and emitting
+    # the generic 0x7507 system fault history for it would poll an address that
+    # can never answer (the earlier bulk export produced 172 such history-only
+    # files). This is decided AFTER the main emission pass on the true count of
+    # emitted entities, not a structural pre-check: the status enum at 0x7561
+    # passes every cheap "reachable datapoint" predicate yet emits nothing.
+    # System-history events are collected here and emitted in a second pass;
+    # FehlerHis* per-slot archives carry their own FCRead and are gated only on
+    # that, since they are genuine per-unit datapoints.
+    deferred_history: list[Event] = []
+
+    # Per-entity chunks: (sort_key, group_label, lines). Emitted per platform
+    # in key order; in "group" order a section comment is inserted whenever
+    # the group label changes. In "address" order keys are the processing
+    # sequence (events are pre-sorted by address), so output is unchanged.
+    buckets: dict[str, list[tuple[tuple, str, list[str]]]] = {
         "sensor": [],
         "binary_sensor": [],
         "number": [],
         "select": [],
         "switch": [],
+        "text": [],
         "text_sensor": [],
     }
     comments: list[str] = []
+    seq = 0
+
+    def _add_chunk(platform: str, ev: Event | None, lines: list[str]):
+        """Append one entity's lines with its sort key and group label."""
+        nonlocal seq
+        seq += 1
+        if order == "group" and ev is not None:
+            gsort, glabel = catalog.group_for(ev, device)
+        else:
+            gsort, glabel = (), ""  # () sorts first: hub-fed entities lead
+        buckets[platform].append(((gsort, seq), glabel, ["  " + ln if ln else "" for ln in lines]))
 
     # De-duplication identity. Keying on the base address alone silently
     # collapsed DISTINCT fields carved from one block: verified against the
@@ -1658,13 +2195,15 @@ def generate(
     seen_addr: set = set()
     used_ids: set[str] = set()
     kept = 0
+    real_entities = 0  # emitted entities that are NOT the hub-fed device_id
     dropped_unreachable = 0
+    history_suppressed = False
 
     # Hub-fed device identity (covers the 0xF8..0xFB identification reads, which
     # are then suppressed below).
     if emit_device_id:
         oid = _make_obj_id("device_type", used_ids)
-        buckets["text_sensor"].extend("  " + ln if ln else "" for ln in _device_id_lines(oid))
+        _add_chunk("text_sensor", None, _device_id_lines(oid))
         kept += 1
 
     for ev in sorted(events, key=lambda e: e.address or 0):
@@ -1676,19 +2215,36 @@ def generate(
             # and the GFA (Feuerungsautomat) FehlerHis* archive are different
             # subsystems and BOTH emit -- the system one owns "Letzter Fehler"
             # and the fault-code map; GFA slots are named, disabled, and
-            # code-map-free. A 90-byte system block expands into its 10 slots.
-            for entry in _error_history_entries(ev):
-                if entry["address"] is None:
-                    continue
-                key = (entry["address"], 0, 0)
-                if key in seen_addr:
-                    continue
-                seen_addr.add(key)
+            # code-map-free. The system block expands into its BlockFactor
+            # slots. Reachability: a FehlerHis* slot is checked on its own
+            # FCRead like any datapoint; the generic system archive (a row
+            # shared by every unit) additionally requires the device to emit
+            # at least one real entity at all -- decided in the second pass
+            # below (KBUS-only Dekamatik units, M-Bus meters -> 0x7507 can
+            # never answer, so the catalog would be a phantom history).
+            if reachable_only and not _is_reachable(ev):
+                dropped_unreachable += 1
+                continue
+            deferred_history.append(ev)
+            continue
+
+        # Weekday switching-time programs: one 56-byte token -> 7 per-day `text`
+        # entities at base + day*8 (only the 8-byte-record shape; see
+        # _is_schaltzeiten). Handled here because one datapoint fans out to
+        # seven entities, like error history.
+        if _is_schaltzeiten(ev):
+            if reachable_only and not _is_reachable(ev):
+                dropped_unreachable += 1
+                continue
+            if ev.address is not None and _field_key(ev) in seen_addr:
+                continue
+            if ev.address is not None:
+                seen_addr.add(_field_key(ev))
+            for entry in _schaltzeiten_entries(ev):
                 oid = _make_obj_id(entry["seed"], used_ids)
-                buckets["text_sensor"].extend(
-                    "  " + ln if ln else "" for ln in _error_history_lines(entry, oid, codes_map, codes_set_name)
-                )
+                _add_chunk("text", ev, _schaltzeiten_lines(entry, oid))
                 kept += 1
+                real_entities += 1
             continue
 
         if not _profile_keep(ev, profile):
@@ -1727,8 +2283,29 @@ def generate(
             if ln.startswith("  name:"):
                 lines.insert(idx + 1, f"  id: {oid}")
                 break
-        buckets[platform].extend("  " + ln if ln else "" for ln in lines)
+        _add_chunk(platform, ev, lines)
         kept += 1
+        real_entities += 1
+
+    # Second pass: system fault history. Now that the main pass is done, the
+    # true count of emitted real entities is known -- gate the generic system
+    # archive on it (a device that emitted nothing real is not on Optolink).
+    # FehlerHis* archives are genuine per-unit datapoints and always emit.
+    for ev in deferred_history:
+        if real_entities == 0 and _error_history_slot(ev) is None:
+            history_suppressed = True
+            continue
+        for entry in _error_history_entries(ev):
+            if entry["address"] is None:
+                continue
+            key = (entry["address"], 0, 0)
+            if key in seen_addr:
+                continue
+            seen_addr.add(key)
+            oid = _make_obj_id(entry["seed"], used_ids)
+            _add_chunk("text_sensor", ev, _error_history_lines(entry, oid, codes_map, codes_set_name))
+            kept += 1
+            real_entities += 1
 
     out: list[str] = []
     out.append("# ============================================================")
@@ -1745,6 +2322,11 @@ def generate(
         out.append("# access method (GFA_READ/RPC/PROZESS/KBUS/OT) were omitted as unreachable")
         out.append("# via VitoWiFi's read. Re-run with --no-reachable-only to include them.")
         out.append("#")
+    if history_suppressed:
+        out.append("# System error history omitted: this unit has NO Optolink-reachable")
+        out.append("# datapoints (KBUS/GFA/RPC-only device), so the generic 0x7507 fault")
+        out.append("# archive can never answer. Re-run with --no-reachable-only to force it.")
+        out.append("#")
     out.append("# VERIFY ON HARDWARE: not every address answers on every firmware.")
     out.append("# Run `esphome config` then `esphome compile`/`run` before relying")
     out.append("# on any value. number entities whose borders were absent in the")
@@ -1753,16 +2335,26 @@ def generate(
     out.append("# ============================================================")
     out.append("")
 
-    for platform in ("sensor", "binary_sensor", "number", "select", "switch", "text_sensor"):
+    for platform in ("sensor", "binary_sensor", "number", "select", "switch", "text", "text_sensor"):
         if buckets[platform]:
             out.append(f"{platform}:")
-            out.extend(buckets[platform])
+            last_label = None
+            for _key, label, chunk in sorted(buckets[platform], key=lambda c: c[0]):
+                if order == "group" and label and label != last_label:
+                    out.append(f"  # --- {label} ---")
+                last_label = label
+                out.extend(chunk)
             out.append("")
 
     if comments:
         out.append("# --- datapoints needing custom decode (not auto-emitted) ---")
         out.extend(comments)
         out.append("")
+
+    if stats is not None:
+        stats["entities"] = kept
+        stats["real_entities"] = real_entities  # emitted entities excluding the hub-fed device_id
+        stats["comments"] = len(comments)
 
     return "\n".join(out)
 
@@ -1836,7 +2428,8 @@ _MANIFEST_COLUMNS = (
     "sw_hi",
     "f0_lo",
     "f0_hi",
-    "events",
+    "events",  # datapoints LINKED to the unit in the export
+    "entities",  # entities actually EMITTED into the file (post filters/profile)
     "bytes",
     "status",
     "ext_raw",
@@ -1857,6 +2450,7 @@ def export_all(
     error_codes: bool,
     error_code_set: str,
     reachable_only: bool,
+    order: str = "address",
 ) -> int:
     """Write one catalog per device token into *out_dir* (created if needed).
 
@@ -1908,6 +2502,7 @@ def export_all(
             "token": token,
             **_identity_fields(row),
             "events": n_events,
+            "entities": "",
             "bytes": "",
             "status": "",
         }
@@ -1928,6 +2523,7 @@ def export_all(
         fname = stem + suffix
 
         try:
+            gen_stats: dict = {}
             text = generate(
                 catalog,
                 token,
@@ -1939,6 +2535,8 @@ def export_all(
                 error_codes=error_codes,
                 error_code_set=error_code_set,
                 reachable_only=reachable_only,
+                order=order,
+                stats=gen_stats,
             )
         except SystemExit as exc:  # generate() uses this for "no emittable events"
             rec["status"] = f"skipped: {exc}"
@@ -1949,6 +2547,22 @@ def export_all(
             rec["status"] = f"error: {type(exc).__name__}: {exc}"
             manifest.append(rec)
             failed += 1
+            continue
+
+        rec["entities"] = gen_stats.get("entities", "")
+        # A device with NO real entity (only the hub-fed device_id, plus at
+        # most some "needs custom decode" / unreachable comments) is not an
+        # Optolink unit: every genuine datapoint of a KBUS-only Dekamatik
+        # cascade or M-Bus meter needs an access method VitoWiFi can't drive.
+        # Writing such a file is meaningless -- the earlier bulk export
+        # produced 220 of them (48 header-only + 172 that were nothing but a
+        # phantom 0x7507 fault history). Comments alone never make a usable
+        # catalog, so the skip keys on the real-entity count, not the raw
+        # `entities` (which counts the device_id) or the comment count.
+        if gen_stats.get("real_entities", 0) == 0:
+            rec["status"] = "skipped: no Optolink-reachable datapoints"
+            manifest.append(rec)
+            skipped += 1
             continue
 
         data = text.encode("utf-8")
@@ -1991,7 +2605,12 @@ def main(argv=None):
     p.add_argument("--profile", choices=PROFILES, default="standard", help="how many datapoints to emit (default: standard)")
     p.add_argument("--include", help="regex; only emit events whose name matches")
     p.add_argument("--exclude", help="regex; drop events whose name matches")
-    p.add_argument("--culture", default="de", help="Textresource language for names/labels (de,en,fr,it,ru,nl)")
+    p.add_argument(
+        "--culture",
+        default="de",
+        help="Textresource language for names/labels (de,en,fr,it,ru,nl,pl,da,hu,es,tr,lt,cs); "
+        "note the 2026 export ships no translated entity strings, so this is currently a no-op",
+    )
     p.add_argument(
         "--device-id",
         action=argparse.BooleanOptionalAction,
@@ -2042,6 +2661,13 @@ def main(argv=None):
         default=".yaml",
         help="with --export-all: file-name extension for each catalog (default: .yaml)",
     )
+    p.add_argument(
+        "--order",
+        choices=("address", "group"),
+        default="address",
+        help="entity ordering: 'address' (default; sorted by Optolink address) or "
+        "'group' (grouped by the Vitosoft navigation tree with a section comment per group)",
+    )
     p.add_argument("--out", help="output file (default: stdout); with --export-all, the output DIRECTORY")
     args = p.parse_args(argv)
 
@@ -2063,6 +2689,7 @@ def main(argv=None):
             error_codes=args.error_codes,
             error_code_set=args.error_code_set,
             reachable_only=args.reachable_only,
+            order=args.order,
         )
 
     if args.list_devices:
@@ -2112,6 +2739,7 @@ def main(argv=None):
         error_codes=args.error_codes,
         error_code_set=args.error_code_set,
         reachable_only=args.reachable_only,
+        order=args.order,
     )
     if args.out:
         with open(args.out, "w", encoding="utf-8") as fh:
