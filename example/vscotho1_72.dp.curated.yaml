@@ -52,6 +52,16 @@
 # `optimistic: true` note at the water_heater below. With `optimistic: false`
 # the temperature slider was a silent no-op on ANY unit, tank or not.
 #
+# ---- Raw scan console ------------------------------------------------
+# The hub's raw lane (`queue_raw_read` / `queue_raw_write` + a hub-fed
+# `text_sensor: type: scan_result`) is wired up at the bottom of this file. It
+# is how every "CAPTURE" question below gets answered without a rebuild: type an
+# address, press read, look at the result. The READ side is safe. The WRITE side
+# is `disabled_by_default: true` and can brick a coding address -- read the
+# comment next to it before you enable it.
+# The console assumes the hub is `id: vito` (as in vscotho1_72.vitohome.yaml),
+# which is already true of the connectivity sensor's refresh_all() lambda above.
+#
 # ---- Open captures ---------------------------------------------------
 # Entities marked "CAPTURE" exist to settle a specific open question on
 # hardware, not because a dashboard needs them. Each says which. Delete them
@@ -612,6 +622,17 @@ binary_sensor:
         - lambda: "id(vito).refresh_all();"
 
 text_sensor:
+  # Raw scan console result surface. Hub-fed: no address, never polled. Every
+  # queue_raw_read()/queue_raw_write() result lands here as the response bytes
+  # plus exact 64-bit integer views (no float32 narrowing on 4-byte counters).
+  # See the `button:` section for the inputs.
+  - platform: vitohome
+    type: scan_result
+    id: scan_raw
+    name: "Scan · Rohergebnis"
+    icon: "mdi:magnify-scan"
+    entity_category: diagnostic
+
   - platform: vitohome
     type: device_id
     name: "Gerätetyp"
@@ -939,7 +960,107 @@ button:
     name: "Datenpunkte aktualisieren"
     id: refresh_all_button
 
+  # --- Raw scan console: actions -------------------------------------------
+  # An immediate one-off read -- it jumps the poll queue rather than waiting for
+  # the next tick. The result (bytes + 64-bit integer views) appears on the
+  # "Scan · Rohergebnis" text_sensor and in the log under the `vitohome` tag.
+  # This is the tool for the CAPTURE questions in this file: point it at 0xA152
+  # during a burn, or at 0x7362 with length 2 to find out whether that address
+  # exists at all.
+  - platform: template
+    name: "Scan · Rohlesen (jetzt)"
+    id: scan_read_now
+    icon: "mdi:magnify"
+    entity_category: config
+    on_press:
+      - lambda: |-
+          const std::string &txt = id(scan_addr).state;
+          if (txt.empty()) {
+            ESP_LOGW("scan", "address is empty");
+            return;
+          }
+          // strtol returns 0 for junk, and 0x0000 is a VALID Optolink address --
+          // so check that the whole string was consumed instead of testing the
+          // result against 0.
+          char *end = nullptr;
+          long a = strtol(txt.c_str(), &end, 16);
+          if (end == txt.c_str() || *end != '\0' || a < 0 || a > 0xFFFF) {
+            ESP_LOGW("scan", "address must be 1-4 hex digits, got '%s'", txt.c_str());
+            return;
+          }
+          // The template number publishes its initial_value at setup, but guard
+          // anyway: ESPHome's Number declares a bare `float state;` with no
+          // initialiser, so before the first publish it reads 0.0 -- and the hub
+          // rejects length 0. has_state(), not isnan().
+          if (!id(scan_length).has_state()) {
+            ESP_LOGW("scan", "read length not set yet");
+            return;
+          }
+          id(vito).queue_raw_read((uint16_t) a, (uint8_t) id(scan_length).state);
+
+  # --- DANGER ---------------------------------------------------------------
+  # Writes arbitrary bytes to an arbitrary address. There is no allow-list, no
+  # range check against the datapoint's borders, and no undo. Coding addresses
+  # (0x2000-0x27FF, 0x6300+, ...) configure the appliance; a wrong byte can put
+  # the boiler into a state the Bedienteil will not show you. Some addresses are
+  # write-once or ACK a value they then ignore.
+  #
+  # It is `disabled_by_default` on purpose. Enable it in Home Assistant only for
+  # as long as you need it, and read the address back first with the read button
+  # so you know what to restore. The hub caps the payload at 32 bytes.
+  - platform: template
+    name: "Scan · Rohschreiben"
+    id: scan_write_now
+    icon: "mdi:alert-octagon"
+    entity_category: config
+    disabled_by_default: true
+    on_press:
+      - lambda: |-
+          const std::string &txt = id(scan_addr).state;
+          char *end = nullptr;
+          long a = strtol(txt.c_str(), &end, 16);
+          if (txt.empty() || end == txt.c_str() || *end != '\0' || a < 0 || a > 0xFFFF) {
+            ESP_LOGW("scan", "address must be 1-4 hex digits, got '%s'", txt.c_str());
+            return;
+          }
+          auto ishex = [](char c) {
+            return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+          };
+          std::string hex;
+          for (char ch : id(scan_write_bytes).state) {
+            if (ishex(ch)) hex.push_back(ch);
+          }
+          if (hex.empty() || (hex.size() % 2) != 0) {
+            ESP_LOGW("scan", "write bytes: need an even number of hex digits, got '%s'",
+                     id(scan_write_bytes).state.c_str());
+            return;
+          }
+          std::vector<uint8_t> bytes;
+          for (size_t i = 0; i + 1 < hex.size(); i += 2) {
+            bytes.push_back((uint8_t) strtol(hex.substr(i, 2).c_str(), nullptr, 16));
+          }
+          ESP_LOGW("scan", "RAW WRITE 0x%04X (%u bytes)", (unsigned) (uint16_t) a,
+                   (unsigned) bytes.size());
+          id(vito).queue_raw_write((uint16_t) a, bytes);
+
 number:
+  # --- Raw scan console: read length ---------------------------------------
+  # 1..32 is the hub's own cap (queue_raw_read rejects anything outside it and
+  # logs a warning; the same 32-byte limit keeps the VS1/VS2 packet length
+  # arithmetic from wrapping). Note this is BELOW MAX_P300_READ_LENGTH (37),
+  # so the console cannot reproduce the 40-byte 0x7362 read that fails on P300.
+  - platform: template
+    id: scan_length
+    name: "Scan · Leselänge (Bytes)"
+    optimistic: true
+    min_value: 1
+    max_value: 32
+    step: 1
+    initial_value: 2
+    mode: box
+    icon: "mdi:ruler"
+    entity_category: config
+
   # DHW target temperature (also driven by the water_heater card below).
   # This is the STORED setpoint (Bedien_WW_Solltemperatur) and is writable even
   # on a unit with no cylinder: hardware-confirmed 2026-07-09, 50 -> 49 -> 48,
@@ -1119,6 +1240,29 @@ climate:
 # stride the same way from their own bases: DHW 0x2100, circulation 0x2200
 # (vcontrold convention, those bases not yet read on this unit).
 text:
+  # --- Raw scan console: inputs --------------------------------------------
+  # Hex, without the 0x. 0x0000 is a valid Optolink address, so an empty string
+  # is rejected rather than treated as "no address" (see the read button).
+  - platform: template
+    id: scan_addr
+    name: "Scan · Adresse (hex, z.B. 0800)"
+    optimistic: true
+    mode: text
+    initial_value: "0800"
+    icon: "mdi:map-marker"
+    entity_category: config
+
+  # Bytes to write, hex, in WIRE ORDER (little-endian for multi-byte integers).
+  # Separators are ignored: "00 0A", "00:0A" and "000A" are the same two bytes.
+  - platform: template
+    id: scan_write_bytes
+    name: "Scan · Schreib-Bytes (hex, z.B. 30 oder 00 0A)"
+    optimistic: true
+    mode: text
+    initial_value: ""
+    icon: "mdi:pencil"
+    entity_category: config
+
   - platform: vitohome
     name: "HK1 Schaltzeit Montag"
     id: hk1_schaltzeit_mo
