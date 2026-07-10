@@ -87,8 +87,58 @@ def test_routing(catalog):
 def test_bit_mask_from_bit_position(catalog):
     ev = {e.id: e for e in catalog.events_for("VTestHO1_99")}["3"]
     _platform, lines = gc.emit_entity(ev, "full")
-    # BitPosition 2 -> mask 1<<2 = 0x04.
-    assert any("bit_mask: 0x04" in ln for ln in lines)
+    # Vitosoft numbers bits MSB-first inside the byte: BitPosition 2 -> 0x80>>2
+    # = 0x20. Hardware-confirmed on 0x20CB via GWG_Flamme1~0x55DD (BitPosition
+    # 2), which reads 0x20 exactly while the burner fires.
+    assert any("bit_mask: 0x20" in ln for ln in lines)
+
+
+def _bit_event(address: int, block_length: int, bit_position: int, byte_position: int = 0) -> "gc.Event":
+    """A minimal read-only single-bit Event, as the access layer yields one."""
+    return gc.Event(
+        id=f"bit_{address:04X}_{bit_position}",
+        name=f"Bit_{bit_position}",
+        address=address,
+        conversion="NoConversion",
+        access_type=1,
+        block_length=block_length,
+        byte_length=1,
+        byte_position=byte_position,
+        bit_length=1,
+        bit_position=bit_position,
+        tech=f"Bit_{bit_position}",
+        token=f"Bit_{bit_position}",
+    )
+
+
+@pytest.mark.parametrize(
+    ("bit_position", "expected_mask"),
+    [(0, "0x80"), (1, "0x40"), (2, "0x20"), (5, "0x04"), (7, "0x01")],
+)
+def test_bit_mask_is_msb_first(bit_position, expected_mask):
+    platform, lines = gc.emit_entity(_bit_event(0x55DD, 1, bit_position), "full")
+    assert platform == "binary_sensor"
+    assert any(f"bit_mask: {expected_mask}" in ln for ln in lines)
+
+
+def test_block_interior_bit_emits_aligned_block_read():
+    # HK_Frostgefahr_aktivA1M1~0x2500: bit 135 of a 22-byte block = byte 16,
+    # in-byte index 7 -> mask 0x01 (MSB-first). Previously rejected as
+    # "exceeds binary_sensor length/offset limits"; binary_sensor now takes a
+    # block read at the base plus byte_offset, exactly like sensor/text_sensor.
+    platform, lines = gc.emit_entity(_bit_event(0x2500, 22, 135, byte_position=16), "full")
+    assert platform == "binary_sensor"
+    text = "\n".join(lines)
+    assert "address: 0x2500" in text
+    assert "length: 22" in text
+    assert "byte_offset: 16" in text
+    assert "bit_mask: 0x01" in text
+
+
+def test_bit_beyond_single_telegram_stays_a_comment():
+    # A block wider than one P300 read telegram still cannot be expressed.
+    platform, _lines = gc.emit_entity(_bit_event(0x1234, 64, 300), "full")
+    assert platform == "comment"
 
 
 def test_counter_gets_total_increasing_and_slow_poll(catalog):

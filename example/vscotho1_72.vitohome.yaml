@@ -94,6 +94,8 @@ logger:
     vitohome.climate: ${debug_level}
     vitohome.text: ${debug_level}
     vitohome.event: ${debug_level}
+    # Raw Optolink telegrams; only emitted when the hub sets `log_frames: true`.
+    vitohome.frames: ${debug_level}
 
 button:
   - platform: restart
@@ -113,13 +115,12 @@ uart:
     data_bits: 8
     parity: EVEN
     stop_bits: 2
-    debug:
-      direction: BOTH
-      dummy_receiver: false
-      after:
-        delimiter: [0x06]
-      sequence:
-        - lambda: UARTDebug::log_hex(direction, bytes, ':');
+    # NO `debug:` block here on purpose. ESPHome's uart debugger has to be told
+    # where a frame ends, and the recipe that circulates for Optolink
+    # (`after: delimiter: [0x06]`) is a P300 ACK byte. On KW 0x06 is ordinary
+    # data, so it split telegrams mid-frame in the 2026-07-09 logs (e.g.
+    # ">>> 01:F4:23:06" then ">>> 01:24" for one 0x2306 write). Use the hub's
+    # own `log_frames:` below instead: the component knows the real boundaries.
 
 # --- vitohome hub -----------------------------------------------------------
 # update_interval is the base poll tick; per-entity `update_interval` below
@@ -131,6 +132,12 @@ vitohome:
   protocol: KW
   update_interval: 60s
   identify_device: true
+  # Log every Optolink telegram as one line under the `vitohome.frames` tag
+  # (>>> TX, <<< RX). Frame boundaries come from the component, not from a
+  # delimiter guess. Compile-time flag: set to false (or drop the key) and the
+  # buffer and per-byte branch vanish from the firmware. Turn it off once the
+  # bus is behaving -- at 60 s x ~40 datapoints it is a lot of log lines.
+  log_frames: true
   # Device-clock sync from Home Assistant time.
   # drift_threshold 60s avoids rewriting the clock on every check.
   time_id: homeassistant_time

@@ -55,6 +55,12 @@ MULTI_CONF = False
 CONF_VITOCONNECT_ID = "vitohome_id"
 CONF_PROTOCOL = "protocol"
 CONF_IDENTIFY_DEVICE = "identify_device"
+# Optional in-component Optolink frame logging (hub-level). See
+# vito_uart_interface.h: the adapter already knows where a telegram starts
+# and ends, so this needs no `uart: debug:` block and no `after:` delimiter
+# rule. The `delimiter: [0x06]` recipe that circulates for Optolink is a P300
+# ACK byte and is an ordinary data byte on KW, where it tears frames apart.
+CONF_LOG_FRAMES = "log_frames"
 
 # System-time sync options (hub-level; see VitoHomeComponent::set_time_sync).
 CONF_TIME_SYNC = "time_sync"
@@ -299,6 +305,9 @@ CONFIG_SCHEMA = cv.All(
             # Default depends on the protocol (on for P300, off for KW/GWG,
             # whose boot identification scheme differs); resolved in to_code.
             cv.Optional(CONF_IDENTIFY_DEVICE): cv.boolean,
+            # Log every Optolink telegram (>>> TX / <<< RX) under the
+            # 'vitohome.frames' tag. Compile-time: off costs nothing.
+            cv.Optional(CONF_LOG_FRAMES, default=False): cv.boolean,
             # Optional system-time sync: write the device clock (0x088E) from a
             # time source when it drifts. Inert unless time_id is set.
             cv.Optional(CONF_TIME_ID): cv.use_id(time_.RealTimeClock),
@@ -411,6 +420,13 @@ async def to_code(config):
             "vitohome protocol 'GWG' is selectable but UNTESTED on hardware; "
             "P300 and KW are the validated protocols. Please report results.",
         )
+
+    if config[CONF_LOG_FRAMES]:
+        # Frame logging lives in the UART adapter (vito_uart_interface.h), which
+        # is where the request/response boundaries are actually known. A build
+        # flag rather than a runtime setter, so a production build carries no
+        # RX buffer and no per-byte branch.
+        cg.add_build_flag("-DVITOHOME_LOG_FRAMES")
 
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)

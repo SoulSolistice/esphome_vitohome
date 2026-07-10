@@ -6,13 +6,20 @@
 # Datapoints (Vitodens 300-W B3HA / Vitotronic 200, wire ident 0x20CB):
 #   0x0804  measured DHW tank temperature (div10, 2 bytes)
 #   0x6300  BedienWWSolltemperatur -- the writable DHW setpoint (1 byte, degC)
-#   0x6500  effective DHW setpoint after the controller applies its own
-#           limits/logic -- read-only cross-check
+#   0x6500  WW_SolltemperaturAktuell, the effective setpoint after the
+#           controller applies its own limits/logic (div10, 2 BYTES) --
+#           read-only cross-check. NOTE it is NOT a mirror of 0x6300: on the
+#           reference unit it did not follow a 50 -> 48 write there.
 #
 # KNOWN WRINKLE: DHW on/off is folded into the shared Betriebsart register on
 # this controller, so this water_heater deliberately exposes only temperature
-# control. Mode switching stays with your Betriebsart select/climate entity;
-# wiring it here too would fight that entity over one shared register.
+# control (no `supported_modes:` -- TemplateWaterHeater only advertises the
+# operation-mode feature when that list is non-empty). Mode switching stays
+# with your Betriebsart select/climate entity; wiring it here too would fight
+# that entity over one shared register.
+#
+# NO CYLINDER? Then 0x0804/0x6500 read frozen values and 0x6513
+# (Speicherladepumpe) never leaves 0. That is the appliance, not this config.
 #
 # Wiring below matches the reference board (rx=GPIO5, tx=GPIO2). Adjust pins,
 # board and api/wifi to your setup.
@@ -66,7 +73,9 @@ sensor:
     id: dhw_setpoint_effective
     name: "WW-Solltemperatur effektiv"
     address: 0x6500
-    length: 1
+    length: 2
+    converter: div10
+    accuracy_decimals: 1
     unit_of_measurement: "°C"
     device_class: temperature
     entity_category: diagnostic
@@ -88,18 +97,31 @@ water_heater:
   - platform: template
     name: "Warmwasser"
     id: dhw
+    # `optimistic: true` is required, not cosmetic. ESPHome's
+    # TemplateWaterHeater::control() stores the commanded target only when
+    # optimistic_ is set, and its set_action trigger is a `Trigger<>` -- it has
+    # NO `x` argument, so the call object is unreachable from the automation.
+    # With `optimistic: false` there is no way to learn what the user asked
+    # for, and the card's slider is a no-op.
+    optimistic: true
     # Feed the card from the device's own values; the number's read-back
-    # keeps target_temperature honest after the controller clamps a write.
+    # keeps target_temperature honest after the controller clamps a write
+    # (it overwrites the optimistic value on the next loop()).
+    # The lambdas return optional<float>: `return {};` means "no update", which
+    # keeps a pre-first-poll NaN from being published as 0.00 degC.
     current_temperature: |-
-      return id(dhw_temp).state;
+      const float t = id(dhw_temp).state;
+      if (std::isnan(t)) return {};
+      return t;
     target_temperature: |-
-      return id(dhw_setpoint).state;
-    optimistic: false
+      const float t = id(dhw_setpoint).state;
+      if (std::isnan(t)) return {};
+      return t;
     set_action:
       - if:
           condition:
-            lambda: "return !std::isnan(x.target_temperature);"
+            lambda: "return !std::isnan(id(dhw).get_target_temperature()) && id(dhw).get_target_temperature() != id(dhw_setpoint).state;"
           then:
             - number.set:
                 id: dhw_setpoint
-                value: !lambda "return x.target_temperature;"
+                value: !lambda "return id(dhw).get_target_temperature();"

@@ -10,9 +10,9 @@ from esphome.const import (
 from . import (
     CONF_LENGTH,
     CONF_VITOCONNECT_ID,
+    MAX_P300_READ_LENGTH,
     VitoHomeComponent,
     datapoint_expression,
-    validate_length_in,
     vitohome_ns,
 )
 
@@ -22,6 +22,25 @@ CONF_BYTE_OFFSET = "byte_offset"
 CONF_BIT_MASK = "bit_mask"
 
 VitoBinarySensor = vitohome_ns.class_("VitoBinarySensor", binary_sensor.BinarySensor, cg.Component)
+
+
+def _validate_length(config):
+    # `length` is the BLOCK read issued at `address` -- always the block base,
+    # so P300 gets an aligned telegram -- and `byte_offset` picks the byte the
+    # bit lives in. Vitosoft puts status bits deep inside wide blocks
+    # (HK_Frostgefahr_aktivA1M1 is bit 135 = byte 16 of the 22-byte block at
+    # 0x2500; WPR3_Geraetestatus_Party_HK1 is bit 0 of a 10-byte block, i.e.
+    # byte_offset 0 with length 10), which the old 1..4 cap could not express at
+    # all -- the generator emitted a "custom handling" comment instead.
+    # Capped at the P300 single-telegram limit for the same reason sensor.py
+    # caps it there: a wider read works on KW but NAKs on P300.
+    length = config[CONF_LENGTH]
+    if not 1 <= length <= MAX_P300_READ_LENGTH:
+        raise cv.Invalid(
+            f"length is a block read and must be 1..{MAX_P300_READ_LENGTH} bytes (got {length})",
+            path=[CONF_LENGTH],
+        )
+    return config
 
 
 def _validate_offset_within_length(config):
@@ -54,13 +73,14 @@ _DATAPOINT_SCHEMA = cv.All(
         {
             cv.GenerateID(CONF_VITOCONNECT_ID): cv.use_id(VitoHomeComponent),
             cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
-            cv.Optional(CONF_LENGTH, default=1): validate_length_in(1, 4),
-            cv.Optional(CONF_BYTE_OFFSET, default=0): cv.int_range(min=0, max=3),
+            cv.Optional(CONF_LENGTH, default=1): cv.positive_int,
+            cv.Optional(CONF_BYTE_OFFSET, default=0): cv.int_range(min=0, max=MAX_P300_READ_LENGTH - 1),
             cv.Optional(CONF_BIT_MASK, default=0xFF): cv.hex_uint8_t,
             cv.Optional(CONF_UPDATE_INTERVAL): cv.update_interval,
         }
     )
     .extend(cv.COMPONENT_SCHEMA),
+    _validate_length,
     _validate_offset_within_length,
 )
 

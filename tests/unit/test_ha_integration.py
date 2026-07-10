@@ -88,6 +88,35 @@ def test_datapoint_type_is_default_and_still_needs_address():
         BS_SCHEMA({"name": _name(), "bit_mask": 0x01})
 
 
+def test_binary_sensor_accepts_block_interior_bit():
+    # HK_Frostgefahr_aktivA1M1: byte 16 of the 22-byte block at 0x2500. The
+    # block is read at its base (aligned; P300 NAKs an interior read) and the
+    # bit is indexed inside the payload.
+    cfg = BS_SCHEMA(
+        {"name": _name(), "address": 0x2500, "length": 22, "byte_offset": 16, "bit_mask": 0x01},
+    )
+    assert cfg["length"] == 22
+    assert cfg["byte_offset"] == 16
+
+
+def test_binary_sensor_block_read_capped_at_one_telegram():
+    with pytest.raises(cv.Invalid):
+        BS_SCHEMA({"name": _name(), "address": 0x2500, "length": 64, "byte_offset": 16})
+
+
+def test_binary_sensor_block_read_without_byte_offset_is_allowed():
+    # A bit in byte 0 of a wide block: the generator omits byte_offset when it
+    # is 0, so `length` alone must be accepted up to the telegram cap.
+    cfg = BS_SCHEMA({"name": _name(), "address": 0x1410, "length": 10, "bit_mask": 0x01})
+    assert cfg["length"] == 10
+    assert cfg["byte_offset"] == 0
+
+
+def test_binary_sensor_offset_must_lie_inside_block():
+    with pytest.raises(cv.Invalid):
+        BS_SCHEMA({"name": _name(), "address": 0x2500, "length": 22, "byte_offset": 22})
+
+
 # --- gen_catalog device_class map ----------------------------------------------
 
 

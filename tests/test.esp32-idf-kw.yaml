@@ -7,6 +7,7 @@
 substitutions:
   name: vitohome-test-idf-kw
   protocol: KW
+  log_frames: "true"
   identify_device: "false"
 
 esp32:

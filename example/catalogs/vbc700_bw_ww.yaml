@@ -3901,7 +3901,7 @@ binary_sensor:
     id: WPR_RelaisZustand_Speichernachheizung
     address: 0x040A
     length: 1
-    bit_mask: 0x80
+    bit_mask: 0x01
     disabled_by_default: true
     update_interval: 60s
   # --- (ohne Gruppenzuordnung) ---
@@ -3911,7 +3911,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x0486
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -3920,7 +3920,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x0487
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -3929,7 +3929,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x0491
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -3938,7 +3938,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x049D
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -3947,7 +3947,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x049E
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -3956,7 +3956,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x049F
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -3965,7 +3965,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x04A1
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -3974,7 +3974,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x04A2
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -3983,7 +3983,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x04A3
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -3992,7 +3992,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x04A5
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -4001,7 +4001,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x04A6
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -4010,7 +4010,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x04A7
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -4019,7 +4019,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x04A8
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -4028,7 +4028,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x04A9
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -4037,7 +4037,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x04AA
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -4046,7 +4046,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x04AB
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -4055,7 +4055,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x04AC
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -4064,7 +4064,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x04AE
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -4073,7 +4073,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x04AF
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -4082,7 +4082,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x04B1
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -4091,7 +4091,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x04B4
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -4100,7 +4100,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x04B5
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -4109,7 +4109,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x04B6
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -4118,7 +4118,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x04B7
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -4127,7 +4127,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x04B9
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -4136,7 +4136,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0x04BB
     length: 1
-    bit_mask: 0x02
+    bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -4145,7 +4145,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0xB443
     length: 1
-    bit_mask: 0x80
+    bit_mask: 0x01
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -4154,7 +4154,7 @@ binary_sensor:
     entity_category: diagnostic
     address: 0xB447
     length: 1
-    bit_mask: 0x80
+    bit_mask: 0x01
     disabled_by_default: true
     update_interval: 60s
 

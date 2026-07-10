@@ -1594,11 +1594,22 @@ def emit_entity(ev: Event, profile: str):
         # sometimes left 0 in the export, so derive the byte from the bit index.
         bit_pos = ev.bit_position or 0
         byte_off = bit_pos // 8
-        mask = 1 << (bit_pos % 8)
-        # The component reads <=4 bytes with byte_offset 0..3 (and offset <
-        # length). A bit deeper in a large status block can't be expressed ->
-        # surface it as a comment instead of emitting config that fails validation.
-        if block_len > 4 or byte_off > 3 or byte_off >= block_len:
+        # Vitosoft numbers bits MSB-FIRST inside the byte: index 0 is 0x80, index
+        # 7 is 0x01. HARDWARE-CONFIRMED on VScotHO1_72 (0x20CB), 2026-07-09 logs:
+        # 0x55DD carries exactly two datapoints, GWG_Flamme1 (BitPosition 2) and
+        # GWG_Brenner_2 (BitPosition 5). The byte reads 0x01 with the burner off
+        # (three samples, modulation 0 %) and 0x21 with it firing (five samples,
+        # modulation 11-40 %, Kessel 25 -> 34.6 degC, Abgas 25 -> 31.3 degC).
+        # LSB-first would put Flamme1 at 0x04 -- never set, i.e. "no flame" while
+        # the boiler burns, and would light GWG_Brenner_2 (a second burner stage
+        # this modulating unit does not have). MSB-first puts Flamme1 at 0x20,
+        # which tracks the burn exactly. The previous `1 << (bit_pos % 8)` was
+        # therefore mirrored for EVERY bit-field this generator emits.
+        mask = 0x80 >> (bit_pos % 8)
+        # binary_sensor reads a block at the block base and indexes byte_offset
+        # inside it (aligned read -- P300 NAKs an unaligned interior read). The
+        # only hard cap left is the single-telegram read limit.
+        if block_len > MAX_P300_READ_LENGTH or byte_off >= block_len:
             return (
                 "comment",
                 [

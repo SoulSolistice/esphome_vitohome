@@ -24,6 +24,17 @@ esp32:
   framework:
     type: esp-idf
 
+# Without this the example is not actually standalone: `esphome config` cannot
+# resolve `platform: vitohome` unless the component is pulled in. Matches the
+# other examples in this directory.
+external_components:
+  - source:
+      type: git
+      url: https://github.com/SoulSolistice/esphome_vitohome
+      ref: main
+    components: [vitohome]
+    refresh: 0s
+
 # Use your real network. The reference board uses SPI-Ethernet (DM9051); a
 # placeholder wifi: block is shown only so this example validates standalone.
 wifi:

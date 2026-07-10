@@ -404,6 +404,33 @@ larger block reads 1 byte at its `BytePosition`.)
 
 ---
 
+### Bit numbering in the export is MSB-first
+
+`BitPosition` counts from the **most significant** bit: index 0 is `0x80`, index 7
+is `0x01`. The generator emitted `1 << (bit_pos % 8)` — mirrored for *every*
+bit-field it has ever produced.
+
+Hardware proof (VScotHO1_72 / `0x20CB`, 2026-07-09 logs). Address `0x55DD` carries
+exactly two datapoints: `GWG_Flamme1` (BitPosition 2) and `GWG_Brenner_2`
+(BitPosition 5). The byte reads `0x01` with the burner off (3 samples, modulation
+0 %) and `0x21` with it firing (5 samples, modulation 11–40 %, flue gas rising).
+Bit `0x04` is never set in either state. LSB-first would therefore mean "no flame
+while the boiler burns", and would light a second burner stage this modulating
+unit does not have. MSB-first puts `GWG_Flamme1` at `0x20`, which tracks the burn
+exactly.
+
+Consequence: `HK_Frostgefahr_aktivA1M1` (BitPosition 135, i.e. byte 16 of the
+22-byte block at `0x2500`) is mask `0x01`, not `0x80`. Reaching it also required
+`binary_sensor` to accept a **block read at the base plus `byte_offset`** — the
+same aligned-read pattern `sensor`/`text_sensor` already used, because a single-byte
+read at the interior address `0x2510` is unaligned and NAKs on P300 (and returned a
+constant `0xFF` on KW).
+
+Every bitmask this generator emits from Vitosoft data is a *derivation*, not an
+observation. Confirm each against hardware before trusting it.
+
+---
+
 ## 9. Per-entity polling
 
 The hub has a base `update_interval` (the poll tick). Each entity may set its own
@@ -423,6 +450,53 @@ poll, and a successful publish resets the streak. Failed **writes** never
 blank state at all — the device value did not change — which is why the hub
 dispatches read errors to `handle_error()` and write errors to
 `handle_write_error()` (default: keep state) separately.
+
+**No `update_interval` means *every hub tick*.** `poll_interval_ms_` defaults to
+`0`, which the scheduler reads as "due on every cycle". That is the right default
+for a sensor and a trap for an immutable identity string: `example/` had four of
+them (`Sachnummer`, two `HWHerstellNr*`, `Beschriftung_HK1` — 79 bytes) going out
+once a minute forever. `disabled_by_default: true` does not help; it is a Home
+Assistant hint and the device polls regardless. Always pin an interval on
+anything that cannot change.
+
+**The next-due time must be anchored on the schedule, not on `now`.** The
+scheduler advances `next_due_ms_` from the *previous scheduled* time
+(`components/vitohome/poll_schedule.h`), and treats an entity due within half a
+hub tick as due now. Both parts are load-bearing. `now` is `millis()` sampled
+*inside* `update()`, a few milliseconds after the interval anchor that invoked it,
+and that offset is not constant. Re-anchoring on it (`next_due = now + interval`)
+made any entity whose interval *equals* the hub tick fire or not fire depending on
+whether this tick's jitter happened to exceed the previous tick's — a coin flip.
+Two 2026-07-09 hardware logs, **from the same firmware binary**, disagreed: one
+dropped the entire 60 s tier on its second tick, the other never did. A host
+simulation with realistic non-monotonic jitter drops 5 of 12 ticks under the old
+formula and 0 of 12 under the new one (`tests/native/proof_scheduler.cpp`, which
+also pins the drift-free progression, the long-stall re-anchor, and the
+`millis()` wrap).
+
+---
+
+### 9a. Frame logging belongs in the component, not in `uart: debug:`
+
+ESPHome's UART debugger has no notion of an Optolink telegram, so it has to be
+told where a frame ends. The `after: delimiter: [0x06]` recipe that circulates
+for Optolink is the **P300 ACK byte**. On KW, `0x06` is an ordinary data byte,
+so the debugger splits telegrams mid-frame — visible in the 2026-07-09 logs as
+`>>> 01:F4:23:06` followed by `>>> 01:24` for a single write to `0x2306`.
+
+The adapter already knows the boundaries and needs no delimiter. `log_frames: true`
+on the hub sets `-DVITOHOME_LOG_FRAMES`, and `vito_uart_interface.h` then logs one
+line per telegram under the `vitohome.frames` tag:
+
+* **TX** — the engine serializes a whole telegram and hands it to `write()` in one
+  call, so one `write()` is exactly one frame, on every protocol.
+* **RX** — bytes arrive one at a time, so they are accumulated and flushed on the
+  first of: the next TX, an inter-byte gap over 30 ms, or a full buffer. At
+  4800 8E2 one byte occupies 11 bits = 2.29 ms, so 30 ms is >13 byte-times — far
+  above intra-frame spacing and far below KW's ~2.2 s idle-sync cadence.
+
+It is a build flag rather than a runtime setter so a production firmware carries
+no RX buffer and no per-byte branch; `frame_tick()` degrades to an empty inline.
 
 ---
 

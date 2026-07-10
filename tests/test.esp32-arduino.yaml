@@ -1,6 +1,7 @@
 substitutions:
   name: vitohome-test-arduino
   protocol: P300
+  log_frames: "false"
   identify_device: "true"
 
 esp32:

@@ -38,7 +38,7 @@ binary_sensor:
     id: Vitogate_Hauptversion
     address: 0x0100
     length: 2
-    bit_mask: 0x01
+    bit_mask: 0x80
     disabled_by_default: true
     update_interval: 60s
   - platform: vitohome
@@ -46,7 +46,7 @@ binary_sensor:
     id: Vitogate_Nebenversion
     address: 0x0100
     length: 2
-    bit_mask: 0x10
+    bit_mask: 0x08
     disabled_by_default: true
     update_interval: 60s
 

@@ -33,6 +33,10 @@ vitohome:
   protocol: ${protocol}
   update_interval: 60s
   identify_device: ${identify_device}
+  # Compile-time Optolink frame logging. The wrappers set this both ways so
+  # CI compiles the -DVITOHOME_LOG_FRAMES branch of vito_uart_interface.h and
+  # the branch without it.
+  log_frames: ${log_frames}
 
 sensor:
   # div10 SIGNED via converter default
@@ -103,6 +107,17 @@ binary_sensor:
     bit_mask: 0x04
     device_class: running
     update_interval: 120s
+  # block-interior bit: read the 22-byte block at its base (aligned; P300 NAKs
+  # an interior read) and index byte 16 inside the payload. Vitosoft numbers
+  # bits MSB-first, so bit 135 (= byte 16, in-byte index 7) is mask 0x01.
+  - platform: vitohome
+    name: "Test Block Bit"
+    address: 0x2500
+    length: 22
+    byte_offset: 16
+    bit_mask: 0x01
+    device_class: cold
+    update_interval: 300s
 
 number:
   # noconv unsigned, mode box, read_back default (true)

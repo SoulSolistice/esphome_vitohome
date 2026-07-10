@@ -1,27 +1,65 @@
 # ============================================================
 # vitohome - VScotHO1_72 comprehensive package
 #
-# Curated from the generated full catalog (vscotho1_72.dp.complete.yaml) for
-# a basic system - one direct heating circuit on A1 plus DHW - and meant as
-# the showcase config: comprehensive MONITORING (temperatures incl. flow /
-# return / flue gas, burner modulation and counters, volume flow, pump
-# power) plus CONTROL of the typical features (room climate with operating
-# modes, DHW setpoint incl. a native water_heater card, party / economy
-# switches, heating curve, switching-time programs) - exercising every
-# platform the component offers: sensor, binary_sensor (incl. the hub-fed
-# connectivity diagnostic), text_sensor (device_id / enum / error_history /
-# ascii / utf16), number, select, switch, climate, text (Schaltzeiten),
-# event (fault events) and an ESPHome template water_heater on top.
+# This file has two jobs and is written to serve both:
+#
+#   (a) REFERENCE UNIT. It mirrors the maintainer's Vitodens 300-W (B3HA,
+#       Vitotronic 200, wire ident 0x20CB, KW/VS1) so every change can be
+#       validated against real hardware logs. That unit is HEATING-ONLY:
+#       it has NO DHW cylinder and no tank sensor. The DHW entities below
+#       are therefore mostly inert here (see "DHW on this unit" below) --
+#       they are kept deliberately, both as platform coverage and as the
+#       template a tank-equipped user starts from.
+#
+#   (b) STARTING POINT. It is the showcase config: comprehensive MONITORING
+#       (temperatures incl. flow / return / flue gas, burner modulation and
+#       counters, volume flow, pump speed) plus CONTROL of the typical
+#       features (room climate with operating modes, DHW setpoint incl. a
+#       native water_heater card, party / economy switches, heating curve,
+#       switching-time programs) - exercising every platform the component
+#       offers: sensor, binary_sensor (incl. the hub-fed connectivity
+#       diagnostic), text_sensor (device_id / enum / error_history / ascii /
+#       utf16), number, select, switch, climate, text (Schaltzeiten), event
+#       (fault events) and an ESPHome template water_heater on top. It also
+#       demonstrates the advanced concepts: aligned block reads with
+#       byte_offset, read/write address splits, single-writer discipline on a
+#       shared register, and hardware-evidenced bit masks.
 #
 # Every datapoint is Optolink-reachable and uses the field-accurate
 # address/length/converter from the generated catalog; hand-tuned entries
 # carry their hardware evidence in comments. Entities are ENABLED by
-# default so the set works out of the box (one deliberate exception noted
-# at the Betriebsart select).
+# default so the set works out of the box; the exceptions carry a reason
+# next to `disabled_by_default:` / `internal:`.
+#
+# ---- DHW on this unit ------------------------------------------------
+# Betriebsart (0x2323, BedienteilBA_GWGA1) is a SINGLE mutually exclusive
+# 5-value program: 0 Abschalt / 1 Nur WW / 2 Heizen + WW / 3 Dauernd
+# Reduziert / 4 Dauernd Normal. There is no separate "DHW on" flag, so the
+# climate presets and any DHW mode control fight over one register. This
+# package resolves that by giving 0x2323 exactly ONE writer (the climate
+# entity); the Betriebsart `select` is `internal: true` (read-side probe,
+# never writes), and the water_heater exposes temperature only, deriving its
+# displayed mode read-only from 0x2323.
+# On the reference unit, with no cylinder fitted: 0x0812 (WW Ist) reads a
+# frozen 20.0 degC, 0x6500 (WW Soll aktuell) a frozen 5.0 degC and 0x6513
+# (Speicherladepumpe) never leaves "Off" -- across a full burner cycle, and in
+# both Betriebsart values that enable DHW (0x01 "Nur Warmwasser" in the idle
+# log, 0x02 "Heizen und Warmwasser" in the burn log). Hardware-confirmed,
+# 2026-07-09. Those entities are marked `entity_category: diagnostic` here; on
+# a tank-equipped unit they carry real values, so promote them.
+#
+# The DHW card itself needed a real fix, not just a label: see the
+# `optimistic: true` note at the water_heater below. With `optimistic: false`
+# the temperature slider was a silent no-op on ANY unit, tank or not.
+#
+# ---- Open captures ---------------------------------------------------
+# Entities marked "CAPTURE" exist to settle a specific open question on
+# hardware, not because a dashboard needs them. Each says which. Delete them
+# once the question is closed (they cost bus time).
 #
 # USAGE - define uart + vitohome hub in your device YAML and include this
 # file via packages: (see vscotho1_72.vitohome.yaml, which also wires
-# time_sync for the device clock).
+# time_sync for the device clock and turns on `log_frames`).
 #
 # VERIFY ON HARDWARE: addresses come from the Vitosoft catalog for this
 # variant; confirm with `esphome config` then `esphome run` before relying
@@ -134,19 +172,35 @@ sensor:
     icon: "mdi:thermometer-chevron-down"
     update_interval: 60s
 
+  # DHW tank temperature, low-pass filtered. Vitosoft:
+  # TiefpassTemperaturwertWW1~0x0812, BlockLength 2, Div10, Read.
+  # vcontrold reads the same address as getTempStp ("Speichertemperatur
+  # (Tiefpass)"). On the reference unit (no cylinder) it is frozen at exactly
+  # 20.0 degC in every sample of both 2026-07-09 logs (2 idle + 5 during a
+  # burn), so it is diagnostic here. vcontrold's getTempWWist reads the RAW
+  # sensor at 0x0804 instead -- added below as a CAPTURE, to tell "cold tank"
+  # apart from "no sensor".
   - platform: vitohome
     name: "Temperatur Warmwasser Ist"
     id: TiefpassTemperaturwertWW1
-    address: 0x0812            # WW1 / Speicher (top)
+    address: 0x0812            # WW1 / Speicher (top), Tiefpass
     length: 2
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
     accuracy_decimals: 1
+    entity_category: diagnostic
     icon: "mdi:water-thermometer"
     update_interval: 60s
 
+  # WW_SolltemperaturAktuell: the setpoint the controller is actually acting
+  # on. Vitosoft: BlockLength 2, Div10, Read (borders 10..95 degC).
+  # Reference unit: reads a frozen 5.0 degC -- BELOW the datapoint's own lower
+  # border -- in all 7 samples across both 2026-07-09 logs, and it did NOT
+  # follow the 50 -> 49 -> 48 writes to 0x6300, nor a Betriebsart change to
+  # "Heizen und Warmwasser". It is NOT a mirror of 0x6300. Reading it as "no
+  # DHW demand configured" on a unit with no cylinder.
   - platform: vitohome
     name: "Temperatur Warmwasser Soll"
     id: WW_SolltemperaturAktuell
@@ -157,21 +211,93 @@ sensor:
     device_class: temperature
     state_class: measurement
     accuracy_decimals: 1
+    entity_category: diagnostic
     icon: "mdi:thermometer-water"
     update_interval: 60s
 
+  # CAPTURE - raw DHW tank sensor. Vitosoft: ADC_IstTemperaturwert_STS1~0x0804,
+  # BlockLength 2, Div10, Read. vcontrold reads this address as getTempWWist
+  # ("Warmwassertemperatur in Grad C"). Question it answers: is there a tank
+  # sensor at all? A rail/fault reading here, next to the frozen 20.0 degC at
+  # 0x0812, settles it. Promote to a normal sensor (drop entity_category) on a
+  # tank-equipped unit.
+  - platform: vitohome
+    name: "Temperatur Warmwasser Ist (Rohsensor)"
+    id: ADC_IstTemperaturwert_STS1
+    address: 0x0804
+    length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    entity_category: diagnostic
+    icon: "mdi:water-thermometer-outline"
+    update_interval: 300s
+
   # --- Burner -------------------------------------------------------------
+  # nvoBoilerState_BLR_value: byte 0 of the 2-byte block at 0xA305, Div2.
+  # Byte 1 of the same block is nvoBoilerState_BLR_state (0 = AUS, 1 = EIN) --
+  # see the "Status Brenner" binary_sensor below, which reads it as a byte
+  # rather than guessing a bit.
+  # 30s was a no-op: the hub tick is 60s and anything shorter degrades to it
+  # (the hub warns at setup). Say 60s and mean it.
   - platform: vitohome
     name: "Brenner Modulation"
     id: nvoBoilerState_BLR_value
-    address: 0xA305            # nvoBoilerState value (low byte, x0.5)
+    address: 0xA305            # nvoBoilerState value (byte 0, x0.5)
     length: 1
     converter: div2
     unit_of_measurement: "%"
     state_class: measurement
     accuracy_decimals: 1
     icon: "mdi:fire"
-    update_interval: 30s
+    update_interval: 60s
+
+  # CAPTURE - byte 0 of the 9-byte block at 0x55D3, read as an integer percent.
+  # PROVENANCE, exactly: vcontrold's getBrennerStatus carries an explicit
+  # <device ID="20CB"> override reading 0x55D3, len 1, unit PR1 ("Prozent
+  # 1 Byte ganzzahlig") -- see openv/vcontrold xml/300/vito.xml and the PR1
+  # unit in xml/300/vcontrold.xml. Vitosoft declares NO percent datapoint at
+  # 0x55D3 for this family: the block carries GWG_Flamme (BitPosition 42) and
+  # GWG_Verriegelung (BitPosition 41); a 1-byte VSorp_Anlagendruck sits at the
+  # same address for a different family. So the percent reading is vcontrold's
+  # claim, not Viessmann's.
+  # Question it answers: is byte 0 really a percentage, and does it track
+  # 0xA305 byte 0 x 0.5? If yes, one of the two can go; if it reads something
+  # unrelated, delete this and trust the catalog.
+  - platform: vitohome
+    name: "Brennerstatus (0x55D3, vcontrold)"
+    id: Brennerstatus_55D3
+    address: 0x55D3
+    length: 1
+    converter: noconv
+    unit_of_measurement: "%"
+    state_class: measurement
+    accuracy_decimals: 0
+    entity_category: diagnostic
+    icon: "mdi:fire"
+    update_interval: 60s
+
+  # CAPTURE - nvoPWRState_CFDM_value: Vitosoft says BlockLength 2, BytePosition
+  # 0, ByteLength 1, Div2 -- i.e. a 1-byte field at the block base. vcontrold's
+  # getLeistungIst ("Anlagen Ist-Leistung") reads the same address with len 2
+  # and unit PR3. THE TWO DISAGREE on the width, so this entity follows Vitosoft
+  # (1 byte, /2) and is a capture, not a settled reading.
+  # Question it answers: does this track 0xA305 (nvoBoilerState_BLR_value, also
+  # Div2), or is it a distinct quantity? Compare during a modulating burn.
+  - platform: vitohome
+    name: "Brennerleistung"
+    id: nvoPWRState_CFDM_value
+    address: 0xA38F
+    length: 1
+    converter: div2
+    unit_of_measurement: "%"
+    state_class: measurement
+    accuracy_decimals: 1
+    entity_category: diagnostic
+    icon: "mdi:gauge"
+    update_interval: 60s
 
   - platform: vitohome
     name: "Brenner Betriebsstunden"
@@ -185,9 +311,32 @@ sensor:
     accuracy_decimals: 1
     icon: "mdi:timer"
     update_interval: 600s
-    # vcontrold reads burner hours at 0x08A7 (BetriebsstundenBrennerBedienung)
-    # for 0x20CB; this uses 0x0886 (BetriebsstundenBrenner1). Both are sec2hour.
-    # If this reads 0 or looks wrong on hardware, compare against 0x08A7.
+    # 0x0886 (BetriebsstundenBrenner1) vs 0x08A7
+    # (BetriebsstundenBrennerBedienungGWG): Vitosoft lists Write/Reset variants
+    # for 0x08A7 only, i.e. 0x08A7 is the resettable service counter, which is
+    # why this entity uses 0x0886 for `total_increasing`.
+    # Confirmed live: the raw advanced E6:EB:A5:0C (0x0CA5EBE6 = 212200422 s =
+    # 58944.5617 h) -> F3:EB:A5:0C (0x0CA5EBF3 = 212200435 s = 58944.5653 h),
+    # i.e. +13 burner-on seconds between the two 2026-07-09 logs, matching the
+    # published values exactly.
+
+  # CAPTURE - the counter vcontrold reads (getBrennerStunden1, 0x08A7, len 4,
+  # unit CS; setBrennerStunden1 writes it). Question it answers: how do the two
+  # counters differ on this unit (offset? reset history?). Drop one once the
+  # comparison is in.
+  - platform: vitohome
+    name: "Brenner Betriebsstunden (Bedienung)"
+    id: BetriebsstundenBrennerBedienungGWG
+    address: 0x08A7
+    length: 4
+    converter: sec2hour
+    unit_of_measurement: "h"
+    device_class: duration
+    state_class: total_increasing
+    accuracy_decimals: 1
+    entity_category: diagnostic
+    icon: "mdi:timer-outline"
+    update_interval: 3600s
 
   - platform: vitohome
     name: "Brenner Starts"
@@ -213,14 +362,23 @@ sensor:
     # NOTE: a scaling factor exists at 0x0C26 (Skalierung Durchfluss). If the
     # raw value looks off by a constant factor, divide by that on the HA side.
 
+  # Vitosoft calls 0x0A3C `InternePumpeDrehzahl_res` (BlockLength 1,
+  # NoConversion, Read); "Pumpenleistung" is this file's display name.
+  # Hardware: in both 2026-07-09 logs this reads IDENTICALLY to both
+  # "Interne Pumpe Drehzahl" (0x7660 byte 1) and "Heizkreispumpe Drehzahl"
+  # (0x7663 byte 1) -- 0.000 in every idle sample, 22.000/24.000 in every burn
+  # sample. All three agreeing does NOT prove 0x0A3C mirrors 0x7660: on this
+  # single-circuit unit both pumps may simply run at the same PWM. To separate
+  # them you need a state where the two pumps differ. Diagnostic until then.
   - platform: vitohome
     name: "Pumpenleistung"
     id: Pumpenleistung
-    address: 0x0A3C            # internal pump demand
+    address: 0x0A3C            # InternePumpeDrehzahl_res
     length: 1
     converter: noconv
     unit_of_measurement: "%"
     state_class: measurement
+    entity_category: diagnostic
     icon: "mdi:pump"
     update_interval: 60s
 
@@ -240,11 +398,12 @@ sensor:
     state_class: measurement
     icon: "mdi:fan"
     update_interval: 60s
-    # Hardware shows 255 (0xFF) here while the pump is off -- reading it
-    # as a "no PWM feedback" sentinel (model-derived); map to unavailable
-    # rather than charting a fake 255 %.
-    filters:
-      - lambda: "return x >= 255.0 ? NAN : x;"
+    # NOTE: an earlier revision filtered `x >= 255 -> NAN` here, on the model
+    # that the device reports 0xFF while the pump is off. Both 2026-07-09 logs
+    # contradict it: this entity publishes 0.000 in every idle sample and
+    # 22.000/24.000 while the burner runs. It never reads 255, so the filter
+    # only ever risked masking a real value. Removed rather than left in as a
+    # comment-shaped myth.
 
   - platform: vitohome
     name: "Heizkreispumpe Drehzahl"
@@ -260,34 +419,135 @@ sensor:
     state_class: measurement
     icon: "mdi:fan"
     update_interval: 60s
-    # Hardware shows 255 (0xFF) here while the pump is off -- reading it
-    # as a "no PWM feedback" sentinel (model-derived); map to unavailable
-    # rather than charting a fake 255 %.
-    filters:
-      - lambda: "return x >= 255.0 ? NAN : x;"
+    # Same story as "Interne Pumpe Drehzahl": no 255 sentinel was ever observed
+    # (0.000 idle, 22.000/24.000 during a burn), so the `x >= 255 -> NAN`
+    # filter that used to sit here is gone too.
+
+  # CAPTURE - HK_RaumsolltemperaturaktuellA1M1~0x2500. Vitosoft: BlockLength 22,
+  # BytePosition 12, ByteLength 2, Div10, Read -- i.e. bytes 12..13 of the block.
+  # Question it answers: is this the room setpoint the climate card should show
+  # as `current_temperature`? (The climate entity has no current-temperature
+  # source today and publishes 0.00 degC.)
+  - platform: vitohome
+    name: "Raumsoll aktuell HK1"
+    id: HK_RaumsolltemperaturaktuellA1M1
+    address: 0x2500            # block base (aligned read; P300 NAKs interiors)
+    length: 22
+    byte_offset: 12
+    byte_length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    entity_category: diagnostic
+    icon: "mdi:home-thermometer"
+    update_interval: 300s
+
+  # CAPTURE - nvoRelayState_*~0xA152: a 2-byte relay bitfield. Vitosoft gives
+  # every relay an absolute BitPosition 0..15 across the block; under MSB-first
+  # numbering, bit N lives in byte N/8 with mask 0x80 >> (N % 8):
+  #   0 Zubringerpumpe   -> byte 0, 0x80      8 SLP  -> byte 1, 0x80
+  #   2 Interne_Pumpe    -> byte 0, 0x20      9 ZP   -> byte 1, 0x40
+  #   3 UV_Heizen        -> byte 0, 0x10     10 HKP1 -> byte 1, 0x20
+  #   5 UV_Warmwasser    -> byte 0, 0x04
+  #   6 Brenner          -> byte 0, 0x02
+  #   7 Sammelstoerung   -> byte 0, 0x01
+  # (Several names alias one bit across device families, e.g. Brennerstufe1
+  # also sits at 6 and TSA_Kontakt at 5 -- check the family before trusting a
+  # name.) Question it answers: read as a raw 16-bit value during a burn, with
+  # the HK pump running and the storage pump idle, it pins the numbering
+  # against four simultaneously-known relay states -- the last piece of evidence
+  # needed to be certain about the MSB-first reading that the flame bit implies
+  # and that scripts/gen_catalog.py now assumes. Then delete this entity and
+  # emit the individual bits as binary_sensors.
+  # NOTE the value is decoded little-endian, so byte 0 is the LOW 8 bits of the
+  # published number and byte 1 the HIGH 8 bits.
+  - platform: vitohome
+    name: "Relaisstatus (roh)"
+    id: nvoRelayState_raw
+    address: 0xA152
+    length: 2
+    converter: noconv
+    state_class: measurement
+    accuracy_decimals: 0
+    entity_category: diagnostic
+    icon: "mdi:electric-switch"
+    update_interval: 60s
 
 binary_sensor:
+  # Burner state, straight from the byte the controller publishes for it:
+  # nvoBoilerState_BLR_state is byte 1 of the 2-byte block at 0xA305
+  # (0 = AUS, 1 = EIN). bit_mask 0xFF = "any nonzero byte". This is the
+  # authoritative source -- no bit-numbering convention involved -- and it
+  # shares its block base with the modulation sensor above.
+  - platform: vitohome
+    name: "Status Brenner"
+    id: nvoBoilerState_BLR_state
+    address: 0xA305
+    length: 2
+    byte_offset: 1
+    bit_mask: 0xFF
+    device_class: running
+    icon: "mdi:fire"
+    update_interval: 60s
+
+  # GWG_Flamme1 @ 0x55DD, BitPosition 2, BitLength 1.
+  # bit_mask 0x20, NOT 0x04: Vitosoft numbers bits MSB-FIRST inside the byte
+  # (index 0 = 0x80), so BitPosition 2 -> 0x80 >> 2 = 0x20.
+  # HARDWARE-CONFIRMED, 2026-07-09 logs, 8 samples, no exceptions:
+  #   modulation 0 %                 -> raw 0x01 (3 samples)
+  #   modulation 11..40 %, Abgas +6K -> raw 0x21 (5 samples)
+  # Bit 0x04 is never set in either state; bit 0x20 tracks the burn exactly.
+  # Under LSB-first, 0x04 would be GWG_Flamme1 -- "no flame" while the boiler
+  # burns -- which is impossible. Cross-check it against "Status Brenner"
+  # above; they must agree.
   - platform: vitohome
     name: "Status Brenner Flamme"
     id: GWG_Flamme1
-    address: 0x55DD            # GWG Flamme1 (bit 2)
+    address: 0x55DD
+    length: 1
+    bit_mask: 0x20
+    device_class: running
+    icon: "mdi:fire"
+    update_interval: 60s
+
+  # CAPTURE - GWG_Brenner_2 @ 0x55DD, BitPosition 5 -> 0x80 >> 5 = 0x04, the
+  # mask this file used to hand to GWG_Flamme1. Question it answers: it is the
+  # LSB-first hypothesis made falsifiable. Under MSB-first (what the flame bit
+  # proves) this stays OFF on a single-stage modulating boiler. If it ever goes
+  # ON while the flame bit is OFF, the numbering is the other way round and
+  # scripts/gen_catalog.py is wrong.
+  - platform: vitohome
+    name: "Brennerstufe 2"
+    id: GWG_Brenner_2
+    address: 0x55DD
     length: 1
     bit_mask: 0x04
     device_class: running
-    icon: "mdi:fire"
-    update_interval: 30s
+    entity_category: diagnostic
+    disabled_by_default: true
+    icon: "mdi:fire-alert"
+    update_interval: 60s
 
+  # HK_Frostgefahr_aktivA1M1: bit 135 of the 22-byte block at 0x2500 -- byte
+  # 16 (135 = 16*8 + 7), in-byte index 7 -> mask 0x01 under MSB-first.
+  # The block is read at its BASE and indexed with byte_offset: an interior
+  # single-byte read at 0x2510 is unaligned and NAKs on P300. It also read a
+  # constant 0xFF on KW (i.e. ON at 14 degC outdoor, in July), which is what
+  # the earlier `address: 0x2510, bit_mask: 0x80` entity was reporting.
+  # Until this reads a plausible value, treat it as a CAPTURE.
   - platform: vitohome
     name: "Frostgefahr HK1"
     id: HK_Frostgefahr_aktivA1M1
-    address: 0x2510
-    length: 1
-    byte_offset: 0
-    bit_mask: 0x80
+    address: 0x2500            # block base
+    length: 22
+    byte_offset: 16
+    bit_mask: 0x01
     device_class: cold
     entity_category: diagnostic
     icon: "mdi:snowflake-alert"
-    update_interval: 60s
+    update_interval: 300s
 
   # Hub-fed Optolink link diagnostic: ONLINE on any successful response,
   # OFFLINE after 3 consecutive protocol errors or when start-up protocol
@@ -325,6 +585,7 @@ text_sensor:
       0x00: "Off"
       0x01: "On"
 
+  # Never leaves 0 on the reference unit (no cylinder). Diagnostic here.
   - platform: vitohome
     type: enum
     name: "Status Speicherladepumpe"
@@ -332,10 +593,92 @@ text_sensor:
     address: 0x6513            # Speicherladepumpe
     length: 1
     icon: "mdi:pump"
+    entity_category: diagnostic
     update_interval: 60s
     options:
       0x00: "Off"
       0x01: "On"
+
+  # Zirkulationspumpe~0x6515. Vitosoft: BlockLength 1, NoConversion, Read,
+  # ValueList 0=AUS / 1=EIN. vcontrold's getPumpeStatusZirku carries a
+  # <device ID="20CB"> override reading exactly this address, len 1.
+  - platform: vitohome
+    type: enum
+    name: "Status Zirkulationspumpe"
+    id: Zirkulationspumpe
+    address: 0x6515
+    length: 1
+    icon: "mdi:pump"
+    entity_category: diagnostic
+    update_interval: 60s
+    options:
+      0x00: "Off"
+      0x01: "On"
+
+  # CAPTURE - Umschaltventil~0x0A10 (diverter valve). Vitosoft: BlockLength 1,
+  # NoConversion, Read, ValueList exactly as below (labels resolved from
+  # DPDefinitions ecnEventValueType). vcontrold reads the same address as
+  # getUmschaltventil with unit USV. Question it answers: on a unit whose DHW
+  # never runs, where does the valve actually sit? It is also the clearest
+  # single diagnostic for "is the boiler heating the house or the tank".
+  # NOTE Vitosoft marks it Read; vcontrold also ships setUmschaltventil. Do not
+  # write to it.
+  - platform: vitohome
+    type: enum
+    name: "Umschaltventil"
+    id: Umschaltventil
+    address: 0x0A10
+    length: 1
+    icon: "mdi:valve"
+    entity_category: diagnostic
+    update_interval: 60s
+    options:
+      0x00: "undefiniert"
+      0x01: "Richtung Heizen"
+      0x02: "Mittelstellung"
+      0x03: "Richtung Warmwasser"
+
+  # CAPTURE - HK_AktuelleBetriebsartA1M1: byte 1 of the 22-byte block at
+  # 0x2500. This is the ACTUAL mode of the heating circuit, as opposed to
+  # 0x2301 (BedienBetriebsart, the operator-set mode the climate entity reads)
+  # and 0x2323 (the command register it writes). Question it answers: does the
+  # schedule/panel move the circuit between Normal and Reduziert independently
+  # of BedienBetriebsart?
+  - platform: vitohome
+    type: enum
+    name: "HK1 Aktuelle Betriebsart"
+    id: HK_AktuelleBetriebsartA1M1
+    address: 0x2500            # block base
+    length: 22
+    byte_offset: 1
+    icon: "mdi:radiator"
+    entity_category: diagnostic
+    update_interval: 300s
+    options:
+      0x00: "Abschaltbetrieb"
+      0x01: "Reduzierter Betrieb"
+      0x02: "Normalbetrieb"
+      0x03: "Normalbetrieb"
+
+  # CAPTURE - HK_WW_Freigabe_vonA1M1: byte 8 of the 0x2500 block. This is the
+  # DHW RELEASE. Question it answers: with Betriebsart on "Heizen und
+  # Warmwasser" and the tank cold, why does the storage pump never run --
+  # because DHW is not released (schedule / coding), or because there is no
+  # tank? Combine with "Temperatur Warmwasser Ist (Rohsensor)" above.
+  - platform: vitohome
+    type: enum
+    name: "HK1 WW-Freigabe"
+    id: HK_WW_Freigabe_vonA1M1
+    address: 0x2500            # block base
+    length: 22
+    byte_offset: 8
+    icon: "mdi:water-check"
+    entity_category: diagnostic
+    update_interval: 300s
+    options:
+      0x00: "Freigabe aus"
+      0x01: "Freigabe nach WW-Schaltzeiten"
+      0x02: "Freigabe durch Party/Externe Umschaltung"
 
   # Not-in-catalog circuit label, UTF-16LE (Beschriftung HK1, byte 2 of the
   # 42-byte block @ 0x7360). DISABLED by default: the 40-byte read succeeds
@@ -352,13 +695,17 @@ text_sensor:
     disabled_by_default: true
     entity_category: diagnostic
     icon: "mdi:label"
+    # `disabled_by_default` is an HA hint only -- the device polls regardless.
+    # Without an explicit update_interval an entity has poll_interval 0, which
+    # means "every hub tick": this 40-byte read was going out every 60 s.
+    update_interval: 24h
 
   # Most-recent SYSTEM fault (slot 1 of the 90-byte ecnsysEventType~Error
   # block; vcontrold getError0; code byte + 8-byte BCD timestamp).
   # HARDWARE-CONFIRMED at 0x7507 (2026-07-03 log: 0x38 Unterbrechung
   # Kesseltemperatursensor with valid timestamp). NOTE: the FehlerHisFA01..20
   # slots at 0x7590+ are a DIFFERENT archive -- the Feuerungsautomat (GFA
-  # burner control unit) history with its own code space -- see the disabled
+  # burner control unit) history with its own code space -- see the
   # "GFA Letzter Fehler" entity below. An earlier revision confused the two.
   # If the device NAKs the 9-byte block read, drop length to 1.
   # The codes map is the 'vd300' set (B3HA Serviceanleitung, 94 codes) and is
@@ -469,6 +816,10 @@ text_sensor:
       0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
 
 
+  # No `codes:` map: the Feuerungsautomat archive has its own code space and
+  # no published table for this variant, so a record renders as
+  # "Fehler 0xNN @ <timestamp>". Do NOT paste the vd300 map in here -- the
+  # codes would be wrong, not merely missing.
   - platform: vitohome
     type: error_history
     name: "GFA Letzter Fehler"
@@ -481,6 +832,9 @@ text_sensor:
 
   # Device identity (ASCII byte-strings, HexByte2AsciiByte) - read-only,
   # diagnostic. Surfaced by the vcontrold cross-check as worthwhile reads.
+  # An entity with NO update_interval polls on EVERY hub tick (poll_interval
+  # 0). These three plus Beschriftung HK1 are 79 bytes of immutable identity
+  # that were going out every 60 s while the real sensors ran slower. Pin them.
   - platform: vitohome
     type: ascii
     name: "Sachnummer"
@@ -489,6 +843,7 @@ text_sensor:
     length: 7
     entity_category: diagnostic
     icon: "mdi:identifier"
+    update_interval: 24h
   - platform: vitohome
     type: ascii
     name: "HWHerstellNrRegelung"
@@ -497,6 +852,7 @@ text_sensor:
     length: 16
     entity_category: diagnostic
     icon: "mdi:identifier"
+    update_interval: 24h
   - platform: vitohome
     type: ascii
     name: "HWHerstellNrKessel"
@@ -505,6 +861,7 @@ text_sensor:
     length: 16
     entity_category: diagnostic
     icon: "mdi:identifier"
+    update_interval: 24h
 
 # Fires a Home Assistant logbook event when the newest-fault code CHANGES:
 # hex type ("0x10") for a mapped code, "cleared" on transition to 0x00,
@@ -532,6 +889,10 @@ button:
 
 number:
   # DHW target temperature (also driven by the water_heater card below).
+  # This is the STORED setpoint (Bedien_WW_Solltemperatur) and is writable even
+  # on a unit with no cylinder: hardware-confirmed 2026-07-09, 50 -> 49 -> 48,
+  # each write ACKed and read back. It is a different register from 0x6500
+  # (the effective setpoint) -- 0x6500 did not follow this write.
   - platform: vitohome
     name: "Bedien WW Solltemperatur"
     id: Bedien_WW_Solltemperatur
@@ -590,23 +951,30 @@ number:
     update_interval: 3600s
 
 select:
-  # Operating-mode dropdown (Betriebsart). DISABLED by default because the
-  # climate entity below already drives the same command register 0x2323 via
-  # its presets - enable this only if you prefer a dropdown and accept two
-  # writers on one register. Kept for its hardware evidence:
-  # Writes are HARDWARE-CONFIRMED: the byte read back at 0x2323 reflects what
-  # was written, and all 5 options round-trip (write -> ACK -> read-back).
-  # 0x2323 (BedienteilBA, 5 values) is a DIFFERENT enum from 0x2301 (the
-  # actual mode, 6 values, which openv/vcontrold drive); the controller
-  # translates 0x2323 -> 0x2301. Observed translation: 0->5, 3->1 (predicted
-  # full map 0->5 1->0 2->3 3->1 4->2).
+  # Operating-mode dropdown (Betriebsart) on the COMMAND register 0x2323.
+  #
+  # SINGLE-WRITER DISCIPLINE. 0x2323 is one mutually exclusive 5-value program
+  # and the climate entity below already writes it through its presets. Two
+  # writers on one register means two HA entities silently changing each other,
+  # so this select is `internal: true`: it is registered, it polls, it logs the
+  # raw byte and its label -- and it never appears in Home Assistant, so it can
+  # never write. It is the read-side probe for 0x2323 (the climate reads the
+  # DIFFERENT register 0x2301) and the mode source for the water_heater below.
+  #
+  # Prefer a dropdown to climate presets? Flip `internal: false` here and DELETE
+  # the `operating_mode:` block from the climate entity. Do not keep both.
+  #
+  # 0x2323 (BedienteilBA_GWGA1, 5 values) is a DIFFERENT enum from 0x2301
+  # (BedienBetriebsart, 6 values, the one openv/vcontrold drive); the controller
+  # translates one to the other. See the climate entity below for the observed
+  # map and which pairs are confirmed against a log in hand.
   - platform: vitohome
     name: "Modus Betriebsart"
     id: BedienteilBA_GWGA1
     address: 0x2323
     length: 1
-    disabled_by_default: true
-    update_interval: 30s
+    internal: true
+    update_interval: 60s
     options:
       0x00: "Abschaltbetrieb"
       0x01: "Nur Warmwasser"
@@ -619,30 +987,61 @@ switch:
   # split: the switch WRITES the command address and READS the live state
   # address, with the default 1/0 on/off pair. Confirm on hardware that
   # toggling actually moves the state.
+  # 60s, not 30s: the hub tick is 60s and a shorter per-entity interval simply
+  # degrades to it (the hub logs a warning at setup). State the truth.
   - platform: vitohome
     name: "Partybetrieb"
     id: NRx_PartybetriebA1M1_D
     address: 0x2330            # command (NRx Partybetrieb)
     state_address: 0x2303      # live state (BedienPartybetrieb)
     icon: "mdi:party-popper"
-    update_interval: 30s
+    update_interval: 60s
   - platform: vitohome
     name: "Sparbetrieb"
     id: NRx_SparbetriebA1M1_D
     address: 0x2331            # command (NRx Sparbetrieb)
     state_address: 0x2302      # live state (BedienSparbetrieb)
     icon: "mdi:leaf"
-    update_interval: 30s
+    update_interval: 60s
 
 climate:
   # Room climate for heating circuit 1: the slider edits the room setpoint
   # (0x2306, applied through the heat curve); Betriebsart rides along as
-  # presets. `write` bytes are the hardware-confirmed 0x2323 command
-  # round-trip set; of the `read` (0x2301) bytes, 0x05 (Abschaltbetrieb) is
-  # HARDWARE-CONFIRMED (2026-07-03 log, cross-checked against the 0x2323
-  # dropdown reading 0x00 at the same moment); the other read values follow
-  # the same predicted map - confirm each on the wire when the mode is
-  # actually active before relying on the panel-initiated state display.
+  # presets. This entity is the SINGLE WRITER of 0x2323 (see the select above).
+  #
+  # The read/write split is the point of this example: `write` is the command
+  # byte (0x2323, BedienteilBA_GWGA1) and `read` is the state byte (0x2301,
+  # BedienBetriebsart) -- two different enums, which is why a plain select
+  # cannot represent Betriebsart faithfully.
+  #
+  # 0x2323 -> 0x2301 translation. Vitosoft value labels (from DPDefinitions):
+  #   0x2323 BedienteilBA_GWGA1: 0 Abschalt / 1 Nur WW / 2 Heizen + WW /
+  #                              3 Dauernd Reduziert / 4 Dauernd Normal
+  #   0x2301 BedienBetriebsart:  0 Sommerbetrieb / 1 DAUERND_REDUZIERT /
+  #                              2 DAUERND_NORMAL / 3 NORMAL_REDUZIERT /
+  #                              4 NORMAL_ABSCHALT / 5 DAUERND_ABSCHALT
+  # OBSERVED PAIRS, 2026-07-09 logs (select raw + climate read logged in the
+  # same poll burst), hardware-confirmed:
+  #   0x01 -> 0x00      0x02 -> 0x03      0x04 -> 0x02
+  # CARRIED OVER from the 2026-07-03 log (not re-verified against a log in
+  # hand; treat as one step weaker):
+  #   0x00 -> 0x05      0x03 -> 0x01
+  # Re-confirm the last two by selecting Abschaltbetrieb and Reduziert once and
+  # reading the `vitohome.climate` DEBUG line.
+  #
+  # GAP: 0x2301 also has the value 0x04 (NORMAL_ABSCHALT), which no preset
+  # claims. If the panel or a schedule ever selects it, no preset matches and
+  # the card shows the last known preset. There is no 0x2323 command that
+  # produces it, so it cannot be reached from Home Assistant.
+  #
+  # DHW: presets "Normal" (0x04) and "Reduziert" (0x03) are HEATING-ONLY
+  # programs. Selecting them disables domestic hot water at the boiler --
+  # not a bug in this config, but the appliance's one-program-register design.
+  # Only "Heizen und Warmwasser" (0x02) and "Nur Warmwasser" (0x01) enable DHW.
+  #
+  # `current_temperature` has no source and publishes 0.00 degC. The candidate
+  # is HK_RaumsolltemperaturaktuellA1M1 (0x2500 bytes 12..13) -- exposed as a
+  # CAPTURE sensor above.
   - platform: vitohome
     name: "Heizkreis 1"
     id: hk1_climate
@@ -652,8 +1051,8 @@ climate:
       max_temperature: 37
       temperature_step: 1
     operating_mode:
-      address: 0x2323          # write (command, BedienteilBA)
-      state_address: 0x2301    # read (actual mode the panel/schedule update)
+      address: 0x2323          # write (command, BedienteilBA_GWGA1)
+      state_address: 0x2301    # read (BedienBetriebsart, operator-set mode)
       presets:
         - {name: "Normal", write: 0x04, read: [0x02], mode: heat}
         - {name: "Reduziert", write: 0x03, read: [0x01], mode: heat}
@@ -713,15 +1112,55 @@ text:
 # current temperature from the tank sensor, target from the writable
 # setpoint number (whose read-back keeps the card honest after the
 # controller clamps a write). DHW on/off stays with Betriebsart by design.
+# A native Home Assistant water_heater card in front of the two DHW
+# datapoints. Inert on the reference unit (no cylinder: current_temperature is
+# a frozen 20.0 degC and nothing consumes the setpoint), kept deliberately --
+# it is the platform coverage, and it is what a tank-equipped user starts from.
+#
+# `optimistic: true` IS LOAD-BEARING, not a style choice. Read
+# template_water_heater.cpp (ESPHome 2026.6.x): control() stores the commanded
+# target only `if (this->optimistic_)`, and `set_trigger_` is a `Trigger<>`
+# with no arguments -- the call object never reaches the automation. With
+# `optimistic: false` the `set_action` below therefore read the PREVIOUS
+# target, the guard `!= number.state` was always false, and dragging the
+# card's temperature slider silently did nothing. (The 50->49->48 writes in the
+# 2026-07-09 log came from the `number` entity, not from this card.)
+# The optimistic value is corrected on the next loop() by `target_temperature:`
+# below, which republishes whatever the device actually confirmed.
+#
+# The lambdas return `optional<float>`, so `return {};` means "no update".
+# That is how the NaN before the first successful poll is suppressed instead of
+# being published as 0.00 degC.
+#
+# NO `supported_modes:` -- deliberately. TemplateWaterHeater::traits() only
+# advertises WATER_HEATER_SUPPORTS_OPERATION_MODE when supported_modes is
+# non-empty, so this card shows temperature only. DHW on/off lives in
+# Betriebsart (0x2323), whose single writer is the climate entity; a mode
+# dropdown here would be a second writer, or a control that snaps back. The
+# `mode:` lambda below is read-only: it makes the card's state honest without
+# taking the register.
 water_heater:
   - platform: template
     name: "Warmwasser"
     id: dhw
+    optimistic: true
     current_temperature: |-
-      return id(TiefpassTemperaturwertWW1).state;
+      const float t = id(TiefpassTemperaturwertWW1).state;
+      if (std::isnan(t)) return {};
+      return t;
     target_temperature: |-
-      return id(Bedien_WW_Solltemperatur).state;
-    optimistic: false
+      const float t = id(Bedien_WW_Solltemperatur).state;
+      if (std::isnan(t)) return {};
+      return t;
+    # Read-only mode, derived from the Betriebsart command register 0x2323 via
+    # the internal select. Its options are declared in raw order 0x00..0x04, so
+    # active_index() == the wire value. 1 = Nur Warmwasser, 2 = Heizen und
+    # Warmwasser: the only two programs in which the boiler makes hot water.
+    mode: |-
+      const auto idx = id(BedienteilBA_GWGA1).active_index();
+      if (!idx.has_value()) return {};
+      if (*idx == 1 || *idx == 2) return water_heater::WATER_HEATER_MODE_ECO;
+      return water_heater::WATER_HEATER_MODE_OFF;
     set_action:
       - if:
           condition:

@@ -42,5 +42,12 @@ g++ -std=c++17 -Wall -Wextra -fsanitize=address,undefined \
 g++ -std=gnu++20 -Wall -Wextra -I"$ROOT" -I"$OPTO" proof_extract.cpp -o proof_extract
 ./proof_extract
 
+# Scheduler proof: per-entity poll intervals must fire on every hub tick when
+# interval == the hub tick, must not drift, and must survive the millis() wrap.
+# (Anchoring the next due time on `now` made this a jitter-decided coin flip.)
+g++ -std=c++17 -Wall -Wextra -fsanitize=address,undefined \
+  -I"$ROOT" proof_scheduler.cpp -o proof_scheduler
+./proof_scheduler
+
 # Protocol-adapter proofs: all three engines compile + the GWG poke stays off.
 bash "$(dirname "$0")/build_and_run_protocols.sh" "$ROOT"

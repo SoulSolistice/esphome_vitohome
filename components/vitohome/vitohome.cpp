@@ -7,6 +7,7 @@
 #include "decode.h"
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
+#include "poll_schedule.h"
 #ifdef VITOHOME_TIME_SYNC
 #include "esphome/components/time/real_time_clock.h"
 #endif
@@ -139,6 +140,11 @@ void VitoHomeComponent::loop() {
   if (this->vito_ == nullptr) return;
 
   this->vito_->loop();
+
+  // Frame logging (compile-time; see vito_uart_interface.h). TX frames are
+  // emitted from write(); this closes an RX frame once the bus goes quiet.
+  // Compiles to nothing without -DVITOHOME_LOG_FRAMES.
+  this->iface_.frame_tick();
 
   // Start-up protocol verification: confirm the configured protocol actually
   // established a link, or fail the component with a clear message.
@@ -290,17 +296,35 @@ void VitoHomeComponent::dispatch_next_() {
 
 void VitoHomeComponent::schedule_due_entities_() {
   const uint32_t now = millis();
+  // Two bugs lived in the old two-liner (`if (now < next_due) continue;
+  // next_due = now + interval;`), both hardware-observed on VScotHO1_72 with
+  // the SAME firmware binary across two 2026-07-09 logs:
+  //
+  //  1. `now` is sampled inside this callback, i.e. a few ms AFTER the
+  //     ESPHome interval anchor that invoked update(). Re-anchoring the next
+  //     due time on it made an entity whose update_interval EQUALS the hub
+  //     tick (or an exact multiple of it) land a hair past the next tick, so
+  //     whether it fired was decided by which tick carried more loop jitter --
+  //     a coin flip. One log dropped the whole 60 s tier on tick 2; the other
+  //     never dropped it. Anchoring on next_due_ms_ instead of `now` makes the
+  //     schedule an arithmetic progression that cannot drift.
+  //  2. Even when it did fire, the period crept: each cycle added the
+  //     accumulated jitter into the next due time.
+  //
+  // SLACK absorbs sub-tick jitter in the "is it due yet" test: anything due
+  // within half a hub tick of now is treated as due now, because the next
+  // opportunity to poll it is a full hub tick away and firing a few ms early
+  // beats firing a whole tick late.
+  const uint32_t slack = this->get_update_interval() / 2;
   size_t queued = 0, skipped = 0;
   for (auto* entity : this->entities_) {
     if (entity->read_queued_) {
       skipped++;
       continue;  // still waiting from a previous cycle — don't double-queue
     }
-    if (entity->poll_interval() != 0) {
-      // next_due_ms_ == 0 means "never polled": due immediately.
-      if (entity->next_due_ms_ != 0 && static_cast<int32_t>(now - entity->next_due_ms_) < 0) continue;
-      entity->next_due_ms_ = now + entity->poll_interval();
-    }
+    const PollDecision d = poll_schedule_step(now, entity->next_due_ms_, entity->poll_interval(), slack);
+    if (!d.due) continue;
+    if (entity->poll_interval() != 0) entity->next_due_ms_ = d.next_due_ms;
     entity->read_queued_ = true;
     this->read_queue_.push_back(entity);
     queued++;
@@ -327,6 +351,9 @@ void VitoHomeComponent::dump_config() {
   }
   if (!this->raw_result_sensors_.empty()) {
     ESP_LOGCONFIG(TAG, "  Scan console: %zu scan_result sensor(s) attached", this->raw_result_sensors_.size());
+  }
+  if (ESPHomeUARTInterface::frame_logging_enabled()) {
+    ESP_LOGCONFIG(TAG, "  Frame logging: ON (tag 'vitohome.frames')");
   }
   this->check_uart_settings(4800, 2, uart::UART_CONFIG_PARITY_EVEN, 8);
   if (this->is_failed()) {

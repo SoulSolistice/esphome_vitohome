@@ -33,7 +33,7 @@ external_components:
   - source:
       type: git
       url: https://github.com/SoulSolistice/esphome_vitohome
-      ref: vendoring_cleanup
+      ref: main
     components: [vitohome]
     refresh: 0s
 
