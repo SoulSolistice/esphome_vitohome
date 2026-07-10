@@ -5124,19 +5124,6 @@ select:
       0x70: "HVAC_HIGH_FIRE"
       0x64: "HVAC_FLOW_TEMP"
       0xFF: "HVAC_NUL"
-  - platform: vitohome
-    name: "nviProdCmd CFDM state"
-    id: nviProdCmd_CFDM_state
-    address: 0xA381  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xA380  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    disabled_by_default: true
-    update_interval: 3600s
-    options:
-      0x00: "AUS"
-      0x01: "EIN"
-      0xFF: "AUTO"
   # --- LON Objekte / DHWCObjekt ---
   - platform: vitohome
     name: "nviDHWC ApplicMode"
@@ -6096,10 +6083,13 @@ text_sensor:
     type: utf16
     name: "Beschriftung HK1"
     id: Beschriftung_HK1
-    address: 0x7362
-    length: 40
+    address: 0x7360
+    length: 42
+    byte_offset: 2
+    byte_length: 40
     disabled_by_default: true
-    # 40-byte read exceeds the P300 single-telegram cap (37); works on KW, NAKs on P300. Enable on KW or shorten length.
+    # aligned block read: 42 bytes at the block base. The widest read
+    # proven on P300 hardware is 22 bytes; verify before enabling.
   # --- Diagnose 1 / Heizkreis M2 ---
   - platform: vitohome
     type: enum
@@ -6132,10 +6122,13 @@ text_sensor:
     type: utf16
     name: "Beschriftung HK2"
     id: Beschriftung_HK2
-    address: 0x738C
-    length: 40
+    address: 0x738A
+    length: 42
+    byte_offset: 2
+    byte_length: 40
     disabled_by_default: true
-    # 40-byte read exceeds the P300 single-telegram cap (37); works on KW, NAKs on P300. Enable on KW or shorten length.
+    # aligned block read: 42 bytes at the block base. The widest read
+    # proven on P300 hardware is 22 bytes; verify before enabling.
   # --- Diagnose 1 / Erweiterung AM1 ---
   - platform: vitohome
     type: enum
@@ -6236,10 +6229,13 @@ text_sensor:
     type: utf16
     name: "Beschriftung HK3"
     id: Beschriftung_HK3
-    address: 0x73B6
-    length: 40
+    address: 0x73B4
+    length: 42
+    byte_offset: 2
+    byte_length: 40
     disabled_by_default: true
-    # 40-byte read exceeds the P300 single-telegram cap (37); works on KW, NAKs on P300. Enable on KW or shorten length.
+    # aligned block read: 42 bytes at the block base. The widest read
+    # proven on P300 hardware is 22 bytes; verify before enabling.
   # --- Diagnose 2 / Regelung ---
   - platform: vitohome
     type: enum
@@ -6423,6 +6419,20 @@ text_sensor:
     options:
       0x00: "AUS"
       0x01: "EIN"
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    type: enum
+    name: "nviProdCmd CFDM state"
+    id: nviProdCmd_CFDM_state
+    address: 0xA380
+    length: 2
+    byte_offset: 1
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x00: "AUS"
+      0x01: "EIN"
+      0xFF: "AUTO"
   # --- LON Objekte / HCCObjektA1M1 ---
   - platform: vitohome
     type: enum

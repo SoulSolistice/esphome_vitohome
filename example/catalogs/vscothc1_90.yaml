@@ -3246,19 +3246,6 @@ select:
       0x04: "SM1_K26_Pendelladung~4"
   # --- LON Objekte / BOC Objekt ---
   - platform: vitohome
-    name: "nviBoilerCmd BLR state"
-    id: nviBoilerCmd_BLR_state
-    address: 0xA301  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xA300  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    disabled_by_default: true
-    update_interval: 3600s
-    options:
-      0x00: "AUS"
-      0x01: "EIN"
-      0xFF: "AUTO"
-  - platform: vitohome
     name: "nviApplicMode BLR"
     id: nviApplicMode_BLR
     address: 0xA302
@@ -3309,19 +3296,6 @@ select:
       0x70: "HVAC_HIGH_FIRE"
       0x64: "HVAC_FLOW_TEMP"
       0xFF: "HVAC_NUL"
-  - platform: vitohome
-    name: "nviProdCmd CFDM state"
-    id: nviProdCmd_CFDM_state
-    address: 0xA381  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xA380  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    disabled_by_default: true
-    update_interval: 3600s
-    options:
-      0x00: "AUS"
-      0x01: "EIN"
-      0xFF: "AUTO"
   # --- LON Objekte / DHWCObjekt ---
   - platform: vitohome
     name: "nviDHWC ApplicMode"
@@ -4372,6 +4346,21 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
+  # --- LON Objekte / BOC Objekt ---
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    type: enum
+    name: "nviBoilerCmd BLR state"
+    id: nviBoilerCmd_BLR_state
+    address: 0xA300
+    length: 2
+    byte_offset: 1
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x00: "AUS"
+      0x01: "EIN"
+      0xFF: "AUTO"
   # --- LON Objekte / Node Objekt ---
   - platform: vitohome
     type: ascii
@@ -4400,6 +4389,20 @@ text_sensor:
     options:
       0x00: "AUS"
       0x01: "EIN"
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    type: enum
+    name: "nviProdCmd CFDM state"
+    id: nviProdCmd_CFDM_state
+    address: 0xA380
+    length: 2
+    byte_offset: 1
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x00: "AUS"
+      0x01: "EIN"
+      0xFF: "AUTO"
   # --- VScotHC1 90 / Lasterror ---
   # System fault history slot 1 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 0*9; vcontrold getError0).

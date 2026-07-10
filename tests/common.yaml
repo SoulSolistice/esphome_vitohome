@@ -235,15 +235,17 @@ text_sensor:
     name: "Test Raw"
     address: 0x00F8
     length: 4
-  # utf16 read AT the P300 single-telegram limit. Anything wider (e.g. the
-  # 40-byte label block at 0x7362) is answered with an error telegram on P300;
-  # the hub's FINAL_VALIDATE_SCHEMA now rejects that at config time when
-  # `protocol: P300`, so this file caps at 36 to validate under every wrapper.
+  # utf16 field inside a block: Beschriftung_HK1~0x7360 is BlockLength 42,
+  # BytePosition 2, ByteLength 40. Read the block at its BASE and slice; the old
+  # `address: 0x7362` was the base plus the offset, an address that does not
+  # exist (P300 errors on it at any width, KW returns 0xFF fill).
   - platform: vitohome
     type: utf16
     name: "Test Label"
-    address: 0x7362
-    length: 36
+    address: 0x7360
+    length: 42
+    byte_offset: 2
+    byte_length: 40
     update_interval: 24h
   # enum text sensor
   - platform: vitohome

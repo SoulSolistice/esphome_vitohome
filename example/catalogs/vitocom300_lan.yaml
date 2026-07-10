@@ -19,6 +19,67 @@
 # ============================================================
 
 sensor:
+  # --- Konfiguration / Allgemein ---
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "vcLanFehlermanagerGruppe1"
+    id: vcLanFehlermanagerGruppe1
+    entity_category: diagnostic
+    address: 0xBB00
+    length: 2
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "vcLanFehlermanagerGruppe2"
+    id: vcLanFehlermanagerGruppe2
+    entity_category: diagnostic
+    address: 0xBB02
+    length: 2
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "vcLanFehlermanagerGruppe3"
+    id: vcLanFehlermanagerGruppe3
+    entity_category: diagnostic
+    address: 0xBB04
+    length: 2
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "vcLanFehlermanagerGruppe4"
+    id: vcLanFehlermanagerGruppe4
+    entity_category: diagnostic
+    address: 0xBB06
+    length: 2
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "vcLanFehlermanagerGruppe5"
+    id: vcLanFehlermanagerGruppe5
+    entity_category: diagnostic
+    address: 0xBB08
+    length: 2
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
   # --- Konfiguration / Versionen ---
   - platform: vitohome
     name: "vcLanNeuronVersion"
@@ -127,76 +188,6 @@ number:
     # pin the value to 0 - set real min/max/step before use.
     min_value: 0
     max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "vcLanFehlermanagerGruppe1"
-    id: vcLanFehlermanagerGruppe1
-    address: 0xBB01  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xBB00  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    converter: noconv
-    min_value: 0
-    max_value: 99
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "vcLanFehlermanagerGruppe2"
-    id: vcLanFehlermanagerGruppe2
-    address: 0xBB03  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xBB02  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    converter: noconv
-    min_value: 0
-    max_value: 99
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "vcLanFehlermanagerGruppe3"
-    id: vcLanFehlermanagerGruppe3
-    address: 0xBB05  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xBB04  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    converter: noconv
-    min_value: 0
-    max_value: 99
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "vcLanFehlermanagerGruppe4"
-    id: vcLanFehlermanagerGruppe4
-    address: 0xBB07  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xBB06  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    converter: noconv
-    min_value: 0
-    max_value: 99
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "vcLanFehlermanagerGruppe5"
-    id: vcLanFehlermanagerGruppe5
-    address: 0xBB09  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xBB08  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    converter: noconv
-    min_value: 0
-    max_value: 99
     step: 1
     mode: box
     disabled_by_default: true

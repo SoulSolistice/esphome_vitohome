@@ -223,6 +223,15 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   // their own packet buffer synchronously inside write(), so nothing needs to
   // outlive the dispatch.
   static constexpr uint8_t RAW_WRITE_MAX = 32;
+  // The READ cap is separate and larger: a raw read stores no payload, so the
+  // only limits are the engines' packet-length arithmetic (VS2 length byte is
+  // 0x05 + len, VS1 frame length is payload + 4 -- both safe well past 200) and
+  // format_raw_dump()'s output buffer. 48 matches text_sensor.py's
+  // MAX_TEXT_BLOCK_LENGTH, the widest block the catalogs emit (the 42-byte
+  // Beschriftung_* label blocks). Sized so the console can actually TEST the
+  // reads the generator produces: at 32 it could not, which is why the P300
+  // read-length question stayed open for a session longer than it needed to.
+  static constexpr uint8_t RAW_READ_MAX = 48;
   struct RawOp {
     uint16_t address;
     uint8_t length;

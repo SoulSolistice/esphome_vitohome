@@ -493,6 +493,28 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "UhrzeitJAHR"
+    id: UhrzeitJAHR
+    address: 0x088E
+    length: 8
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "UhrzeitMONAT"
+    id: UhrzeitMONAT
+    address: 0x088E
+    length: 8
+    byte_offset: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
     # NOTE: converter 'div10' unsupported at 4 bytes -> noconv + multiply filter (0.1)
   - platform: vitohome
     name: "HK AufheiztimerA1M1"
@@ -1622,34 +1644,6 @@ number:
     converter: mult100
     min_value: 19
     max_value: 21
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "UhrzeitJAHR"
-    id: UhrzeitJAHR
-    address: 0x088F  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x088E  # aligned block read at the base (P300-safe)
-    length: 8
-    byte_offset: 1
-    converter: noconv
-    min_value: 0
-    max_value: 99
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "UhrzeitMONAT"
-    id: UhrzeitMONAT
-    address: 0x0890  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x088E  # aligned block read at the base (P300-safe)
-    length: 8
-    byte_offset: 2
-    converter: noconv
-    min_value: 1
-    max_value: 12
     step: 1
     mode: box
     disabled_by_default: true

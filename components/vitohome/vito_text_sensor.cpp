@@ -121,15 +121,42 @@ void VitoTextSensor::publish_error_history_(const uint8_t* data, uint8_t len) {
   this->publish_state(buf);
 }
 
+bool VitoTextSensor::slice_(const uint8_t* data, uint8_t len, const uint8_t*& field, uint8_t& width) const {
+  // Without byte_offset the whole response IS the field (the historical shape).
+  // With byte_offset, `length` was a block read at the block base and the field
+  // is extract_len_ bytes at extract_byte_ inside it -- the same aligned-read
+  // discipline sensor/binary_sensor/enum already use, and the reason the string
+  // types now need it: Beschriftung_HK1~0x7360 is BlockLength 42, BytePosition
+  // 2, ByteLength 40. Reading it at 0x7360+2 is an INTERIOR read; P300 answers
+  // that with an error telegram regardless of the byte count, and KW answers it
+  // with 0xFF fill. Hardware-confirmed 2026-07-10 (a 2-byte read at 0x7362 and
+  // a 40-byte read at 0x7362 fail identically).
+  field = data;
+  width = len;
+  if (this->extract_byte_ < 0) return true;
+  const uint16_t off = static_cast<uint16_t>(this->extract_byte_);
+  if (off + this->extract_len_ > len) {
+    ESP_LOGW(TAG, "%s: byte_offset %u + byte_length %u exceeds response (%u bytes)", this->datapoint_.name(),
+             static_cast<unsigned>(off), static_cast<unsigned>(this->extract_len_), static_cast<unsigned>(len));
+    return false;
+  }
+  field = data + off;
+  width = this->extract_len_;
+  return true;
+}
+
 void VitoTextSensor::publish_ascii_(const uint8_t* data, uint8_t len) {
   // HexByte2AsciiByte: the payload is an ASCII byte-string (device part /
   // serial number). decode_ascii() NUL-terminates, trims trailing spaces and
   // maps non-printable bytes to '?'. Cap at 32 chars (longest such field is
   // the 16-byte Herstellnummer).
-  const uint8_t use = len > 32 ? 32 : len;
+  const uint8_t* field;
+  uint8_t width;
+  if (!this->slice_(data, len, field, width)) return;
+  const uint8_t use = width > 32 ? 32 : width;
   char buf[40];
-  if (decode_ascii(data, len, use, buf, sizeof(buf)) < 0) {
-    ESP_LOGW(TAG, "%s: ASCII decode failed (len=%u)", this->datapoint_.name(), len);
+  if (decode_ascii(field, width, use, buf, sizeof(buf)) < 0) {
+    ESP_LOGW(TAG, "%s: ASCII decode failed (len=%u)", this->datapoint_.name(), width);
     return;
   }
   ESP_LOGD(TAG, "%s: \"%s\"", this->datapoint_.name(), buf);
@@ -141,10 +168,13 @@ void VitoTextSensor::publish_utf16_(const uint8_t* data, uint8_t len) {
   // code units). decode_utf16() emits UTF-8, NUL-terminates, trims trailing
   // spaces and skips 0xFFFF fill. Cap at 40 bytes; worst case is 3 UTF-8 bytes
   // per code unit (60) + NUL.
-  const uint8_t use = len > 40 ? 40 : len;
+  const uint8_t* field;
+  uint8_t width;
+  if (!this->slice_(data, len, field, width)) return;
+  const uint8_t use = width > 40 ? 40 : width;
   char buf[80];
-  if (decode_utf16(data, len, use, buf, sizeof(buf)) < 0) {
-    ESP_LOGW(TAG, "%s: UTF-16 decode failed (len=%u)", this->datapoint_.name(), len);
+  if (decode_utf16(field, width, use, buf, sizeof(buf)) < 0) {
+    ESP_LOGW(TAG, "%s: UTF-16 decode failed (len=%u)", this->datapoint_.name(), width);
     return;
   }
   ESP_LOGD(TAG, "%s: \"%s\"", this->datapoint_.name(), buf);

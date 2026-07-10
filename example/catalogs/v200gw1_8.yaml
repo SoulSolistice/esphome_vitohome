@@ -3272,19 +3272,6 @@ select:
       0x03: "ZB von HK3"
   # --- LON Objects / CFDMObjekt ---
   - platform: vitohome
-    name: "nviProdCmd CFDM state"
-    id: nviProdCmd_CFDM_state
-    address: 0xA381  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xA380  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    disabled_by_default: true
-    update_interval: 3600s
-    options:
-      0x00: "AUS"
-      0x01: "EIN"
-      0xFF: "AUTO"
-  - platform: vitohome
     name: "nviApplicMode CFDM"
     id: nviApplicMode_CFDM
     address: 0xA382
@@ -4211,6 +4198,20 @@ text_sensor:
       0x01: "ERB50"
       0x02: "ERB80"
   # --- LON Objects / CFDMObjekt ---
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    type: enum
+    name: "nviProdCmd CFDM state"
+    id: nviProdCmd_CFDM_state
+    address: 0xA380
+    length: 2
+    byte_offset: 1
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x00: "AUS"
+      0x01: "EIN"
+      0xFF: "AUTO"
   - platform: vitohome
     type: enum
     name: "nvoPWRState CFDM state"

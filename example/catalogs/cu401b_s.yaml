@@ -2501,6 +2501,18 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted; field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "WPR3 FerienEnde HK1"
+    id: WPR3_FerienEnde_HK1
+    address: 0xB100
+    length: 4
+    byte_offset: 2
+    byte_length: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
   - platform: vitohome
     name: "VCaldens Kesseltemperatur Soll"
     id: VCaldens_Kesseltemperatur_Soll
@@ -2523,6 +2535,146 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+    # NOTE: field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "WPR3 B010 BAVorgabe Solltemp HK1"
+    id: WPR3_B010_BAVorgabe_Solltemp_HK1
+    address: 0xB010
+    length: 6
+    byte_offset: 2
+    byte_length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "WPR3 B011 BAVorgabe Solltemp HK2"
+    id: WPR3_B011_BAVorgabe_Solltemp_HK2
+    address: 0xB011
+    length: 6
+    byte_offset: 2
+    byte_length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "WPR3 B012 BAVorgabe Solltemp HK3"
+    id: WPR3_B012_BAVorgabe_Solltemp_HK3
+    address: 0xB012
+    length: 6
+    byte_offset: 2
+    byte_length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "WPR3 B013 BAVorgabe Solltemp KK"
+    id: WPR3_B013_BAVorgabe_Solltemp_KK
+    address: 0xB013
+    length: 6
+    byte_offset: 2
+    byte_length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "WPR3 B014 BAVorgabe Solltemp WW"
+    id: WPR3_B014_BAVorgabe_Solltemp_WW
+    address: 0xB014
+    length: 6
+    byte_offset: 2
+    byte_length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "WPR3 B015 BAVorgabe Solltemp Lueftung"
+    id: WPR3_B015_BAVorgabe_Solltemp_Lueftung
+    address: 0xB015
+    length: 6
+    byte_offset: 2
+    byte_length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "WPR3 B016 BAVorgabe Solltemp Puffer"
+    id: WPR3_B016_BAVorgabe_Solltemp_Puffer
+    address: 0xB016
+    length: 6
+    byte_offset: 2
+    byte_length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "WPR3 B017 BAVorgabe Solltemp Kuehlpuffer"
+    id: WPR3_B017_BAVorgabe_Solltemp_Kuehlpuffer
+    address: 0xB017
+    length: 6
+    byte_offset: 2
+    byte_length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "WPR3 B018 BAVorgabe Solltemp Schwimmbad"
+    id: WPR3_B018_BAVorgabe_Solltemp_Schwimmbad
+    address: 0xB018
+    length: 6
+    byte_offset: 2
+    byte_length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "WPR3 B019 BAVorgabe Solltemp Anlage"
+    id: WPR3_B019_BAVorgabe_Solltemp_Anlage
+    address: 0xB019
+    length: 6
+    byte_offset: 2
+    byte_length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
   - platform: vitohome
     name: "WPR3 1280 Guelt BAMTL Raumsoll HK1"
     id: WPR3_1280_Guelt_BAMTL_Raumsoll_HK1
@@ -3244,6 +3396,21 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+  # --- DiagnosisDiagnosis1 / Heizkreis1 Kuehlung ---
+    # NOTE: field at BytePosition 4 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "WPR3 Kuehlpuffersolltemperatur"
+    id: WPR3_Kuehlpuffersolltemperatur
+    address: 0x1189
+    length: 10
+    byte_offset: 4
+    byte_length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
   # --- DiagnosisDiagnosis1 / Heizkreis2 ---
   - platform: vitohome
     name: "WPR3 Raumsolltemp HK2"
@@ -4756,6 +4923,45 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+  # --- HC2 ---
+    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted; field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "WPR3 FerienEnde HK2"
+    id: WPR3_FerienEnde_HK2
+    address: 0xB101
+    length: 4
+    byte_offset: 2
+    byte_length: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+  # --- HC3 ---
+    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted; field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "WPR3 FerienEnde HK3"
+    id: WPR3_FerienEnde_HK3
+    address: 0xB102
+    length: 4
+    byte_offset: 2
+    byte_length: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+  # --- Lueftung ---
+    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted; field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "WPR3 FerienEnde Lueftung"
+    id: WPR3_FerienEnde_Lueftung
+    address: 0xB105
+    length: 4
+    byte_offset: 2
+    byte_length: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
   # --- PlantOverview / Heizkreise ---
   - platform: vitohome
     name: "WPR Mischer HK M2 TempBefehl"
@@ -17327,252 +17533,12 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
-    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted
-  - platform: vitohome
-    name: "WPR3 FerienEnde HK1"
-    id: WPR3_FerienEnde_HK1
-    address: 0xB102  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xB100  # aligned block read at the base (P300-safe)
-    length: 4
-    byte_offset: 2
-    byte_length: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "WPR3 B010 BAVorgabe Solltemp HK1"
-    id: WPR3_B010_BAVorgabe_Solltemp_HK1
-    address: 0xB012  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xB010  # aligned block read at the base (P300-safe)
-    length: 6
-    byte_offset: 2
-    byte_length: 2
-    converter: div10
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "WPR3 B011 BAVorgabe Solltemp HK2"
-    id: WPR3_B011_BAVorgabe_Solltemp_HK2
-    address: 0xB013  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xB011  # aligned block read at the base (P300-safe)
-    length: 6
-    byte_offset: 2
-    byte_length: 2
-    converter: div10
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "WPR3 B012 BAVorgabe Solltemp HK3"
-    id: WPR3_B012_BAVorgabe_Solltemp_HK3
-    address: 0xB014  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xB012  # aligned block read at the base (P300-safe)
-    length: 6
-    byte_offset: 2
-    byte_length: 2
-    converter: div10
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "WPR3 B013 BAVorgabe Solltemp KK"
-    id: WPR3_B013_BAVorgabe_Solltemp_KK
-    address: 0xB015  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xB013  # aligned block read at the base (P300-safe)
-    length: 6
-    byte_offset: 2
-    byte_length: 2
-    converter: div10
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "WPR3 B014 BAVorgabe Solltemp WW"
-    id: WPR3_B014_BAVorgabe_Solltemp_WW
-    address: 0xB016  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xB014  # aligned block read at the base (P300-safe)
-    length: 6
-    byte_offset: 2
-    byte_length: 2
-    converter: div10
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "WPR3 B015 BAVorgabe Solltemp Lueftung"
-    id: WPR3_B015_BAVorgabe_Solltemp_Lueftung
-    address: 0xB017  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xB015  # aligned block read at the base (P300-safe)
-    length: 6
-    byte_offset: 2
-    byte_length: 2
-    converter: div10
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "WPR3 B016 BAVorgabe Solltemp Puffer"
-    id: WPR3_B016_BAVorgabe_Solltemp_Puffer
-    address: 0xB018  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xB016  # aligned block read at the base (P300-safe)
-    length: 6
-    byte_offset: 2
-    byte_length: 2
-    converter: div10
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "WPR3 B017 BAVorgabe Solltemp Kuehlpuffer"
-    id: WPR3_B017_BAVorgabe_Solltemp_Kuehlpuffer
-    address: 0xB019  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xB017  # aligned block read at the base (P300-safe)
-    length: 6
-    byte_offset: 2
-    byte_length: 2
-    converter: div10
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "WPR3 B018 BAVorgabe Solltemp Schwimmbad"
-    id: WPR3_B018_BAVorgabe_Solltemp_Schwimmbad
-    address: 0xB01A  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xB018  # aligned block read at the base (P300-safe)
-    length: 6
-    byte_offset: 2
-    byte_length: 2
-    converter: div10
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "WPR3 B019 BAVorgabe Solltemp Anlage"
-    id: WPR3_B019_BAVorgabe_Solltemp_Anlage
-    address: 0xB01B  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xB019  # aligned block read at the base (P300-safe)
-    length: 6
-    byte_offset: 2
-    byte_length: 2
-    converter: div10
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
   - platform: vitohome
     name: "WPR3 08E1 Uhrzeit UTC"
     id: WPR3_08E1_Uhrzeit_UTC
     address: 0x08E1
     length: 4
     converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  # --- DiagnosisDiagnosis1 / Heizkreis1 Kuehlung ---
-  - platform: vitohome
-    name: "WPR3 Kuehlpuffersolltemperatur"
-    id: WPR3_Kuehlpuffersolltemperatur
-    address: 0x118D  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x1189  # aligned block read at the base (P300-safe)
-    length: 10
-    byte_offset: 4
-    byte_length: 2
-    converter: div10
-    unit_of_measurement: "°C"
-    device_class: temperature
     # Borders absent, or out of range for this byte width, in
     # the export. These placeholders pass `esphome config` but
     # pin the value to 0 - set real min/max/step before use.
@@ -18074,25 +18040,6 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
-    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted
-  - platform: vitohome
-    name: "WPR3 FerienEnde HK2"
-    id: WPR3_FerienEnde_HK2
-    address: 0xB103  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xB101  # aligned block read at the base (P300-safe)
-    length: 4
-    byte_offset: 2
-    byte_length: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
   # --- HC3 ---
     # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted
   - platform: vitohome
@@ -18110,25 +18057,6 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
-    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted
-  - platform: vitohome
-    name: "WPR3 FerienEnde HK3"
-    id: WPR3_FerienEnde_HK3
-    address: 0xB104  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xB102  # aligned block read at the base (P300-safe)
-    length: 4
-    byte_offset: 2
-    byte_length: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
   # --- Lueftung ---
     # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted
   - platform: vitohome
@@ -18136,25 +18064,6 @@ number:
     id: WPR3_FerienBeginn_Lueftung
     address: 0xB105
     length: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted
-  - platform: vitohome
-    name: "WPR3 FerienEnde Lueftung"
-    id: WPR3_FerienEnde_Lueftung
-    address: 0xB107  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xB105  # aligned block read at the base (P300-safe)
-    length: 4
-    byte_offset: 2
-    byte_length: 2
     converter: noconv
     # Borders absent, or out of range for this byte width, in
     # the export. These placeholders pass `esphome config` but
@@ -20535,18 +20444,6 @@ select:
       0x01: "1: OBERER SENSOR"
       0x02: "2: NORMAL"
       0x03: "3: FESTWERT"
-  - platform: vitohome
-    name: "WPR3 KonfiCelsiusFahrenheit"
-    id: WPR3_KonfiCelsiusFahrenheit
-    address: 0xB203  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xB200  # aligned block read at the base (P300-safe)
-    length: 6
-    byte_offset: 3
-    disabled_by_default: true
-    update_interval: 3600s
-    options:
-      0x00: "0 Celsius"
-      0x01: "1 Fahrenheit"
 
 switch:
   # --- CU401B S ---
@@ -21721,10 +21618,13 @@ text_sensor:
     type: utf16
     name: "WPR3 Beschriftung HK1"
     id: WPR3_Beschriftung_HK1
-    address: 0xB282
-    length: 40
+    address: 0xB280
+    length: 42
+    byte_offset: 2
+    byte_length: 40
     disabled_by_default: true
-    # 40-byte read exceeds the P300 single-telegram cap (37); works on KW, NAKs on P300. Enable on KW or shorten length.
+    # aligned block read: 42 bytes at the block base. The widest read
+    # proven on P300 hardware is 22 bytes; verify before enabling.
   # --- DiagnosisDiagnosis1 / Heizkreis1 Kuehlung ---
     # NOTE: 1 negative enum option value(s) from the export omitted (raw bytes compare unsigned; a negative option can never match)
   - platform: vitohome
@@ -21760,10 +21660,13 @@ text_sensor:
     type: utf16
     name: "WPR3 Beschriftung HK2"
     id: WPR3_Beschriftung_HK2
-    address: 0xB283
-    length: 40
+    address: 0xB281
+    length: 42
+    byte_offset: 2
+    byte_length: 40
     disabled_by_default: true
-    # 40-byte read exceeds the P300 single-telegram cap (37); works on KW, NAKs on P300. Enable on KW or shorten length.
+    # aligned block read: 42 bytes at the block base. The widest read
+    # proven on P300 hardware is 22 bytes; verify before enabling.
   # --- DiagnosisDiagnosis1 / Heizkreis3 ---
   - platform: vitohome
     type: enum
@@ -21785,10 +21688,13 @@ text_sensor:
     type: utf16
     name: "WPR3 Beschriftung HK3"
     id: WPR3_Beschriftung_HK3
-    address: 0xB284
-    length: 40
+    address: 0xB282
+    length: 42
+    byte_offset: 2
+    byte_length: 40
     disabled_by_default: true
-    # 40-byte read exceeds the P300 single-telegram cap (37); works on KW, NAKs on P300. Enable on KW or shorten length.
+    # aligned block read: 42 bytes at the block base. The widest read
+    # proven on P300 hardware is 22 bytes; verify before enabling.
   # --- DiagnosisDiagnosis1 / Kaeltekreis1 ---
   - platform: vitohome
     type: enum
@@ -21963,10 +21869,13 @@ text_sensor:
     type: utf16
     name: "WPR3 Beschriftung KK"
     id: WPR3_Beschriftung_KK
-    address: 0xB285
-    length: 40
+    address: 0xB283
+    length: 42
+    byte_offset: 2
+    byte_length: 40
     disabled_by_default: true
-    # 40-byte read exceeds the P300 single-telegram cap (37); works on KW, NAKs on P300. Enable on KW or shorten length.
+    # aligned block read: 42 bytes at the block base. The widest read
+    # proven on P300 hardware is 22 bytes; verify before enabling.
   # --- DiagnosisDiagnosis1 / Pufferspeicher ---
   - platform: vitohome
     type: enum
@@ -26698,6 +26607,19 @@ text_sensor:
     options:
       0x00: "kein Manager"
       0x01: "Fehlermanager"
+    # NOTE: field at BytePosition 3 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    type: enum
+    name: "WPR3 KonfiCelsiusFahrenheit"
+    id: WPR3_KonfiCelsiusFahrenheit
+    address: 0xB200
+    length: 6
+    byte_offset: 3
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x00: "0 Celsius"
+      0x01: "1 Fahrenheit"
 
 # --- datapoints needing custom decode (not auto-emitted) ---
 # WPR WO1H RaumTemp NatCooling SensorStatus @ 0x01DA: BitPosition 4 implies byte 0 but the export declares BytePosition 2 -- contradictory, needs hardware confirmation before it can be emitted

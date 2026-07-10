@@ -49,7 +49,56 @@ _VALUE_MAP = cv.Schema({cv.uint32_t: cv.string})
 # block base) and the enum field is the byte_length (default 1, max 4) bytes
 # at byte_offset. Read-only, so there is no write side and no state_address.
 CONF_BYTE_OFFSET = "byte_offset"
-CONF_BYTE_LENGTH = "byte_length"  # enum field width at byte_offset (1..4)
+CONF_BYTE_LENGTH = "byte_length"  # field width at byte_offset
+
+# The widest string BlockLength in the Vitosoft export is 42 (Beschriftung_HK1..3
+# / WPR3_Beschriftung_*: BlockLength 42, BytePosition 2, ByteLength 40), and a
+# 42-byte read is hardware-proven on P300. Same ceiling as every other block
+# read; the alias exists only so the string schema reads clearly.
+MAX_TEXT_BLOCK_LENGTH = MAX_P300_READ_LENGTH
+
+
+def _validate_string_extraction(field_max: int, even: bool):
+    """ascii / utf16: `length` is the field width, unless byte_offset is given --
+    then `length` is the BLOCK read at the block base and byte_length is the
+    field width at byte_offset. Emitting an interior address (base + offset)
+    instead is what produced the fabricated 0x7362; P300 errors on it and KW
+    returns 0xFF fill."""
+
+    def validator(config):
+        length = config[CONF_LENGTH]
+        if CONF_BYTE_OFFSET in config:
+            if CONF_BYTE_LENGTH not in config:
+                raise cv.Invalid(
+                    "byte_length is required with byte_offset (it is the field width; `length` becomes the block read)",
+                    path=[CONF_BYTE_LENGTH],
+                )
+            field_width = config[CONF_BYTE_LENGTH]
+            if not 1 <= length <= MAX_TEXT_BLOCK_LENGTH:
+                raise cv.Invalid(
+                    f"with byte_offset, length is a block read and must be 1..{MAX_TEXT_BLOCK_LENGTH} (got {length})",
+                    path=[CONF_LENGTH],
+                )
+            if config[CONF_BYTE_OFFSET] + field_width > length:
+                raise cv.Invalid(
+                    f"byte_offset ({config[CONF_BYTE_OFFSET]}) + byte_length ({field_width}) must be <= length ({length})",
+                    path=[CONF_BYTE_OFFSET],
+                )
+            if field_width > field_max:
+                raise cv.Invalid(f"byte_length must be 1..{field_max} (got {field_width})", path=[CONF_BYTE_LENGTH])
+            if even and field_width % 2 != 0:
+                raise cv.Invalid(
+                    f"utf16 byte_length must be even (UTF-16LE code units are 2 bytes; got {field_width})",
+                    path=[CONF_BYTE_LENGTH],
+                )
+        else:
+            if CONF_BYTE_LENGTH in config:
+                raise cv.Invalid("byte_length requires byte_offset", path=[CONF_BYTE_LENGTH])
+            if not 1 <= length <= field_max:
+                raise cv.Invalid(f"length must be 1..{field_max} (got {length})", path=[CONF_LENGTH])
+        return config
+
+    return validator
 
 
 def _validate_enum_extraction(config):
@@ -155,21 +204,35 @@ CONFIG_SCHEMA = cv.typed_schema(
         # (queue_raw_read / queue_raw_write), exactly like device_id is fed by
         # identification.
         "scan_result": (text_sensor.text_sensor_schema(VitoTextSensor).extend(_BASE).extend(cv.COMPONENT_SCHEMA)),
-        "ascii": _addressed(
-            {
-                # Byte-string field width (Sachnummer 7, Herstellnummer 16).
-                # No universal default, so require it; capped at one P300 read.
-                cv.Required(CONF_LENGTH): cv.int_range(min=1, max=32),
-            }
+        # Both string types accept the aligned block form. Without byte_offset,
+        # `length` is the field width (the historical shape, unchanged). With
+        # byte_offset, `length` is the block read at the block base and
+        # byte_length is the field width at byte_offset.
+        "ascii": cv.All(
+            _addressed(
+                {
+                    # Byte-string field width (Sachnummer 7, Herstellnummer 16).
+                    cv.Required(CONF_LENGTH): cv.int_range(min=1, max=MAX_TEXT_BLOCK_LENGTH),
+                    cv.Optional(CONF_BYTE_OFFSET): cv.int_range(min=0, max=MAX_TEXT_BLOCK_LENGTH - 1),
+                    cv.Optional(CONF_BYTE_LENGTH): cv.int_range(min=1, max=32),
+                }
+            ),
+            _validate_string_extraction(field_max=32, even=False),
         ),
-        "utf16": _addressed(
-            {
-                # UTF-16LE label width in BYTES (Beschriftung_HK* = 40 = 20 chars).
-                # Must be even (code units are 2 bytes) -- enforced here so an odd
-                # width is an `esphome config` error, not a per-poll runtime
-                # decode failure; capped at one P300 read.
-                cv.Required(CONF_LENGTH): cv.All(cv.int_range(min=2, max=40), _validate_even_length),
-            }
+        "utf16": cv.All(
+            _addressed(
+                {
+                    # UTF-16LE label width in BYTES (Beschriftung_HK* = 40 = 20
+                    # chars, at byte_offset 2 of a 42-byte block). The field width
+                    # must be even (code units are 2 bytes) -- enforced so an odd
+                    # width is an `esphome config` error, not a per-poll runtime
+                    # decode failure.
+                    cv.Required(CONF_LENGTH): cv.int_range(min=2, max=MAX_TEXT_BLOCK_LENGTH),
+                    cv.Optional(CONF_BYTE_OFFSET): cv.int_range(min=0, max=MAX_TEXT_BLOCK_LENGTH - 1),
+                    cv.Optional(CONF_BYTE_LENGTH): cv.All(cv.int_range(min=2, max=40), _validate_even_length),
+                }
+            ),
+            _validate_string_extraction(field_max=40, even=True),
         ),
     },
     key=CONF_TYPE,

@@ -42,6 +42,13 @@ g++ -std=c++17 -Wall -Wextra -fsanitize=address,undefined \
 g++ -std=gnu++20 -Wall -Wextra -I"$ROOT" -I"$OPTO" proof_extract.cpp -o proof_extract
 ./proof_extract
 
+# String-offset proof: ascii/utf16 fields at BytePosition > 0 must be sliced out
+# of an aligned block read, never addressed at base+offset (P300 errors on the
+# interior address at any width; KW returns 0xFF fill, which decodes to "").
+g++ -std=gnu++20 -Wall -Wextra -fsanitize=address,undefined \
+  -I"$ROOT" -I"$OPTO" proof_string_offset.cpp -o proof_string_offset
+./proof_string_offset
+
 # Scheduler proof: per-entity poll intervals must fire on every hub tick when
 # interval == the hub tick, must not drift, and must survive the millis() wrap.
 # (Anchoring the next due time on `now` made this a jitter-decided coin flip.)

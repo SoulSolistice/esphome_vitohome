@@ -135,6 +135,106 @@ def test_block_interior_bit_emits_aligned_block_read():
     assert "bit_mask: 0x01" in text
 
 
+def _string_event(address: int, conversion: str, block_length: int, byte_position: int, byte_length: int):
+    """A string Event as the access layer yields one (Beschriftung_HK1~0x7360)."""
+    return gc.Event(
+        id=f"str_{address:04X}",
+        name="Beschriftung HK1",
+        address=address,
+        conversion=conversion,
+        access_type=1,
+        block_length=block_length,
+        byte_length=byte_length,
+        byte_position=byte_position,
+        bit_length=0,
+        bit_position=0,
+        tech="Beschriftung_HK1",
+        token="Beschriftung_HK1",
+    )
+
+
+def test_no_emitted_address_is_ever_block_base_plus_byte_position():
+    """THE INVARIANT. `Address` is the block base; `BytePosition` is an offset
+    into the RESPONSE, never into the address.
+
+    0x7362 -- Beschriftung_HK1~0x7360 plus BytePosition 2 -- is not a datapoint.
+    P300 answers it with an error telegram at any read width (a 2-byte and a
+    40-byte read fail identically, hardware-confirmed 2026-07-10); KW answers it
+    with 0xFF fill, which decodes to a plausible-looking empty string. The
+    generator once emitted that address for 72 label entities, and
+    `addr + BytePosition` write targets for 402 more.
+
+    Sweep every shape the emitter can take and assert the sum never appears.
+    """
+    import re
+
+    shapes = [
+        # (block_length, byte_position, byte_length, conversion, access_type)
+        (2, 1, 1, "NoConversion", 3),  # writable 1-byte interior scalar
+        (6, 4, 2, "NoConversion", 3),  # writable 2-byte interior scalar
+        (2, 1, 1, "NoConversion", 1),  # read-only 1-byte interior scalar
+        (22, 16, 1, "NoConversion", 1),  # read-only, deep in a wide block
+        (42, 2, 40, "HexByte2UTF16Byte", 1),  # the label
+        (42, 2, 40, "HexByte2UTF16Byte", 3),  # writable label
+        (48, 4, 1, "NoConversion", 1),  # 0x6580 shape: block over the old cap
+        (60, 2, 1, "NoConversion", 1),  # block over the current cap
+        (60, 2, 40, "HexByte2UTF16Byte", 1),  # string block over the cap
+    ]
+    base = 0x7360
+    for block_len, byte_pos, byte_len, conv, access in shapes:
+        ev = gc.Event(
+            id=f"probe_{block_len}_{byte_pos}",
+            name="Probe",
+            address=base,
+            conversion=conv,
+            access_type=access,
+            block_length=block_len,
+            byte_length=byte_len,
+            byte_position=byte_pos,
+            bit_length=0,
+            bit_position=0,
+            tech="Probe",
+            token="Probe",
+        )
+        _platform, lines = gc.emit_entity(ev, "full")
+        body = "\n".join(lines)
+        forbidden = f"0x{base + byte_pos:04X}"
+        assert forbidden not in body, f"{shapes} emitted the fabricated address {forbidden}:\n{body}"
+        # And every address it DOES emit must be the declared base.
+        for addr in re.findall(r"address: (0x[0-9A-F]{4})", body):
+            assert int(addr, 16) == base, f"unexpected address {addr} for block_len={block_len}"
+
+
+def test_string_field_at_offset_reads_the_block_base_not_an_interior_address():
+    # Beschriftung_HK1~0x7360: BlockLength 42, BytePosition 2, ByteLength 40.
+    # The generator used to emit `address: 0x7362` (base + offset) -- an address
+    # that does not exist. P300 errors on it at any width; KW returns 0xFF fill.
+    platform, lines = gc.emit_entity(_string_event(0x7360, "HexByte2UTF16Byte", 42, 2, 40), "full")
+    assert platform == "text_sensor"
+    body = "\n".join(lines)
+    assert "address: 0x7360" in body
+    assert "0x7362" not in body
+    assert "length: 42" in body
+    assert "byte_offset: 2" in body
+    assert "byte_length: 40" in body
+
+
+def test_string_field_at_offset_zero_keeps_the_plain_form():
+    # Sachnummer~0x08E0: BytePosition 0 -- no block/offset machinery.
+    platform, lines = gc.emit_entity(_string_event(0x08E0, "HexByte2AsciiByte", 7, 0, 7), "full")
+    assert platform == "text_sensor"
+    body = "\n".join(lines)
+    assert "address: 0x08E0" in body
+    assert "length: 7" in body
+    assert "byte_offset" not in body
+
+
+def test_string_block_over_the_cap_stays_a_comment():
+    platform, lines = gc.emit_entity(_string_event(0x7360, "HexByte2UTF16Byte", 60, 2, 40), "full")
+    assert platform == "comment"
+    assert "block read exceeds" in "\n".join(lines)
+
+
 def test_contradictory_byte_position_stays_a_comment():
     # BitPosition 24 -> byte 3, but the export declares BytePosition 2.
     # Real rows: nvoConsumerDmd_Attribute1_LFDM~0xA346, nviConsumerDmd_...~0xA385.

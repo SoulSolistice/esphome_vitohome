@@ -1416,6 +1416,28 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "UhrzeitJAHR"
+    id: UhrzeitJAHR
+    address: 0x088E
+    length: 8
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "UhrzeitMONAT"
+    id: UhrzeitMONAT
+    address: 0x088E
+    length: 8
+    byte_offset: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
     # NOTE: converter 'sec2hour' is read-only -> demoted to sensor
   - platform: vitohome
     name: "BetriebsstundenBrenner2"
@@ -2610,6 +2632,26 @@ binary_sensor:
     bit_mask: 0x08
     disabled_by_default: true
     update_interval: 60s
+    # NOTE: field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "resProdCmd CFDM state2"
+    id: resProdCmd_CFDM_state2
+    address: 0xA39B
+    length: 4
+    byte_offset: 2
+    bit_mask: 0x10
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "resProdCmd CFDM state1"
+    id: resProdCmd_CFDM_state1
+    address: 0xA39B
+    length: 4
+    byte_offset: 2
+    bit_mask: 0x80
+    disabled_by_default: true
+    update_interval: 3600s
 
 number:
   # --- Coding2 / Alle ---
@@ -4058,34 +4100,6 @@ number:
     disabled_by_default: true
     update_interval: 3600s
   - platform: vitohome
-    name: "UhrzeitJAHR"
-    id: UhrzeitJAHR
-    address: 0x088F  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x088E  # aligned block read at the base (P300-safe)
-    length: 8
-    byte_offset: 1
-    converter: noconv
-    min_value: 0
-    max_value: 99
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "UhrzeitMONAT"
-    id: UhrzeitMONAT
-    address: 0x0890  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x088E  # aligned block read at the base (P300-safe)
-    length: 8
-    byte_offset: 2
-    converter: noconv
-    min_value: 1
-    max_value: 12
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
     name: "ResetUrsache"
     id: ResetUrsache
     address: 0x0900
@@ -5420,19 +5434,6 @@ select:
       0x03: "ZB von HK3"
   # --- LON Objects / CFDMObjekt ---
   - platform: vitohome
-    name: "nviProdCmd CFDM state"
-    id: nviProdCmd_CFDM_state
-    address: 0xA381  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xA380  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    disabled_by_default: true
-    update_interval: 3600s
-    options:
-      0x00: "AUS"
-      0x01: "EIN"
-      0xFF: "AUTO"
-  - platform: vitohome
     name: "nviApplicMode CFDM"
     id: nviApplicMode_CFDM
     address: 0xA382
@@ -5837,26 +5838,6 @@ switch:
     length: 1
     on_value: 0xAF  # aktiv
     off_value: 0xB0  # inaktiv
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "resProdCmd CFDM state2"
-    id: resProdCmd_CFDM_state2
-    address: 0xA39D  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xA39B  # aligned block read at the base (P300-safe)
-    length: 4
-    byte_offset: 2
-    # on 0x01 = aktiv; off 0x00 = inaktiv
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "resProdCmd CFDM state1"
-    id: resProdCmd_CFDM_state1
-    address: 0xA39D  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xA39B  # aligned block read at the base (P300-safe)
-    length: 4
-    byte_offset: 2
-    # on 0x01 = aktiv; off 0x00 = inaktiv
     disabled_by_default: true
     update_interval: 3600s
 
@@ -7132,6 +7113,20 @@ text_sensor:
       0x01: "ERB50"
       0x02: "ERB80"
   # --- LON Objects / CFDMObjekt ---
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    type: enum
+    name: "nviProdCmd CFDM state"
+    id: nviProdCmd_CFDM_state
+    address: 0xA380
+    length: 2
+    byte_offset: 1
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x00: "AUS"
+      0x01: "EIN"
+      0xFF: "AUTO"
   - platform: vitohome
     type: enum
     name: "nvoPWRState CFDM state"

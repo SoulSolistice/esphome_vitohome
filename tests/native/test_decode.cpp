@@ -448,9 +448,17 @@ static void test_utf16() {
   CHECK(decode_utf16(s2, sizeof(s2), sizeof(s2), buf, sizeof(buf)) == 2);
   CHECK(std::strcmp(buf, "AB") == 0);
 
-  // 0xFFFF empty-slot fill is skipped; trailing space trimmed.
+  // 0xFFFF empty-slot fill TERMINATES; trailing space trimmed.
   const uint8_t s3[] = {0x48, 0, 0x4B, 0, 0x31, 0, 0x20, 0, 0xFF, 0xFF};
   CHECK(decode_utf16(s3, sizeof(s3), sizeof(s3), buf, sizeof(buf)) == 3);
+  CHECK(std::strcmp(buf, "HK1") == 0);
+
+  // Regression: the device pads with a BYTE run of 0xFF that need not be code-
+  // unit aligned. Thirteen 0xFF then five 0x00 makes code unit 17 = 0x00FF.
+  // Skipping fill instead of terminating on it published "HK1ÿ".
+  // (VScotHO1_72, P300, 2026-07-10, full 42-byte read of 0x7360.)
+  const uint8_t s3b[] = {0x48, 0, 0x4B, 0, 0x31, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00};
+  CHECK(decode_utf16(s3b, sizeof(s3b), sizeof(s3b), buf, sizeof(buf)) == 3);
   CHECK(std::strcmp(buf, "HK1") == 0);
 
   // Latin-1: 'ü' U+00FC -> UTF-8 0xC3 0xBC.

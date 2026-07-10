@@ -2665,19 +2665,6 @@ select:
       0x70: "HVAC_HIGH_FIRE"
       0x64: "HVAC_FLOW_TEMP"
       0xFF: "HVAC_NUL"
-  - platform: vitohome
-    name: "nviProdCmd CFDM state"
-    id: nviProdCmd_CFDM_state
-    address: 0xA381  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xA380  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    disabled_by_default: true
-    update_interval: 3600s
-    options:
-      0x00: "AUS"
-      0x01: "EIN"
-      0xFF: "AUTO"
   # --- LON Objekte / DHWCObjekt ---
   - platform: vitohome
     name: "nviDHWC ApplicMode"
@@ -2744,19 +2731,6 @@ select:
       0x00: "0 vom Sensor"
       0x01: "1 vom LON uebernehmen"
       0x02: "2 auf LON senden"
-  - platform: vitohome
-    name: "nviBoilerCmd BLR state"
-    id: nviBoilerCmd_BLR_state
-    address: 0xA301  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xA300  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    disabled_by_default: true
-    update_interval: 3600s
-    options:
-      0x00: "AUS"
-      0x01: "EIN"
-      0xFF: "AUTO"
   - platform: vitohome
     name: "nviApplicMode BLR"
     id: nviApplicMode_BLR
@@ -3711,6 +3685,20 @@ text_sensor:
     options:
       0x00: "AUS"
       0x01: "EIN"
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    type: enum
+    name: "nviProdCmd CFDM state"
+    id: nviProdCmd_CFDM_state
+    address: 0xA380
+    length: 2
+    byte_offset: 1
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x00: "AUS"
+      0x01: "EIN"
+      0xFF: "AUTO"
   # --- VPendHC2 / Lasterror ---
   # System fault history slot 1 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 0*9; vcontrold getError0).
@@ -4835,6 +4823,20 @@ text_sensor:
       0x00: "ohne"
       0x01: "LON-Modul"
       0x02: "Kaskaden-Modul"
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    type: enum
+    name: "nviBoilerCmd BLR state"
+    id: nviBoilerCmd_BLR_state
+    address: 0xA300
+    length: 2
+    byte_offset: 1
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x00: "AUS"
+      0x01: "EIN"
+      0xFF: "AUTO"
   - platform: vitohome
     type: enum
     name: "nviHCC1 ApplicMode"

@@ -2669,6 +2669,83 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "Neptun Interne Pumpe Drehzahl"
+    id: Neptun_Interne_Pumpe_Drehzahl
+    address: 0x7951
+    length: 2
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "Neptun ZP Drehzahl"
+    id: Neptun_ZP_Drehzahl
+    address: 0x7953
+    length: 2
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "Neptun SLP Drehzahl"
+    id: Neptun_SLP_Drehzahl
+    address: 0x7955
+    length: 2
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "Neptun LP Drehzahl"
+    id: Neptun_LP_Drehzahl
+    address: 0x7957
+    length: 2
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "Neptun HKP1 Drehzahl"
+    id: Neptun_HKP1_Drehzahl
+    address: 0x795A
+    length: 2
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "Neptun HKP2 Drehzahl"
+    id: Neptun_HKP2_Drehzahl
+    address: 0x795C
+    length: 2
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "Neptun HKP3 Drehzahl"
+    id: Neptun_HKP3_Drehzahl
+    address: 0x795E
+    length: 2
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
   - platform: vitohome
     name: "GWG AbsolutBegrMaxWWLeistung"
     id: GWG_AbsolutBegrMaxWWLeistung
@@ -5204,125 +5281,6 @@ number:
     disabled_by_default: true
     update_interval: 3600s
   - platform: vitohome
-    name: "Neptun Interne Pumpe Drehzahl"
-    id: Neptun_Interne_Pumpe_Drehzahl
-    address: 0x7952  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x7951  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "Neptun ZP Drehzahl"
-    id: Neptun_ZP_Drehzahl
-    address: 0x7954  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x7953  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "Neptun SLP Drehzahl"
-    id: Neptun_SLP_Drehzahl
-    address: 0x7956  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x7955  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "Neptun LP Drehzahl"
-    id: Neptun_LP_Drehzahl
-    address: 0x7958  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x7957  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "Neptun HKP1 Drehzahl"
-    id: Neptun_HKP1_Drehzahl
-    address: 0x795B  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x795A  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "Neptun HKP2 Drehzahl"
-    id: Neptun_HKP2_Drehzahl
-    address: 0x795D  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x795C  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "Neptun HKP3 Drehzahl"
-    id: Neptun_HKP3_Drehzahl
-    address: 0x795F  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x795E  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
     name: "Neptun VGrenzeRedBrLeistung"
     id: Neptun_VGrenzeRedBrLeistung
     address: 0x88E9
@@ -6965,19 +6923,6 @@ select:
       0x70: "HVAC_HIGH_FIRE"
       0x64: "HVAC_FLOW_TEMP"
       0xFF: "HVAC_NUL"
-  - platform: vitohome
-    name: "nviProdCmd CFDM state"
-    id: nviProdCmd_CFDM_state
-    address: 0xA381  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xA380  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    disabled_by_default: true
-    update_interval: 3600s
-    options:
-      0x00: "AUS"
-      0x01: "EIN"
-      0xFF: "AUTO"
   # --- LON Objekte / DHWCObjekt ---
   - platform: vitohome
     name: "nviDHWC ApplicMode"
@@ -8404,10 +8349,13 @@ text_sensor:
     type: utf16
     name: "Beschriftung HK1"
     id: Beschriftung_HK1
-    address: 0x7362
-    length: 40
+    address: 0x7360
+    length: 42
+    byte_offset: 2
+    byte_length: 40
     disabled_by_default: true
-    # 40-byte read exceeds the P300 single-telegram cap (37); works on KW, NAKs on P300. Enable on KW or shorten length.
+    # aligned block read: 42 bytes at the block base. The widest read
+    # proven on P300 hardware is 22 bytes; verify before enabling.
   - platform: vitohome
     type: enum
     name: "HK1 Kennung"
@@ -8457,10 +8405,13 @@ text_sensor:
     type: utf16
     name: "Beschriftung HK2"
     id: Beschriftung_HK2
-    address: 0x738C
-    length: 40
+    address: 0x738A
+    length: 42
+    byte_offset: 2
+    byte_length: 40
     disabled_by_default: true
-    # 40-byte read exceeds the P300 single-telegram cap (37); works on KW, NAKs on P300. Enable on KW or shorten length.
+    # aligned block read: 42 bytes at the block base. The widest read
+    # proven on P300 hardware is 22 bytes; verify before enabling.
   # --- Diagnose 1 / Warmwasser ---
   - platform: vitohome
     type: enum
@@ -8773,8 +8724,9 @@ text_sensor:
     name: "HO2B KollektorSensor Status"
     id: HO2B_KollektorSensor_Status
     entity_category: diagnostic
-    address: 0x6584  # byte 4 of the 48-byte block @ 0x6580 (interior read; P300 may NAK)
-    length: 1
+    address: 0x6580
+    length: 48
+    byte_offset: 4
     disabled_by_default: true
     update_interval: 60s
     options:
@@ -8790,8 +8742,9 @@ text_sensor:
     name: "HO2B CylinderSensor Status"
     id: HO2B_CylinderSensor_Status
     entity_category: diagnostic
-    address: 0x6587  # byte 7 of the 48-byte block @ 0x6580 (interior read; P300 may NAK)
-    length: 1
+    address: 0x6580
+    length: 48
+    byte_offset: 7
     disabled_by_default: true
     update_interval: 60s
     options:
@@ -8850,10 +8803,13 @@ text_sensor:
     type: utf16
     name: "Beschriftung HK3"
     id: Beschriftung_HK3
-    address: 0x73B6
-    length: 40
+    address: 0x73B4
+    length: 42
+    byte_offset: 2
+    byte_length: 40
     disabled_by_default: true
-    # 40-byte read exceeds the P300 single-telegram cap (37); works on KW, NAKs on P300. Enable on KW or shorten length.
+    # aligned block read: 42 bytes at the block base. The widest read
+    # proven on P300 hardware is 22 bytes; verify before enabling.
   # --- Diagnose 2 / Regelung ---
   - platform: vitohome
     type: ascii
@@ -9931,6 +9887,20 @@ text_sensor:
     options:
       0x00: "AUS"
       0x01: "EIN"
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    type: enum
+    name: "nviProdCmd CFDM state"
+    id: nviProdCmd_CFDM_state
+    address: 0xA380
+    length: 2
+    byte_offset: 1
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x00: "AUS"
+      0x01: "EIN"
+      0xFF: "AUTO"
   # --- LON Objekte / HCCObjektA1M1 ---
   - platform: vitohome
     type: enum

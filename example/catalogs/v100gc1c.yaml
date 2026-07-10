@@ -3636,19 +3636,6 @@ select:
       0x04: "SM1_K26_Pendelladung~4"
   # --- LON Objekte / BOC Objekt ---
   - platform: vitohome
-    name: "nviBoilerCmd BLR state"
-    id: nviBoilerCmd_BLR_state
-    address: 0xA301  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xA300  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    disabled_by_default: true
-    update_interval: 3600s
-    options:
-      0x00: "AUS"
-      0x01: "EIN"
-      0xFF: "AUTO"
-  - platform: vitohome
     name: "nviApplicMode BLR"
     id: nviApplicMode_BLR
     address: 0xA302
@@ -3674,19 +3661,6 @@ select:
       0x64: "HVAC_FLOW_TEMP"
       0xFF: "HVAC_NUL"
   # --- LON Objekte / CFDMObjekt ---
-  - platform: vitohome
-    name: "nviProdCmd CFDM state"
-    id: nviProdCmd_CFDM_state
-    address: 0xA381  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xA380  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    disabled_by_default: true
-    update_interval: 3600s
-    options:
-      0x00: "AUS"
-      0x01: "EIN"
-      0xFF: "AUTO"
   - platform: vitohome
     name: "nviApplicMode CFDM"
     id: nviApplicMode_CFDM
@@ -4677,6 +4651,20 @@ text_sensor:
       0x05: "SENSOR_REFERENZUEBERMAX"
       0x06: "SENSOR_NICHT_VORHANDEN"
   # --- LON Objekte / BOC Objekt ---
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    type: enum
+    name: "nviBoilerCmd BLR state"
+    id: nviBoilerCmd_BLR_state
+    address: 0xA300
+    length: 2
+    byte_offset: 1
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x00: "AUS"
+      0x01: "EIN"
+      0xFF: "AUTO"
   - platform: vitohome
     type: enum
     name: "nvoBoilerState BLR state"
@@ -4690,6 +4678,20 @@ text_sensor:
       0x00: "AUS"
       0x01: "EIN"
   # --- LON Objekte / CFDMObjekt ---
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    type: enum
+    name: "nviProdCmd CFDM state"
+    id: nviProdCmd_CFDM_state
+    address: 0xA380
+    length: 2
+    byte_offset: 1
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x00: "AUS"
+      0x01: "EIN"
+      0xFF: "AUTO"
   - platform: vitohome
     type: enum
     name: "nvoPWRState CFDM state"

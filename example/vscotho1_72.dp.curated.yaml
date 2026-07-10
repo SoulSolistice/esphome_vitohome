@@ -753,24 +753,61 @@ text_sensor:
   # returns an error frame (hardware-confirmed 2026-07-04) and the entity
   # goes NAN/unavailable there. Enable only on KW, or shorten `length` to
   # fit a single P300 telegram if you only need the first few characters.
-  # length 36, not the block's full 40: P300 answers any read wider than 37
-  # bytes with an error telegram (message type 0x03), so a `length: 40` here
-  # works on KW and leaves the entity permanently unavailable on P300 --
-  # hardware-observed 2026-07-10. 36 is the widest even length that fits, and
-  # yields the first 18 UTF-16 characters. The hub now rejects the wider read at
-  # config time when `protocol: P300`.
+  # CAPTURE - the heating-circuit label, and a correction.
+  #
+  # This entity used to read `address: 0x7362, length: 40`. THAT ADDRESS DOES
+  # NOT EXIST. The datapoint is `Beschriftung_HK1~0x7360`: BlockLength 42,
+  # BytePosition 2, ByteLength 40. The catalog generator fabricated 0x7362 by
+  # adding BytePosition to the block base -- an unaligned INTERIOR read, the
+  # exact thing this file warns about everywhere else.
+  # Hardware, 2026-07-10, P300 (raw scan console):
+  #   >>> 41:05:00:01:73:62:02:DD            (read 0x7362, TWO bytes)
+  #   <<< 06:41:06:03:01:73:62:01:01:E1      (MessageIdentifier 0x03 = Error)
+  # Byte-identical to the error the 40-byte read produced. The width was never
+  # the problem. On KW the same address returns 0xFF fill, which decodes to an
+  # empty string -- which is why this looked like "an unnamed circuit" for so
+  # long instead of a bug.
+  #
+  # Correct shape: aligned block read at the base + byte_offset, exactly like
+  # Frostgefahr at 0x2500. HARDWARE-CONFIRMED 2026-07-10 (P300, raw console):
+  #   >>> 41:05:00:01:73:60:20:F9                     (read 0x7360, 32 bytes)
+  #   <<< 06:41:25:01:01:73:60:20:00:0B:48:00:65:00:69:00:7A:00:6B:00:72:00:
+  #              65:00:69:00:73:00:20:00:31:00:FF:FF:FF:FF:FF:FF:FF:FF:1C
+  # MessageIdentifier 0x01 (a response, not an error). Checksum 0x1C verified.
+  # Layout of the 42-byte block:
+  #   byte 0      0x00
+  #   byte 1      0x0B = 11 -- the label's CHARACTER COUNT (hardware-confirmed:
+  #               "Heizkreis 1" is exactly 11 characters)
+  #   bytes 2..41 the UTF-16LE label, 20 code units, unused slots 0xFFFF fill
+  # decode_utf16() skips 0xFFFF fill and trims trailing spaces, so this entity
+  # publishes "Heizkreis 1".
+  #
+  # A 42-byte read of the whole block is HARDWARE-CONFIRMED on P300
+  # (2026-07-10): `>>> 41:05:00:01:73:60:2A:03` -> length byte 0x2F = 47,
+  # MessageIdentifier 0x01, checksum 0x2B. So `length: 42, byte_length: 40` is
+  # what this entity uses -- the faithful field, all 20 code units.
+  # That read also showed the padding is a BYTE run, not code-unit aligned:
+  # thirteen 0xFF then five 0x00, so code unit 17 is 0x00FF. decode_utf16() now
+  # TERMINATES on 0xFFFF rather than skipping it; before that fix the full field
+  # published "Heizkreis 1ÿ".
+  #
+  # Bytes 0..1 are declared by NO datapoint in the Vitosoft export. And note the
+  # address is overloaded across device families: on heat-pump (WPR) tokens,
+  # 0x7360 / 0x7361 / 0x7362 are three separate 1-byte datapoints.
   - platform: vitohome
     type: utf16
     name: "Beschriftung HK1"
     id: Beschriftung_HK1
-    address: 0x7362
-    length: 36
+    address: 0x7360
+    length: 42
+    byte_offset: 2
+    byte_length: 40
     disabled_by_default: true
     entity_category: diagnostic
     icon: "mdi:label"
     # `disabled_by_default` is an HA hint only -- the device polls regardless.
     # Without an explicit update_interval an entity has poll_interval 0, which
-    # means "every hub tick": this 36-byte read was going out every 60 s.
+    # means "every hub tick": this read was going out every 60 s.
     update_interval: 24h
 
   # Most-recent SYSTEM fault (slot 1 of the 90-byte ecnsysEventType~Error
@@ -1045,16 +1082,17 @@ button:
 
 number:
   # --- Raw scan console: read length ---------------------------------------
-  # 1..32 is the hub's own cap (queue_raw_read rejects anything outside it and
-  # logs a warning; the same 32-byte limit keeps the VS1/VS2 packet length
-  # arithmetic from wrapping). Note this is BELOW MAX_P300_READ_LENGTH (37),
-  # so the console cannot reproduce the 40-byte 0x7362 read that fails on P300.
+  # 1..48 is the hub's own cap (RAW_READ_MAX; queue_raw_read rejects anything
+  # outside it and logs a warning). 48 covers every block the catalogs emit,
+  # including the 42-byte Beschriftung_* label blocks -- so the console can test
+  # a read before you enable the entity that performs it. Raw WRITES are still
+  # capped at 32 bytes (they carry an inline payload).
   - platform: template
     id: scan_length
     name: "Scan · Leselänge (Bytes)"
     optimistic: true
     min_value: 1
-    max_value: 32
+    max_value: 48
     step: 1
     initial_value: 2
     mode: box

@@ -1306,6 +1306,16 @@ binary_sensor:
     bit_mask: 0x04
     disabled_by_default: true
     update_interval: 60s
+    # NOTE: field at BytePosition 12 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "KS Karte OelMinStBeifFrostgefahrReduzBtr"
+    id: KS_Karte_OelMinStBeifFrostgefahrReduzBtr
+    address: 0x1040
+    length: 16
+    byte_offset: 12
+    bit_mask: 0x80
+    disabled_by_default: true
+    update_interval: 3600s
   - platform: vitohome
     name: "KS Karte OelMinStfMitOhneFrostgefahrReduzBtr"
     id: KS_Karte_OelMinStfMitOhneFrostgefahrReduzBtr
@@ -2051,24 +2061,6 @@ number:
     device_class: temperature
     min_value: 0
     max_value: 500
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  # --- Functionscontroll / CodierkarteO ---
-  - platform: vitohome
-    name: "KS Karte OelMinStBeifFrostgefahrReduzBtr"
-    id: KS_Karte_OelMinStBeifFrostgefahrReduzBtr
-    address: 0x104C  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x1040  # aligned block read at the base (P300-safe)
-    length: 16
-    byte_offset: 12
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
     step: 1
     mode: box
     disabled_by_default: true

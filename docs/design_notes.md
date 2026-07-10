@@ -520,41 +520,50 @@ therefore publishes a spurious `0.00 °C` at boot. Use `has_state()`.
 
 ---
 
-### 8c. `MAX_P300_READ_LENGTH = 37` is a heuristic, not a measured constant
+### 8c. There is no evidence for any P300 read-length cap
 
-Hardware-observed on VScotHO1_72 (2026-07-10, P300). The 40-byte `utf16` label
-read at `0x7362`:
-
-```
->>> 41:05:00:01:73:62:28            (read 0x7362, 0x28 = 40 bytes)
-<<< 06:41:06:03:01:73:62:01:01:E1   (MessageIdentifier 0x03 = Error)
-```
-
-Tempting conclusion: P300 caps reads at some width below 40. **The evidence does
-not support it.**
+`MAX_P300_READ_LENGTH = 37` is inherited lore. Every attempt to justify it has
+failed.
 
 * The openv [Protokoll 300](https://github.com/openv/openv/wiki/Protokoll-300)
   specification describes the length byte as the count of bytes between `0x41`
   and the checksum, and names **no maximum**.
-* vcontrold defines no read wider than 9 bytes anywhere — but that is
-  [a documented limitation of vcontrold itself](https://github.com/openv/openv/wiki/vcontrold.xml),
-  not of the protocol. It corroborates nothing.
-* The identical 40-byte read on **KW returns 40 bytes of `0xFF`**. That is
-  exactly what an unimplemented address looks like on a protocol with no error
-  channel. So the failure may be caused by the **address**, not the length.
+* vcontrold defines no read wider than 9 bytes — but that is
+  [a documented limitation of vcontrold itself](https://github.com/openv/openv/wiki/vcontrold.xml).
+* This document previously cited a 40-byte read at `0x7362` failing on P300 while
+  succeeding on KW. **That was a misdiagnosis** (see §8g): `0x7362` is not a
+  datapoint. A *two-byte* read at the same address fails with a byte-identical
+  error telegram.
 
-Our own data bounds a cap, if one exists, only to `[22, 39]`: 22 bytes at
-`0x2500` succeed on P300; 40 at `0x7362` fail. `37` is inherited lore with no
-citation. Treat it as a conservative gate for the generator, and do not repeat
-it as fact.
+A **42-byte read succeeds on P300** (`0x7360`, 2026-07-10):
 
-**The discriminating experiment:** read `0x7362` with `length: 2` on P300.
-Success ⇒ length is the cause. Error ⇒ the address is unsupported and the cap is
-fiction.
+```
+>>> 41:05:00:01:73:60:2A:03                (0x2A = 42 bytes)
+<<< 06:41:2F:01:01:73:60:2A:<42 bytes>:2B  (length byte 0x2F = 47)
+```
 
-Accordingly the hub's `FINAL_VALIDATE_SCHEMA` only **warns** about a P300 read
-wider than `MAX_P300_READ_LENGTH`. Rejecting a config that would in fact work is
-the worse failure.
+22 and 32 were proven the same day. `37` is therefore not merely uncited — it is
+**below a read that demonstrably works**.
+
+And there is a plausible account of where it came from. The response to a 32-byte
+read opens `41:25:...` — length byte `0x25` = **37**, because the P300 length byte
+counts `5 + payload`. Someone reading a telegram length byte as a data length
+would land on exactly 37. Speculative, but it is the only story that fits the
+number.
+
+`MAX_P300_READ_LENGTH` is now **48**: the ceiling we are willing to *attempt*. It
+covers every block the catalogs emit (widest is the 42-byte `Beschriftung_*`
+block, proven) and matches `RAW_READ_MAX`, so the raw scan console can test any
+block read before you enable the entity that performs it. Bytes 43..48 are
+unverified. Raise it with evidence, not lore.
+
+The console's read cap was raised from 32 to 48 for exactly that reason: it could
+not test the reads the generator emits, which is why this question stayed open a
+session longer than it needed to. A raw read stores no payload, so the only real
+limits are the engines' packet-length arithmetic (safe well past 200) and the
+dump buffer (grown 160 → 208; `RAW_DUMP_MAX_HEX` also raised to 48, or the
+console elides the very bytes you asked for). Raw *writes* stay capped at 32:
+they carry an inline payload.
 
 ---
 
@@ -625,6 +634,126 @@ anyway. The two `nvo`/`nvi` rows are `Virtual_READ` and **were reaching
 catalogs**, with `byte_offset: 3` derived from `BitPosition`. We cannot tell
 which field is right, so `gen_catalog.py` now emits a comment instead of an
 entity that might silently read the wrong byte. 54 catalogs lost 2 entities each.
+
+---
+
+### 8g. Never fabricate an address from `BytePosition`
+
+`Beschriftung_HK1~0x7360` is `BlockLength 42`, `BytePosition 2`, `ByteLength 40`.
+The generator's string path computed `address = 0x7360 + 2 = 0x7362` and read 40
+bytes. **`0x7362` is not a datapoint.** It is byte 2 of the block — an unaligned
+interior read, the exact failure mode this component reads blocks at their base
+to avoid.
+
+Hardware, 2026-07-10, P300, via the raw scan console:
+
+```
+>>> 41:05:00:01:73:62:02:DD          (read 0x7362, TWO bytes)
+<<< 06:41:06:03:01:73:62:01:01:E1    (MessageIdentifier 0x03 = Error)
+```
+
+Byte-identical to the error the 40-byte read produced. **The width was never the
+problem.** On KW the same address returns `0xFF` fill, which `decode_utf16()`
+turns into an empty string — so the entity published `""` and looked like an
+unnamed heating circuit rather than a bug. That silence is why it survived so
+long, and it is pinned in `tests/native/proof_string_offset.cpp`.
+
+Blast radius: 72 entities across 28 catalogs, every one a `Beschriftung*`
+(the only seven string datapoints in the export with `BytePosition > 0`).
+
+Fixed on both sides:
+
+* `text_sensor` types `ascii` and `utf16` now accept `byte_offset` +
+  `byte_length`, the same aligned-block shape `sensor`, `binary_sensor` and
+  `enum` already used. Without `byte_offset` the schema is unchanged.
+* `gen_catalog.py` emits `address: <block base>`, `length: <block>`,
+  `byte_offset`, `byte_length` — and a **comment instead of an entity** when the
+  block read would exceed `MAX_TEXT_BLOCK_LENGTH`. It no longer performs address
+  arithmetic anywhere.
+
+**Confirmed the same day.** The raw scan console read the block base:
+
+```
+>>> 41:05:00:01:73:60:16:EF
+<<< 06:41:1B:01:01:73:60:16:00:0B:48:00:65:00:69:00:7A:00:6B:00:72:00:65:00:69:00:73:00:20:00:DF
+```
+
+22 bytes, `MessageIdentifier 0x01`, checksum verified. Bytes 2..21 decode to
+`"Heizkreis "`. The base answers; only `base + BytePosition` is rejected. Those
+exact bytes are now an assertion in `proof_string_offset.cpp`.
+
+A 32-byte read of the same block, minutes later, resolved the leading bytes:
+
+```
+<<< 06:41:25:01:01:73:60:20:00:0B:48:00:...:20:00:31:00:FF:FF:FF:FF:FF:FF:FF:FF:1C
+```
+
+Byte 1 = `0x0B` = **11**, and the field decodes to `"Heizkreis 1"` — exactly 11
+characters, followed by four `0xFFFF` fill units. Byte 1 is the label's character
+count. **Hardware-confirmed**, no longer inferred. Bytes 0..1 are declared by no
+datapoint in the export; the block layout is:
+
+| bytes | meaning |
+|---|---|
+| 0 | `0x00` |
+| 1 | character count |
+| 2..41 | UTF-16LE label, 20 code units, unused slots `0xFFFF` |
+
+The general rule, now enforced in every platform, in the generator, and by a
+sweep test (`test_no_emitted_address_is_ever_block_base_plus_byte_position`):
+***`Address` is the block base. `BytePosition` is an offset into the response,
+never into the address.*** `gen_catalog.py` contains no `addr + byte_position`
+arithmetic at all.
+
+#### The same bug on the write side
+
+The invariant had a second violation, larger than the first. A writable field at
+`BytePosition > 0` was emitted as `address: <base + BytePosition>` (the write
+target) plus `state_address: <base>` (the aligned read) — **402 entities across
+124 catalogs**, including `0x7661`, the address these very notes record as NAKing
+on P300.
+
+Checked against the export: of the 360 writable datapoints with
+`BytePosition > 0`, `base + BytePosition` is a declared address for only **144**,
+and where it *is* declared it generally belongs to an unrelated datapoint of
+another device family. There is no evidence that any of them is the field's write
+register.
+
+A read of a non-existent address is a NAK. A **write** to a wrong-but-existing
+address changes something. So those entities are now **demoted to read-only**:
+the block-base read survives (it was always correct), the invented write target
+is gone, and each carries `# NOTE: field at BytePosition N has no declared write
+address -> demoted to read-only`. `COMMAND_STATE_ADDR`, which supplies real
+declared state addresses, is unaffected — and no datapoint in the export combines
+it with a non-zero `BytePosition`.
+
+#### The padding is byte-oriented
+
+The full 42-byte read also settled the block layout, and exposed a decode bug:
+
+| bytes | meaning |
+|---|---|
+| 0 | `0x00` |
+| 1 | character count (`0x0B` = 11) |
+| 2..41 | UTF-16LE label, 20 code units |
+
+The fill after the label is **thirteen** `0xFF` bytes, then five `0x00` — an odd
+run, not code-unit aligned. Code unit 17 is therefore `0x00FF`, and
+`decode_utf16()`, which *skipped* `0xFFFF` fill, walked straight into it and
+published `"Heizkreis 1ÿ"`. It now **terminates** on `0xFFFF`: U+FFFF is a Unicode
+noncharacter and cannot appear in a label, so a fill slot means the string is
+over. Regression-pinned in `test_decode.cpp` and `proof_string_offset.cpp`.
+
+Beware the address space is **overloaded across device families**. On heat-pump
+(`WPR`) tokens, `0x7360`, `0x7361` and `0x7362` are three separate one-byte
+datapoints; on boiler tokens `0x7360` is a 42-byte label block. The three label
+blocks are contiguous — `0x7360`, `0x738A`, `0x73B4`, spaced exactly
+`0x2A` = 42 apart — which is itself a check on the declared `BlockLength`.
+
+One row in the export is worth knowing about: `WPR_S_Endzeit_Nachtbetrieb~0x7162`
+carries `<Address>0x7362</Address>`. Its ID token and its `Address` field
+disagree. The generator trusts `Address`, and that datapoint (1 byte,
+`BytePosition 0`) is unrelated to the label block.
 
 ---
 

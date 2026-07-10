@@ -3458,6 +3458,26 @@ binary_sensor:
     bit_mask: 0x80
     disabled_by_default: true
     update_interval: 60s
+    # NOTE: field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "resProdCmd CFDM state2"
+    id: resProdCmd_CFDM_state2
+    address: 0xA39B
+    length: 4
+    byte_offset: 2
+    bit_mask: 0x10
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "resProdCmd CFDM state1"
+    id: resProdCmd_CFDM_state1
+    address: 0xA39B
+    length: 4
+    byte_offset: 2
+    bit_mask: 0x80
+    disabled_by_default: true
+    update_interval: 3600s
 
 number:
   # --- BedienungA1 / Betriebsdaten ---
@@ -6204,19 +6224,6 @@ select:
       0x70: "HVAC_HIGH_FIRE"
       0x64: "HVAC_FLOW_TEMP"
       0xFF: "HVAC_NUL"
-  - platform: vitohome
-    name: "nviProdCmd CFDM state"
-    id: nviProdCmd_CFDM_state
-    address: 0xA381  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xA380  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    disabled_by_default: true
-    update_interval: 3600s
-    options:
-      0x00: "AUS"
-      0x01: "EIN"
-      0xFF: "AUTO"
   # --- LON Objekte / DHWCObjekt ---
   - platform: vitohome
     name: "nviDHWC ApplicMode"
@@ -6696,71 +6703,6 @@ select:
       0x37: "55 Reset LON"
       0x39: "57 Service Pin Message auslösen"
   - platform: vitohome
-    name: "nviBoCState BurnerState PM Boiler1"
-    id: nviBoCState_BurnerState_PM_Boiler1
-    address: 0xA209  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xA204  # aligned block read at the base (P300-safe)
-    length: 10
-    byte_offset: 5
-    disabled_by_default: true
-    update_interval: 3600s
-    options:
-      0x00: "Einstufig"
-      0x01: "Zweistufig"
-      0x02: "Modulierend"
-  - platform: vitohome
-    name: "nviBoCState BurnerState PM Boiler2"
-    id: nviBoCState_BurnerState_PM_Boiler2
-    address: 0xA249  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xA244  # aligned block read at the base (P300-safe)
-    length: 10
-    byte_offset: 5
-    disabled_by_default: true
-    update_interval: 3600s
-    options:
-      0x00: "Einstufig"
-      0x01: "Zweistufig"
-      0x02: "Modulierend"
-  - platform: vitohome
-    name: "nviBoCState BurnerState PM Boiler3"
-    id: nviBoCState_BurnerState_PM_Boiler3
-    address: 0xA289  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xA284  # aligned block read at the base (P300-safe)
-    length: 10
-    byte_offset: 5
-    disabled_by_default: true
-    update_interval: 3600s
-    options:
-      0x00: "Einstufig"
-      0x01: "Zweistufig"
-      0x02: "Modulierend"
-  - platform: vitohome
-    name: "nviBoCState BurnerState PM Boiler4"
-    id: nviBoCState_BurnerState_PM_Boiler4
-    address: 0xA2C9  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xA2C4  # aligned block read at the base (P300-safe)
-    length: 10
-    byte_offset: 5
-    disabled_by_default: true
-    update_interval: 3600s
-    options:
-      0x00: "Einstufig"
-      0x01: "Zweistufig"
-      0x02: "Modulierend"
-  - platform: vitohome
-    name: "nviBoilerCmd BLR state"
-    id: nviBoilerCmd_BLR_state
-    address: 0xA301  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xA300  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    disabled_by_default: true
-    update_interval: 3600s
-    options:
-      0x00: "AUS"
-      0x01: "EIN"
-      0xFF: "AUTO"
-  - platform: vitohome
     name: "nviApplicMode BLR"
     id: nviApplicMode_BLR
     address: 0xA302
@@ -6929,26 +6871,6 @@ switch:
     address: 0x7795
     length: 1
     # on 0x01 = vorhanden; off 0x00 = nicht vorhanden
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "resProdCmd CFDM state2"
-    id: resProdCmd_CFDM_state2
-    address: 0xA39D  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xA39B  # aligned block read at the base (P300-safe)
-    length: 4
-    byte_offset: 2
-    # on 0x01 = aktiv; off 0x00 = inaktiv
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "resProdCmd CFDM state1"
-    id: resProdCmd_CFDM_state1
-    address: 0xA39D  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xA39B  # aligned block read at the base (P300-safe)
-    length: 4
-    byte_offset: 2
-    # on 0x01 = aktiv; off 0x00 = inaktiv
     disabled_by_default: true
     update_interval: 3600s
 
@@ -7431,6 +7353,20 @@ text_sensor:
       0x01: "1 Abhängig von Kesselisttemperatur"
       0x02: "2 Abhängig von Pufferisttemperatur"
   # --- LON Objekte / CFDMObjekt ---
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    type: enum
+    name: "nviProdCmd CFDM state"
+    id: nviProdCmd_CFDM_state
+    address: 0xA380
+    length: 2
+    byte_offset: 1
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x00: "AUS"
+      0x01: "EIN"
+      0xFF: "AUTO"
   - platform: vitohome
     type: enum
     name: "nvoPWRState CFDM state"
@@ -9213,6 +9149,20 @@ text_sensor:
     options:
       0x00: "AUS"
       0x01: "EIN"
+    # NOTE: field at BytePosition 5 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    type: enum
+    name: "nviBoCState BurnerState PM Boiler1"
+    id: nviBoCState_BurnerState_PM_Boiler1
+    address: 0xA204
+    length: 10
+    byte_offset: 5
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x00: "Einstufig"
+      0x01: "Zweistufig"
+      0x02: "Modulierend"
   - platform: vitohome
     type: enum
     name: "nvoBoilerCmd PM state Boiler1"
@@ -9264,6 +9214,20 @@ text_sensor:
     options:
       0x00: "AUS"
       0x01: "EIN"
+    # NOTE: field at BytePosition 5 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    type: enum
+    name: "nviBoCState BurnerState PM Boiler2"
+    id: nviBoCState_BurnerState_PM_Boiler2
+    address: 0xA244
+    length: 10
+    byte_offset: 5
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x00: "Einstufig"
+      0x01: "Zweistufig"
+      0x02: "Modulierend"
   - platform: vitohome
     type: enum
     name: "nvoBoilerCmd PM state Boiler2"
@@ -9315,6 +9279,20 @@ text_sensor:
     options:
       0x00: "AUS"
       0x01: "EIN"
+    # NOTE: field at BytePosition 5 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    type: enum
+    name: "nviBoCState BurnerState PM Boiler3"
+    id: nviBoCState_BurnerState_PM_Boiler3
+    address: 0xA284
+    length: 10
+    byte_offset: 5
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x00: "Einstufig"
+      0x01: "Zweistufig"
+      0x02: "Modulierend"
   - platform: vitohome
     type: enum
     name: "nvoBoilerCmd PM state Boiler3"
@@ -9366,6 +9344,20 @@ text_sensor:
     options:
       0x00: "AUS"
       0x01: "EIN"
+    # NOTE: field at BytePosition 5 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    type: enum
+    name: "nviBoCState BurnerState PM Boiler4"
+    id: nviBoCState_BurnerState_PM_Boiler4
+    address: 0xA2C4
+    length: 10
+    byte_offset: 5
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x00: "Einstufig"
+      0x01: "Zweistufig"
+      0x02: "Modulierend"
   - platform: vitohome
     type: enum
     name: "nvoBoilerCmd PM state Boiler4"
@@ -9405,6 +9397,20 @@ text_sensor:
       0x70: "HVAC_HIGH_FIRE"
       0x64: "HVAC_FLOW_TEMP"
       0xFF: "HVAC_NUL"
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    type: enum
+    name: "nviBoilerCmd BLR state"
+    id: nviBoilerCmd_BLR_state
+    address: 0xA300
+    length: 2
+    byte_offset: 1
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x00: "AUS"
+      0x01: "EIN"
+      0xFF: "AUTO"
   - platform: vitohome
     type: enum
     name: "nvoBoilerState BLR state"

@@ -2568,20 +2568,6 @@ select:
       0x0D: "alle 13 Tage"
       0x0E: "alle 14 Tage"
       0x0F: "2 mal taeglich"
-  # --- LON Objekte / CFDMObjekt ---
-  - platform: vitohome
-    name: "nviProdCmd CFDM state"
-    id: nviProdCmd_CFDM_state
-    address: 0xA381  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xA380  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    disabled_by_default: true
-    update_interval: 3600s
-    options:
-      0x00: "AUS"
-      0x01: "EIN"
-      0xFF: "AUTO"
   # --- LON Objekte / DHWCObjekt ---
   - platform: vitohome
     name: "nviDHWC ApplicMode"
@@ -2605,19 +2591,6 @@ select:
       0x0B: "HVAC_ICE"
       0xFF: "HVAC_NUL"
   # --- (ohne Gruppenzuordnung) ---
-  - platform: vitohome
-    name: "nviBoilerCmd BLR state"
-    id: nviBoilerCmd_BLR_state
-    address: 0xA301  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0xA300  # aligned block read at the base (P300-safe)
-    length: 2
-    byte_offset: 1
-    disabled_by_default: true
-    update_interval: 3600s
-    options:
-      0x00: "AUS"
-      0x01: "EIN"
-      0xFF: "AUTO"
   - platform: vitohome
     name: "nviApplicMode BLR"
     id: nviApplicMode_BLR
@@ -3416,6 +3389,20 @@ text_sensor:
     options:
       0x00: "AUS"
       0x01: "EIN"
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    type: enum
+    name: "nviProdCmd CFDM state"
+    id: nviProdCmd_CFDM_state
+    address: 0xA380
+    length: 2
+    byte_offset: 1
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x00: "AUS"
+      0x01: "EIN"
+      0xFF: "AUTO"
   # --- VDensHC1 4 / Lasterror ---
   # System fault history slot 1 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 0*9; vcontrold getError0).
@@ -4520,6 +4507,20 @@ text_sensor:
       0x00: "einstufiger Brenner"
       0x01: "zweistufiger Brenner"
       0x02: "modulierender Brenner"
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    type: enum
+    name: "nviBoilerCmd BLR state"
+    id: nviBoilerCmd_BLR_state
+    address: 0xA300
+    length: 2
+    byte_offset: 1
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x00: "AUS"
+      0x01: "EIN"
+      0xFF: "AUTO"
 
 # --- datapoints needing custom decode (not auto-emitted) ---
 # K24 KonfiStatusWartungFunktionReset @ 0x5724: WRITE-ONLY register (Vitosoft AccessMode 'Write'); a trigger with no read-back -> not auto-emitted.

@@ -196,32 +196,36 @@ def converter_lengths(name: str) -> tuple:
     return CONVERTERS[name].lengths
 
 
-# Conservative single-telegram READ payload cap for P300/VS2.
+# Widest BLOCK READ this component will issue in one telegram.
 #
-# EVIDENCE STATUS: the exact value is NOT established. What is known:
-#   * The openv "Protokoll 300" specification documents the telegram length as
-#     a single byte ("Anzahl der Bytes zwischen dem Telegramm-Start-Byte (0x41)
-#     und der Pruefsumme") and names NO maximum read length.
+# EVIDENCE. A 42-byte read succeeds on P300 (VScotHO1_72, 2026-07-10):
+#     >>> 41:05:00:01:73:60:2A:03                (read 0x7360, 0x2A = 42 bytes)
+#     <<< 06:41:2F:01:01:73:60:2A:<42 bytes>:2B  (MessageIdentifier 0x01)
+# 22 and 32 were proven the same day. Nothing wider has been tried.
+#
+# THE OLD VALUE, 37, WAS FICTION. It was introduced here as "the widely-cited
+# safe maximum" with no citation, and nothing supports it:
+#   * openv's Protokoll 300 spec documents the length byte as the count of bytes
+#     between 0x41 and the checksum, and names NO maximum read length.
 #     https://github.com/openv/openv/wiki/Protokoll-300
-#   * vcontrold defines no read wider than 9 bytes anywhere in xml/300/vito.xml,
-#     but that is a documented limitation of vcontrold itself, not of the
-#     protocol -- see the openv wiki discussion of the "0..9 Byte Begrenzung".
-#     So it corroborates nothing either way.
-#   * Hardware, VScotHO1_72 (0x20CB), 2026-07-10, P300: a 22-byte read at
-#     0x2500 succeeds; a 40-byte read at 0x7362 is answered with an error
-#     telegram (MessageIdentifier 0x03). The same 40-byte read on KW returns 40
-#     bytes of 0xFF.
+#   * vcontrold defines no read wider than 9 bytes -- its own documented
+#     limitation, not the protocol's.
+#     https://github.com/openv/openv/wiki/vcontrold.xml
+#   * The one hardware observation ever cited for it -- a 40-byte read at 0x7362
+#     erroring on P300 -- was a misdiagnosis. 0x7362 is not a datapoint; it is
+#     the block base 0x7360 plus BytePosition 2, an address this generator
+#     fabricated. A 2-byte read there fails identically.
+# Where 37 probably came from: the response to a 32-byte read opens `41:25:...`,
+# and 0x25 = 37, because the P300 length byte counts 5 + payload. Someone read a
+# telegram length byte as a data length. Speculative, but it is the only account
+# of the number that fits an observed frame.
 #
-# That 0xFF fill is exactly what an UNIMPLEMENTED address looks like on KW,
-# which has no error channel. So the 0x7362 failure may be caused by the
-# ADDRESS rather than the LENGTH, and the true cap -- if one exists -- is only
-# bounded to [22, 39] by our own data. 37 is retained as a conservative gate
-# for the generator and for byte_offset block reads; it is a HEURISTIC, not a
-# measured constant. Do not cite it as fact.
-#
-# To settle it: read 0x7362 with length 2 on P300. Success => length is the
-# cause. Error => the address is unsupported and this cap is fiction.
-MAX_P300_READ_LENGTH = 37
+# 48 is chosen as the ceiling we are willing to ATTEMPT: it covers every block
+# the catalogs emit (the widest is the 42-byte Beschriftung_* label block, which
+# is proven), and it matches VitoHomeComponent::RAW_READ_MAX so the raw scan
+# console can test any block read before you enable the entity that performs it.
+# Bytes 43..48 are unverified. Raise it with evidence, not lore.
+MAX_P300_READ_LENGTH = 48
 
 
 def validate_length_in(min_len: int, max_len: int):
@@ -343,7 +347,6 @@ CONFIG_SCHEMA = cv.All(
 #
 # A platform schema cannot see which protocol its hub speaks. Two protocol-level
 # constraints therefore have to be checked once the whole config is known.
-_LENGTH_DOMAINS = ("sensor", "binary_sensor", "text_sensor", "number")
 _ADDRESS_DOMAINS = ("sensor", "binary_sensor", "text_sensor", "number", "select", "switch", "text")
 
 # GWG addresses a SINGLE BYTE. Source-confirmed in the vendored engine:
@@ -390,26 +393,11 @@ def _final_validate(config):
                         f"apply to it."
                     )
 
-    if protocol == "P300":
-        # A read wider than MAX_P300_READ_LENGTH has been observed to fail on
-        # hardware (0x7362, 40 bytes -> error telegram), but the cause may be the
-        # address rather than the length -- see the note on MAX_P300_READ_LENGTH.
-        # Warn rather than reject: the openv protocol spec names no maximum, and
-        # rejecting a config that would in fact work is the worse failure.
-        for domain, entity in _entities_for_hub(full, _LENGTH_DOMAINS, hub_id):
-            length = entity.get(CONF_LENGTH)
-            if length is not None and length > MAX_P300_READ_LENGTH:
-                _LOGGER.warning(
-                    "%s '%s' reads %d bytes. On P300 a %d-byte read at 0x7362 was answered with an "
-                    "error telegram on hardware (VScotHO1_72). The protocol spec names no maximum, so "
-                    "this may work on your device -- but if the entity stays unavailable with a "
-                    "'protocol error', shorten it to <= %d bytes or use `protocol: KW`.",
-                    domain,
-                    _entity_name(entity),
-                    length,
-                    length,
-                    MAX_P300_READ_LENGTH,
-                )
+    # There is deliberately NO P300 read-length check here. The warning that used
+    # to live at this spot cited a 40-byte read at 0x7362 failing on hardware.
+    # That address was fabricated by the catalog generator (block base +
+    # BytePosition), and a 2-byte read at the same address fails identically --
+    # so the observation says nothing about length. See MAX_P300_READ_LENGTH.
 
 
 FINAL_VALIDATE_SCHEMA = _final_validate

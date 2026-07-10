@@ -1160,7 +1160,42 @@ def _bound_fits(value_str: str, length: int, conv: str, is_signed: bool) -> bool
 # components/vitohome/__init__.py::MAX_P300_READ_LENGTH). A block read wider
 # than this NAKs on P300 (hardware-observed: 40-byte read at 0x7362), so the
 # generator emits a commented hint instead of config that errors on the wire.
-MAX_P300_READ_LENGTH = 37
+# Mirrors components/vitohome/__init__.py::MAX_P300_READ_LENGTH. A 42-byte read
+# is hardware-proven on P300 (0x7360, 2026-07-10); 48 is the ceiling we attempt.
+# The old 37 was traced to a misread telegram length byte -- see that file.
+MAX_P300_READ_LENGTH = 48
+MAX_TEXT_BLOCK_LENGTH = MAX_P300_READ_LENGTH
+
+
+def _string_lines(name: str, kind: str, addr: int, field_len: int, field_off: int, block_len: int) -> list[str] | None:
+    """Emit an ascii/utf16 text_sensor.
+
+    A string field at BytePosition > 0 must be read as an ALIGNED BLOCK at the
+    block base plus byte_offset. Adding the offset to the address instead
+    fabricates a datapoint that does not exist: `Beschriftung_HK1~0x7360`
+    (BlockLength 42, BytePosition 2) became `0x7362`, which P300 answers with an
+    error telegram at any read width and KW answers with 0xFF fill
+    (hardware-confirmed 2026-07-10). Returns None if the block read would exceed
+    MAX_TEXT_BLOCK_LENGTH, so the caller can emit a comment rather than a wrong
+    entity.
+    """
+    lines = [
+        "- platform: vitohome",
+        f"  type: {kind}",
+        f"  name: {_yaml_str(name)}",
+    ]
+    if not field_off:
+        lines.append(f"  address: 0x{addr:04X}")
+        lines.append(f"  length: {field_len}")
+        return lines
+    read_len = max(block_len, field_off + field_len)
+    if read_len > MAX_TEXT_BLOCK_LENGTH:
+        return None
+    lines.append(f"  address: 0x{addr:04X}")
+    lines.append(f"  length: {read_len}")
+    lines.append(f"  byte_offset: {field_off}")
+    lines.append(f"  byte_length: {field_len}")
+    return lines
 
 
 def emit_entity(ev: Event, profile: str):
@@ -1279,26 +1314,37 @@ def emit_entity(ev: Event, profile: str):
     # field). Portable across KW and P300. Fields wider than 4 bytes, or in a
     # block over the cap, can't be a scalar extract -> interior read w/ caveat.
     use_block_extract = field_off > 0 and 1 <= field_width <= 4 and block_len <= MAX_P300_READ_LENGTH
-    if use_block_extract:
-        addr_line = f"  address: 0x{addr:04X}"
-    else:
-        field_addr = addr + field_off
-        addr_line = f"  address: 0x{field_addr:04X}"
-        if field_off:
-            addr_line += f"  # byte {field_off} of the {block_len}-byte block @ 0x{addr:04X} (interior read; P300 may NAK)"
+    # The string types carry their own block/offset form and are handled in their
+    # own branch below, so they are exempt from the invariant check here.
+    is_string = ev.conversion in ("HexByte2AsciiByte", "HexByte2UTF16Byte")
+    if field_off and not use_block_extract and not is_string:
+        # INVARIANT: never emit `addr + BytePosition`. That address need not
+        # exist. P300 answers an unaligned interior read with an error telegram
+        # at ANY width -- hardware-confirmed on 0x7362, which is
+        # Beschriftung_HK1~0x7360 + BytePosition 2 -- and KW answers it with 0xFF
+        # fill, which decodes to a plausible-looking empty value. The old
+        # fallback shipped 0x6584 / 0x6587 (bytes 4 and 7 of the 48-byte block at
+        # 0x6580) under the label "interior read; P300 may NAK".
+        return (
+            "comment",
+            [
+                f"# {name} @ 0x{addr:04X}: {field_width}-byte field at BytePosition {field_off} of a "
+                f"{block_len}-byte block -- cannot be expressed as an aligned block read "
+                f"(block > {MAX_P300_READ_LENGTH} bytes, or field > 4 bytes)"
+            ],
+        )
+    addr_line = f"  address: 0x{addr:04X}"
     # Interior fallback form: the field's own address, with the P300 caveat.
     # Used whenever a branch cannot express the aligned block extraction
     # (block over the cap, field too wide, or a COMMAND_STATE_ADDR conflict on
     # the writable branches). addr_line above is the block BASE when
     # use_block_extract is set and is only correct together with byte_offset
     # -- using it without byte_offset reads the wrong bytes.
-    if field_off:
-        interior_addr_line = (
-            f"  address: 0x{addr + field_off:04X}"
-            f"  # byte {field_off} of the {block_len}-byte block @ 0x{addr:04X} (interior read; P300 may NAK)"
-        )
-    else:
-        interior_addr_line = f"  address: 0x{addr:04X}"
+    # There is no "interior fallback" any more. Every branch below is reached with
+    # either field_off == 0 (the address IS the field) or an aligned block extract
+    # (the address is the block base, paired with byte_offset). Anything else
+    # returned a comment above, or was demoted to read-only.
+    interior_addr_line = f"  address: 0x{addr:04X}"
     enum_opts = _dedup_option_labels(_enum_options(ev))
     neg_opts = _negative_option_count(ev)
     is_bit = (ev.bit_length or 0) > 0
@@ -1318,6 +1364,20 @@ def emit_entity(ev: Event, profile: str):
     if writable and value_filters:
         writable = False
         note = (note + "; " if note else "") + "value transform has no encode path -> demoted to sensor"
+    # A writable field at BytePosition > 0 has NO KNOWN WRITE ADDRESS. Reading it
+    # is fine (aligned block read at the base + byte_offset), but the write target
+    # used to be emitted as `addr + BytePosition`. The export declares that
+    # address for only 144 of the 360 such fields, and where it IS declared it
+    # generally belongs to an unrelated datapoint of another device family.
+    # 0x7362 proves such an address need not exist at all.
+    #
+    # A read of a non-existent address is a NAK. A WRITE to a wrong-but-existing
+    # address changes something. Demote rather than invent a write target.
+    if writable and field_off > 0:
+        writable = False
+        note = (note + "; " if note else "") + (
+            f"field at BytePosition {field_off} has no declared write address -> demoted to read-only"
+        )
 
     # Byte-array-as-string (HexByte2AsciiByte): emit the ascii text_sensor type
     # (Sachnummer, Herstellnummer, ...). Read-only device identity; the field
@@ -1329,21 +1389,17 @@ def emit_entity(ev: Event, profile: str):
                 "comment",
                 [f"# {name} @ 0x{addr:04X}: HexByte2AsciiByte length {length} > 32 -> custom decode"],
             )
-        # A string field reads `length` bytes from addr+offset; the offset is
-        # part of the field layout (not a scalar alignment issue), so use a
-        # plain address line. P300 length concerns are handled by the >32 cap.
-        str_addr = f"  address: 0x{addr + field_off:04X}"
-        return (
-            "text_sensor",
-            [
-                "- platform: vitohome",
-                "  type: ascii",
-                f"  name: {_yaml_str(name)}",
-                str_addr,
-                f"  length: {length}",
-                "  entity_category: diagnostic",
-            ],
-        )
+        str_lines = _string_lines(name, "ascii", addr, length, field_off, block_len)
+        if str_lines is None:
+            return (
+                "comment",
+                [
+                    f"# {name} @ 0x{addr:04X}: ascii field of {length} bytes at BytePosition {field_off} "
+                    f"of a {block_len}-byte block -- block read exceeds {MAX_TEXT_BLOCK_LENGTH} bytes"
+                ],
+            )
+        str_lines.append("  entity_category: diagnostic")
+        return ("text_sensor", str_lines)
 
     # UTF-16LE label (HexByte2UTF16Byte): editable heating-circuit names
     # Beschriftung_HK1..3 (40 bytes = 20 chars). Emitted read-only here (display
@@ -1355,24 +1411,19 @@ def emit_entity(ev: Event, profile: str):
                 "comment",
                 [f"# {name} @ 0x{addr:04X}: HexByte2UTF16Byte length {length} (>40 or odd) -> custom decode"],
             )
-        str_addr = f"  address: 0x{addr + field_off:04X}"
-        utf_lines = [
-            "- platform: vitohome",
-            "  type: utf16",
-            f"  name: {_yaml_str(name)}",
-            str_addr,
-            f"  length: {length}",
-        ]
-        if length > MAX_P300_READ_LENGTH:
-            # A single read this wide NAKs on P300 (hardware-confirmed at
-            # 0x7362); fine on KW. Ship it disabled with the reason so the
-            # generated catalog is P300-safe out of the box.
-            utf_lines.append("  disabled_by_default: true")
-            utf_lines.append(
-                f"  # {length}-byte read exceeds the P300 single-telegram cap "
-                f"({MAX_P300_READ_LENGTH}); works on KW, NAKs on P300. Enable on KW "
-                "or shorten length."
+        utf_lines = _string_lines(name, "utf16", addr, length, field_off, block_len)
+        if utf_lines is None:
+            return (
+                "comment",
+                [
+                    f"# {name} @ 0x{addr:04X}: utf16 field of {length} bytes at BytePosition {field_off} "
+                    f"of a {block_len}-byte block -- block read exceeds {MAX_TEXT_BLOCK_LENGTH} bytes"
+                ],
             )
+        if field_off:
+            utf_lines.append("  disabled_by_default: true")
+            utf_lines.append(f"  # aligned block read: {field_off + length} bytes at the block base. The widest read")
+            utf_lines.append("  # proven on P300 hardware is 22 bytes; verify before enabling.")
         return ("text_sensor", utf_lines)
 
     # A field wider than 4 bytes can't go through the 1..4-byte scalar converters.
@@ -1447,29 +1498,17 @@ def emit_entity(ev: Event, profile: str):
             "- platform: vitohome",
             f"  name: {_yaml_str(name)}",
         ]
-        if use_block_extract and state_addr is None:
-            # Interior field: aligned block read (P300-safe) at the base via
-            # state_address + byte_offset; the write/command goes to the
-            # field's own register. P300 interior WRITE behaviour is
-            # unverified (the hardware-confirmed NAK evidence covers reads).
-            lines += [
-                f"  address: 0x{addr + field_off:04X}"
-                "  # write target: the field's own register (interior write; verify on hardware)",
-                f"  state_address: 0x{addr:04X}  # aligned block read at the base (P300-safe)",
-                f"  length: {block_len}",
-                f"  byte_offset: {field_off}",
-            ]
-            if length != 1:
-                lines.append(f"  byte_length: {length}")
-        else:
-            lines += [
-                interior_addr_line,
-                f"  length: {length}",
-            ]
-            if state_addr is not None:
-                lines.append(
-                    f"  state_address: 0x{state_addr:04X}  # live state read here; address above is the write/command target"
-                )
+        # field_off is always 0 here: a writable field at BytePosition > 0 was
+        # demoted to read-only above, because base + BytePosition is not a
+        # declared write address for it.
+        lines += [
+            interior_addr_line,
+            f"  length: {length}",
+        ]
+        if state_addr is not None:
+            lines.append(
+                f"  state_address: 0x{state_addr:04X}  # live state read here; address above is the write/command target"
+            )
         if (on_v, off_v) != (1, 0):
             lines.append(f"  on_value: 0x{on_v:0{2 * length}X}  # {on_l}")
             lines.append(f"  off_value: 0x{off_v:0{2 * length}X}  # {off_l}")
@@ -1487,27 +1526,15 @@ def emit_entity(ev: Event, profile: str):
             "- platform: vitohome",
             f"  name: {_yaml_str(name)}",
         ]
-        if use_block_extract and state_addr is None:
-            # Interior field: see the switch branch above -- aligned block
-            # read at the base, write to the field's own register.
-            lines += [
-                f"  address: 0x{addr + field_off:04X}"
-                "  # write target: the field's own register (interior write; verify on hardware)",
-                f"  state_address: 0x{addr:04X}  # aligned block read at the base (P300-safe)",
-                f"  length: {block_len}",
-                f"  byte_offset: {field_off}",
-            ]
-            if length != 1:
-                lines.append(f"  byte_length: {length}")
-        else:
-            lines += [
-                interior_addr_line,
-                f"  length: {length}",
-            ]
-            if state_addr is not None:
-                lines.append(
-                    f"  state_address: 0x{state_addr:04X}  # live state read here; address above is the write/command target"
-                )
+        # field_off is always 0 here (see the switch branch).
+        lines += [
+            interior_addr_line,
+            f"  length: {length}",
+        ]
+        if state_addr is not None:
+            lines.append(
+                f"  state_address: 0x{state_addr:04X}  # live state read here; address above is the write/command target"
+            )
         lines += [
             "  disabled_by_default: true",
             f"  update_interval: {poll}s",
@@ -1525,25 +1552,11 @@ def emit_entity(ev: Event, profile: str):
             "- platform: vitohome",
             f"  name: {_yaml_str(name)}",
         ]
-        if use_block_extract:
-            # Interior numeric field: aligned block read (P300-safe) at the
-            # base via state_address + byte_offset; the write goes to the
-            # field's own register. P300 interior WRITE behaviour is
-            # unverified (the hardware-confirmed NAK evidence covers reads).
-            lines += [
-                f"  address: 0x{addr + field_off:04X}"
-                "  # write target: the field's own register (interior write; verify on hardware)",
-                f"  state_address: 0x{addr:04X}  # aligned block read at the base (P300-safe)",
-                f"  length: {block_len}",
-                f"  byte_offset: {field_off}",
-            ]
-            if length != 1:
-                lines.append(f"  byte_length: {length}")
-        else:
-            lines += [
-                interior_addr_line,
-                f"  length: {length}",
-            ]
+        # field_off is always 0 here (see the switch branch).
+        lines += [
+            interior_addr_line,
+            f"  length: {length}",
+        ]
         lines.append(f"  converter: {conv}")
         # A negative lower border means the raw byte(s) are two's-complement.
         # div2/div10 are already signed in the component; every other

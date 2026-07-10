@@ -387,8 +387,8 @@ bool VitoHomeComponent::request_write(VitoEntityBase* entity) {
 // ---------------------------------------------------------------------------
 
 void VitoHomeComponent::queue_raw_read(uint16_t address, uint8_t length) {
-  if (length < 1 || length > 32) {
-    ESP_LOGW(TAG, "queue_raw_read: length %u out of range (1..32)", length);
+  if (length < 1 || length > RAW_READ_MAX) {
+    ESP_LOGW(TAG, "queue_raw_read: length %u out of range (1..%u)", length, RAW_READ_MAX);
     return;
   }
   this->enqueue_raw_(address, length, false, nullptr, 0, RawPurpose::SCAN);
@@ -446,7 +446,11 @@ void VitoHomeComponent::raw_handle_response_(const ResponseView& response) {
     default:
       break;
   }
-  char buf[160];
+  // "0xXXXX:" (7) + RAW_READ_MAX * 3 hex chars + the integer views for widths
+  // 1..8 + NUL. 208 covers a 48-byte dump with room to spare; format_raw_dump()
+  // truncates safely rather than overflowing, but truncating a scan result would
+  // silently lose the bytes the user asked for.
+  char buf[208];
   if (this->raw_is_write_) {
     snprintf(buf, sizeof(buf), "0x%04X: write ACK (%u byte%s)", this->raw_dp_.address(), this->raw_write_len_,
              this->raw_write_len_ == 1 ? "" : "s");

@@ -129,16 +129,16 @@ text:
     entity_category: config
 
 number:
-  # 1..32 is the hub's own cap: queue_raw_read() rejects anything outside it and
-  # logs a warning. (The old max of 9 mirrored vcontrold's XML limit, which is a
-  # vcontrold limitation, not a protocol one.) Note this is BELOW
-  # MAX_P300_READ_LENGTH (37), so the console cannot reproduce a 40-byte read.
+  # 1..48 is the hub's own cap (RAW_READ_MAX). (The old max of 9 mirrored
+  # vcontrold's XML limit, which is a vcontrold limitation, not a protocol one.)
+  # 48 covers every block the catalogs emit, including the 42-byte Beschriftung_*
+  # label blocks. Raw WRITES are still capped at 32 (inline payload storage).
   - platform: template
     id: scan_length
     name: "Scan · Read length (bytes)"
     optimistic: true
     min_value: 1
-    max_value: 32
+    max_value: 48
     step: 1
     initial_value: 2
     mode: box

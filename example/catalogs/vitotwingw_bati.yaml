@@ -19,6 +19,130 @@
 # ============================================================
 
 sensor:
+  # --- Bedienung / BedienungHK1 ---
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "Vitotwin 2020 FerienBeginnHK1 Monat"
+    id: Vitotwin_2020_FerienBeginnHK1_Monat
+    address: 0x2020
+    length: 9
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "Vitotwin 2020 FerienBeginnHK1 Tag"
+    id: Vitotwin_2020_FerienBeginnHK1_Tag
+    address: 0x2020
+    length: 9
+    byte_offset: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "Vitotwin 2029 FerienEndeHK1 Monat"
+    id: Vitotwin_2029_FerienEndeHK1_Monat
+    address: 0x2029
+    length: 9
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "Vitotwin 2029 FerienEndeHK1 Tag"
+    id: Vitotwin_2029_FerienEndeHK1_Tag
+    address: 0x2029
+    length: 9
+    byte_offset: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+  # --- Bedienung / BedienungHK2 ---
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "Vitotwin 3020 FerienBeginnHK2 Monat"
+    id: Vitotwin_3020_FerienBeginnHK2_Monat
+    address: 0x3020
+    length: 9
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "Vitotwin 3020 FerienBeginnHK2 Tag"
+    id: Vitotwin_3020_FerienBeginnHK2_Tag
+    address: 0x3020
+    length: 9
+    byte_offset: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "Vitotwin 3029 FerienEndeHK2 Monat"
+    id: Vitotwin_3029_FerienEndeHK2_Monat
+    address: 0x3029
+    length: 9
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "Vitotwin 3029 FerienEndeHK2 Tag"
+    id: Vitotwin_3029_FerienEndeHK2_Tag
+    address: 0x3029
+    length: 9
+    byte_offset: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+  # --- Bedienung / BedienungHK3 ---
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "Vitotwin 4020 FerienBeginnHK3 Tag"
+    id: Vitotwin_4020_FerienBeginnHK3_Tag
+    address: 0x4020
+    length: 9
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "Vitotwin 4029 FerienEndeHK3 Monat"
+    id: Vitotwin_4029_FerienEndeHK3_Monat
+    address: 0x4029
+    length: 9
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+    # NOTE: field at BytePosition 2 has no declared write address -> demoted to read-only
+  - platform: vitohome
+    name: "Vitotwin 4029 FerienEndeHK3 Tag"
+    id: Vitotwin_4029_FerienEndeHK3_Tag
+    address: 0x4029
+    length: 9
+    byte_offset: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
   # --- DiagnoseAnlage / Monatswerte ---
   - platform: vitohome
     name: "Vitotwin 1449 Datum Monatswerte1 Monat"
@@ -939,74 +1063,6 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
-  - platform: vitohome
-    name: "Vitotwin 2020 FerienBeginnHK1 Monat"
-    id: Vitotwin_2020_FerienBeginnHK1_Monat
-    address: 0x2021  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x2020  # aligned block read at the base (P300-safe)
-    length: 9
-    byte_offset: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "Vitotwin 2020 FerienBeginnHK1 Tag"
-    id: Vitotwin_2020_FerienBeginnHK1_Tag
-    address: 0x2022  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x2020  # aligned block read at the base (P300-safe)
-    length: 9
-    byte_offset: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "Vitotwin 2029 FerienEndeHK1 Monat"
-    id: Vitotwin_2029_FerienEndeHK1_Monat
-    address: 0x202A  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x2029  # aligned block read at the base (P300-safe)
-    length: 9
-    byte_offset: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "Vitotwin 2029 FerienEndeHK1 Tag"
-    id: Vitotwin_2029_FerienEndeHK1_Tag
-    address: 0x202B  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x2029  # aligned block read at the base (P300-safe)
-    length: 9
-    byte_offset: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
   # --- Bedienung / BedienungHK2 ---
     # NOTE: conversion 'MultOffset': display value = raw * 0.015625; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
@@ -1108,74 +1164,6 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
-  - platform: vitohome
-    name: "Vitotwin 3020 FerienBeginnHK2 Monat"
-    id: Vitotwin_3020_FerienBeginnHK2_Monat
-    address: 0x3021  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x3020  # aligned block read at the base (P300-safe)
-    length: 9
-    byte_offset: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "Vitotwin 3020 FerienBeginnHK2 Tag"
-    id: Vitotwin_3020_FerienBeginnHK2_Tag
-    address: 0x3022  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x3020  # aligned block read at the base (P300-safe)
-    length: 9
-    byte_offset: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "Vitotwin 3029 FerienEndeHK2 Monat"
-    id: Vitotwin_3029_FerienEndeHK2_Monat
-    address: 0x302A  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x3029  # aligned block read at the base (P300-safe)
-    length: 9
-    byte_offset: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "Vitotwin 3029 FerienEndeHK2 Tag"
-    id: Vitotwin_3029_FerienEndeHK2_Tag
-    address: 0x302B  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x3029  # aligned block read at the base (P300-safe)
-    length: 9
-    byte_offset: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
   # --- Bedienung / BedienungHK3 ---
     # NOTE: conversion 'MultOffset': display value = raw * 0.015625; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
@@ -1265,57 +1253,6 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "Vitotwin 4020 FerienBeginnHK3 Tag"
-    id: Vitotwin_4020_FerienBeginnHK3_Tag
-    address: 0x4021  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x4020  # aligned block read at the base (P300-safe)
-    length: 9
-    byte_offset: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "Vitotwin 4029 FerienEndeHK3 Monat"
-    id: Vitotwin_4029_FerienEndeHK3_Monat
-    address: 0x402A  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x4029  # aligned block read at the base (P300-safe)
-    length: 9
-    byte_offset: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-  - platform: vitohome
-    name: "Vitotwin 4029 FerienEndeHK3 Tag"
-    id: Vitotwin_4029_FerienEndeHK3_Tag
-    address: 0x402B  # write target: the field's own register (interior write; verify on hardware)
-    state_address: 0x4029  # aligned block read at the base (P300-safe)
-    length: 9
-    byte_offset: 2
-    converter: noconv
     # Borders absent, or out of range for this byte width, in
     # the export. These placeholders pass `esphome config` but
     # pin the value to 0 - set real min/max/step before use.

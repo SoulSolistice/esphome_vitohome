@@ -194,7 +194,10 @@ def test_single_system_slot_stays_letzter_fehler():
 # address with the P300-may-NAK caveat.
 
 
-def test_interior_writable_enum_emits_two_address_select():
+def test_interior_writable_enum_is_demoted_to_read_only():
+    # 0x7661 is exactly the address the design notes record as NAKing on P300.
+    # A writable field at BytePosition > 0 has no declared write address, so it
+    # is emitted read-only rather than pointed at an invented register.
     ev = _event(
         address=0x7660,
         block_length=2,
@@ -204,17 +207,16 @@ def test_interior_writable_enum_emits_two_address_select():
     )
     platform, lines = gc.emit_entity(ev, "full")
     body = "\n".join(lines)
-    assert platform == "select"
-    # write target = the field's own register; state read = aligned block.
-    assert "address: 0x7661" in body
-    assert "state_address: 0x7660" in body
+    assert platform == "text_sensor"  # read-only enum
+    assert "address: 0x7660" in body  # the block base
+    assert "0x7661" not in body  # never the fabricated interior address
     assert "length: 2" in body
     assert "byte_offset: 1" in body
-    # 1-byte field -> no byte_length line needed (component default).
-    assert "byte_length" not in body
+    assert "state_address" not in body
+    assert "demoted to read-only" in body
 
 
-def test_interior_boolean_pair_emits_two_address_switch():
+def test_interior_boolean_pair_is_demoted_to_binary_sensor():
     ev = _event(
         address=0x7660,
         block_length=4,
@@ -224,9 +226,9 @@ def test_interior_boolean_pair_emits_two_address_switch():
     )
     platform, lines = gc.emit_entity(ev, "full")
     body = "\n".join(lines)
-    assert platform == "switch"
-    assert "address: 0x7662" in body
-    assert "state_address: 0x7660" in body
+    assert platform == "text_sensor"  # read-only enum, not a writable switch
+    assert "address: 0x7660" in body
+    assert "0x7662" not in body
     assert "length: 4" in body
     assert "byte_offset: 2" in body
 
@@ -241,9 +243,9 @@ def test_interior_multibyte_enum_field_emits_byte_length():
     )
     platform, lines = gc.emit_entity(ev, "full")
     body = "\n".join(lines)
-    assert platform == "select"
-    assert "address: 0x7664" in body
-    assert "state_address: 0x7660" in body
+    assert platform == "text_sensor"  # demoted: no declared write address
+    assert "address: 0x7660" in body
+    assert "0x7664" not in body
     assert "length: 6" in body
     assert "byte_offset: 4" in body
     assert "byte_length: 2" in body
@@ -251,10 +253,27 @@ def test_interior_multibyte_enum_field_emits_byte_length():
     assert "    0x0000: " in body
 
 
-def test_interior_field_with_command_state_mapping_keeps_interior_form():
-    # A COMMAND_STATE_ADDR entry claims state_address for the read/write
-    # split; the block-extract form cannot also use it, so the entity falls
-    # back to the interior address with the caveat.
+def test_command_state_mapping_at_offset_zero_keeps_the_split():
+    # COMMAND_STATE_ADDR gives a real, declared state address for a writable
+    # command register. That split is legitimate and survives -- but only at
+    # BytePosition 0. (No datapoint in the export combines the two; verified.)
+    addr = next(iter(gc.COMMAND_STATE_ADDR))
+    ev = _event(
+        address=addr,
+        block_length=1,
+        byte_length=1,
+        byte_position=0,
+        values=[_enum_value(0x00, "Aus"), _enum_value(0x02, "Heizen")],
+    )
+    platform, lines = gc.emit_entity(ev, "full")
+    body = "\n".join(lines)
+    assert platform == "select"
+    assert f"address: 0x{addr:04X}" in body
+    assert f"state_address: 0x{gc.COMMAND_STATE_ADDR[addr]:04X}" in body
+    assert "P300 may NAK" not in body
+
+
+def test_command_state_mapping_at_nonzero_offset_is_still_demoted():
     addr = next(iter(gc.COMMAND_STATE_ADDR))
     ev = _event(
         address=addr,
@@ -265,17 +284,16 @@ def test_interior_field_with_command_state_mapping_keeps_interior_form():
     )
     platform, lines = gc.emit_entity(ev, "full")
     body = "\n".join(lines)
-    assert platform == "select"
-    assert f"address: 0x{addr + 1:04X}" in body
-    assert "byte_offset" not in body
-    assert "P300 may NAK" in body
-    assert f"state_address: 0x{gc.COMMAND_STATE_ADDR[addr]:04X}" in body
+    assert platform == "text_sensor"
+    assert f"address: 0x{addr:04X}" in body
+    assert f"0x{addr + 1:04X}" not in body
 
 
-def test_interior_writable_number_emits_two_address_form():
+def test_interior_writable_number_is_demoted_to_sensor():
     # The pump-speed shape (Neptun * Drehzahl): a writable 1-byte numeric at
-    # byte 1 of a 2-byte block. Read = aligned block at the base via
-    # state_address + byte_offset; write = the field's own register.
+    # byte 1 of a 2-byte block. The read is an aligned block at the base; the
+    # write target 0x7952 is not a declared address for this datapoint, so the
+    # entity is emitted read-only.
     ev = _event(
         address=0x7951,
         block_length=2,
@@ -286,13 +304,13 @@ def test_interior_writable_number_emits_two_address_form():
     )
     platform, lines = gc.emit_entity(ev, "full")
     body = "\n".join(lines)
-    assert platform == "number"
-    assert "address: 0x7952" in body  # write target: the field's own register
-    assert "state_address: 0x7951" in body
-    assert "length: 2" in body  # the block read
+    assert platform == "sensor"
+    assert "address: 0x7951" in body
+    assert "0x7952" not in body
+    assert "length: 2" in body
     assert "byte_offset: 1" in body
-    assert "byte_length" not in body  # 1-byte field -> component default
-    assert "P300 may NAK" not in body  # the read is aligned now
+    assert "state_address" not in body
+    assert "P300 may NAK" not in body
 
 
 def test_interior_multibyte_number_field_emits_byte_length():
@@ -306,15 +324,15 @@ def test_interior_multibyte_number_field_emits_byte_length():
     )
     platform, lines = gc.emit_entity(ev, "full")
     body = "\n".join(lines)
-    assert platform == "number"
-    assert "address: 0x118D" in body
-    assert "state_address: 0x1189" in body
+    assert platform == "sensor"  # demoted: no declared write address
+    assert "address: 0x1189" in body
+    assert "0x118D" not in body
     assert "length: 6" in body
     assert "byte_offset: 4" in body
     assert "byte_length: 2" in body
 
 
-def test_interior_number_in_oversize_block_falls_back_to_interior():
+def test_interior_field_in_oversize_block_is_a_comment_not_an_invented_address():
     ev = _event(
         address=0x7660,
         block_length=gc.MAX_P300_READ_LENGTH + 5,
@@ -325,10 +343,9 @@ def test_interior_number_in_oversize_block_falls_back_to_interior():
     )
     platform, lines = gc.emit_entity(ev, "full")
     body = "\n".join(lines)
-    assert platform == "number"
-    assert "byte_offset" not in body
-    assert "state_address" not in body
-    assert "P300 may NAK" in body  # honest interior fallback
+    assert platform == "comment"
+    assert "cannot be expressed as an aligned block read" in body
+    assert "0x7688" not in body  # 0x7660 + 40
 
 
 def test_interior_readonly_enum_emits_block_extraction():
@@ -355,7 +372,7 @@ def test_interior_readonly_enum_emits_block_extraction():
     assert "P300 may NAK" not in body
 
 
-def test_interior_readonly_enum_in_oversize_block_falls_back_to_interior():
+def test_interior_readonly_enum_in_oversize_block_is_a_comment():
     ev = _event(
         address=0x7660,
         access_type=1,
@@ -366,6 +383,5 @@ def test_interior_readonly_enum_in_oversize_block_falls_back_to_interior():
     )
     platform, lines = gc.emit_entity(ev, "full")
     body = "\n".join(lines)
-    assert platform == "text_sensor"
-    assert "byte_offset" not in body
-    assert "P300 may NAK" in body
+    assert platform == "comment"
+    assert "cannot be expressed as an aligned block read" in body

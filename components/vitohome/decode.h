@@ -443,8 +443,15 @@ inline int decode_utf16(const uint8_t* data, std::size_t data_len, uint8_t len, 
   std::size_t n = 0;
   for (uint8_t i = 0; i + 1 < len; i += 2) {
     const uint16_t cu = static_cast<uint16_t>(data[i] | (data[i + 1] << 8));
-    if (cu == 0x0000) break;     // NUL terminates
-    if (cu == 0xFFFF) continue;  // empty-slot fill
+    if (cu == 0x0000) break;  // NUL terminates
+    // 0xFFFF TERMINATES. U+FFFF is a Unicode noncharacter and can never appear
+    // in a label, so a fill slot means the string is over. Skipping it instead
+    // (the original behaviour) walked into the padding: the full 42-byte read of
+    // Beschriftung_HK1~0x7360 on 2026-07-10 returned an ODD run of thirteen 0xFF
+    // bytes followed by five 0x00, so code unit 17 is 0x00FF -- and "Heizkreis 1"
+    // published as "Heizkreis 1ÿ". The fill is byte-oriented, not code-unit
+    // aligned; do not assume it is.
+    if (cu == 0xFFFF) break;
     uint32_t cp = cu;
     if (cu >= 0xD800 && cu <= 0xDFFF) cp = '?';  // lone surrogate -> placeholder
     if (cp < 0x80) {
@@ -476,6 +483,10 @@ inline int decode_utf16(const uint8_t* data, std::size_t data_len, uint8_t len, 
 // 64-bit (so a 4-byte value is exact, unlike the float32 a sensor publishes).
 // Example: "0x0800: AA BB  u=48042 i=-17494".
 //
+// Widest hex run the dump prints before eliding. Matches
+// VitoHomeComponent::RAW_READ_MAX so a raw read is never elided.
+inline constexpr uint8_t RAW_DUMP_MAX_HEX = 48;
+
 // Pure / framework-free so it is host-tested in tests/native/test_decode.cpp.
 // Never writes past out[cap-1]; always NUL-terminates when cap > 0. Returns
 // the number of characters written (excluding the NUL), or 0 on bad args.
@@ -486,9 +497,11 @@ inline int format_raw_dump(uint16_t address, const uint8_t* data, uint8_t len, c
     out[0] = '\0';
     return 0;
   }
-  // Cap the hex run so a long/garbled response can't blow the line; a P300
-  // read is a few bytes (error_history is 9), so 32 is generous.
-  const uint8_t max_hex = (len < 32) ? len : 32;
+  // Cap the hex run so a long/garbled response can't blow the line. Must be at
+  // least VitoHomeComponent::RAW_READ_MAX (48) or the scan console elides the
+  // very bytes the user asked for -- which it did for the 42-byte read of
+  // 0x7360, hiding the fill layout behind " ...(42 bytes)".
+  const uint8_t max_hex = (len < RAW_DUMP_MAX_HEX) ? len : RAW_DUMP_MAX_HEX;
   for (uint8_t i = 0; i < max_hex && static_cast<std::size_t>(off) < cap; i++) {
     const int w = std::snprintf(out + off, cap - static_cast<std::size_t>(off), " %02X",
                                 static_cast<unsigned>(data == nullptr ? 0 : data[i]));
