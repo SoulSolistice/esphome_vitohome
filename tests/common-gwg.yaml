@@ -1,0 +1,102 @@
+# GWG-only test config.
+#
+# GWG cannot share common.yaml: the GWG protocol addresses a SINGLE BYTE.
+# PacketGWG::createPacket() serialises `addr & 0xFF`, so every 16-bit address in
+# common.yaml (0x0800, 0x2500, ...) would be silently truncated to its low byte
+# and read the wrong datapoint. vcontrold agrees: its GWG device (ID 2053,
+# "GWG_VBEM", protocol="GWG") overrides all 26 of its addresses onto one byte.
+# The hub's FINAL_VALIDATE_SCHEMA now rejects the combination outright, which is
+# how this file came to exist -- common.yaml had been addressing garbage under
+# `protocol: GWG` since the wrapper was written.
+#
+# The addresses below are taken from vcontrold's GWG device overrides. This is
+# a CODEGEN gate (OptolinkEngine<GWG> + the GWG branch of ProtocolAdapter), not
+# a wire test: GWG remains unverified on hardware.
+
+esphome:
+  name: ${name}
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [vitohome]
+
+logger:
+  level: DEBUG
+
+uart:
+  - id: uart_optolink
+    rx_pin: GPIO16
+    tx_pin: GPIO17
+    baud_rate: 4800
+    data_bits: 8
+    parity: EVEN
+    stop_bits: 2
+
+vitohome:
+  id: vito
+  uart_id: uart_optolink
+  protocol: ${protocol}
+  update_interval: 60s
+  identify_device: ${identify_device}
+  log_frames: ${log_frames}
+
+sensor:
+  # vcontrold GWG (device 2053): getTempA -> addr 05, len 1, unit UTI
+  - platform: vitohome
+    name: "GWG Temp Aussen"
+    address: 0x05
+    length: 1
+    converter: noconv
+    signed: true
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+  # getTempKist -> addr 00, len 1
+  - platform: vitohome
+    name: "GWG Temp Kessel"
+    address: 0x00
+    length: 1
+    converter: noconv
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    update_interval: 120s
+
+binary_sensor:
+  - platform: vitohome
+    type: connectivity
+    name: "GWG Optolink Link"
+  # getBrennerStatus (device 2053) -> addr 22, len 1, bit 1, unit BST.
+  # NOTE vcontrold's <bit> is LSB-first by construction: its BST unit computes
+  # `(B0 & (0x01 << BP)) >> BP`. Vitosoft's BitPosition is MSB-first. Do not
+  # copy a number from one into the other -- here bit 1 LSB-first is mask 0x02.
+  - platform: vitohome
+    name: "GWG Brenner"
+    address: 0x22
+    length: 1
+    bit_mask: 0x02
+    device_class: running
+
+text_sensor:
+  - platform: vitohome
+    type: enum
+    name: "GWG Betriebsart"
+    address: 0x3F
+    length: 1
+    options:
+      0x00: "Abschaltbetrieb"
+      0x01: "Nur Warmwasser"
+      0x02: "Heizen und Warmwasser"
+
+number:
+  - platform: vitohome
+    name: "GWG WW Solltemperatur"
+    address: 0x63
+    length: 1
+    converter: noconv
+    min_value: 10
+    max_value: 60
+    step: 1
+    update_interval: 3600s

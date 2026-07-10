@@ -135,6 +135,19 @@ def test_block_interior_bit_emits_aligned_block_read():
     assert "bit_mask: 0x01" in text
 
 
+def test_contradictory_byte_position_stays_a_comment():
+    # BitPosition 24 -> byte 3, but the export declares BytePosition 2.
+    # Real rows: nvoConsumerDmd_Attribute1_LFDM~0xA346, nviConsumerDmd_...~0xA385.
+    platform, lines = gc.emit_entity(_bit_event(0xA346, 10, 24, byte_position=2), "full")
+    assert platform == "comment"
+    assert "contradictory" in "\n".join(lines)
+
+
+def test_agreeing_byte_position_still_emits():
+    platform, _lines = gc.emit_entity(_bit_event(0x2500, 22, 135, byte_position=16), "full")
+    assert platform == "binary_sensor"
+
+
 def test_bit_beyond_single_telegram_stays_a_comment():
     # A block wider than one P300 read telegram still cannot be expressed.
     platform, _lines = gc.emit_entity(_bit_event(0x1234, 64, 300), "full")

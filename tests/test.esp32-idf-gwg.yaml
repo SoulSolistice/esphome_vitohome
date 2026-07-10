@@ -4,6 +4,9 @@
 # ProtocolAdapter through the real ESPHome+PlatformIO build), not a wire test.
 # identify_device is set false (the natural default for GWG): the 0xF8..0xFB
 # identification is a P300-era scheme.
+#
+# Uses common-gwg.yaml, not common.yaml: GWG addresses a single byte, so the
+# 16-bit addresses in common.yaml would be silently truncated. See that file.
 substitutions:
   name: vitohome-test-idf-gwg
   protocol: GWG
@@ -15,4 +18,4 @@ esp32:
   framework:
     type: esp-idf
 
-<<: !include common.yaml
+<<: !include common-gwg.yaml

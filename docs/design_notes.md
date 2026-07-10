@@ -520,6 +520,118 @@ therefore publishes a spurious `0.00 °C` at boot. Use `has_state()`.
 
 ---
 
+### 8c. `MAX_P300_READ_LENGTH = 37` is a heuristic, not a measured constant
+
+Hardware-observed on VScotHO1_72 (2026-07-10, P300). The 40-byte `utf16` label
+read at `0x7362`:
+
+```
+>>> 41:05:00:01:73:62:28            (read 0x7362, 0x28 = 40 bytes)
+<<< 06:41:06:03:01:73:62:01:01:E1   (MessageIdentifier 0x03 = Error)
+```
+
+Tempting conclusion: P300 caps reads at some width below 40. **The evidence does
+not support it.**
+
+* The openv [Protokoll 300](https://github.com/openv/openv/wiki/Protokoll-300)
+  specification describes the length byte as the count of bytes between `0x41`
+  and the checksum, and names **no maximum**.
+* vcontrold defines no read wider than 9 bytes anywhere — but that is
+  [a documented limitation of vcontrold itself](https://github.com/openv/openv/wiki/vcontrold.xml),
+  not of the protocol. It corroborates nothing.
+* The identical 40-byte read on **KW returns 40 bytes of `0xFF`**. That is
+  exactly what an unimplemented address looks like on a protocol with no error
+  channel. So the failure may be caused by the **address**, not the length.
+
+Our own data bounds a cap, if one exists, only to `[22, 39]`: 22 bytes at
+`0x2500` succeed on P300; 40 at `0x7362` fail. `37` is inherited lore with no
+citation. Treat it as a conservative gate for the generator, and do not repeat
+it as fact.
+
+**The discriminating experiment:** read `0x7362` with `length: 2` on P300.
+Success ⇒ length is the cause. Error ⇒ the address is unsupported and the cap is
+fiction.
+
+Accordingly the hub's `FINAL_VALIDATE_SCHEMA` only **warns** about a P300 read
+wider than `MAX_P300_READ_LENGTH`. Rejecting a config that would in fact work is
+the worse failure.
+
+---
+
+### 8d. GWG addresses a single byte
+
+Source-confirmed, and it invalidates every generated catalog under
+`protocol: GWG`.
+
+`PacketGWG::createPacket()` serialises `_buffer[step++] = addr & 0xFF` — one
+address byte. The high byte is discarded **silently**: `0x2500` becomes `0x00`,
+`0x55DD` becomes `0xDD`. The device answers a different datapoint and nothing
+reports an error.
+
+vcontrold agrees. Its GWG device — `<device ID="2053" name="GWG_VBEM"
+protocol="GWG"/>` — overrides **all 26** of its addresses onto a single byte
+(`0x00`, `0x01`, `0x05`, `0x22`, `0x3F`, `0x41`, `0x63`, …) rather than reusing
+the 16-bit addresses the same commands use on KW/P300. GWG has its own address
+space.
+
+So the Vitosoft catalogs, which carry 16-bit addresses, **do not apply to GWG at
+all**. The hub's `FINAL_VALIDATE_SCHEMA` now rejects any `address`,
+`state_address` or `target_address` above `0xFF` when `protocol: GWG`. This is a
+hard error, not a warning: unlike the P300 length question, the truncation is a
+property of code we ship and is unconditionally wrong.
+
+This check immediately proved that `tests/common.yaml` had been addressing
+garbage under the GWG wrapper since it was written (`0x0800` → `0x00`). GWG now
+has its own `tests/common-gwg.yaml`.
+
+---
+
+### 8e. vcontrold numbers bits LSB-first; Vitosoft numbers them MSB-first
+
+Two conventions coexist in the ecosystem, and mixing them is almost certainly
+how `1 << (bit_pos % 8)` got into the generator in the first place.
+
+vcontrold's `<bit>N</bit>` is **LSB-first by construction**. Its `Bitstatus`
+unit is defined as `icalc get="(B0 & (0x01 << BP)) >> BP"` — mask `0x01 << BP`.
+Those `<bit>` numbers are hand-curated in vcontrold's own `vito.xml`.
+
+Vitosoft's `BitPosition` is **MSB-first** (index 0 = `0x80`), hardware-proven
+twice: see §8 above.
+
+They are different numbers for different data sources. **Never copy a `<bit>`
+value from vcontrold into a vitohome `bit_mask` and vice versa.** vcontrold's
+`getBrennerStatus` for device 2053 uses `<bit>1</bit>`, which under its own
+convention is mask `0x02` — under Vitosoft's it would be `0x40`.
+
+---
+
+### 8f. The export contradicts itself on 5 bit datapoints
+
+`BitPosition` is normally the absolute bit index across the block, so
+`byte = BitPosition // 8`. Where the export also gives a non-zero
+`BytePosition`, the two agree for 146 of 151 informative single-bit rows. The
+five that disagree:
+
+| datapoint | BitPosition | implies byte | declares BytePosition | FCRead |
+|---|---|---|---|---|
+| `nviConsumerDmd_Attribute1_CFDM~0xA385` | 24 | 3 | 2 | `Virtual_READ` |
+| `nvoConsumerDmd_Attribute1_LFDM~0xA346` | 24 | 3 | 2 | `Virtual_READ` |
+| `OT ID0 LowByte Bit 10` | 1 | 0 | 1 | `OT_Physical_Read` |
+| `OT ID0 LowByte Bit 11` | 2 | 0 | 1 | `OT_Physical_Read` |
+| `OT ID0 LowByte Bit 12` | 3 | 0 | 1 | `OT_Physical_Read` |
+
+The three `OT` rows are byte-relative and are filtered out as unreachable
+anyway. The two `nvo`/`nvi` rows are `Virtual_READ` and **were reaching
+catalogs**, with `byte_offset: 3` derived from `BitPosition`. We cannot tell
+which field is right, so `gen_catalog.py` now emits a comment instead of an
+entity that might silently read the wrong byte. 54 catalogs lost 2 entities each.
+
+---
+
+
+
+---
+
 ### 9a. Frame logging belongs in the component, not in `uart: debug:`
 
 ESPHome's UART debugger has no notion of an Optolink telegram, so it has to be
@@ -528,19 +640,31 @@ for Optolink is the **P300 ACK byte**. On KW, `0x06` is an ordinary data byte,
 so the debugger splits telegrams mid-frame — visible in the 2026-07-09 logs as
 `>>> 01:F4:23:06` followed by `>>> 01:24` for a single write to `0x2306`.
 
-The adapter already knows the boundaries and needs no delimiter. `log_frames: true`
-on the hub sets `-DVITOHOME_LOG_FRAMES`, and `vito_uart_interface.h` then logs one
-line per telegram under the `vitohome.frames` tag:
+The adapter can reconstruct the boundaries and needs no delimiter.
+`log_frames: true` on the hub sets `-DVITOHOME_LOG_FRAMES`, and
+`vito_uart_interface.h` then logs one line per telegram under the
+`vitohome.frames` tag. **Both directions are buffered**, and each is flushed on
+the first of: traffic in the opposite direction, an inter-byte gap over 30 ms, or
+a full buffer.
 
-* **TX** — the engine serializes a whole telegram and hands it to `write()` in one
-  call, so one `write()` is exactly one frame, on every protocol.
-* **RX** — bytes arrive one at a time, so they are accumulated and flushed on the
-  first of: the next TX, an inter-byte gap over 30 ms, or a full buffer. At
-  4800 8E2 one byte occupies 11 bits = 2.29 ms, so 30 ms is >13 byte-times — far
-  above intra-frame spacing and far below KW's ~2.2 s idle-sync cadence.
+Buffering TX is not optional, though the first cut assumed otherwise ("one
+`write()` == one telegram, on every protocol"). That holds for VS1/KW and GWG and
+is **false for VS2/P300**: `_sendStart()`, `_sendPacket()` and `_sendCRC()` are
+three states of the VS2 send machine, each issuing its own `write()` one `loop()`
+apart. A single request reached the log as three lines.
+
+The 30 ms constant comes off the wire, not from taste. At 4800 8E2 a byte occupies
+11 bits = 2.29 ms. Measured on P300: the gap between the three TX pieces of one
+telegram is 18–20 ms, while the gap between the master's ACK (`0x06`) and the next
+telegram's `PACKETSTART` is ~35 ms. 30 ms therefore joins a telegram and separates
+the ACK from it, and is still far below KW's ~2.2 s idle-sync cadence.
 
 It is a build flag rather than a runtime setter so a production firmware carries
-no RX buffer and no per-byte branch; `frame_tick()` degrades to an empty inline.
+no buffers and no per-byte branch; `frame_tick()` degrades to an empty inline.
+
+One consequence worth knowing: a frame is logged when it *closes*, so the `<<<`
+line lands after the decoded value it produced. The contents are right; only the
+interleaving reads oddly.
 
 ---
 

@@ -235,6 +235,16 @@ text_sensor:
     name: "Test Raw"
     address: 0x00F8
     length: 4
+  # utf16 read AT the P300 single-telegram limit. Anything wider (e.g. the
+  # 40-byte label block at 0x7362) is answered with an error telegram on P300;
+  # the hub's FINAL_VALIDATE_SCHEMA now rejects that at config time when
+  # `protocol: P300`, so this file caps at 36 to validate under every wrapper.
+  - platform: vitohome
+    type: utf16
+    name: "Test Label"
+    address: 0x7362
+    length: 36
+    update_interval: 24h
   # enum text sensor
   - platform: vitohome
     type: enum

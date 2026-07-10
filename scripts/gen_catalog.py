@@ -1606,6 +1606,26 @@ def emit_entity(ev: Event, profile: str):
         # which tracks the burn exactly. The previous `1 << (bit_pos % 8)` was
         # therefore mirrored for EVERY bit-field this generator emits.
         mask = 0x80 >> (bit_pos % 8)
+        # Trust, but verify. `BitPosition` is normally the ABSOLUTE bit index
+        # across the block, so byte = bit_pos // 8. Where the export ALSO gives a
+        # non-zero BytePosition, the two must agree -- and for 5 of the 731
+        # single-bit datapoints they do not:
+        #   nviConsumerDmd_Attribute1_CFDM~0xA385  BitPos 24 -> byte 3, BytePos 2
+        #   nvoConsumerDmd_Attribute1_LFDM~0xA346  BitPos 24 -> byte 3, BytePos 2
+        #   OT ID0 LowByte Bit 10/11/12            BitPos 1/2/3, BytePos 1
+        # (the OT rows are byte-relative, and are filtered out anyway as
+        # OT_Physical_Read; the two nvo/nvi rows are Virtual_READ and DO reach
+        # catalogs). We cannot tell which field is right, so emit a comment
+        # rather than an entity that silently reads the wrong byte.
+        if ev.byte_position and ev.byte_position != byte_off:
+            return (
+                "comment",
+                [
+                    f"# {name} @ 0x{addr:04X}: BitPosition {bit_pos} implies byte {byte_off} but the "
+                    f"export declares BytePosition {ev.byte_position} -- contradictory, needs hardware "
+                    f"confirmation before it can be emitted"
+                ],
+            )
         # binary_sensor reads a block at the block base and indexes byte_offset
         # inside it (aligned read -- P300 NAKs an unaligned interior read). The
         # only hard cap left is the single-telegram read limit.

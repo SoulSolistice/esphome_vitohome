@@ -24,9 +24,10 @@ from pathlib import Path
 
 import esphome.codegen as cg
 import esphome.config_validation as cv
+import esphome.final_validate as fv
 from esphome.components import esp32, uart
 from esphome.components import time as time_
-from esphome.const import CONF_ID, CONF_INTERVAL, CONF_TIME_ID
+from esphome.const import CONF_ID, CONF_INTERVAL, CONF_NAME, CONF_TIME_ID
 from esphome.core import CORE
 
 _LOGGER = logging.getLogger(__name__)
@@ -195,14 +196,31 @@ def converter_lengths(name: str) -> tuple:
     return CONVERTERS[name].lengths
 
 
-# Conservative single-telegram READ payload cap for P300/VS2. The protocol
-# frame allows 255 data bytes, but Vitotronic firmwares reject an over-long
-# single read (hardware-observed on VScotHO1_72: a 40-byte read at 0x7362
-# NAKs on P300 while the same read succeeds on KW). 37 is the widely-cited
-# safe maximum for a single Vitotronic read telegram; the generator uses it to
-# gate block reads, and a byte_offset block read may fetch up to this many
-# bytes so a single field deep inside a large coding block is reachable with
-# an aligned read.
+# Conservative single-telegram READ payload cap for P300/VS2.
+#
+# EVIDENCE STATUS: the exact value is NOT established. What is known:
+#   * The openv "Protokoll 300" specification documents the telegram length as
+#     a single byte ("Anzahl der Bytes zwischen dem Telegramm-Start-Byte (0x41)
+#     und der Pruefsumme") and names NO maximum read length.
+#     https://github.com/openv/openv/wiki/Protokoll-300
+#   * vcontrold defines no read wider than 9 bytes anywhere in xml/300/vito.xml,
+#     but that is a documented limitation of vcontrold itself, not of the
+#     protocol -- see the openv wiki discussion of the "0..9 Byte Begrenzung".
+#     So it corroborates nothing either way.
+#   * Hardware, VScotHO1_72 (0x20CB), 2026-07-10, P300: a 22-byte read at
+#     0x2500 succeeds; a 40-byte read at 0x7362 is answered with an error
+#     telegram (MessageIdentifier 0x03). The same 40-byte read on KW returns 40
+#     bytes of 0xFF.
+#
+# That 0xFF fill is exactly what an UNIMPLEMENTED address looks like on KW,
+# which has no error channel. So the 0x7362 failure may be caused by the
+# ADDRESS rather than the LENGTH, and the true cap -- if one exists -- is only
+# bounded to [22, 39] by our own data. 37 is retained as a conservative gate
+# for the generator and for byte_offset block reads; it is a HEURISTIC, not a
+# measured constant. Do not cite it as fact.
+#
+# To settle it: read 0x7362 with length 2 on P300. Success => length is the
+# cause. Error => the address is unsupported and this cap is fiction.
 MAX_P300_READ_LENGTH = 37
 
 
@@ -318,6 +336,83 @@ CONFIG_SCHEMA = cv.All(
     .extend(uart.UART_DEVICE_SCHEMA),
     _validate_time_sync,
 )
+
+
+# ---------------------------------------------------------------------------
+# Cross-platform final validation
+#
+# A platform schema cannot see which protocol its hub speaks. Two protocol-level
+# constraints therefore have to be checked once the whole config is known.
+_LENGTH_DOMAINS = ("sensor", "binary_sensor", "text_sensor", "number")
+_ADDRESS_DOMAINS = ("sensor", "binary_sensor", "text_sensor", "number", "select", "switch", "text")
+
+# GWG addresses a SINGLE BYTE. Source-confirmed in the vendored engine:
+# PacketGWG::createPacket() serialises `_buffer[step++] = addr & 0xFF`, i.e. the
+# high byte is silently discarded -- 0x2500 becomes 0x00. Corroborated by
+# vcontrold, whose GWG device (ID 2053, "V200WB2 ID=2053 Protokoll:GWG_VBEM")
+# overrides every command onto single-byte addresses (0x63, 0xF8, 0x22, 0x01,
+# 0x17) rather than the 16-bit ones used on KW/P300.
+# Consequence: the generated catalogs, which carry 16-bit Vitosoft addresses,
+# are meaningless under `protocol: GWG`. Reading a truncated address is not an
+# error the device can report -- it just answers the wrong datapoint. Hard fail.
+_ADDRESS_KEYS = ("address", "state_address", "target_address")
+
+
+def _entities_for_hub(full, domains, hub_id):
+    for domain in domains:
+        for entity in full.get(domain, []):
+            if entity.get("platform") != "vitohome":
+                continue
+            if entity.get(CONF_VITOCONNECT_ID) not in (None, hub_id):
+                continue  # targets a different hub
+            yield domain, entity
+
+
+def _entity_name(entity):
+    return entity.get(CONF_NAME, entity.get(CONF_ID, "<unnamed>"))
+
+
+def _final_validate(config):
+    protocol = str(config[CONF_PROTOCOL])
+    full = fv.full_config.get()
+    hub_id = config[CONF_ID]
+
+    if protocol == "GWG":
+        for domain, entity in _entities_for_hub(full, _ADDRESS_DOMAINS, hub_id):
+            for key in _ADDRESS_KEYS:
+                addr = entity.get(key)
+                if addr is not None and addr > 0xFF:
+                    raise cv.Invalid(
+                        f"{domain} '{_entity_name(entity)}' uses {key} 0x{addr:04X}, but the GWG "
+                        f"protocol addresses a single byte -- the engine sends `addr & 0xFF`, so this "
+                        f"would silently read 0x{addr & 0xFF:02X} instead. GWG uses its own 8-bit "
+                        f"address space; the generated catalogs (16-bit Vitosoft addresses) do not "
+                        f"apply to it."
+                    )
+
+    if protocol == "P300":
+        # A read wider than MAX_P300_READ_LENGTH has been observed to fail on
+        # hardware (0x7362, 40 bytes -> error telegram), but the cause may be the
+        # address rather than the length -- see the note on MAX_P300_READ_LENGTH.
+        # Warn rather than reject: the openv protocol spec names no maximum, and
+        # rejecting a config that would in fact work is the worse failure.
+        for domain, entity in _entities_for_hub(full, _LENGTH_DOMAINS, hub_id):
+            length = entity.get(CONF_LENGTH)
+            if length is not None and length > MAX_P300_READ_LENGTH:
+                _LOGGER.warning(
+                    "%s '%s' reads %d bytes. On P300 a %d-byte read at 0x7362 was answered with an "
+                    "error telegram on hardware (VScotHO1_72). The protocol spec names no maximum, so "
+                    "this may work on your device -- but if the entity stays unavailable with a "
+                    "'protocol error', shorten it to <= %d bytes or use `protocol: KW`.",
+                    domain,
+                    _entity_name(entity),
+                    length,
+                    length,
+                    MAX_P300_READ_LENGTH,
+                )
+
+
+FINAL_VALIDATE_SCHEMA = _final_validate
 
 
 async def to_code(config):

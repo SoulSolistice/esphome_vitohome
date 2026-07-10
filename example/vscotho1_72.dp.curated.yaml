@@ -529,8 +529,13 @@ binary_sensor:
   #   modulation 11..40 %, Abgas +6K -> raw 0x21 (5 samples)
   # Bit 0x04 is never set in either state; bit 0x20 tracks the burn exactly.
   # Under LSB-first, 0x04 would be GWG_Flamme1 -- "no flame" while the boiler
-  # burns -- which is impossible. Cross-check it against "Status Brenner"
-  # above; they must agree.
+  # burns -- which is impossible. Cross-check it against "Status Brenner" above.
+  # THEY MAY DISAGREE FOR ONE POLL DURING IGNITION: on 2026-07-10 at 06:40:27
+  # the flame bit read 0x21 (ON) 143 ms after 0xA305 byte 1 read 0x00 (OFF) and
+  # after the 0xA152 Brenner bit read clear. The flame is detected before the
+  # controller publishes "burner = EIN". That is a race between three separate
+  # telegrams, not a bit-numbering error -- under LSB-first the same sample
+  # would claim a second burner STAGE was running while the burner was off.
   - platform: vitohome
     name: "Status Brenner Flamme"
     id: GWG_Flamme1
@@ -546,8 +551,11 @@ binary_sensor:
   # falsifiable. ANSWERED, 2026-07-10 log: OFF in all 8 samples, including both
   # in which the burner fired (raw 0x21). Meanwhile "Status Brenner Flamme"
   # (mask 0x20) and "Status Brenner" (0xA305[1], no bit convention at all)
-  # agreed 8/8. MSB-first stands. Kept as a permanent tripwire: if this ever
-  # goes ON while the flame bit is OFF, scripts/gen_catalog.py is wrong.
+  # agreed 8/8. Re-confirmed on P300 (2026-07-10): OFF in all 9 samples, raw
+  # 0x21 during both burns. MSB-first stands. Kept as a permanent tripwire: if
+  # this ever goes ON while the flame bit is OFF, scripts/gen_catalog.py is
+  # wrong. (A one-poll disagreement between the flame bit and "Status Brenner"
+  # during ignition is expected -- see that entity.)
   - platform: vitohome
     name: "Brennerstufe 2"
     id: GWG_Brenner_2
@@ -571,6 +579,10 @@ binary_sensor:
   # -- byte 16 = 0x00 -> OFF. (The same telegram also yields byte 1 = 0x00
   # "Abschaltbetrieb", byte 8 = 0x01 "Freigabe nach WW-Schaltzeiten", and bytes
   # 12..13 = 0x00BE = 190 -> 19.0 degC, all matching their entities exactly.)
+  # And on P300 (2026-07-10), which is the whole point of reading at the block
+  # base: `>>> 41:05:00:01:25:00:16` ->
+  # `<<< 06:41:1B:01:01:25:00:16:02:00:...:B4:00:C4` -- one 22-byte telegram,
+  # accepted. An interior read at 0x2510 would have been NAKed.
   - platform: vitohome
     name: "Frostgefahr HK1"
     id: HK_Frostgefahr_aktivA1M1
@@ -720,18 +732,24 @@ text_sensor:
   # returns an error frame (hardware-confirmed 2026-07-04) and the entity
   # goes NAN/unavailable there. Enable only on KW, or shorten `length` to
   # fit a single P300 telegram if you only need the first few characters.
+  # length 36, not the block's full 40: P300 answers any read wider than 37
+  # bytes with an error telegram (message type 0x03), so a `length: 40` here
+  # works on KW and leaves the entity permanently unavailable on P300 --
+  # hardware-observed 2026-07-10. 36 is the widest even length that fits, and
+  # yields the first 18 UTF-16 characters. The hub now rejects the wider read at
+  # config time when `protocol: P300`.
   - platform: vitohome
     type: utf16
     name: "Beschriftung HK1"
     id: Beschriftung_HK1
     address: 0x7362
-    length: 40
+    length: 36
     disabled_by_default: true
     entity_category: diagnostic
     icon: "mdi:label"
     # `disabled_by_default` is an HA hint only -- the device polls regardless.
     # Without an explicit update_interval an entity has poll_interval 0, which
-    # means "every hub tick": this 40-byte read was going out every 60 s.
+    # means "every hub tick": this 36-byte read was going out every 60 s.
     update_interval: 24h
 
   # Most-recent SYSTEM fault (slot 1 of the 90-byte ecnsysEventType~Error
@@ -1054,14 +1072,13 @@ climate:
   #   0x2301 BedienBetriebsart:  0 Sommerbetrieb / 1 DAUERND_REDUZIERT /
   #                              2 DAUERND_NORMAL / 3 NORMAL_REDUZIERT /
   #                              4 NORMAL_ABSCHALT / 5 DAUERND_ABSCHALT
-  # OBSERVED PAIRS, 2026-07-09 logs (select raw + climate read logged in the
-  # same poll burst), hardware-confirmed:
-  #   0x01 -> 0x00      0x02 -> 0x03      0x04 -> 0x02
-  # CARRIED OVER from the 2026-07-03 log (not re-verified against a log in
-  # hand; treat as one step weaker):
-  #   0x00 -> 0x05      0x03 -> 0x01
-  # Re-confirm the last two by selecting Abschaltbetrieb and Reduziert once and
-  # reading the `vitohome.climate` DEBUG line.
+  # ALL FIVE PAIRS HARDWARE-CONFIRMED (2026-07-10 P300 log; the select's raw
+  # read and the climate's state read land in the same poll burst):
+  #   0x00 -> 0x05   Abschalt          -> DAUERND_ABSCHALT
+  #   0x01 -> 0x00   Nur WW            -> Sommerbetrieb
+  #   0x02 -> 0x03   Heizen + WW       -> NORMAL_REDUZIERT
+  #   0x03 -> 0x01   Dauernd Reduziert -> DAUERND_REDUZIERT
+  #   0x04 -> 0x02   Dauernd Normal    -> DAUERND_NORMAL
   #
   # GAP: 0x2301 also has the value 0x04 (NORMAL_ABSCHALT), which no preset
   # claims. If the panel or a schedule ever selects it, no preset matches and
