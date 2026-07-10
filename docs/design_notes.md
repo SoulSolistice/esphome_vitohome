@@ -419,6 +419,21 @@ while the boiler burns", and would light a second burner stage this modulating
 unit does not have. MSB-first puts `GWG_Flamme1` at `0x20`, which tracks the burn
 exactly.
 
+**Independently confirmed on a second register** (2026-07-10 log). `0xA152` is a
+2-byte relay bitfield with sixteen documented `BitPosition`s. Read little-endian
+(`>>> F7:A1:52:02` → `<<< 04:00` → `4`), the four observed states decode
+MSB-first into a coherent picture and LSB-first into nonsense:
+
+| raw | MSB-first | corroborated by |
+|---|---|---|
+| `0x0004` | UV_Warmwasser | `Umschaltventil` = "Richtung Warmwasser", HKP off |
+| `0x0024` | + Interne_Pumpe | `0x7660[1]` = 10 %, `0x7663[1]` = 0 % (pump overrun) |
+| `0x20B0` | Zubringer + Interne + UV_Heizen + HKP1 | `Umschaltventil` = "Richtung Heizen", burner off |
+| `0x20B2` | + Brenner | `0xA305[1]` = `0x01`, modulation 11–15 % |
+
+Under LSB-first, `0xB2` raises `Sammelstoerung` and leaves `Brenner` clear while
+the boiler demonstrably fires.
+
 Consequence: `HK_Frostgefahr_aktivA1M1` (BitPosition 135, i.e. byte 16 of the
 22-byte block at `0x2500`) is mask `0x01`, not `0x80`. Reaching it also required
 `binary_sensor` to accept a **block read at the base plus `byte_offset`** — the
@@ -473,6 +488,35 @@ simulation with realistic non-monotonic jitter drops 5 of 12 ticks under the old
 formula and 0 of 12 under the new one (`tests/native/proof_scheduler.cpp`, which
 also pins the drift-free progression, the long-stall re-anchor, and the
 `millis()` wrap).
+
+---
+
+### 8b. Two ESPHome traps the template `water_heater` sets
+
+Both source-confirmed against ESPHome tag `2026.6.5`, both hardware-confirmed in
+the 2026-07-10 log.
+
+**`visual:` is required, not decoration.** `WaterHeaterTraits` initialises
+`min_temperature_` and `max_temperature_` to `0.0f`, `TemplateWaterHeater::traits()`
+never sets them, and `WaterHeaterCall::validate_()` clamps the requested target
+into `[min, max]`. Omit the `visual:` block and *every* set from the Home
+Assistant card arrives as `0.00 °C`. The vitohome `number` entity's own
+`min_value` caught it — `[W][number]: 'Bedien WW Solltemperatur': 0.000000 < min
+10.000000` — so nothing reached the boiler, but the slider was inert.
+
+**`optimistic: true` is required too, for a different reason.**
+`TemplateWaterHeater::control()` stores the commanded target only
+`if (this->optimistic_)`, and `set_trigger_` is a `Trigger<>` with no arguments —
+the call object never reaches the automation. With `optimistic: false` the
+`set_action` reads the *previous* target and the usual `!= number.state` guard
+suppresses the write entirely. The two bugs compound: fixing only the second one
+turns a silent no-op into a rejected `number.set(0)`.
+
+**`isnan()` is the wrong "no state yet" test.** `esphome::number::Number` and
+`esphome::sensor::Sensor` both declare a bare `float state;` with **no
+initialiser**. Before the first successful poll it reads `0.0`, not `NAN`. A
+`current_temperature`/`target_temperature` lambda guarded with `std::isnan()`
+therefore publishes a spurious `0.00 °C` at boot. Use `has_state()`.
 
 ---
 

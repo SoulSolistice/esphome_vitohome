@@ -217,10 +217,13 @@ sensor:
 
   # CAPTURE - raw DHW tank sensor. Vitosoft: ADC_IstTemperaturwert_STS1~0x0804,
   # BlockLength 2, Div10, Read. vcontrold reads this address as getTempWWist
-  # ("Warmwassertemperatur in Grad C"). Question it answers: is there a tank
-  # sensor at all? A rail/fault reading here, next to the frozen 20.0 degC at
-  # 0x0812, settles it. Promote to a normal sensor (drop entity_category) on a
-  # tank-equipped unit.
+  # ("Warmwassertemperatur in Grad C").
+  # ANSWERED, 2026-07-10 log: 0x0804 reads a constant
+  # 20.000 degC, identical to the low-pass 0x0812, across a full burner cycle in
+  # which the boiler went 25 -> 35 degC. A real sensor would have moved. Read
+  # together with "HK1 WW-Freigabe" (which shows DHW IS released) and a storage
+  # pump that never runs, this is a unit with no cylinder and no tank sensor.
+  # Delete both, or promote them on a tank-equipped unit.
   - platform: vitohome
     name: "Temperatur Warmwasser Ist (Rohsensor)"
     id: ADC_IstTemperaturwert_STS1
@@ -263,9 +266,17 @@ sensor:
   # GWG_Verriegelung (BitPosition 41); a 1-byte VSorp_Anlagendruck sits at the
   # same address for a different family. So the percent reading is vcontrold's
   # claim, not Viessmann's.
-  # Question it answers: is byte 0 really a percentage, and does it track
-  # 0xA305 byte 0 x 0.5? If yes, one of the two can go; if it reads something
-  # unrelated, delete this and trust the catalog.
+  # ANSWERED, 2026-07-10 log: it is NOT the burner modulation. Read straight
+  # off the wire in the same poll burst:
+  #   modulation (0xA305[0] x 0.5) =  0 %  ->  0x55D3 = 0x00 (0)
+  #   modulation                   = 11 %  ->  0x55D3 = 0x10 (16)
+  #   modulation                   = 15 %  ->  0x55D3 = 0x14 (20)
+  #   modulation                   =  0 %  ->  0x55D3 = 0x1B (27)   <-- burner OFF
+  # The last sample kills it: `>>> F7:A3:05:01` -> `<<< 00` (burner off,
+  # Status Brenner OFF) while `>>> F7:55:D3:01` -> `<<< 1B`. vcontrold's PR1
+  # override reads a real byte, but it is not modulation on this unit -- the
+  # ramp during post-purge suggests a fan/blower quantity (model-derived).
+  # Left enabled as an open question; delete if you do not care.
   - platform: vitohome
     name: "Brennerstatus (0x55D3, vcontrold)"
     id: Brennerstatus_55D3
@@ -284,8 +295,11 @@ sensor:
   # getLeistungIst ("Anlagen Ist-Leistung") reads the same address with len 2
   # and unit PR3. THE TWO DISAGREE on the width, so this entity follows Vitosoft
   # (1 byte, /2) and is a capture, not a settled reading.
-  # Question it answers: does this track 0xA305 (nvoBoilerState_BLR_value, also
-  # Div2), or is it a distinct quantity? Compare during a modulating burn.
+  # ANSWERED, 2026-07-10 log: correlated with 0xA305 but NOT identical --
+  # 0/0, 10/11, 15/15, 0/0 (Brennerleistung / Brenner Modulation). The 10-vs-11
+  # sample (raw 20 vs 22) is a real difference, so both are worth keeping.
+  # Vitosoft's 1-byte /2 reading yields sensible percentages; vcontrold's 2-byte
+  # PR3 does not fit these values. Following Vitosoft.
   - platform: vitohome
     name: "Brennerleistung"
     id: nvoPWRState_CFDM_value
@@ -320,10 +334,12 @@ sensor:
     # i.e. +13 burner-on seconds between the two 2026-07-09 logs, matching the
     # published values exactly.
 
-  # CAPTURE - the counter vcontrold reads (getBrennerStunden1, 0x08A7, len 4,
-  # unit CS; setBrennerStunden1 writes it). Question it answers: how do the two
-  # counters differ on this unit (offset? reset history?). Drop one once the
-  # comparison is in.
+  # ANSWERED, 2026-07-10 log: 0x08A7 and 0x0886 read the SAME value
+  # (58944.688 h, same poll burst). The service counter has never been reset on
+  # this unit, so it carries no information 0x0886 does not. Keep it only if you
+  # want to detect a future reset; otherwise delete.
+  # (vcontrold reads it as getBrennerStunden1, len 4, unit CS, and can write it
+  # back via setBrennerStunden1.)
   - platform: vitohome
     name: "Brenner Betriebsstunden (Bedienung)"
     id: BetriebsstundenBrennerBedienungGWG
@@ -364,12 +380,14 @@ sensor:
 
   # Vitosoft calls 0x0A3C `InternePumpeDrehzahl_res` (BlockLength 1,
   # NoConversion, Read); "Pumpenleistung" is this file's display name.
-  # Hardware: in both 2026-07-09 logs this reads IDENTICALLY to both
-  # "Interne Pumpe Drehzahl" (0x7660 byte 1) and "Heizkreispumpe Drehzahl"
-  # (0x7663 byte 1) -- 0.000 in every idle sample, 22.000/24.000 in every burn
-  # sample. All three agreeing does NOT prove 0x0A3C mirrors 0x7660: on this
-  # single-circuit unit both pumps may simply run at the same PWM. To separate
-  # them you need a state where the two pumps differ. Diagnostic until then.
+  # DUPLICATE, hardware-confirmed. The 2026-07-09 logs had all three pump
+  # readings equal, which proved nothing; the 2026-07-10 log supplies the
+  # discriminating sample. At 06:04:43, during pump overrun after a burn:
+  #   0x0A3C -> `<<< 0A`     = 10
+  #   0x7660 -> `<<< 01:0A`  byte 1 = 10   (Interne Pumpe)
+  #   0x7663 -> `<<< 00:00`  byte 1 =  0   (Heizkreispumpe, and 0xA152 bit 10 clear)
+  # So 0x0A3C tracks 0x7660[1] and is a genuine duplicate of "Interne Pumpe
+  # Drehzahl"; the heating-circuit pump is a different quantity. Drop one.
   - platform: vitohome
     name: "Pumpenleistung"
     id: Pumpenleistung
@@ -423,11 +441,15 @@ sensor:
     # (0.000 idle, 22.000/24.000 during a burn), so the `x >= 255 -> NAN`
     # filter that used to sit here is gone too.
 
-  # CAPTURE - HK_RaumsolltemperaturaktuellA1M1~0x2500. Vitosoft: BlockLength 22,
+  # HK_RaumsolltemperaturaktuellA1M1~0x2500. Vitosoft: BlockLength 22,
   # BytePosition 12, ByteLength 2, Div10, Read -- i.e. bytes 12..13 of the block.
-  # Question it answers: is this the room setpoint the climate card should show
-  # as `current_temperature`? (The climate entity has no current-temperature
-  # source today and publishes 0.00 degC.)
+  # ANSWERED, 2026-07-10 log: this is the ACTIVE ROOM SETPOINT, not the room
+  # temperature. It read 19.0 degC while HK1 Aktuelle Betriebsart was
+  # "Abschaltbetrieb" (= Raumsoll Reduziert) and 34.0 degC under "Normalbetrieb"
+  # (= the climate target). Do NOT wire it to the climate entity's
+  # `current_temperature`: it would display the setpoint as the measurement.
+  # Keep it as the honest answer to "what is the controller actually aiming at
+  # right now", which neither 0x2306 nor 0x2307 tells you on its own.
   - platform: vitohome
     name: "Raumsoll aktuell HK1"
     id: HK_RaumsolltemperaturaktuellA1M1
@@ -458,11 +480,18 @@ sensor:
   # name.) Question it answers: read as a raw 16-bit value during a burn, with
   # the HK pump running and the storage pump idle, it pins the numbering
   # against four simultaneously-known relay states -- the last piece of evidence
-  # needed to be certain about the MSB-first reading that the flame bit implies
-  # and that scripts/gen_catalog.py now assumes. Then delete this entity and
-  # emit the individual bits as binary_sensors.
-  # NOTE the value is decoded little-endian, so byte 0 is the LOW 8 bits of the
-  # published number and byte 1 the HIGH 8 bits.
+  # ANSWERED, 2026-07-10 log. Decoded little-endian (byte 0 = low 8 bits;
+  # proven on the wire: `>>> F7:A1:52:02` -> `<<< 04:00` -> 4.000). Four states,
+  # every bit consistent with independently-read registers:
+  #   0x0004  b0=0x04            UV_Warmwasser          idle, Umschaltventil="Richtung Warmwasser", HKP off
+  #   0x0024  b0=0x24            + Interne_Pumpe        pump overrun after a burn (0x7660[1]=10, 0x7663[1]=0)
+  #   0x20B0  b0=0xB0 b1=0x20    Zubringer+Interne+UV_Heizen+HKP1   heating, burner OFF
+  #   0x20B2  b0=0xB2 b1=0x20    + Brenner              burner ON (0xA305[1]=0x01, modulation 11/15 %)
+  # Under LSB-first, 0xB2 would raise Sammelstoerung and leave Brenner clear
+  # while the boiler demonstrably fires -- falsified. MSB-first is now confirmed
+  # on a SECOND, independent register. Sammelstoerung never set.
+  # This entity has done its job; replace it with individual binary_sensors
+  # (length 2, byte_offset 0/1, masks from the table above) or delete it.
   - platform: vitohome
     name: "Relaisstatus (roh)"
     id: nvoRelayState_raw
@@ -512,12 +541,13 @@ binary_sensor:
     icon: "mdi:fire"
     update_interval: 60s
 
-  # CAPTURE - GWG_Brenner_2 @ 0x55DD, BitPosition 5 -> 0x80 >> 5 = 0x04, the
-  # mask this file used to hand to GWG_Flamme1. Question it answers: it is the
-  # LSB-first hypothesis made falsifiable. Under MSB-first (what the flame bit
-  # proves) this stays OFF on a single-stage modulating boiler. If it ever goes
-  # ON while the flame bit is OFF, the numbering is the other way round and
-  # scripts/gen_catalog.py is wrong.
+  # GWG_Brenner_2 @ 0x55DD, BitPosition 5 -> 0x80 >> 5 = 0x04, the mask this
+  # file used to hand to GWG_Flamme1. It is the LSB-first hypothesis made
+  # falsifiable. ANSWERED, 2026-07-10 log: OFF in all 8 samples, including both
+  # in which the burner fired (raw 0x21). Meanwhile "Status Brenner Flamme"
+  # (mask 0x20) and "Status Brenner" (0xA305[1], no bit convention at all)
+  # agreed 8/8. MSB-first stands. Kept as a permanent tripwire: if this ever
+  # goes ON while the flame bit is OFF, scripts/gen_catalog.py is wrong.
   - platform: vitohome
     name: "Brennerstufe 2"
     id: GWG_Brenner_2
@@ -536,7 +566,11 @@ binary_sensor:
   # single-byte read at 0x2510 is unaligned and NAKs on P300. It also read a
   # constant 0xFF on KW (i.e. ON at 14 degC outdoor, in July), which is what
   # the earlier `address: 0x2510, bit_mask: 0x80` entity was reporting.
-  # Until this reads a plausible value, treat it as a CAPTURE.
+  # CONFIRMED, 2026-07-10 log: `>>> F7:25:00:16` ->
+  # `<<< 02:00:00:00:00:00:00:00:01:00:00:01:BE:00:00:00:00:00:00:00:BE:00`
+  # -- byte 16 = 0x00 -> OFF. (The same telegram also yields byte 1 = 0x00
+  # "Abschaltbetrieb", byte 8 = 0x01 "Freigabe nach WW-Schaltzeiten", and bytes
+  # 12..13 = 0x00BE = 190 -> 19.0 degC, all matching their entities exactly.)
   - platform: vitohome
     name: "Frostgefahr HK1"
     id: HK_Frostgefahr_aktivA1M1
@@ -660,11 +694,11 @@ text_sensor:
       0x02: "Normalbetrieb"
       0x03: "Normalbetrieb"
 
-  # CAPTURE - HK_WW_Freigabe_vonA1M1: byte 8 of the 0x2500 block. This is the
-  # DHW RELEASE. Question it answers: with Betriebsart on "Heizen und
-  # Warmwasser" and the tank cold, why does the storage pump never run --
-  # because DHW is not released (schedule / coding), or because there is no
-  # tank? Combine with "Temperatur Warmwasser Ist (Rohsensor)" above.
+  # HK_WW_Freigabe_vonA1M1: byte 8 of the 0x2500 block -- the DHW RELEASE.
+  # ANSWERED, 2026-07-10 log: it reads "Freigabe nach WW-Schaltzeiten" and
+  # "Freigabe durch Party/Externe Umschaltung". DHW is RELEASED. The storage
+  # pump still never runs and 0x0804 never moves, so the missing piece is the
+  # cylinder, not a schedule or a coding address. Keep as a diagnostic.
   - platform: vitohome
     type: enum
     name: "HK1 WW-Freigabe"
@@ -1144,14 +1178,30 @@ water_heater:
     name: "Warmwasser"
     id: dhw
     optimistic: true
+    # `visual:` IS LOAD-BEARING. WaterHeaterTraits defaults min/max temperature
+    # to 0.0f, TemplateWaterHeater::traits() never sets them, and
+    # WaterHeaterCall::validate_() clamps every requested target into
+    # [min, max]. Omit this block and EVERY set from the Home Assistant card
+    # arrives as 0.00 degC -- hardware-confirmed 2026-07-10:
+    #   [W][number]: 'Bedien WW Solltemperatur': 0.000000 < min 10.000000
+    # (The number's own min_value caught it, so nothing reached the boiler.)
+    # Mirror the borders of the underlying datapoint 0x6300 (Vitosoft: 10..95).
+    visual:
+      min_temperature: 10
+      max_temperature: 95
+      target_temperature_step: 1
+    # `has_state()`, NOT `isnan()`. esphome::number::Number declares a bare
+    # `float state;` with no initialiser -- it reads 0.0, not NAN, until the
+    # first successful poll. An isnan() guard therefore lets a spurious
+    # 0.00 degC target through at boot (hardware-confirmed: the first publish
+    # at 06:00:44 showed `Target Temperature: 0.00°C`, three seconds before the
+    # first read of 0x6300 returned 48). Same for esphome::sensor::Sensor.
     current_temperature: |-
-      const float t = id(TiefpassTemperaturwertWW1).state;
-      if (std::isnan(t)) return {};
-      return t;
+      if (!id(TiefpassTemperaturwertWW1).has_state()) return {};
+      return id(TiefpassTemperaturwertWW1).state;
     target_temperature: |-
-      const float t = id(Bedien_WW_Solltemperatur).state;
-      if (std::isnan(t)) return {};
-      return t;
+      if (!id(Bedien_WW_Solltemperatur).has_state()) return {};
+      return id(Bedien_WW_Solltemperatur).state;
     # Read-only mode, derived from the Betriebsart command register 0x2323 via
     # the internal select. Its options are declared in raw order 0x00..0x04, so
     # active_index() == the wire value. 1 = Nur Warmwasser, 2 = Heizen und
@@ -1161,10 +1211,16 @@ water_heater:
       if (!idx.has_value()) return {};
       if (*idx == 1 || *idx == 2) return water_heater::WATER_HEATER_MODE_ECO;
       return water_heater::WATER_HEATER_MODE_OFF;
+    # Belt and braces: `visual:` above makes validate_() clamp into a sane
+    # range, but a config that forgets it would otherwise queue a 0 degC write
+    # on any device whose number allows 0. Range-check here too.
     set_action:
       - if:
           condition:
-            lambda: "return !std::isnan(id(dhw).get_target_temperature()) && id(dhw).get_target_temperature() != id(Bedien_WW_Solltemperatur).state;"
+            lambda: |-
+              const float t = id(dhw).get_target_temperature();
+              if (std::isnan(t) || t < 10.0f || t > 95.0f) return false;
+              return !id(Bedien_WW_Solltemperatur).has_state() || t != id(Bedien_WW_Solltemperatur).state;
           then:
             - number.set:
                 id: Bedien_WW_Solltemperatur

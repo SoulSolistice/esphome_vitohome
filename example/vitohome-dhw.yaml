@@ -104,23 +104,35 @@ water_heater:
     # With `optimistic: false` there is no way to learn what the user asked
     # for, and the card's slider is a no-op.
     optimistic: true
-    # Feed the card from the device's own values; the number's read-back
-    # keeps target_temperature honest after the controller clamps a write
-    # (it overwrites the optimistic value on the next loop()).
-    # The lambdas return optional<float>: `return {};` means "no update", which
-    # keeps a pre-first-poll NaN from being published as 0.00 degC.
+    # `visual:` is REQUIRED, not decoration. WaterHeaterTraits defaults min/max
+    # temperature to 0.0f and TemplateWaterHeater::traits() never sets them, so
+    # WaterHeaterCall::validate_() clamps every requested target into [0, 0].
+    # Without this block the card's slider delivers 0.00 degC, always.
+    # Mirror the borders of the datapoint behind `dhw_setpoint` (0x6300).
+    visual:
+      min_temperature: 10
+      max_temperature: 95
+      target_temperature_step: 1
+    # Feed the card from the device's own values; the number's read-back keeps
+    # target_temperature honest after the controller clamps a write (it
+    # overwrites the optimistic value on the next loop()).
+    # The lambdas return optional<float>, so `return {};` means "no update".
+    # Guard with has_state(), NOT isnan(): esphome::number::Number declares a
+    # bare `float state;` with no initialiser, so it reads 0.0 -- not NAN --
+    # until the first successful poll.
     current_temperature: |-
-      const float t = id(dhw_temp).state;
-      if (std::isnan(t)) return {};
-      return t;
+      if (!id(dhw_temp).has_state()) return {};
+      return id(dhw_temp).state;
     target_temperature: |-
-      const float t = id(dhw_setpoint).state;
-      if (std::isnan(t)) return {};
-      return t;
+      if (!id(dhw_setpoint).has_state()) return {};
+      return id(dhw_setpoint).state;
     set_action:
       - if:
           condition:
-            lambda: "return !std::isnan(id(dhw).get_target_temperature()) && id(dhw).get_target_temperature() != id(dhw_setpoint).state;"
+            lambda: |-
+              const float t = id(dhw).get_target_temperature();
+              if (std::isnan(t) || t < 10.0f || t > 95.0f) return false;
+              return !id(dhw_setpoint).has_state() || t != id(dhw_setpoint).state;
           then:
             - number.set:
                 id: dhw_setpoint
