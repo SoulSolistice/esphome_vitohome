@@ -60,11 +60,17 @@ reads up to four files from it:
 | `--device <token>` | Generate for a named datapoint-type token, e.g. `VScotHO1_72` |
 | `--profile {minimal,standard,full}` | How many datapoints to emit (default: `standard`) |
 | `--include <regex>` / `--exclude <regex>` | Keep / drop events whose name matches |
-| `--culture {de,en,fr,it,ru,nl}` | Language for names and labels (default: `de`) |
+| `--[no-]reachable-only` | Emit only datapoints VitoWiFi can read over Optolink; drop `GFA_READ`/`RPC`/`PROZESS`/`KBUS`/`OT` (default: on). `--no-reachable-only` adds them back — they need custom decode |
+| `--order {address,group}` | Entity order: `address` (default) or `group` (by the Vitosoft navigation tree, with a section comment per group) |
+| `--culture {de,en,fr,it,ru,nl,pl,da,hu,es,tr,lt,cs}` | Language for names/labels (default: `de`). Currently a near-no-op — see the label-source note above |
+| `--[no-]device-id` | Emit a `device_id` diagnostic `text_sensor` and suppress the raw `0xF8`–`0xFB` reads (default: on) |
 | `--[no-]error-history` | Emit `error_history` entities for the `FehlerHis*` slots (default: on) |
 | `--[no-]error-codes` | Attach a fault-code map to those entities (default: on) |
 | `--error-code-set {openv,vd200,vd300,union}` | Which fault-code map to attach (default: `vd300`) |
-| `--out <file>` | Output file (default: stdout) |
+| `--export-all` | Bulk mode: one catalog per token into `--out` (a directory) plus an `index.csv` manifest — see below |
+| `--export-filter <regex>` | With `--export-all`: only export tokens whose ID matches (e.g. `^V`) |
+| `--export-suffix <ext>` | With `--export-all`: catalog file extension (default: `.yaml`) |
+| `--out <file>` | Output file (default: stdout); with `--export-all`, the output **directory** |
 
 The fault-code maps live in [`fault_codes.py`](fault_codes.py) (one module, the
 single source of truth): `vd300` is the Vitodens 300-W (B3HA) set and the default
@@ -98,6 +104,30 @@ Or name the datapoint-type token directly:
 python3 scripts/gen_catalog.py --data <export-dir> --device VScotHO1_72 \
     --profile standard --out my-heater.vitohome.yaml
 ```
+
+### Bulk export (`--export-all`)
+
+`--export-all` runs the generator for **every** device token with the flags you
+pass, writing one catalog per unit into `--out` (a directory) and an `index.csv`
+manifest alongside. A unit that produces no Optolink-reachable datapoint is
+recorded in the manifest and skipped (no file); one bad unit never aborts the
+batch.
+
+```
+python3 scripts/gen_catalog.py --data <export-dir> \
+    --export-all --no-error-codes --out catalogs/
+```
+
+`index.csv` maps every token to its file and identification signature (`ident`,
+`hw_index`, software-index and F0 ranges), the linked-event and emitted-entity
+counts, and a `status` (`ok` / `skipped: …` / `error: …`). Use it to find the
+file for a given unit by its `ident` or `token`.
+
+Because fault-code semantics are device-variant-specific, `--export-all`
+attaches the *same* default map (`vd300`) to every unit — pass `--no-error-codes`
+for a neutral bulk export, or regenerate an individual unit with the right
+`--error-code-set`. The committed result of this command lives in
+[`example/catalogs/`](../example/catalogs/).
 
 ### Using the output
 
