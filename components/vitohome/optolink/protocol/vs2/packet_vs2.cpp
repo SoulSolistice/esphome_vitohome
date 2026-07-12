@@ -14,14 +14,15 @@ namespace esphome::vitohome::optolink {
 PacketVS2::PacketVS2() : _buffer{} { reset(); }
 
 PacketVS2::operator bool() const {
-  if (_buffer[0] != 0) return true;
+  if (_buffer[0] != 0)
+    return true;
   return false;
 }
 
-uint8_t& PacketVS2::operator[](std::size_t index) { return _buffer[index]; }
+uint8_t &PacketVS2::operator[](std::size_t index) { return _buffer[index]; }
 
 bool PacketVS2::createPacket(PacketType pt, FunctionCode fc, uint8_t id, uint16_t addr, uint8_t len,
-                             const uint8_t* data) {
+                             const uint8_t *data) {
   reset();
 
   // check arguments
@@ -97,8 +98,9 @@ uint16_t PacketVS2::address() const {
 
 uint8_t PacketVS2::dataLength() const { return _buffer[5]; }
 
-const uint8_t* PacketVS2::data() const {
-  if (functionCode() == FunctionCode::WRITE) return nullptr;
+const uint8_t *PacketVS2::data() const {
+  if (functionCode() == FunctionCode::WRITE)
+    return nullptr;
   return &_buffer[6];
 }
 

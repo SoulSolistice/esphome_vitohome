@@ -6,7 +6,7 @@
 
 namespace esphome::vitohome {
 
-static const char* const TAG = "vitohome.text";
+static const char *const TAG = "vitohome.text";
 
 // A per-day program is 8 bytes; the canonical string is at most
 // "HH:MM-HH:MM" x4 + 3 spaces = 47 chars, +NUL.
@@ -18,7 +18,7 @@ void VitoText::dump_config() {
                 this->datapoint_.length(), this->read_back_ ? "yes" : "no");
 }
 
-void VitoText::control(const std::string& value) {
+void VitoText::control(const std::string &value) {
   uint8_t buf[SCHALTZEITEN_LEN];
   if (!encode_schaltzeiten_day(value.c_str(), buf)) {
     // Unparseable program (bad time, too many pairs, ...). Refuse to transmit
@@ -39,7 +39,7 @@ void VitoText::control(const std::string& value) {
   ESP_LOGD(TAG, "%s: queued write '%s'", this->datapoint_.name(), value.c_str());
 }
 
-void VitoText::handle_response(const ResponseView& response) {
+void VitoText::handle_response(const ResponseView &response) {
   char out[64];
   if (decode_schaltzeiten_day(response.data, response.data_length, out, sizeof(out)) < 0) {
     ESP_LOGW(TAG, "%s: response too short (have %u bytes, need %u)", this->datapoint_.name(), response.data_length,
@@ -50,7 +50,7 @@ void VitoText::handle_response(const ResponseView& response) {
   this->publish_state(std::string(out));
 }
 
-void VitoText::handle_write_response(const ResponseView& /*response*/) {
+void VitoText::handle_write_response(const ResponseView & /*response*/) {
   if (!this->read_back_) {
     // No read-back requested: publish optimistically on the device ACK. With
     // read_back (default) the hub immediately re-reads this address and

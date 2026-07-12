@@ -14,13 +14,13 @@ namespace esphome::vitohome {
 // header is the single place the VITOHOME_PROTOCOL_* flags are interpreted.
 #if defined(VITOHOME_PROTOCOL_KW)
 using SelectedProtocol = optolink::KW;
-inline constexpr const char* PROTOCOL_NAME = "KW (VS1)";
+inline constexpr const char *PROTOCOL_NAME = "KW (VS1)";
 #elif defined(VITOHOME_PROTOCOL_GWG)
 using SelectedProtocol = optolink::GWG;
-inline constexpr const char* PROTOCOL_NAME = "GWG";
+inline constexpr const char *PROTOCOL_NAME = "GWG";
 #else
 using SelectedProtocol = optolink::P300;
-inline constexpr const char* PROTOCOL_NAME = "P300 (VS2)";
+inline constexpr const char *PROTOCOL_NAME = "P300 (VS2)";
 #endif
 
 }  // namespace esphome::vitohome

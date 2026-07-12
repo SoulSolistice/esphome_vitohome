@@ -14,13 +14,14 @@ namespace esphome::vitohome::optolink {
 PacketGWG::PacketGWG() : _buffer{} { reset(); }
 
 PacketGWG::operator bool() const {
-  if (_buffer[3] != 0) return true;
+  if (_buffer[3] != 0)
+    return true;
   return false;
 }
 
-uint8_t& PacketGWG::operator[](std::size_t index) { return _buffer[index]; }
+uint8_t &PacketGWG::operator[](std::size_t index) { return _buffer[index]; }
 
-bool PacketGWG::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, const uint8_t* data) {
+bool PacketGWG::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, const uint8_t *data) {
   reset();
 
   // check arguments
@@ -66,9 +67,12 @@ bool PacketGWG::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, con
 }
 
 uint8_t PacketGWG::length() const {
-  if (_buffer[3] == 0) return 0;
-  if (_buffer[1] == PacketGWGType.READ) return 5;
-  if (_buffer[1] == PacketGWGType.WRITE) return _buffer[3] + 5;
+  if (_buffer[3] == 0)
+    return 0;
+  if (_buffer[1] == PacketGWGType.READ)
+    return 5;
+  if (_buffer[1] == PacketGWGType.WRITE)
+    return _buffer[3] + 5;
   return 0;  // should not be possible
 }
 
@@ -78,7 +82,7 @@ uint16_t PacketGWG::address() const { return _buffer[2]; }
 
 uint8_t PacketGWG::dataLength() const { return _buffer[3]; }
 
-const uint8_t* PacketGWG::data() const { return &_buffer[4]; }
+const uint8_t *PacketGWG::data() const { return &_buffer[4]; }
 
 void PacketGWG::reset() { _buffer[3] = 0x00; }
 

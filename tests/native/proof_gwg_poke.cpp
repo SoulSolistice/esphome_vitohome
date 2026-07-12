@@ -15,7 +15,7 @@ int main() {
   FakeOptolink uart;
   esphome::vitohome::optolink::OptolinkEngine<esphome::vitohome::SelectedProtocol> adapter(
       &uart);  // GWGEngine under -DVITOHOME_PROTOCOL_GWG
-  adapter.onResponse([](const uint8_t*, uint8_t, uint16_t) {});
+  adapter.onResponse([](const uint8_t *, uint8_t, uint16_t) {});
   adapter.onError([](optolink::OptolinkResult, uint16_t) {});
   adapter.begin();
 
@@ -29,7 +29,8 @@ int main() {
 
   bool eot = false;
   for (uint8_t b : uart.written()) {
-    if (b == 0x04) eot = true;
+    if (b == 0x04)
+      eot = true;
   }
   std::printf("protocol=%s eot_poke_emitted=%d bytes_written=%zu\n", esphome::vitohome::PROTOCOL_NAME, eot ? 1 : 0,
               uart.written().size());

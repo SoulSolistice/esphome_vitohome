@@ -30,7 +30,7 @@ class VS1Engine {
  public:
   // Byte-mover API (see vs2.h). KW/VS1 carries no address in the response, so
   // the engine echoes the request address back to the caller unchanged.
-  typedef std::function<void(const uint8_t* data, uint8_t length, uint16_t address)> OnResponseCallback;
+  typedef std::function<void(const uint8_t *data, uint8_t length, uint16_t address)> OnResponseCallback;
   typedef std::function<void(OptolinkResult error, uint16_t address)> OnErrorCallback;
 
   // Named timeouts (ms). Values byte-identical to the previous inline
@@ -43,8 +43,8 @@ class VS1Engine {
   // safe upper bound (datapoint length is a uint8_t).
   static constexpr std::size_t kResponseBufferSize = 256;
 
-  template <class C>
-  explicit VS1Engine(C* interface)
+  template<class C>
+  explicit VS1Engine(C *interface)
       : _state(State::UNDEFINED),
         _currentMillis(optolink_millis()),
         _lastMillis(_currentMillis),
@@ -66,14 +66,14 @@ class VS1Engine {
     }
   }
   ~VS1Engine();
-  VS1Engine(const VS1Engine&) = delete;
-  VS1Engine& operator=(const VS1Engine&) = delete;
+  VS1Engine(const VS1Engine &) = delete;
+  VS1Engine &operator=(const VS1Engine &) = delete;
 
   void onResponse(OnResponseCallback callback);
   void onError(OnErrorCallback callback);
 
   bool read(uint16_t address, uint8_t length);
-  bool write(uint16_t address, const uint8_t* data, uint8_t length);
+  bool write(uint16_t address, const uint8_t *data, uint8_t length);
 
   bool begin();
   void loop();
@@ -87,7 +87,7 @@ class VS1Engine {
   uint32_t _lastMillis;
   uint32_t _requestTime;
   uint8_t _bytesTransferred;
-  internals::SerialInterface* _interface;
+  internals::SerialInterface *_interface;
   uint16_t _currentAddress;
   uint8_t _currentLength;
   bool _busy;

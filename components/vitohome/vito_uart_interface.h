@@ -58,7 +58,7 @@ namespace esphome::vitohome {
 // no timestamps, no per-byte branch. frame_tick() degrades to an empty inline.
 class ESPHomeUARTInterface {
  public:
-  explicit ESPHomeUARTInterface(uart::UARTDevice* dev) : dev_(dev) {}
+  explicit ESPHomeUARTInterface(uart::UARTDevice *dev) : dev_(dev) {}
 
   bool begin() {
     // ESPHome configures and opens the UART from YAML; nothing for us to do
@@ -70,13 +70,15 @@ class ESPHomeUARTInterface {
     // ESPHome owns the UART lifecycle.
   }
 
-  std::size_t write(const uint8_t* data, uint8_t length) {
-    if (dev_ == nullptr || data == nullptr || length == 0) return 0;
+  std::size_t write(const uint8_t *data, uint8_t length) {
+    if (dev_ == nullptr || data == nullptr || length == 0)
+      return 0;
 #ifdef VITOHOME_LOG_FRAMES
     // Traffic in the other direction closes the pending frame, so the log reads
     // as a strict request/response alternation.
     this->flush_rx_();
-    for (uint8_t i = 0; i < length; i++) this->note_tx_(data[i]);
+    for (uint8_t i = 0; i < length; i++)
+      this->note_tx_(data[i]);
 #endif
     dev_->write_array(data, length);
     return length;  // ESPHome's write_array does not signal partial writes
@@ -97,7 +99,8 @@ class ESPHomeUARTInterface {
   }
 
   std::size_t available() {
-    if (dev_ == nullptr) return 0;
+    if (dev_ == nullptr)
+      return 0;
     int n = dev_->available();
     return n > 0 ? static_cast<std::size_t>(n) : 0;
   }
@@ -107,8 +110,10 @@ class ESPHomeUARTInterface {
   void frame_tick() {
 #ifdef VITOHOME_LOG_FRAMES
     const uint32_t now = millis();
-    if (this->tx_len_ != 0 && now - this->tx_last_ms_ >= FRAME_GAP_MS) this->flush_tx_();
-    if (this->rx_len_ != 0 && now - this->rx_last_ms_ >= FRAME_GAP_MS) this->flush_rx_();
+    if (this->tx_len_ != 0 && now - this->tx_last_ms_ >= FRAME_GAP_MS)
+      this->flush_tx_();
+    if (this->rx_len_ != 0 && now - this->rx_last_ms_ >= FRAME_GAP_MS)
+      this->flush_rx_();
 #endif
   }
 
@@ -121,7 +126,7 @@ class ESPHomeUARTInterface {
   }
 
  private:
-  uart::UARTDevice* dev_;
+  uart::UARTDevice *dev_;
 
 #ifdef VITOHOME_LOG_FRAMES
   // The longest single telegram this component moves is a 37-byte read (the
@@ -129,39 +134,44 @@ class ESPHomeUARTInterface {
   // headroom, and a full buffer flushes early rather than truncating.
   static constexpr uint8_t BUF_SIZE = 64;
   static constexpr uint32_t FRAME_GAP_MS = 30;
-  static constexpr const char* TAG_FRAMES = "vitohome.frames";
+  static constexpr const char *TAG_FRAMES = "vitohome.frames";
 
   void note_rx_(uint8_t b) {
-    if (this->rx_len_ >= BUF_SIZE) this->flush_rx_();
+    if (this->rx_len_ >= BUF_SIZE)
+      this->flush_rx_();
     this->rx_buf_[this->rx_len_++] = b;
     this->rx_last_ms_ = millis();
   }
 
   void flush_rx_() {
-    if (this->rx_len_ == 0) return;
+    if (this->rx_len_ == 0)
+      return;
     log_frame_("<<<", this->rx_buf_, this->rx_len_);
     this->rx_len_ = 0;
   }
 
   void note_tx_(uint8_t b) {
-    if (this->tx_len_ >= BUF_SIZE) this->flush_tx_();
+    if (this->tx_len_ >= BUF_SIZE)
+      this->flush_tx_();
     this->tx_buf_[this->tx_len_++] = b;
     this->tx_last_ms_ = millis();
   }
 
   void flush_tx_() {
-    if (this->tx_len_ == 0) return;
+    if (this->tx_len_ == 0)
+      return;
     log_frame_(">>>", this->tx_buf_, this->tx_len_);
     this->tx_len_ = 0;
   }
 
-  static void log_frame_(const char* dir, const uint8_t* data, uint8_t length) {
+  static void log_frame_(const char *dir, const uint8_t *data, uint8_t length) {
     // 3 chars per byte ("XX:") plus the NUL.
     char line[3 * BUF_SIZE + 1];
     std::size_t pos = 0;
     for (uint8_t i = 0; i < length && pos + 4 <= sizeof(line); i++) {
       int n = snprintf(&line[pos], sizeof(line) - pos, "%s%02X", i != 0 ? ":" : "", data[i]);
-      if (n <= 0) break;
+      if (n <= 0)
+        break;
       pos += static_cast<std::size_t>(n);
     }
     line[pos] = '\0';

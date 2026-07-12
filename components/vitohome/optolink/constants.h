@@ -39,7 +39,7 @@ constexpr struct {
 
 enum class OptolinkResult { CONTINUE, PACKET, TIMEOUT, LENGTH, NACK, CRC, ERROR };
 
-const char* errorToString(OptolinkResult error);
+const char *errorToString(OptolinkResult error);
 
 }  // namespace esphome::vitohome::optolink
 

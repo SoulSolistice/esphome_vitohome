@@ -20,7 +20,7 @@ class SerialInterface {
   virtual ~SerialInterface() {}
   virtual bool begin() = 0;
   virtual void end() = 0;
-  virtual std::size_t write(const uint8_t* data, uint8_t length) = 0;
+  virtual std::size_t write(const uint8_t *data, uint8_t length) = 0;
   virtual uint8_t read() = 0;
   virtual size_t available() = 0;
 };

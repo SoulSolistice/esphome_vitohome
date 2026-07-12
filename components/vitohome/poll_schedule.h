@@ -38,8 +38,10 @@ inline PollDecision poll_schedule_step(uint32_t now, uint32_t next_due_ms, uint3
   uint32_t next = (next_due_ms == 0 ? now : next_due_ms) + interval_ms;
   // Fell a whole period behind (long bus stall, or a first poll): re-anchor on
   // `now` rather than replay a backlog of missed slots.
-  if (static_cast<int32_t>(next - now) <= 0) next = now + interval_ms;
-  if (next == 0) next = 1;  // 0 is the "never polled" sentinel
+  if (static_cast<int32_t>(next - now) <= 0)
+    next = now + interval_ms;
+  if (next == 0)
+    next = 1;  // 0 is the "never polled" sentinel
   return {true, next};
 }
 

@@ -17,18 +17,17 @@ Why decode in-component rather than via the engine's converters:
 narrows the *final* value to the float32 ESPHome state requires.
 """
 
+from dataclasses import dataclass
 import logging
 import math
-from dataclasses import dataclass
 from pathlib import Path
 
 import esphome.codegen as cg
+from esphome.components import esp32, time as time_, uart
 import esphome.config_validation as cv
-import esphome.final_validate as fv
-from esphome.components import esp32, uart
-from esphome.components import time as time_
 from esphome.const import CONF_ID, CONF_INTERVAL, CONF_NAME, CONF_TIME_ID
 from esphome.core import CORE
+import esphome.final_validate as fv
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -22,13 +22,13 @@ using namespace esphome::vitohome;
 static int g_failures = 0;
 static int g_checks = 0;
 
-#define CHECK(cond)                                               \
-  do {                                                            \
-    ++g_checks;                                                   \
-    if (!(cond)) {                                                \
-      ++g_failures;                                               \
+#define CHECK(cond) \
+  do { \
+    ++g_checks; \
+    if (!(cond)) { \
+      ++g_failures; \
       std::printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
-    }                                                             \
+    } \
   } while (0)
 
 static bool close_to(double a, double b, double eps = 1e-6) { return std::fabs(a - b) <= eps; }
@@ -464,7 +464,7 @@ static void test_utf16() {
   // Latin-1: 'ü' U+00FC -> UTF-8 0xC3 0xBC.
   const uint8_t s4[] = {0x42, 0, 0xFC, 0};
   CHECK(decode_utf16(s4, sizeof(s4), sizeof(s4), buf, sizeof(buf)) == 3);
-  CHECK((unsigned char)buf[0] == 'B' && (unsigned char)buf[1] == 0xC3 && (unsigned char)buf[2] == 0xBC);
+  CHECK((unsigned char) buf[0] == 'B' && (unsigned char) buf[1] == 0xC3 && (unsigned char) buf[2] == 0xBC);
 
   // Odd byte length and short payload rejected.
   CHECK(decode_utf16(s1, sizeof(s1), 5, buf, sizeof(buf)) == -1);
@@ -487,7 +487,7 @@ static void test_schaltzeiten_interop() {
       {0xB0, 22, 0},   // 176 -> 22:00
       {0xBD, 23, 50},  // 189 -> 23:50  (max valid; minute step 50 = low-3-bits 5)
   };
-  for (auto& t : vec) {
+  for (auto &t : vec) {
     uint8_t h = 0, m = 0;
     timebyte_to_hhmm(t.b, &h, &m);
     CHECK(h == t.h && m == t.m);

@@ -1,4 +1,4 @@
-# yamllint configuration for the esphome_weatherman repo.
+# yamllint configuration for the esphome_vitohome repo.
 #
 # ESPHome YAML legitimately uses things default yamllint flags: long lines
 # (lambdas, URLs), no `---` document start, and `true`/`false` literals. The
@@ -35,15 +35,15 @@ rules:
   indentation:
     spaces: 2
     indent-sequences: true
-  # The hygiene the brief explicitly calls for.
+  # The core hygiene we enforce.
   trailing-spaces: enable
   new-line-at-end-of-file: enable
   empty-lines:
     max: 2
     max-start: 0
     max-end: 0
-  # The entry file deliberately column-aligns substitution values
-  # (`device_name:        weatherman`) for readability, and uses `[ x ]` flow
+  # Some configs deliberately column-align substitution values
+  # (e.g. `device_name:        boiler`) for readability, and use `[ x ]` flow
   # style with inner spaces. Both are consistent project-wide, so don't fight
   # them: disable the alignment check and allow the inner-bracket spacing.
   colons: disable

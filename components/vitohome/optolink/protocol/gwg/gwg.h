@@ -34,7 +34,7 @@ class GWGEngine {
  public:
   // Byte-mover API (see vs2.h). GWG carries no address in the response, so the
   // engine echoes the request address back to the caller unchanged.
-  typedef std::function<void(const uint8_t* data, uint8_t length, uint16_t address)> OnResponseCallback;
+  typedef std::function<void(const uint8_t *data, uint8_t length, uint16_t address)> OnResponseCallback;
   typedef std::function<void(OptolinkResult error, uint16_t address)> OnErrorCallback;
 
   // Named timeout (ms). GWG deliberately uses a 3000ms request watchdog,
@@ -54,8 +54,8 @@ class GWGEngine {
   static constexpr bool SEND_ENQ_POKE = false;
   static constexpr uint32_t ENQ_POKE_INTERVAL_MS = 3000;
 
-  template <class C>
-  explicit GWGEngine(C* interface)
+  template<class C>
+  explicit GWGEngine(C *interface)
       : _state(State::UNDEFINED),
         _currentMillis(optolink_millis()),
         _lastMillis(_currentMillis),
@@ -77,14 +77,14 @@ class GWGEngine {
     }
   }
   ~GWGEngine();
-  GWGEngine(const GWGEngine&) = delete;
-  GWGEngine& operator=(const GWGEngine&) = delete;
+  GWGEngine(const GWGEngine &) = delete;
+  GWGEngine &operator=(const GWGEngine &) = delete;
 
   void onResponse(OnResponseCallback callback);
   void onError(OnErrorCallback callback);
 
   bool read(uint16_t address, uint8_t length);
-  bool write(uint16_t address, const uint8_t* data, uint8_t length);
+  bool write(uint16_t address, const uint8_t *data, uint8_t length);
 
   bool begin();
   void loop();
@@ -98,7 +98,7 @@ class GWGEngine {
   uint32_t _lastMillis;
   uint32_t _requestTime;
   uint8_t _bytesTransferred;
-  internals::SerialInterface* _interface;
+  internals::SerialInterface *_interface;
   uint16_t _currentAddress;
   uint8_t _currentLength;
   bool _busy;

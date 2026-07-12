@@ -1,14 +1,7 @@
 import esphome.codegen as cg
-import esphome.config_validation as cv
 from esphome.components import number
-from esphome.const import (
-    CONF_ADDRESS,
-    CONF_MAX_VALUE,
-    CONF_MIN_VALUE,
-    CONF_NAME,
-    CONF_STEP,
-    CONF_UPDATE_INTERVAL,
-)
+import esphome.config_validation as cv
+from esphome.const import CONF_ADDRESS, CONF_MAX_VALUE, CONF_MIN_VALUE, CONF_NAME, CONF_STEP, CONF_UPDATE_INTERVAL
 
 from . import (
     CONF_CONVERTER,

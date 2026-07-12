@@ -1,6 +1,0 @@
-exclude = ["example"]
-line-length = 125
-target-version = "py311"
-
-[lint]
-select = ["E", "F", "I", "UP", "B"]

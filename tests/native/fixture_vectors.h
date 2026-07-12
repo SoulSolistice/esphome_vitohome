@@ -18,7 +18,7 @@
 enum class Kind { READ, WRITE };
 
 struct TransactionVector {
-  const char* name;
+  const char *name;
   Kind kind;
   uint16_t address;
   uint8_t read_len;
@@ -29,7 +29,7 @@ struct TransactionVector {
   bool fragmented;
 };
 
-inline const std::vector<TransactionVector>& transaction_vectors() {
+inline const std::vector<TransactionVector> &transaction_vectors() {
   static const std::vector<TransactionVector> v = {
       // ---- READ vectors (from _6_) ----
       {"Outside Temp 0x5525",

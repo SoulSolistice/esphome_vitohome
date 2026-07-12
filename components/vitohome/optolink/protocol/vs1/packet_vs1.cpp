@@ -14,13 +14,14 @@ namespace esphome::vitohome::optolink {
 PacketVS1::PacketVS1() : _buffer{} { reset(); }
 
 PacketVS1::operator bool() const {
-  if (_buffer[3] != 0) return true;
+  if (_buffer[3] != 0)
+    return true;
   return false;
 }
 
-uint8_t& PacketVS1::operator[](std::size_t index) { return _buffer[index]; }
+uint8_t &PacketVS1::operator[](std::size_t index) { return _buffer[index]; }
 
-bool PacketVS1::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, const uint8_t* data) {
+bool PacketVS1::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, const uint8_t *data) {
   reset();
 
   // check arguments
@@ -57,12 +58,15 @@ bool PacketVS1::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, con
 }
 
 uint8_t PacketVS1::length() const {
-  if (_buffer[3] == 0) return 0;
-  if (_buffer[0] == PacketVS1Type.READ) return 4;
+  if (_buffer[3] == 0)
+    return 0;
+  if (_buffer[0] == PacketVS1Type.READ)
+    return 4;
   // NOTE: uint8_t arithmetic -- wraps for a payload length >= 252.
   // Unreachable today (the raw lane caps writes at 32 bytes; entity writes are
   // <= 8), but a live trap if those caps are ever raised.
-  if (_buffer[0] == PacketVS1Type.WRITE) return _buffer[3] + 4;
+  if (_buffer[0] == PacketVS1Type.WRITE)
+    return _buffer[3] + 4;
   return 0;  // should not be possible
 }
 
@@ -76,7 +80,7 @@ uint16_t PacketVS1::address() const {
 
 uint8_t PacketVS1::dataLength() const { return _buffer[3]; }
 
-const uint8_t* PacketVS1::data() const { return &_buffer[4]; }
+const uint8_t *PacketVS1::data() const { return &_buffer[4]; }
 
 void PacketVS1::reset() { _buffer[3] = 0x00; }
 

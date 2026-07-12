@@ -72,14 +72,14 @@ stdlib only; runs in CI and in a bare Python install.
 from __future__ import annotations
 
 import argparse
+from collections import defaultdict
 import csv
+from dataclasses import dataclass, field
 import math
 import os
 import re
 import sys
 import xml.etree.ElementTree as ET
-from collections import defaultdict
-from dataclasses import dataclass, field
 
 # fault_codes.py is a sibling module (this file is run as a script, so its own
 # directory may not be on sys.path when invoked from elsewhere). Add it, then
@@ -387,11 +387,12 @@ def _find_file(data_dir, *names):
 
 
 def _find_dpdefinitions(data_dir):
-    hits = []
-    for dirpath, _dirs, files in os.walk(data_dir):
-        for f in files:
-            if re.match(r"DPDefinitions.*\.xml$", f, re.IGNORECASE):
-                hits.append(os.path.join(dirpath, f))
+    hits = [
+        os.path.join(dirpath, f)
+        for dirpath, _dirs, files in os.walk(data_dir)
+        for f in files
+        if re.match(r"DPDefinitions.*\.xml$", f, re.IGNORECASE)
+    ]
     return sorted(hits)[0] if hits else None
 
 
@@ -441,7 +442,7 @@ def _resolve_unit(raw: str, textmap: dict) -> str:
         return ""
     if raw in ECN_UNITS:
         return ECN_UNITS[raw]
-    key = raw[2:] if raw.startswith("@@") else raw
+    key = raw.removeprefix("@@")
     if key in textmap:
         return textmap[key]
     if raw.startswith("ecnUnit."):
@@ -494,25 +495,25 @@ def _load_access(path):
             i = _child(e, "ID")
             if not i:
                 continue
-            acc[i] = dict(
-                address=_child(e, "Address"),
-                block_length=_child(e, "BlockLength"),
-                byte_length=_child(e, "ByteLength"),
-                bit_length=_child(e, "BitLength"),
-                bit_position=_child(e, "BitPosition"),
-                byte_position=_child(e, "BytePosition"),
-                conversion=_child(e, "Conversion"),
-                conversion_factor=_child(e, "ConversionFactor"),
-                conversion_offset=_child(e, "ConversionOffset"),
-                block_factor=_child(e, "BlockFactor"),
-                mapping_type=_child(e, "MappingType"),
-                lower_border=_child(e, "LowerBorder"),
-                upper_border=_child(e, "UpperBorder"),
-                stepping=_child(e, "Stepping"),
-                unit=_child(e, "Unit"),
-                fc_read=_child(e, "FCRead"),
-                fc_write=_child(e, "FCWrite"),
-            )
+            acc[i] = {
+                "address": _child(e, "Address"),
+                "block_length": _child(e, "BlockLength"),
+                "byte_length": _child(e, "ByteLength"),
+                "bit_length": _child(e, "BitLength"),
+                "bit_position": _child(e, "BitPosition"),
+                "byte_position": _child(e, "BytePosition"),
+                "conversion": _child(e, "Conversion"),
+                "conversion_factor": _child(e, "ConversionFactor"),
+                "conversion_offset": _child(e, "ConversionOffset"),
+                "block_factor": _child(e, "BlockFactor"),
+                "mapping_type": _child(e, "MappingType"),
+                "lower_border": _child(e, "LowerBorder"),
+                "upper_border": _child(e, "UpperBorder"),
+                "stepping": _child(e, "Stepping"),
+                "unit": _child(e, "Unit"),
+                "fc_read": _child(e, "FCRead"),
+                "fc_write": _child(e, "FCWrite"),
+            }
     return acc
 
 
@@ -530,17 +531,17 @@ def _load_identification(path):
             ext = _child(e, "IdentificationExtension")
             extt = _child(e, "IdentificationExtensionTill")
             rows.append(
-                dict(
-                    token=tok,
-                    Identification=ident,
-                    IdentificationExtension=ext,
-                    IdentificationExtensionTill=extt,
-                    ident=_hx(ident),
-                    ext=_hx(ext),
-                    extt=_hx(extt),
-                    f0=_hx(_child(e, "F0")),
-                    f0t=_hx(_child(e, "F0Till")),
-                )
+                {
+                    "token": tok,
+                    "Identification": ident,
+                    "IdentificationExtension": ext,
+                    "IdentificationExtensionTill": extt,
+                    "ident": _hx(ident),
+                    "ext": _hx(ext),
+                    "extt": _hx(extt),
+                    "f0": _hx(_child(e, "F0")),
+                    "f0t": _hx(_child(e, "F0Till")),
+                }
             )
     return rows
 
@@ -1669,7 +1670,7 @@ def emit_entity(ev: Event, profile: str):
         # the block base is simply the read address -- no write side, no
         # state_address. The extracted width stays enum_len (derived from the
         # option values, the same bytes the interior form read at addr+off).
-        enum_extract = field_off > 0 and field_off + enum_len <= block_len and block_len <= MAX_P300_READ_LENGTH
+        enum_extract = field_off > 0 and field_off + enum_len <= block_len <= MAX_P300_READ_LENGTH
         lines += [
             "- platform: vitohome",
             "  type: enum",
@@ -1858,12 +1859,12 @@ def _is_error_history(ev: Event) -> bool:
         return False
     if "ecnsysEventType" in tok and "Error" in tok:
         return True
-    if re.search(r"FehlerHis", tok, re.I):
+    if re.search(r"FehlerHis", tok, re.IGNORECASE):
         return True
     return ev.address == _ERROR_HISTORY_ADDRESS
 
 
-_FEHLERHIS_SLOT_RE = re.compile(r"FehlerHis\w*?(\d{1,2})\b", re.I)
+_FEHLERHIS_SLOT_RE = re.compile(r"FehlerHis\w*?(\d{1,2})\b", re.IGNORECASE)
 
 
 def _error_history_slot(ev: Event) -> int | None:
@@ -1934,7 +1935,7 @@ def _error_history_entries(ev: Event) -> list[dict]:
         # FehlerHisFA family stays plain "GFA Fehler NN".
         stem = re.split(r"\d", (ev.token or ev.tech or "").split("~", 1)[0], maxsplit=1)[0]
         stem = stem.rstrip("_")
-        if re.fullmatch(r"FehlerHisFA", stem, re.I) or stem == "":
+        if re.fullmatch(r"FehlerHisFA", stem, re.IGNORECASE) or stem == "":
             fam_name = "GFA"
             fam_seed = "gfa"
         else:
@@ -2020,7 +2021,7 @@ def _error_history_entries(ev: Event) -> list[dict]:
 
 def _is_mode_select(ev: Event) -> bool:
     return ev.access_type in (2, 3) and bool(
-        re.search(r"Betriebsart|BedienteilBA|BedienBetriebsart", ev.token or ev.tech or "", re.I)
+        re.search(r"Betriebsart|BedienteilBA|BedienBetriebsart", ev.token or ev.tech or "", re.IGNORECASE)
     )
 
 
@@ -2032,7 +2033,7 @@ def _is_mode_select(ev: Event) -> bool:
 _DIAGNOSTIC_RE = re.compile(
     r"Fehler|Stoer|St[oö]r|Status|Sensor.*Status|SensorStatus|Alarm|EEPROM|I2C|"
     r"Diagnos|Sammel|Wartung|Quitt|TemperaturFehler|ecnStatusEventType",
-    re.I,
+    re.IGNORECASE,
 )
 
 
@@ -2119,9 +2120,7 @@ def _profile_keep(ev: Event, profile: str) -> bool:
     if profile == "minimal":
         if writable:
             return True
-        if conv_kind in (DIV, COUNTER):
-            return True
-        return False
+        return conv_kind in (DIV, COUNTER)
     return True
 
 

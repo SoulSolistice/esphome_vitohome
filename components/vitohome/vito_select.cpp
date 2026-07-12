@@ -6,7 +6,7 @@
 
 namespace esphome::vitohome {
 
-static const char* const TAG = "vitohome.select";
+static const char *const TAG = "vitohome.select";
 
 void VitoSelect::dump_config() {
   LOG_SELECT("  ", "VitoHome Select", this);
@@ -41,12 +41,12 @@ void VitoSelect::control(size_t index) {
   ESP_LOGD(TAG, "%s: queued write option %zu (raw 0x%02X)", this->datapoint_.name(), index, raw);
 }
 
-void VitoSelect::handle_response(const ResponseView& response) {
+void VitoSelect::handle_response(const ResponseView &response) {
   // With extraction the response is the whole block read at the state
   // address; the enum field is extract_len_ bytes at extract_byte_. The
   // bound check is against the bytes actually received, so a short response
   // fail-softs instead of reading past the end.
-  const uint8_t* p = response.data;
+  const uint8_t *p = response.data;
   uint8_t len = this->datapoint_.length();
   if (this->extract_byte_ >= 0) {
     const uint16_t off = static_cast<uint16_t>(this->extract_byte_);
@@ -75,7 +75,7 @@ void VitoSelect::handle_response(const ResponseView& response) {
   ESP_LOGW(TAG, "%s: device value 0x%02X is not in the configured options", this->datapoint_.name(), raw);
 }
 
-void VitoSelect::handle_write_response(const ResponseView& /*response*/) {
+void VitoSelect::handle_write_response(const ResponseView & /*response*/) {
   if (!this->read_back_) {
     this->publish_state(this->pending_index_);
   }

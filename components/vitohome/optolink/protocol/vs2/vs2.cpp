@@ -32,7 +32,7 @@ bool VS2Engine::read(uint16_t address, uint8_t length) {
   return false;
 }
 
-bool VS2Engine::write(uint16_t address, const uint8_t* data, uint8_t length) {
+bool VS2Engine::write(uint16_t address, const uint8_t *data, uint8_t length) {
   if (_busy) {
     return false;
   }
@@ -120,7 +120,8 @@ void VS2Engine::_reset() {
   // failed with CS_ERROR before self-healing. Every path into RESET now also
   // resets the parser, matching the RX-buffer drain below.
   _parser.reset();
-  while (_interface->available()) _interface->read();
+  while (_interface->available())
+    _interface->read();
   if (_interface->write(&internals::ProtocolBytes.EOT, 1) == 1) {
     _lastMillis = _currentMillis;
     _setState(State::RESET_ACK);
@@ -259,7 +260,7 @@ void VS2Engine::_tryOnResponse() {
     // the request's) so the caller's response-address match is a real
     // wire-level check on P300. A write ack has data()==nullptr by design but
     // a non-zero dataLength(); the caller must guard on data() before reading.
-    const PacketVS2& packet = _parser.packet();
+    const PacketVS2 &packet = _parser.packet();
     _onResponseCallback(packet.data(), packet.dataLength(), packet.address());
   }
   _busy = false;

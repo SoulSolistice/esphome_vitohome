@@ -17,9 +17,9 @@ std::chrono branch is kept so the native test harness builds.
 
 #if defined(__linux__)
 #include <chrono>  // NOLINT [build/c++11]
-#define optolink_millis()                                                  \
+#define optolink_millis() \
   std::chrono::duration_cast<std::chrono::duration<uint32_t, std::milli>>( \
-      std::chrono::system_clock::now().time_since_epoch())                 \
+      std::chrono::system_clock::now().time_since_epoch()) \
       .count()
 #elif defined(ESP_PLATFORM)
 #include "freertos/FreeRTOS.h"

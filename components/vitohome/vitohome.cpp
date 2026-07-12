@@ -14,13 +14,13 @@
 
 namespace esphome::vitohome {
 
-static const char* const TAG = "vitohome";
+static const char *const TAG = "vitohome";
 
 // Known device families (Identification at 0xF8/0xF9). Deliberately small:
 // it covers the units this project has seen on the wire; everything else is
 // reported as raw hex, and the catalogue tooling (scripts/gen_catalog.py)
 // does the authoritative matching against the Vitosoft data.
-static const char* ident_family_name(uint16_t ident) {
+static const char *ident_family_name(uint16_t ident) {
   switch (ident) {
     case 0x20CB:
       return "VScotHO1";
@@ -37,7 +37,8 @@ static const char* ident_family_name(uint16_t ident) {
 
 void VitoHomeComponent::setup() {
   this->validate_uart_();
-  if (this->is_failed()) return;
+  if (this->is_failed())
+    return;
 
   // The engine is build-time-selected (protocol_select.h) and deduces the
   // interface type, wrapping &iface_ in a GenericInterface internally.
@@ -50,7 +51,7 @@ void VitoHomeComponent::setup() {
   // address. The engine is strictly single-in-flight and the hub tracks its own
   // in-flight context (in_flight_ / ident_in_flight_ / raw_in_flight_), so the
   // callback carries only that address as a wire-level cross-check.
-  this->vito_->onResponse([this](const uint8_t* data, uint8_t length, uint16_t address) {
+  this->vito_->onResponse([this](const uint8_t *data, uint8_t length, uint16_t address) {
     // Any successful response is proof of link liveness -- and of the
     // configured protocol (start-up verification below).
     this->link_established_ = true;
@@ -85,7 +86,8 @@ void VitoHomeComponent::setup() {
   // window (max of the floor and 3x the hub interval); loop() marks the
   // component failed otherwise.
   uint32_t verify_window = 3u * this->get_update_interval();
-  if (verify_window < PROTOCOL_VERIFY_MIN_MS) verify_window = PROTOCOL_VERIFY_MIN_MS;
+  if (verify_window < PROTOCOL_VERIFY_MIN_MS)
+    verify_window = PROTOCOL_VERIFY_MIN_MS;
   this->protocol_verify_pending_ = true;
   this->protocol_verify_deadline_ms_ = millis() + verify_window;
 
@@ -93,7 +95,7 @@ void VitoHomeComponent::setup() {
   // shorter than the hub interval silently degrades to the hub interval.
   // Surface that at setup instead of letting the user chase phantom lag.
   const uint32_t hub_interval = this->get_update_interval();
-  for (auto* e : this->entities_) {
+  for (auto *e : this->entities_) {
     if (e->poll_interval() != 0 && e->poll_interval() < hub_interval) {
       ESP_LOGW(TAG,
                "%s '%s': update_interval %" PRIu32 " ms is shorter than the hub's %" PRIu32
@@ -112,7 +114,7 @@ void VitoHomeComponent::setup() {
 void VitoHomeComponent::validate_uart_() {
   // The Optolink requires 4800 8E2. Fail loudly here rather than spend an
   // hour debugging silent bus errors.
-  auto* bus = this->parent_;
+  auto *bus = this->parent_;
   bool ok = true;
   if (bus->get_baud_rate() != 4800) {
     ESP_LOGE(TAG, "UART baud_rate must be 4800, got %u", bus->get_baud_rate());
@@ -137,7 +139,8 @@ void VitoHomeComponent::validate_uart_() {
 }
 
 void VitoHomeComponent::loop() {
-  if (this->vito_ == nullptr) return;
+  if (this->vito_ == nullptr)
+    return;
 
   this->vito_->loop();
 
@@ -200,7 +203,7 @@ void VitoHomeComponent::loop() {
 }
 
 void VitoHomeComponent::dispatch_raw_front_() {
-  const RawOp& op = this->raw_queue_.front();
+  const RawOp &op = this->raw_queue_.front();
   this->raw_dp_ =
       optolink::Datapoint(op.purpose == RawPurpose::SCAN ? "scan" : "clock", op.address, op.length, optolink::noconv);
   this->raw_is_write_ = op.is_write;
@@ -224,7 +227,8 @@ void VitoHomeComponent::dispatch_raw_front_() {
 }
 
 void VitoHomeComponent::dispatch_next_() {
-  if (this->in_flight_ != nullptr || this->ident_in_flight_ || this->raw_in_flight_) return;
+  if (this->in_flight_ != nullptr || this->ident_in_flight_ || this->raw_in_flight_)
+    return;
 
   // Identification runs before regular traffic so the user sees the device
   // tuple in the first seconds of the log.
@@ -257,7 +261,7 @@ void VitoHomeComponent::dispatch_next_() {
   // at 4800 baud. A one-dispatch-cycle delay to a clock step is invisible;
   // a multi-second delay to a write is not.
   if (!this->write_queue_.empty()) {
-    VitoEntityBase* entity = this->write_queue_.front();
+    VitoEntityBase *entity = this->write_queue_.front();
     if (this->vito_->write(entity->get_write_datapoint().address(), entity->write_data(), entity->write_length())) {
       this->in_flight_ = entity;
       this->in_flight_op_ = OpType::WRITE;
@@ -281,9 +285,10 @@ void VitoHomeComponent::dispatch_next_() {
     return;  // engine busy: retry next loop()
   }
 
-  if (this->read_queue_.empty()) return;
-  VitoEntityBase* entity = this->read_queue_.front();
-  const optolink::Datapoint& dp = entity->get_datapoint();
+  if (this->read_queue_.empty())
+    return;
+  VitoEntityBase *entity = this->read_queue_.front();
+  const optolink::Datapoint &dp = entity->get_datapoint();
   if (this->vito_->read(dp.address(), dp.length())) {
     this->in_flight_ = entity;
     this->in_flight_op_ = OpType::READ;
@@ -317,14 +322,16 @@ void VitoHomeComponent::schedule_due_entities_() {
   // beats firing a whole tick late.
   const uint32_t slack = this->get_update_interval() / 2;
   size_t queued = 0, skipped = 0;
-  for (auto* entity : this->entities_) {
+  for (auto *entity : this->entities_) {
     if (entity->read_queued_) {
       skipped++;
       continue;  // still waiting from a previous cycle — don't double-queue
     }
     const PollDecision d = poll_schedule_step(now, entity->next_due_ms_, entity->poll_interval(), slack);
-    if (!d.due) continue;
-    if (entity->poll_interval() != 0) entity->next_due_ms_ = d.next_due_ms;
+    if (!d.due)
+      continue;
+    if (entity->poll_interval() != 0)
+      entity->next_due_ms_ = d.next_due_ms;
     entity->read_queued_ = true;
     this->read_queue_.push_back(entity);
     queued++;
@@ -336,9 +343,11 @@ void VitoHomeComponent::schedule_due_entities_() {
 }
 
 void VitoHomeComponent::update() {
-  if (this->vito_ == nullptr) return;
+  if (this->vito_ == nullptr)
+    return;
   this->time_sync_tick_();
-  if (this->entities_.empty()) return;
+  if (this->entities_.empty())
+    return;
   this->schedule_due_entities_();
 }
 
@@ -365,8 +374,9 @@ void VitoHomeComponent::dump_config() {
   // (hardware-observed, 2026-07-03 log).
 }
 
-bool VitoHomeComponent::request_write(VitoEntityBase* entity) {
-  if (entity == nullptr || entity->write_length() == 0) return false;
+bool VitoHomeComponent::request_write(VitoEntityBase *entity) {
+  if (entity == nullptr || entity->write_length() == 0)
+    return false;
   if (entity->write_queued_) {
     // Already in the write queue and not yet dispatched: control() has already
     // overwritten the entity buffer with the newest payload, so the pending
@@ -394,7 +404,7 @@ void VitoHomeComponent::queue_raw_read(uint16_t address, uint8_t length) {
   this->enqueue_raw_(address, length, false, nullptr, 0, RawPurpose::SCAN);
 }
 
-void VitoHomeComponent::queue_raw_write(uint16_t address, const std::vector<uint8_t>& bytes) {
+void VitoHomeComponent::queue_raw_write(uint16_t address, const std::vector<uint8_t> &bytes) {
   // The 32-byte cap also keeps the packet length() arithmetic safe: the VS2
   // length byte is 0x05 + len (uint8_t, wraps for len > 250) and the VS1
   // frame length is payload + 4 (wraps for len >= 252) -- see the comments at
@@ -407,7 +417,7 @@ void VitoHomeComponent::queue_raw_write(uint16_t address, const std::vector<uint
                      static_cast<uint8_t>(bytes.size()), RawPurpose::SCAN);
 }
 
-void VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t* bytes,
+void VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes,
                                      uint8_t bytes_len, RawPurpose purpose) {
   if (this->raw_queue_.size() >= RAW_QUEUE_MAX) {
     ESP_LOGW(TAG, "raw queue full (%zu); dropping %s 0x%04X", this->raw_queue_.size(), is_write ? "write" : "read",
@@ -431,7 +441,7 @@ void VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
   ESP_LOGD(TAG, "Queued raw %s 0x%04X len %u", is_write ? "write" : "read", address, length);
 }
 
-void VitoHomeComponent::raw_handle_response_(const ResponseView& response) {
+void VitoHomeComponent::raw_handle_response_(const ResponseView &response) {
   switch (this->raw_purpose_) {
     case RawPurpose::CLOCK_READ:
       this->clock_handle_read_(response);
@@ -474,8 +484,9 @@ void VitoHomeComponent::raw_handle_error_(optolink::OptolinkResult error) {
   this->raw_publish_(buf);
 }
 
-void VitoHomeComponent::raw_publish_(const std::string& line) {
-  for (auto* ts : this->raw_result_sensors_) ts->publish_state(line);
+void VitoHomeComponent::raw_publish_(const std::string &line) {
+  for (auto *ts : this->raw_result_sensors_)
+    ts->publish_state(line);
 }
 
 // ---------------------------------------------------------------------------
@@ -487,14 +498,17 @@ void VitoHomeComponent::raw_publish_(const std::string& line) {
 
 void VitoHomeComponent::time_sync_tick_() {
 #ifdef VITOHOME_TIME_SYNC
-  if (this->time_source_ == nullptr) return;
+  if (this->time_source_ == nullptr)
+    return;
   const uint32_t now = millis();
   if (!this->time_sync_did_boot_) {
     // Defer the first sync until the time source has a valid time at least once.
-    if (!this->time_source_->now().is_valid()) return;
+    if (!this->time_source_->now().is_valid())
+      return;
     this->time_sync_did_boot_ = true;
     this->time_sync_next_ms_ = now + this->time_sync_interval_ms_;
-    if (this->time_sync_on_boot_) this->sync_system_time_();
+    if (this->time_sync_on_boot_)
+      this->sync_system_time_();
     return;
   }
   if (this->time_sync_interval_ms_ != 0 && static_cast<int32_t>(now - this->time_sync_next_ms_) >= 0) {
@@ -506,7 +520,8 @@ void VitoHomeComponent::time_sync_tick_() {
 
 void VitoHomeComponent::sync_system_time_() {
 #ifdef VITOHOME_TIME_SYNC
-  if (this->time_source_ == nullptr) return;
+  if (this->time_source_ == nullptr)
+    return;
   if (!this->time_source_->now().is_valid()) {
     ESP_LOGW(TAG, "System-time sync: time source not valid yet, skipping");
     return;
@@ -517,9 +532,10 @@ void VitoHomeComponent::sync_system_time_() {
 #endif
 }
 
-void VitoHomeComponent::clock_handle_read_(const ResponseView& response) {
+void VitoHomeComponent::clock_handle_read_(const ResponseView &response) {
 #ifdef VITOHOME_TIME_SYNC
-  if (this->time_source_ == nullptr) return;
+  if (this->time_source_ == nullptr)
+    return;
   const ESPTime t = this->time_source_->now();
   if (!t.is_valid()) {
     ESP_LOGW(TAG, "System-time sync: time source became invalid, skipping");
@@ -549,7 +565,8 @@ void VitoHomeComponent::clock_handle_read_(const ResponseView& response) {
   } else {
     ESP_LOGI(TAG, "System-time sync: device clock unreadable, setting it");
   }
-  if (!need_write) return;
+  if (!need_write)
+    return;
   uint8_t buf[CLOCK_LEN];
   const uint8_t weekday = device_weekday_from_esptime(t.day_of_week);
   if (!encode_datetime_bcd(t.year, t.month, t.day_of_month, weekday, t.hour, t.minute, t.second, buf)) {
@@ -558,7 +575,7 @@ void VitoHomeComponent::clock_handle_read_(const ResponseView& response) {
   }
   this->enqueue_raw_(CLOCK_ADDRESS, CLOCK_LEN, true, buf, CLOCK_LEN, RawPurpose::CLOCK_WRITE);
 #else
-  (void)response;
+  (void) response;
 #endif
 }
 
@@ -567,7 +584,7 @@ void VitoHomeComponent::clock_handle_write_ack_() {
   this->enqueue_raw_(CLOCK_ADDRESS, CLOCK_LEN, false, nullptr, 0, RawPurpose::CLOCK_VERIFY);
 }
 
-void VitoHomeComponent::clock_handle_verify_(const ResponseView& response) {
+void VitoHomeComponent::clock_handle_verify_(const ResponseView &response) {
   BcdDateTime dev{};
   if (decode_datetime_bcd(response.data, response.data_length, 0, &dev)) {
     ESP_LOGI(TAG, "System-time sync: device clock now %04u-%02u-%02u %02u:%02u:%02u", dev.year, dev.month, dev.day,
@@ -577,7 +594,7 @@ void VitoHomeComponent::clock_handle_verify_(const ResponseView& response) {
   }
 }
 
-void VitoHomeComponent::on_response_(const ResponseView& response, uint16_t request_address) {
+void VitoHomeComponent::on_response_(const ResponseView &response, uint16_t request_address) {
   if (this->ident_in_flight_) {
     this->ident_in_flight_ = false;
     this->ident_handle_response_(response);
@@ -590,7 +607,7 @@ void VitoHomeComponent::on_response_(const ResponseView& response, uint16_t requ
     return;
   }
 
-  VitoEntityBase* entity = this->in_flight_;
+  VitoEntityBase *entity = this->in_flight_;
   OpType op = this->in_flight_op_;
   this->in_flight_ = nullptr;
   this->in_flight_op_ = OpType::NONE;
@@ -648,7 +665,7 @@ bool VitoHomeComponent::refresh_all() {
     return false;
   }
   this->last_refresh_all_ms_ = now;
-  for (auto* entity : this->entities_) {
+  for (auto *entity : this->entities_) {
     entity->next_due_ms_ = 0;  // boot sentinel: due on the next tick
   }
   ESP_LOGI(TAG, "refresh_all(): %u entities marked due; queue drains at normal pace",
@@ -658,15 +675,19 @@ bool VitoHomeComponent::refresh_all() {
 
 void VitoHomeComponent::publish_link_(bool up) {
   const int8_t next = up ? 1 : 0;
-  if (this->link_state_ == next) return;
+  if (this->link_state_ == next)
+    return;
   this->link_state_ = next;
   ESP_LOGI(TAG, "Optolink link %s", up ? "online" : "offline");
-  for (auto* bs : this->link_sensors_) bs->publish_state(up);
+  for (auto *bs : this->link_sensors_)
+    bs->publish_state(up);
 }
 
 void VitoHomeComponent::link_note_error_() {
-  if (this->link_error_streak_ < LINK_OFFLINE_AFTER_ERRORS) this->link_error_streak_++;
-  if (this->link_error_streak_ == LINK_OFFLINE_AFTER_ERRORS) this->publish_link_(false);
+  if (this->link_error_streak_ < LINK_OFFLINE_AFTER_ERRORS)
+    this->link_error_streak_++;
+  if (this->link_error_streak_ == LINK_OFFLINE_AFTER_ERRORS)
+    this->publish_link_(false);
 }
 
 void VitoHomeComponent::on_error_(optolink::OptolinkResult error, uint16_t request_address) {
@@ -683,14 +704,14 @@ void VitoHomeComponent::on_error_(optolink::OptolinkResult error, uint16_t reque
     return;
   }
 
-  VitoEntityBase* entity = this->in_flight_;
+  VitoEntityBase *entity = this->in_flight_;
   OpType op = this->in_flight_op_;
   this->in_flight_ = nullptr;
   this->in_flight_op_ = OpType::NONE;
 
   // Name for the log line: the in-flight entity's datapoint when there is one,
   // else the echoed request address (a stray error with no in-flight op).
-  const char* name = (entity != nullptr) ? entity->get_datapoint().name() : "?";
+  const char *name = (entity != nullptr) ? entity->get_datapoint().name() : "?";
   switch (error) {
     case optolink::OptolinkResult::TIMEOUT:
       ESP_LOGE(TAG, "[TIMEOUT] %s (0x%04X) — Optolink not responding", name, request_address);
@@ -758,8 +779,8 @@ void VitoHomeComponent::ident_dispatch_(IdentState state) {
   // The actual bus dispatch happens from dispatch_next_() when idle.
 }
 
-void VitoHomeComponent::ident_handle_response_(const ResponseView& response) {
-  const uint8_t* d = response.data;
+void VitoHomeComponent::ident_handle_response_(const ResponseView &response) {
+  const uint8_t *d = response.data;
   const uint8_t n = response.data_length;
   switch (this->ident_state_) {
     case IdentState::READ4:
@@ -777,19 +798,23 @@ void VitoHomeComponent::ident_handle_response_(const ResponseView& response) {
       this->ident_dispatch_(IdentState::READ_F8);
       return;
     case IdentState::READ_F8:
-      if (n >= 1) this->ident_group_ = d[0];
+      if (n >= 1)
+        this->ident_group_ = d[0];
       this->ident_dispatch_(IdentState::READ_F9);
       return;
     case IdentState::READ_F9:
-      if (n >= 1) this->ident_controller_ = d[0];
+      if (n >= 1)
+        this->ident_controller_ = d[0];
       this->ident_dispatch_(IdentState::READ_FA);
       return;
     case IdentState::READ_FA:
-      if (n >= 1) this->ident_hw_ = d[0];
+      if (n >= 1)
+        this->ident_hw_ = d[0];
       this->ident_dispatch_(IdentState::READ_FB);
       return;
     case IdentState::READ_FB:
-      if (n >= 1) this->ident_sw_ = d[0];
+      if (n >= 1)
+        this->ident_sw_ = d[0];
       this->ident_finish_();
       return;
     default:
@@ -826,7 +851,7 @@ std::string VitoHomeComponent::ident_string_() const {
   char buf[96];
   if (this->ident_group_ >= 0 && this->ident_controller_ >= 0) {
     const uint16_t ident = static_cast<uint16_t>((this->ident_group_ << 8) | this->ident_controller_);
-    const char* family = ident_family_name(ident);
+    const char *family = ident_family_name(ident);
     int off = snprintf(buf, sizeof(buf), "0x%04X%s%s%s", ident, family != nullptr ? " (" : "",
                        family != nullptr ? family : "", family != nullptr ? ")" : "");
     if (this->ident_hw_ >= 0 && this->ident_sw_ >= 0 && off > 0 && off < static_cast<int>(sizeof(buf))) {
@@ -842,11 +867,10 @@ void VitoHomeComponent::ident_finish_() {
   const std::string s = this->ident_string_();
   ESP_LOGI(TAG, "Device identification: %s", s.c_str());
   if (this->ident_sw_ < 0 && this->ident_group_ >= 0) {
-    ESP_LOGI(TAG,
-             "Software index (0xFB) unavailable — when picking datapoints from the "
-             "Vitosoft data, match on the family only and verify on the wire.");
+    ESP_LOGI(TAG, "Software index (0xFB) unavailable — when picking datapoints from the "
+                  "Vitosoft data, match on the family only and verify on the wire.");
   }
-  for (auto* ts : this->device_id_sensors_) {
+  for (auto *ts : this->device_id_sensors_) {
     ts->publish_state(s);
   }
 }

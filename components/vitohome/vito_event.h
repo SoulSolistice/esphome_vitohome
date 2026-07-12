@@ -21,17 +21,17 @@ namespace esphome::vitohome {
 // logbook on every reboot.
 class VitoEvent : public event::Event, public Component, public VitoEntityBase {
  public:
-  void add_code(uint32_t value, const char* label) { this->codes_.emplace_back(value, label); }
+  void add_code(uint32_t value, const char *label) { this->codes_.emplace_back(value, label); }
 
   void dump_config() override;
-  void handle_response(const ResponseView& response) override;
+  void handle_response(const ResponseView &response) override;
   void handle_error(optolink::OptolinkResult error) override;
-  const char* entity_kind() const override { return "event"; }
+  const char *entity_kind() const override { return "event"; }
 
  protected:
-  const char* label_for_(uint8_t code) const;
+  const char *label_for_(uint8_t code) const;
 
-  std::vector<std::pair<uint32_t, const char*>> codes_;
+  std::vector<std::pair<uint32_t, const char *>> codes_;
   uint8_t last_code_{0};
   bool baseline_set_{false};
 };

@@ -6,7 +6,7 @@
 
 namespace esphome::vitohome {
 
-static const char* const TAG = "vitohome.switch";
+static const char *const TAG = "vitohome.switch";
 
 void VitoSwitch::dump_config() {
   LOG_SWITCH("  ", "VitoHome Switch", this);
@@ -39,11 +39,11 @@ void VitoSwitch::write_state(bool state) {
   ESP_LOGD(TAG, "%s: queued write %s (raw 0x%02X)", this->datapoint_.name(), ONOFF(state), raw);
 }
 
-void VitoSwitch::handle_response(const ResponseView& response) {
+void VitoSwitch::handle_response(const ResponseView &response) {
   // With extraction the response is the whole block read at the state
   // address; the field is extract_len_ bytes at extract_byte_ (see
   // VitoSelect::handle_response for the identical pattern).
-  const uint8_t* p = response.data;
+  const uint8_t *p = response.data;
   uint8_t len = this->datapoint_.length();
   if (this->extract_byte_ >= 0) {
     const uint16_t off = static_cast<uint16_t>(this->extract_byte_);
@@ -77,7 +77,7 @@ void VitoSwitch::handle_response(const ResponseView& response) {
   ESP_LOGW(TAG, "%s: device value 0x%02X is neither an on_values entry nor off_value", this->datapoint_.name(), raw);
 }
 
-void VitoSwitch::handle_write_response(const ResponseView& /*response*/) {
+void VitoSwitch::handle_write_response(const ResponseView & /*response*/) {
   if (!this->read_back_) {
     this->publish_state(this->pending_state_);
   }

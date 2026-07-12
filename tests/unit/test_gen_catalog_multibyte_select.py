@@ -53,31 +53,31 @@ def _event(**overrides):
     may touch on any branch. ``conversion=""`` deterministically routes through
     ``CONVERSION_MAP``'s default (raw ``noconv``); the tests assert nothing
     about the resulting NOTE line."""
-    base = dict(
-        id="1",
-        name="Test Enum",
-        address=0x2500,
-        conversion="",
-        access_type=3,  # read+write (Vitosoft Type 3); 2 is WRITE-ONLY
-        block_length=0,
-        byte_length=2,
-        byte_position=0,
-        bit_length=0,
-        bit_position=0,
-        lower="",
-        upper="",
-        stepping="",
-        enum_type=True,
-        unit="",
-        tech="test_enum",
-        token="Test~0x2500",
-        fc_read="",  # "" -> reachable
-        fc_write="",  # "" -> writable (trusted to access_type)
-        conv_factor=None,
-        conv_offset=None,
-        block_factor=None,
-        values=[],
-    )
+    base = {
+        "id": "1",
+        "name": "Test Enum",
+        "address": 0x2500,
+        "conversion": "",
+        "access_type": 3,  # read+write (Vitosoft Type 3); 2 is WRITE-ONLY
+        "block_length": 0,
+        "byte_length": 2,
+        "byte_position": 0,
+        "bit_length": 0,
+        "bit_position": 0,
+        "lower": "",
+        "upper": "",
+        "stepping": "",
+        "enum_type": True,
+        "unit": "",
+        "tech": "test_enum",
+        "token": "Test~0x2500",
+        "fc_read": "",  # "" -> reachable
+        "fc_write": "",  # "" -> writable (trusted to access_type)
+        "conv_factor": None,
+        "conv_offset": None,
+        "block_factor": None,
+        "values": [],
+    }
     base.update(overrides)
     return SimpleNamespace(**base)
 

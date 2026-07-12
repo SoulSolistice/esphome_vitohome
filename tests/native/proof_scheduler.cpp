@@ -87,7 +87,8 @@ void test_interval_equal_to_hub_tick_fires_every_tick() {
         assert(false);
       }
       next_due = d.next_due_ms;
-      if (tick == 0) first_due = next_due;
+      if (tick == 0)
+        first_due = next_due;
     }
     // No creep: after N polls the schedule is exactly first_due + (N-1)*interval.
     assert(next_due == first_due + 239u * HUB_TICK);

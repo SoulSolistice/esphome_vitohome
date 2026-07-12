@@ -23,7 +23,7 @@ class VitoTextSensor : public text_sensor::TextSensor, public Component, public 
   void set_type(TextSensorType type) { this->type_ = type; }
   // ENUM labels / ERROR_HISTORY code texts. Codegen feeds these one by one;
   // labels are string literals from codegen (static storage).
-  void add_option(uint32_t value, const char* label) { this->options_.emplace_back(value, label); }
+  void add_option(uint32_t value, const char *label) { this->options_.emplace_back(value, label); }
   // Aligned block extraction (read-only twin of the sensor's byte_offset):
   // `length` is a block read at the block BASE and the field is extract_len_
   // bytes at extract_byte_ inside it. Used by `enum` (1..4 bytes) and by the
@@ -34,23 +34,23 @@ class VitoTextSensor : public text_sensor::TextSensor, public Component, public 
   void set_extract_len(uint8_t len) { this->extract_len_ = len; }
 
   void dump_config() override;
-  void handle_response(const ResponseView& response) override;
+  void handle_response(const ResponseView &response) override;
   void handle_error(optolink::OptolinkResult error) override;
-  const char* entity_kind() const override { return "text_sensor"; }
+  const char *entity_kind() const override { return "text_sensor"; }
 
  protected:
-  const char* lookup_(uint32_t value) const;
+  const char *lookup_(uint32_t value) const;
   // Resolves (data, len) to the field span, honouring byte_offset/byte_length.
   // Returns false (and warns) if the field does not fit the response.
-  bool slice_(const uint8_t* data, uint8_t len, const uint8_t*& field, uint8_t& width) const;
-  void publish_raw_hex_(const uint8_t* data, uint8_t len);
-  void publish_enum_(const uint8_t* data, uint8_t len);
-  void publish_error_history_(const uint8_t* data, uint8_t len);
-  void publish_ascii_(const uint8_t* data, uint8_t len);
-  void publish_utf16_(const uint8_t* data, uint8_t len);
+  bool slice_(const uint8_t *data, uint8_t len, const uint8_t *&field, uint8_t &width) const;
+  void publish_raw_hex_(const uint8_t *data, uint8_t len);
+  void publish_enum_(const uint8_t *data, uint8_t len);
+  void publish_error_history_(const uint8_t *data, uint8_t len);
+  void publish_ascii_(const uint8_t *data, uint8_t len);
+  void publish_utf16_(const uint8_t *data, uint8_t len);
 
   TextSensorType type_{TextSensorType::RAW_HEX};
-  std::vector<std::pair<uint32_t, const char*>> options_;
+  std::vector<std::pair<uint32_t, const char *>> options_;
   int16_t extract_byte_{-1};
   uint8_t extract_len_{1};  // field width to slice at extract_byte_ (enum 1..4, ascii <=32, utf16 <=40)
 };

@@ -20,20 +20,23 @@ using namespace esphome::vitohome;
 
 static int failures = 0;
 
-static void check(const char* what, bool cond) {
+static void check(const char *what, bool cond) {
   printf("  [%s] %s\n", cond ? "PASS" : "FAIL", what);
-  if (!cond) failures++;
+  if (!cond)
+    failures++;
 }
 
 // Mirrors VitoTextSensor::slice_(): resolve (data, len) + byte_offset/byte_length
 // to the field span. Returns false when the field does not fit the response.
-static bool slice(const uint8_t* data, uint8_t len, int16_t extract_byte, uint8_t extract_len, const uint8_t*& field,
-                  uint8_t& width) {
+static bool slice(const uint8_t *data, uint8_t len, int16_t extract_byte, uint8_t extract_len, const uint8_t *&field,
+                  uint8_t &width) {
   field = data;
   width = len;
-  if (extract_byte < 0) return true;
+  if (extract_byte < 0)
+    return true;
   const uint16_t off = static_cast<uint16_t>(extract_byte);
-  if (off + extract_len > len) return false;
+  if (off + extract_len > len)
+    return false;
   field = data + off;
   width = extract_len;
   return true;
@@ -48,14 +51,14 @@ int main() {
   std::memset(block, 0xFF, sizeof(block));
   block[0] = 0x2A;  // whatever the first two bytes are; NOT part of the label
   block[1] = 0x00;
-  const char* label = "Wohnzimmer";
+  const char *label = "Wohnzimmer";
   for (std::size_t i = 0; i < std::strlen(label); i++) {
     block[2 + 2 * i] = static_cast<uint8_t>(label[i]);
     block[2 + 2 * i + 1] = 0x00;
   }
 
   char buf[80];
-  const uint8_t* field = nullptr;
+  const uint8_t *field = nullptr;
   uint8_t width = 0;
 
   // 1. The correct shape: block read of 42 at the base, field 40 bytes @ 2.
@@ -156,7 +159,8 @@ int main() {
                               0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00};
   int ff = 0;
   for (int i = 2; i < 42; i++)
-    if (wire42[i] == 0xFF) ff++;
+    if (wire42[i] == 0xFF)
+      ff++;
   check("padding is an ODD byte run (13 x 0xFF), not code-unit aligned", ff == 13);
   ok = slice(wire42, 42, 2, 40, field, width);
   check("wire42: slice(42, off 2, len 40) succeeds", ok && width == 40);

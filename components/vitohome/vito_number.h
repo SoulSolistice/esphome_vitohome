@@ -23,10 +23,10 @@ class VitoNumber : public number::Number, public Component, public VitoEntityBas
   void set_extract_len(uint8_t len) { this->extract_len_ = len; }
 
   void dump_config() override;
-  void handle_response(const ResponseView& response) override;
-  void handle_write_response(const ResponseView& response) override;
+  void handle_response(const ResponseView &response) override;
+  void handle_write_response(const ResponseView &response) override;
   void handle_error(optolink::OptolinkResult error) override;
-  const char* entity_kind() const override { return "number"; }
+  const char *entity_kind() const override { return "number"; }
 
  protected:
   void control(float value) override;

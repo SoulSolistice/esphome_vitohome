@@ -12,9 +12,10 @@ using namespace esphome::vitohome;
 
 static int failures = 0;
 
-static void check(const char* what, bool cond) {
+static void check(const char *what, bool cond) {
   printf("  [%s] %s\n", cond ? "PASS" : "FAIL", what);
-  if (!cond) failures++;
+  if (!cond)
+    failures++;
 }
 
 int main() {

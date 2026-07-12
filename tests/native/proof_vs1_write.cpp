@@ -29,19 +29,21 @@ uint8_t g_last_len = 0;
 uint8_t g_last_payload[8] = {0};
 }  // namespace
 
-static void pump(Engine& a, int n = 8) {
-  for (int i = 0; i < n; ++i) a.loop();
+static void pump(Engine &a, int n = 8) {
+  for (int i = 0; i < n; ++i)
+    a.loop();
 }
 
-static bool ends_with(const std::vector<uint8_t>& hay, const std::vector<uint8_t>& tail) {
-  if (hay.size() < tail.size()) return false;
+static bool ends_with(const std::vector<uint8_t> &hay, const std::vector<uint8_t> &tail) {
+  if (hay.size() < tail.size())
+    return false;
   return std::equal(tail.begin(), tail.end(), hay.end() - static_cast<long>(tail.size()));
 }
 
 int main() {
   FakeOptolink uart;
   Engine adapter(&uart);  // VS1Engine under -DVITOHOME_PROTOCOL_KW
-  adapter.onResponse([](const uint8_t* data, uint8_t length, uint16_t) {
+  adapter.onResponse([](const uint8_t *data, uint8_t length, uint16_t) {
     g_responses++;
     g_last_len = length;
     if (data != nullptr && length <= sizeof(g_last_payload)) {
@@ -52,9 +54,10 @@ int main() {
   adapter.begin();
 
   int failures = 0;
-  auto check = [&failures](bool ok, const char* what) {
+  auto check = [&failures](bool ok, const char *what) {
     std::printf("  %-52s %s\n", what, ok ? "ok" : "FAIL");
-    if (!ok) failures++;
+    if (!ok)
+      failures++;
   };
 
   // --- the capture's clock write: 8 BCD bytes to 0x088E ---------------------

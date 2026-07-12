@@ -23,8 +23,8 @@ class VitoEntityBase {
  public:
   virtual ~VitoEntityBase() = default;
 
-  void set_datapoint(const optolink::Datapoint& dp) { this->datapoint_ = dp; }
-  const optolink::Datapoint& get_datapoint() const { return this->datapoint_; }
+  void set_datapoint(const optolink::Datapoint &dp) { this->datapoint_ = dp; }
+  const optolink::Datapoint &get_datapoint() const { return this->datapoint_; }
 
   // Optional distinct write target. When set, polling, read-back and read
   // response-matching still use datapoint_ (the state / read address) but
@@ -32,15 +32,15 @@ class VitoEntityBase {
   // is read at a different address than the command register (see the
   // read/write-split analysis). Unset: writes use datapoint_, i.e. the
   // original single-address behaviour, so existing entities are unaffected.
-  void set_write_datapoint(const optolink::Datapoint& dp) {
+  void set_write_datapoint(const optolink::Datapoint &dp) {
     this->write_datapoint_ = dp;
     this->has_write_dp_ = true;
   }
-  const optolink::Datapoint& get_write_datapoint() const {
+  const optolink::Datapoint &get_write_datapoint() const {
     return this->has_write_dp_ ? this->write_datapoint_ : this->datapoint_;
   }
 
-  void set_vitohome_parent(VitoHomeComponent* parent) { this->vh_parent_ = parent; }
+  void set_vitohome_parent(VitoHomeComponent *parent) { this->vh_parent_ = parent; }
 
   // --- scheduling -----------------------------------------------------------
   // 0 (default) = poll on every hub update cycle. Anything else is a minimum
@@ -64,7 +64,7 @@ class VitoEntityBase {
   // --- read path ------------------------------------------------------------
   // Called by the component on a successful read response. Packet length and
   // checksum have already been verified by the optolink engine.
-  virtual void handle_response(const ResponseView& response) = 0;
+  virtual void handle_response(const ResponseView &response) = 0;
 
   // Called by the component on a protocol-level READ error (poll or
   // read-back). Write errors go to handle_write_error() below, so an entity
@@ -78,7 +78,7 @@ class VitoEntityBase {
   virtual void handle_write_error(optolink::OptolinkResult /*error*/) {}
 
   // --- write path -----------------------------------------------------------
-  const uint8_t* write_data() const { return this->write_buf_; }
+  const uint8_t *write_data() const { return this->write_buf_; }
   uint8_t write_length() const { return this->write_len_; }
 
   // Whether a confirmed write should be followed by an immediate read of the
@@ -87,10 +87,10 @@ class VitoEntityBase {
 
   // Called by the component when the device ACKed a write. Default: no-op
   // (the hub enqueues the read-back when wants_read_back()).
-  virtual void handle_write_response(const ResponseView& /*response*/) {}
+  virtual void handle_write_response(const ResponseView & /*response*/) {}
 
   // --- logging / dump_config --------------------------------------------------
-  virtual const char* entity_kind() const = 0;
+  virtual const char *entity_kind() const = 0;
 
   // Each concrete entity logs its own config; the component fans out to
   // these from its own dump_config(). Concrete subclasses also inherit a
@@ -99,8 +99,9 @@ class VitoEntityBase {
   virtual void dump_config() = 0;
 
  protected:
-  bool set_write_payload_(const uint8_t* data, uint8_t len) {
-    if (data == nullptr || len == 0 || len > sizeof(this->write_buf_)) return false;
+  bool set_write_payload_(const uint8_t *data, uint8_t len) {
+    if (data == nullptr || len == 0 || len > sizeof(this->write_buf_))
+      return false;
     std::memcpy(this->write_buf_, data, len);
     this->write_len_ = len;
     return true;
@@ -115,7 +116,7 @@ class VitoEntityBase {
   optolink::Datapoint write_datapoint_{"uninitialized", 0, 1, optolink::noconv};
   bool has_write_dp_{false};
 
-  VitoHomeComponent* vh_parent_{nullptr};
+  VitoHomeComponent *vh_parent_{nullptr};
   // 8 bytes covers every write path: numeric/select (<= 4), a per-day
   // Schaltzeiten program (8), and the system-time set (8). set_write_payload_
   // bounds-checks against sizeof, so existing <= 4-byte writers are unaffected.

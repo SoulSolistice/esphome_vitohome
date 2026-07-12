@@ -5,7 +5,7 @@
 
 namespace esphome::vitohome {
 
-static const char* const TAG = "vitohome.binary_sensor";
+static const char *const TAG = "vitohome.binary_sensor";
 
 void VitoBinarySensor::dump_config() {
   LOG_BINARY_SENSOR("  ", "VitoHome Binary Sensor", this);
@@ -13,7 +13,7 @@ void VitoBinarySensor::dump_config() {
                 this->datapoint_.length(), this->byte_offset_, this->bit_mask_);
 }
 
-void VitoBinarySensor::handle_response(const ResponseView& response) {
+void VitoBinarySensor::handle_response(const ResponseView &response) {
   // Raw-byte read: truthiness is a configurable (byte_offset, bit_mask)
   // within the payload, so we bypass the optolink converter. The range
   // check and extraction live in decode_masked_bit() so they can be

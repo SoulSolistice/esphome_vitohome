@@ -9,7 +9,7 @@ namespace esphome::vitohome {
 // same (data, length, address) callback), so the entities never depend on the
 // engine callback shape.
 struct ResponseView {
-  const uint8_t* data;
+  const uint8_t *data;
   uint8_t data_length;
   // P300: the address echoed in the response frame itself (a real wire-level
   // datum the hub matches against the in-flight request). KW/GWG: those

@@ -1,15 +1,9 @@
 import esphome.codegen as cg
-import esphome.config_validation as cv
 from esphome.components import text
+import esphome.config_validation as cv
 from esphome.const import CONF_ADDRESS, CONF_NAME, CONF_UPDATE_INTERVAL
 
-from . import (
-    CONF_READ_BACK,
-    CONF_VITOCONNECT_ID,
-    VitoHomeComponent,
-    datapoint_expression,
-    vitohome_ns,
-)
+from . import CONF_READ_BACK, CONF_VITOCONNECT_ID, VitoHomeComponent, datapoint_expression, vitohome_ns
 
 DEPENDENCIES = ["vitohome"]
 

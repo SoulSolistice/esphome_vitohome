@@ -13,13 +13,13 @@ class VitoHomeComponent;
 // call id(vito).refresh_all() directly instead.
 class VitoRefreshButton : public button::Button, public Component {
  public:
-  void set_vitohome_parent(VitoHomeComponent* parent) { this->vh_parent_ = parent; }
+  void set_vitohome_parent(VitoHomeComponent *parent) { this->vh_parent_ = parent; }
   void dump_config() override;
 
  protected:
   void press_action() override;
 
-  VitoHomeComponent* vh_parent_{nullptr};
+  VitoHomeComponent *vh_parent_{nullptr};
 };
 
 }  // namespace esphome::vitohome

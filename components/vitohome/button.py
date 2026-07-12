@@ -1,6 +1,6 @@
 import esphome.codegen as cg
-import esphome.config_validation as cv
 from esphome.components import button
+import esphome.config_validation as cv
 
 from . import CONF_VITOCONNECT_ID, VitoHomeComponent, vitohome_ns
 

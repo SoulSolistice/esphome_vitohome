@@ -32,7 +32,7 @@ bool GWGEngine::read(uint16_t address, uint8_t length) {
   return false;
 }
 
-bool GWGEngine::write(uint16_t address, const uint8_t* data, uint8_t length) {
+bool GWGEngine::write(uint16_t address, const uint8_t *data, uint8_t length) {
   if (_busy) {
     return false;
   }

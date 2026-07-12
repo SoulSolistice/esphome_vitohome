@@ -37,9 +37,10 @@ namespace optolink = esphome::vitohome::optolink;
 using optolink::internals::ParserResult;
 
 static int g_fail = 0;
-static void check(bool ok, const char* what) {
+static void check(bool ok, const char *what) {
   std::printf("  %-52s %s\n", what, ok ? "ok" : "FAIL");
-  if (!ok) ++g_fail;
+  if (!ok)
+    ++g_fail;
 }
 
 // Header for a length-5 frame: start(0x41) len(0x05) type=RESPONSE(0x01)
@@ -53,9 +54,10 @@ int main() {
   std::printf("== VS2 parser zero-payload frame (OOB regression) ==\n");
 
   // --- Scenario A: valid frame (header + checksum) completes cleanly. ---
-  auto* parser = new optolink::internals::ParserVS2();
+  auto *parser = new optolink::internals::ParserVS2();
   ParserResult r = ParserResult::CONTINUE;
-  for (uint8_t b : kHeader) r = parser->parse(b);
+  for (uint8_t b : kHeader)
+    r = parser->parse(b);
 
   // After the payload-length byte the parser must be waiting for the
   // CHECKSUM, not consuming phantom payload bytes.
@@ -75,7 +77,8 @@ int main() {
   // is in CHECKSUM: byte #1 is a checksum mismatch (CS_ERROR, reset to
   // STARTBYTE) and bytes #2/#3 are ignored as invalid start bytes.
   parser = new optolink::internals::ParserVS2();
-  for (uint8_t b : kHeader) parser->parse(b);
+  for (uint8_t b : kHeader)
+    parser->parse(b);
   r = parser->parse(0xAA);  // pre-fix: phantom payload #1 | post-fix: CS mismatch
   check(r == ParserResult::CS_ERROR, "B: stray byte is a checksum error, not payload");
   r = parser->parse(0xBB);  // pre-fix: the OOB write (ASan SEGV) | post-fix: ignored

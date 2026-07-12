@@ -1,0 +1,82 @@
+# Python tooling configuration for esphome_vitohome.
+#
+# Ruff (lint + format), pytest, and coverage settings live here, mirroring the
+# layout ESPHome keeps in its own pyproject.toml. The lint rule set, ignore
+# list, and isort flavor track ESPHome's. Two deliberate differences:
+#   * line-length stays at 125. The Python under scripts/ is build tooling
+#     (catalog generation), not device firmware, so ESPHome's 88-column
+#     formatter width is not imposed on it.
+#   * coverage targets scripts/ (the tested Python here), the adapted inverse
+#     of ESPHome's monorepo .coveragerc, which omits its components/ tree.
+
+[tool.ruff]
+required-version = ">=0.5.0"
+target-version = "py312"
+line-length = 125
+exclude = ["example"]
+
+[tool.ruff.lint]
+select = [
+  "B",    # flake8-bugbear
+  "BLE",  # flake8-blind-except
+  "C4",   # flake8-comprehensions
+  "DTZ",  # flake8-datetimez
+  "E",    # pycodestyle
+  "EXE",  # flake8-executable
+  "F",    # pyflakes
+  "FA",   # flake8-future-annotations
+  "FLY",  # flynt: string formatting -> f-strings
+  "FURB", # refurb
+  "G",    # flake8-logging-format
+  "I",    # isort
+  "ICN",  # flake8-import-conventions
+  "ISC",  # flake8-implicit-str-concat
+  "LOG",  # flake8-logging
+  "PERF", # perflint
+  "PGH",  # pygrep-hooks
+  "PIE",  # flake8-pie
+  "PL",   # pylint
+  # PTH (flake8-use-pathlib) is intentionally omitted: the scripts/ tooling
+  # uses os.path throughout, and an os.path -> pathlib migration is a code
+  # refactor rather than a style-config alignment. Revisit separately if
+  # desired.
+  "Q",    # flake8-quotes
+  "RSE",  # flake8-raise
+  "RET",  # flake8-return
+  "SIM",  # flake8-simplify
+  "SLOT", # flake8-slots
+  "T10",  # flake8-debugger
+  "UP",   # pyupgrade
+  "W",    # pycodestyle warnings
+  "YTT",  # flake8-2020
+]
+
+ignore = [
+  "E501",    # line too long (the formatter enforces width)
+  "PLC0415", # `import` should be at the top level of a file
+  "PLR0911", # too many return statements
+  "PLR0912", # too many branches
+  "PLR0913", # too many arguments to function call
+  "PLR0915", # too many statements
+  "PLW1641", # object does not implement `__hash__`
+  "PLR2004", # magic value used in comparison
+  "PLW2901", # loop variable overwritten by inner target
+]
+
+[tool.ruff.lint.isort]
+force-sort-within-sections = true
+combine-as-imports = true
+split-on-trailing-comma = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
+
+[tool.coverage.run]
+source = ["scripts"]
+branch = true
+
+[tool.coverage.report]
+exclude_also = [
+  "if __name__ == .__main__.:",
+  "raise NotImplementedError",
+]

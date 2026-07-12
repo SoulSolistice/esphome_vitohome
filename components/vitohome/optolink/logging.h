@@ -22,12 +22,12 @@ iostream/iomanip, and so the native host harness output stays clean.
 #define optolink_log_w(...) ESP_LOGW("optolink", __VA_ARGS__)
 #else
 #define optolink_log_i(...) \
-  do {                      \
+  do { \
   } while (0)
 #define optolink_log_e(...) \
-  do {                      \
+  do { \
   } while (0)
 #define optolink_log_w(...) \
-  do {                      \
+  do { \
   } while (0)
 #endif

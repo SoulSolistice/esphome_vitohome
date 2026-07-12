@@ -5,7 +5,7 @@
 
 namespace esphome::vitohome {
 
-static const char* const TAG = "vitohome.button";
+static const char *const TAG = "vitohome.button";
 
 void VitoRefreshButton::dump_config() { LOG_BUTTON("  ", "VitoHome Refresh Button", this); }
 

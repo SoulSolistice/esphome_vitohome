@@ -36,10 +36,10 @@ class VitoSwitch : public switch_::Switch, public Component, public VitoEntityBa
   void set_extract_len(uint8_t len) { this->extract_len_ = len; }
 
   void dump_config() override;
-  void handle_response(const ResponseView& response) override;
-  void handle_write_response(const ResponseView& response) override;
+  void handle_response(const ResponseView &response) override;
+  void handle_write_response(const ResponseView &response) override;
   void handle_error(optolink::OptolinkResult error) override;
-  const char* entity_kind() const override { return "switch"; }
+  const char *entity_kind() const override { return "switch"; }
 
  protected:
   void write_state(bool state) override;

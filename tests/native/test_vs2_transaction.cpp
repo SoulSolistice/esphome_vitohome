@@ -14,8 +14,7 @@
 // copy it out there.
 namespace optolink = esphome::vitohome::optolink;
 
-template <class Pump>
-static void handshake(FakeOptolink& io, Pump pump) {
+template<class Pump> static void handshake(FakeOptolink &io, Pump pump) {
   pump(3);
   io.feed({0x05});  // EOT -> ENQ
   pump(3);
@@ -24,20 +23,22 @@ static void handshake(FakeOptolink& io, Pump pump) {
   io.clear_written();
 }
 
-static bool run_vector(const TransactionVector& tv) {
+static bool run_vector(const TransactionVector &tv) {
   FakeOptolink io;
   optolink::OptolinkEngine<optolink::P300> vito(&io);
   std::vector<uint8_t> got_payload;
   bool got_resp = false;
-  vito.onResponse([&](const uint8_t* data, uint8_t length, uint16_t /*address*/) {
+  vito.onResponse([&](const uint8_t *data, uint8_t length, uint16_t /*address*/) {
     // data is nullptr for write-ack responses (by design); only read the
     // payload for read responses. This is the correct consumer guard.
-    if (data) got_payload.assign(data, data + length);
+    if (data)
+      got_payload.assign(data, data + length);
     got_resp = true;
   });
   vito.begin();
   auto pump = [&](int n) {
-    for (int i = 0; i < n; ++i) vito.loop();
+    for (int i = 0; i < n; ++i)
+      vito.loop();
   };
   handshake(io, pump);
 
@@ -47,7 +48,7 @@ static bool run_vector(const TransactionVector& tv) {
     vito.read(tv.address, tv.read_len);
 
   pump(8);  // engine emits request, lands in SEND_ACK
-  for (const auto& chunk : tv.device_chunks) {
+  for (const auto &chunk : tv.device_chunks) {
     io.feed(chunk);
     pump(6);
   }
@@ -67,8 +68,9 @@ static bool run_vector(const TransactionVector& tv) {
 int main() {
   std::printf("VS2 transaction harness (golden-master vectors from live vitohome captures)\n");
   int fails = 0;
-  for (const auto& tv : transaction_vectors())
-    if (!run_vector(tv)) ++fails;
+  for (const auto &tv : transaction_vectors())
+    if (!run_vector(tv))
+      ++fails;
   std::printf("\n%zu vectors, %d failure(s)\n", transaction_vectors().size(), fails);
   return fails == 0 ? 0 : 1;
 }

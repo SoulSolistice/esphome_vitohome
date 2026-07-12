@@ -41,18 +41,14 @@ struct KW {};
 struct GWG {};
 
 namespace internals {
-template <class PROTOCOLVERSION>
-struct ProtocolEngine;
-template <>
-struct ProtocolEngine<P300> {
+template<class PROTOCOLVERSION> struct ProtocolEngine;
+template<> struct ProtocolEngine<P300> {
   using type = optolink::VS2Engine;
 };
-template <>
-struct ProtocolEngine<KW> {
+template<> struct ProtocolEngine<KW> {
   using type = optolink::VS1Engine;
 };
-template <>
-struct ProtocolEngine<GWG> {
+template<> struct ProtocolEngine<GWG> {
   using type = optolink::GWGEngine;
 };
 }  // namespace internals
@@ -60,7 +56,6 @@ struct ProtocolEngine<GWG> {
 // OptolinkEngine<P300> is a drop-in for the former VitoWiFi::VitoWiFi<VS2>.
 // The protocol tag selects the concrete engine; the constructor takes the
 // duck-typed interface pointer (wrapped internally in GenericInterface<C>).
-template <class PROTOCOLVERSION>
-using OptolinkEngine = typename internals::ProtocolEngine<PROTOCOLVERSION>::type;
+template<class PROTOCOLVERSION> using OptolinkEngine = typename internals::ProtocolEngine<PROTOCOLVERSION>::type;
 
 }  // namespace esphome::vitohome::optolink

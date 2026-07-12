@@ -1,12 +1,7 @@
 import esphome.codegen as cg
-import esphome.config_validation as cv
 from esphome.components import select
-from esphome.const import (
-    CONF_ADDRESS,
-    CONF_NAME,
-    CONF_OPTIONS,
-    CONF_UPDATE_INTERVAL,
-)
+import esphome.config_validation as cv
+from esphome.const import CONF_ADDRESS, CONF_NAME, CONF_OPTIONS, CONF_UPDATE_INTERVAL
 
 from . import (
     CONF_LENGTH,

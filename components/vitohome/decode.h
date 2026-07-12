@@ -25,9 +25,10 @@ namespace esphome::vitohome {
 // ---------------------------------------------------------------------------
 
 // Returns false (and leaves *out untouched) if byte_offset is out of range.
-inline bool decode_masked_bit(const uint8_t* data, std::size_t data_len, uint8_t byte_offset, uint8_t bit_mask,
-                              bool* out) {
-  if (data == nullptr || data_len <= byte_offset) return false;
+inline bool decode_masked_bit(const uint8_t *data, std::size_t data_len, uint8_t byte_offset, uint8_t bit_mask,
+                              bool *out) {
+  if (data == nullptr || data_len <= byte_offset)
+    return false;
   *out = (data[byte_offset] & bit_mask) != 0;
   return true;
 }
@@ -38,7 +39,7 @@ inline bool decode_masked_bit(const uint8_t* data, std::size_t data_len, uint8_t
 
 // Optolink payloads are little-endian (verified against the optolink engine
 // Converter.cpp at the pinned SHA: data[1] << 8 | data[0], etc.).
-inline uint64_t read_le(const uint8_t* data, uint8_t len) {
+inline uint64_t read_le(const uint8_t *data, uint8_t len) {
   uint64_t v = 0;
   for (uint8_t i = 0; i < len && i < 8; i++) {
     v |= static_cast<uint64_t>(data[i]) << (8 * i);
@@ -51,7 +52,7 @@ inline uint64_t read_le(const uint8_t* data, uint8_t len) {
 // Used by e.g. GWG_Codierstecker_Kennziffer (0x1040) and VSKO_Scot_NEC_* on
 // VScotHO1_72. Sign extension afterwards is byte-order-agnostic (it operates on
 // the assembled len-byte integer), so sign_extend_le() is reused as-is.
-inline uint64_t read_be(const uint8_t* data, uint8_t len) {
+inline uint64_t read_be(const uint8_t *data, uint8_t len) {
   uint64_t v = 0;
   for (uint8_t i = 0; i < len && i < 8; i++) {
     v = (v << 8) | static_cast<uint64_t>(data[i]);
@@ -62,7 +63,8 @@ inline uint64_t read_be(const uint8_t* data, uint8_t len) {
 // Two's-complement sign extension of a little-endian raw value of `len`
 // bytes. len in [1,8]; len >= 8 returns the value unchanged.
 inline int64_t sign_extend_le(uint64_t raw, uint8_t len) {
-  if (len == 0 || len >= 8) return static_cast<int64_t>(raw);
+  if (len == 0 || len >= 8)
+    return static_cast<int64_t>(raw);
   const uint64_t sign_bit = 1ULL << (8 * len - 1);
   if (raw & sign_bit) {
     return static_cast<int64_t>(raw | ~((sign_bit << 1) - 1));
@@ -73,9 +75,10 @@ inline int64_t sign_extend_le(uint64_t raw, uint8_t len) {
 // Decode `len` bytes starting at data[0] as a (signed or unsigned) integer
 // and scale it in double precision. Returns false if the payload is shorter
 // than `len` or len is outside [1,8].
-inline bool decode_scaled(const uint8_t* data, std::size_t data_len, uint8_t len, bool is_signed, double scale,
-                          double* out) {
-  if (data == nullptr || len == 0 || len > 8 || data_len < len) return false;
+inline bool decode_scaled(const uint8_t *data, std::size_t data_len, uint8_t len, bool is_signed, double scale,
+                          double *out) {
+  if (data == nullptr || len == 0 || len > 8 || data_len < len)
+    return false;
   const uint64_t raw = read_le(data, len);
   const double v = is_signed ? static_cast<double>(sign_extend_le(raw, len)) : static_cast<double>(raw);
   *out = v * scale;
@@ -84,9 +87,10 @@ inline bool decode_scaled(const uint8_t* data, std::size_t data_len, uint8_t len
 
 // Big-endian counterpart of decode_scaled for Vitosoft "RotateBytes" datapoints.
 // Identical contract; only the byte assembly differs (read_be).
-inline bool decode_scaled_be(const uint8_t* data, std::size_t data_len, uint8_t len, bool is_signed, double scale,
-                             double* out) {
-  if (data == nullptr || len == 0 || len > 8 || data_len < len) return false;
+inline bool decode_scaled_be(const uint8_t *data, std::size_t data_len, uint8_t len, bool is_signed, double scale,
+                             double *out) {
+  if (data == nullptr || len == 0 || len > 8 || data_len < len)
+    return false;
   const uint64_t raw = read_be(data, len);
   const double v = is_signed ? static_cast<double>(sign_extend_le(raw, len)) : static_cast<double>(raw);
   *out = v * scale;
@@ -98,20 +102,24 @@ inline bool decode_scaled_be(const uint8_t* data, std::size_t data_len, uint8_t 
 // false if the raw value does not fit the (signed or unsigned) range of
 // `len` bytes, or on a non-finite input — the caller must treat that as a
 // hard error and not transmit. len in [1,4] (Optolink writes).
-inline bool encode_scaled(double value, double scale, bool is_signed, uint8_t len, uint8_t* buf) {
-  if (buf == nullptr || len == 0 || len > 4 || scale == 0.0 || !std::isfinite(value)) return false;
+inline bool encode_scaled(double value, double scale, bool is_signed, uint8_t len, uint8_t *buf) {
+  if (buf == nullptr || len == 0 || len > 4 || scale == 0.0 || !std::isfinite(value))
+    return false;
   const double raw_d = value / scale;
-  if (!std::isfinite(raw_d)) return false;
+  if (!std::isfinite(raw_d))
+    return false;
   const int64_t raw = static_cast<int64_t>(std::llround(raw_d));
   if (is_signed) {
     const int64_t lo = -(1LL << (8 * len - 1));
     const int64_t hi = (1LL << (8 * len - 1)) - 1;
-    if (raw < lo || raw > hi) return false;
+    if (raw < lo || raw > hi)
+      return false;
   } else {
     // 1ULL is >= 64 bits on any conforming compiler, so the shift is
     // well-defined for len == 4 too ((1ULL << 32) - 1 == 0xFFFFFFFF); no
     // special case needed.
-    if (raw < 0 || static_cast<uint64_t>(raw) > ((1ULL << (8 * len)) - 1)) return false;
+    if (raw < 0 || static_cast<uint64_t>(raw) > ((1ULL << (8 * len)) - 1))
+      return false;
   }
   const uint64_t u = static_cast<uint64_t>(raw);  // two's complement bit pattern
   for (uint8_t i = 0; i < len; i++) {
@@ -126,10 +134,11 @@ inline bool encode_scaled(double value, double scale, bool is_signed, uint8_t le
 
 // Decode one packed-BCD byte (0x25 -> 25). Returns false on a non-BCD nibble
 // (e.g. 0xFF, the fill value of empty error-history slots).
-inline bool bcd_to_int(uint8_t b, uint8_t* out) {
+inline bool bcd_to_int(uint8_t b, uint8_t *out) {
   const uint8_t hi = (b >> 4) & 0x0F;
   const uint8_t lo = b & 0x0F;
-  if (hi > 9 || lo > 9) return false;
+  if (hi > 9 || lo > 9)
+    return false;
   *out = static_cast<uint8_t>(hi * 10 + lo);
   return true;
 }
@@ -149,15 +158,17 @@ struct BcdDateTime {
 // docs/design_notes.md SS7 for that correction).
 // Returns false on any non-BCD byte or an out-of-range field (empty
 // error-history slots are 0xFF-filled and fail the BCD check).
-inline bool decode_datetime_bcd(const uint8_t* data, std::size_t data_len, std::size_t offset, BcdDateTime* out) {
-  if (data == nullptr || out == nullptr || data_len < offset + 8) return false;
+inline bool decode_datetime_bcd(const uint8_t *data, std::size_t data_len, std::size_t offset, BcdDateTime *out) {
+  if (data == nullptr || out == nullptr || data_len < offset + 8)
+    return false;
   uint8_t yh, yl, mo, da, ho, mi, se;
   if (!bcd_to_int(data[offset + 0], &yh) || !bcd_to_int(data[offset + 1], &yl) || !bcd_to_int(data[offset + 2], &mo) ||
       !bcd_to_int(data[offset + 3], &da) || !bcd_to_int(data[offset + 5], &ho) || !bcd_to_int(data[offset + 6], &mi) ||
       !bcd_to_int(data[offset + 7], &se)) {
     return false;
   }
-  if (mo < 1 || mo > 12 || da < 1 || da > 31 || ho > 23 || mi > 59 || se > 59) return false;
+  if (mo < 1 || mo > 12 || da < 1 || da > 31 || ho > 23 || mi > 59 || se > 59)
+    return false;
   out->year = static_cast<uint16_t>(yh * 100 + yl);
   out->month = mo;
   out->day = da;
@@ -177,8 +188,9 @@ inline bool decode_datetime_bcd(const uint8_t* data, std::size_t data_len, std::
 // (25 -> 0x25). A single BCD byte cannot hold values above 99, so the caller
 // reduces wider fields upstream (the year is split into a century byte and a
 // year-of-century byte). Returns false on an out-of-range input.
-inline bool int_to_bcd(uint8_t dec, uint8_t* out) {
-  if (out == nullptr || dec > 99) return false;
+inline bool int_to_bcd(uint8_t dec, uint8_t *out) {
+  if (out == nullptr || dec > 99)
+    return false;
   *out = static_cast<uint8_t>(((dec / 10) << 4) | (dec % 10));
   return true;
 }
@@ -198,7 +210,7 @@ inline int64_t civil_days(int year, unsigned month, unsigned day) {
 
 // Seconds-since-epoch for a decoded device datetime, treated as a plain
 // wall-clock value (no timezone math) -- for the drift comparison only.
-inline int64_t civil_seconds(const BcdDateTime& dt) {
+inline int64_t civil_seconds(const BcdDateTime &dt) {
   return civil_days(dt.year, dt.month, dt.day) * 86400 + static_cast<int64_t>(dt.hour) * 3600 +
          static_cast<int64_t>(dt.minute) * 60 + dt.second;
 }
@@ -218,8 +230,9 @@ inline uint8_t device_weekday_from_esptime(uint8_t dow_sun1) { return static_cas
 // and only commits on success, so a bad field leaves buf8 unchanged. Returns
 // false on any out-of-range field.
 inline bool encode_datetime_bcd(uint16_t year, uint8_t month, uint8_t day, uint8_t weekday, uint8_t hour,
-                                uint8_t minute, uint8_t second, uint8_t* buf8) {
-  if (buf8 == nullptr) return false;
+                                uint8_t minute, uint8_t second, uint8_t *buf8) {
+  if (buf8 == nullptr)
+    return false;
   if (year > 9999 || month < 1 || month > 12 || day < 1 || day > 31 || weekday > 6 || hour > 23 || minute > 59 ||
       second > 59) {
     return false;
@@ -268,10 +281,12 @@ inline bool timebyte_active(uint8_t b) { return static_cast<uint8_t>(b >> 3) < 2
 
 // Decode one switch-point byte to hour/minute. Returns false for a disabled
 // byte (hour >= 24); *h/*m are left untouched in that case.
-inline bool timebyte_to_hhmm(uint8_t b, uint8_t* h, uint8_t* m) {
-  if (h == nullptr || m == nullptr) return false;
+inline bool timebyte_to_hhmm(uint8_t b, uint8_t *h, uint8_t *m) {
+  if (h == nullptr || m == nullptr)
+    return false;
   const uint8_t hour = static_cast<uint8_t>(b >> 3);
-  if (hour >= 24) return false;
+  if (hour >= 24)
+    return false;
   *h = hour;
   *m = static_cast<uint8_t>((b & 0x07) * 10);
   return true;
@@ -281,8 +296,9 @@ inline bool timebyte_to_hhmm(uint8_t b, uint8_t* h, uint8_t* m) {
 // next-lower 10-minute step. Returns false if the hour is not 0..23 (24+
 // collides with the disabled sentinel) or the minute is not 0..59, so a bad
 // value is rejected rather than silently disabling the slot.
-inline bool hhmm_to_timebyte(uint8_t h, uint8_t m, uint8_t* b) {
-  if (b == nullptr || h > 23 || m > 59) return false;
+inline bool hhmm_to_timebyte(uint8_t h, uint8_t m, uint8_t *b) {
+  if (b == nullptr || h > 23 || m > 59)
+    return false;
   *b = static_cast<uint8_t>((h << 3) | (m / 10));  // m/10 in 0..5 fits 3 bits
   return true;
 }
@@ -291,17 +307,21 @@ inline bool hhmm_to_timebyte(uint8_t h, uint8_t m, uint8_t* b) {
 // character count written (excluding the NUL), or -1 on bad args / a payload
 // shorter than 8 bytes. out_cap should be >= 48 (worst case
 // "HH:MM-HH:MM" x4 + 3 spaces = 47, + NUL).
-inline int decode_schaltzeiten_day(const uint8_t* data, std::size_t data_len, char* out, std::size_t out_cap) {
-  if (out != nullptr && out_cap > 0) out[0] = '\0';
-  if (data == nullptr || out == nullptr || out_cap == 0 || data_len < 8) return -1;
+inline int decode_schaltzeiten_day(const uint8_t *data, std::size_t data_len, char *out, std::size_t out_cap) {
+  if (out != nullptr && out_cap > 0)
+    out[0] = '\0';
+  if (data == nullptr || out == nullptr || out_cap == 0 || data_len < 8)
+    return -1;
   // Trailing disabled pairs are trimmed, so find the last active ON byte.
   int last_active = -1;
   for (int p = 0; p < 4; p++) {
-    if (timebyte_active(data[2 * p])) last_active = p;
+    if (timebyte_active(data[2 * p]))
+      last_active = p;
   }
   std::size_t off = 0;
   for (int p = 0; p <= last_active; p++) {
-    if (off != 0 && off < out_cap - 1) out[off++] = ' ';
+    if (off != 0 && off < out_cap - 1)
+      out[off++] = ' ';
     const uint8_t on = data[2 * p];
     int w;
     if (!timebyte_active(on)) {
@@ -316,7 +336,8 @@ inline int decode_schaltzeiten_day(const uint8_t* data, std::size_t data_len, ch
       const uint8_t fm = static_cast<uint8_t>((offb & 0x07) * 10);
       w = std::snprintf(out + off, out_cap - off, "%02u:%02u-%02u:%02u", oh, om, fh, fm);
     }
-    if (w < 0) break;
+    if (w < 0)
+      break;
     off += static_cast<std::size_t>(w);
     if (off >= out_cap) {
       off = out_cap - 1;  // truncated; snprintf left it NUL-terminated
@@ -330,11 +351,12 @@ inline int decode_schaltzeiten_day(const uint8_t* data, std::size_t data_len, ch
 // Parse "HH:MM" (1-2 digit hour, 1-2 digit minute) in [*pp, end) into a
 // switch-point byte (truncating the minute). Advances *pp past the field.
 // Returns false on a malformed or out-of-range field.
-inline bool parse_hhmm_(const char** pp, const char* end, uint8_t* b) {
-  const char* p = *pp;
+inline bool parse_hhmm_(const char **pp, const char *end, uint8_t *b) {
+  const char *p = *pp;
   int field[2] = {0, 0};
   for (int f = 0; f < 2; f++) {
-    if (p >= end || *p < '0' || *p > '9') return false;
+    if (p >= end || *p < '0' || *p > '9')
+      return false;
     int v = 0, n = 0;
     while (p < end && *p >= '0' && *p <= '9' && n < 2) {
       v = v * 10 + (*p - '0');
@@ -343,12 +365,15 @@ inline bool parse_hhmm_(const char** pp, const char* end, uint8_t* b) {
     }
     field[f] = v;
     if (f == 0) {
-      if (p >= end || *p != ':') return false;
+      if (p >= end || *p != ':')
+        return false;
       p++;
     }
   }
-  if (field[0] > 23 || field[1] > 59) return false;
-  if (!hhmm_to_timebyte(static_cast<uint8_t>(field[0]), static_cast<uint8_t>(field[1]), b)) return false;
+  if (field[0] > 23 || field[1] > 59)
+    return false;
+  if (!hhmm_to_timebyte(static_cast<uint8_t>(field[0]), static_cast<uint8_t>(field[1]), b))
+    return false;
   *pp = p;
   return true;
 }
@@ -359,22 +384,28 @@ inline bool parse_hhmm_(const char** pp, const char* end, uint8_t* b) {
 // (the parse builds into a local and only commits on success, so a rejected
 // string never leaves a torn write) and the caller must not transmit -- same
 // contract as encode_scaled.
-inline bool encode_schaltzeiten_day(const char* str, uint8_t* buf8) {
-  if (buf8 == nullptr) return false;
+inline bool encode_schaltzeiten_day(const char *str, uint8_t *buf8) {
+  if (buf8 == nullptr)
+    return false;
   uint8_t tmp[8];
-  for (int i = 0; i < 8; i++) tmp[i] = 0xFF;
+  for (int i = 0; i < 8; i++)
+    tmp[i] = 0xFF;
   if (str != nullptr) {
-    const char* p = str;
-    const char* const end = str + std::strlen(str);
+    const char *p = str;
+    const char *const end = str + std::strlen(str);
     int pair = 0;
     while (p < end) {
-      while (p < end && *p == ' ') p++;  // skip spaces between tokens
-      if (p >= end) break;
-      if (pair >= 4) return false;  // too many pairs
-      const char* tok_end = p;
-      while (tok_end < end && *tok_end != ' ') tok_end++;
+      while (p < end && *p == ' ')
+        p++;  // skip spaces between tokens
+      if (p >= end)
+        break;
+      if (pair >= 4)
+        return false;  // too many pairs
+      const char *tok_end = p;
+      while (tok_end < end && *tok_end != ' ')
+        tok_end++;
       bool has_colon = false;
-      for (const char* q = p; q < tok_end; q++) {
+      for (const char *q = p; q < tok_end; q++) {
         if (*q == ':') {
           has_colon = true;
           break;
@@ -382,15 +413,20 @@ inline bool encode_schaltzeiten_day(const char* str, uint8_t* buf8) {
       }
       const std::size_t tok_len = static_cast<std::size_t>(tok_end - p);
       if (!has_colon) {  // disabled pair: "-" or "--", leaves 0xFF/0xFF
-        if (!(tok_len == 1 && p[0] == '-') && !(tok_len == 2 && p[0] == '-' && p[1] == '-')) return false;
+        if (!(tok_len == 1 && p[0] == '-') && !(tok_len == 2 && p[0] == '-' && p[1] == '-'))
+          return false;
       } else {  // "HH:MM-HH:MM"
-        const char* cur = p;
+        const char *cur = p;
         uint8_t onb = 0, offb = 0;
-        if (!parse_hhmm_(&cur, tok_end, &onb)) return false;
-        if (cur >= tok_end || *cur != '-') return false;
+        if (!parse_hhmm_(&cur, tok_end, &onb))
+          return false;
+        if (cur >= tok_end || *cur != '-')
+          return false;
         cur++;
-        if (!parse_hhmm_(&cur, tok_end, &offb)) return false;
-        if (cur != tok_end) return false;  // trailing garbage in the token
+        if (!parse_hhmm_(&cur, tok_end, &offb))
+          return false;
+        if (cur != tok_end)
+          return false;  // trailing garbage in the token
         tmp[2 * pair] = onb;
         tmp[2 * pair + 1] = offb;
       }
@@ -416,16 +452,20 @@ inline bool encode_schaltzeiten_day(const char* str, uint8_t* buf8) {
 // characters. Writes the result plus a NUL into `out` (out_cap must be >=
 // len+1). Returns the character count written (excluding the terminator), or
 // -1 on bad arguments / short payload.
-inline int decode_ascii(const uint8_t* data, std::size_t data_len, uint8_t len, char* out, std::size_t out_cap) {
-  if (data == nullptr || out == nullptr || out_cap == 0) return -1;
-  if (len == 0 || data_len < len || out_cap < static_cast<std::size_t>(len) + 1) return -1;
+inline int decode_ascii(const uint8_t *data, std::size_t data_len, uint8_t len, char *out, std::size_t out_cap) {
+  if (data == nullptr || out == nullptr || out_cap == 0)
+    return -1;
+  if (len == 0 || data_len < len || out_cap < static_cast<std::size_t>(len) + 1)
+    return -1;
   std::size_t n = 0;
   for (uint8_t i = 0; i < len; i++) {
     const uint8_t c = data[i];
-    if (c == 0x00) break;  // NUL terminates the string
+    if (c == 0x00)
+      break;  // NUL terminates the string
     out[n++] = (c >= 0x20 && c <= 0x7E) ? static_cast<char>(c) : '?';
   }
-  while (n > 0 && out[n - 1] == ' ') n--;  // trim trailing space padding
+  while (n > 0 && out[n - 1] == ' ')
+    n--;  // trim trailing space padding
   out[n] = '\0';
   return static_cast<int>(n);
 }
@@ -437,13 +477,16 @@ inline int decode_ascii(const uint8_t* data, std::size_t data_len, uint8_t len, 
 // BMP only -- a surrogate (0xD800..0xDFFF) is emitted as '?'. Trailing spaces
 // are trimmed. out_cap must allow up to 3 UTF-8 bytes per unit + NUL. Returns
 // the byte count written (excluding the NUL), or -1 on bad args.
-inline int decode_utf16(const uint8_t* data, std::size_t data_len, uint8_t len, char* out, std::size_t out_cap) {
-  if (data == nullptr || out == nullptr || out_cap == 0) return -1;
-  if (len == 0 || (len & 1) != 0 || data_len < len) return -1;
+inline int decode_utf16(const uint8_t *data, std::size_t data_len, uint8_t len, char *out, std::size_t out_cap) {
+  if (data == nullptr || out == nullptr || out_cap == 0)
+    return -1;
+  if (len == 0 || (len & 1) != 0 || data_len < len)
+    return -1;
   std::size_t n = 0;
   for (uint8_t i = 0; i + 1 < len; i += 2) {
     const uint16_t cu = static_cast<uint16_t>(data[i] | (data[i + 1] << 8));
-    if (cu == 0x0000) break;  // NUL terminates
+    if (cu == 0x0000)
+      break;  // NUL terminates
     // 0xFFFF TERMINATES. U+FFFF is a Unicode noncharacter and can never appear
     // in a label, so a fill slot means the string is over. Skipping it instead
     // (the original behaviour) walked into the padding: the full 42-byte read of
@@ -451,24 +494,30 @@ inline int decode_utf16(const uint8_t* data, std::size_t data_len, uint8_t len, 
     // bytes followed by five 0x00, so code unit 17 is 0x00FF -- and "Heizkreis 1"
     // published as "Heizkreis 1ÿ". The fill is byte-oriented, not code-unit
     // aligned; do not assume it is.
-    if (cu == 0xFFFF) break;
+    if (cu == 0xFFFF)
+      break;
     uint32_t cp = cu;
-    if (cu >= 0xD800 && cu <= 0xDFFF) cp = '?';  // lone surrogate -> placeholder
+    if (cu >= 0xD800 && cu <= 0xDFFF)
+      cp = '?';  // lone surrogate -> placeholder
     if (cp < 0x80) {
-      if (n + 1 >= out_cap) break;
+      if (n + 1 >= out_cap)
+        break;
       out[n++] = static_cast<char>(cp);
     } else if (cp < 0x800) {
-      if (n + 2 >= out_cap) break;
+      if (n + 2 >= out_cap)
+        break;
       out[n++] = static_cast<char>(0xC0 | (cp >> 6));
       out[n++] = static_cast<char>(0x80 | (cp & 0x3F));
     } else {
-      if (n + 3 >= out_cap) break;
+      if (n + 3 >= out_cap)
+        break;
       out[n++] = static_cast<char>(0xE0 | (cp >> 12));
       out[n++] = static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
       out[n++] = static_cast<char>(0x80 | (cp & 0x3F));
     }
   }
-  while (n > 0 && out[n - 1] == ' ') n--;  // trim trailing space padding
+  while (n > 0 && out[n - 1] == ' ')
+    n--;  // trim trailing space padding
   out[n] = '\0';
   return static_cast<int>(n);
 }
@@ -490,8 +539,9 @@ inline constexpr uint8_t RAW_DUMP_MAX_HEX = 48;
 // Pure / framework-free so it is host-tested in tests/native/test_decode.cpp.
 // Never writes past out[cap-1]; always NUL-terminates when cap > 0. Returns
 // the number of characters written (excluding the NUL), or 0 on bad args.
-inline int format_raw_dump(uint16_t address, const uint8_t* data, uint8_t len, char* out, std::size_t cap) {
-  if (out == nullptr || cap == 0) return 0;
+inline int format_raw_dump(uint16_t address, const uint8_t *data, uint8_t len, char *out, std::size_t cap) {
+  if (out == nullptr || cap == 0)
+    return 0;
   int off = std::snprintf(out, cap, "0x%04X:", static_cast<unsigned>(address));
   if (off < 0) {
     out[0] = '\0';
@@ -505,13 +555,15 @@ inline int format_raw_dump(uint16_t address, const uint8_t* data, uint8_t len, c
   for (uint8_t i = 0; i < max_hex && static_cast<std::size_t>(off) < cap; i++) {
     const int w = std::snprintf(out + off, cap - static_cast<std::size_t>(off), " %02X",
                                 static_cast<unsigned>(data == nullptr ? 0 : data[i]));
-    if (w < 0) return 0;
+    if (w < 0)
+      return 0;
     off += w;
   }
   if (len > max_hex && static_cast<std::size_t>(off) < cap) {
     const int w =
         std::snprintf(out + off, cap - static_cast<std::size_t>(off), " ...(%u bytes)", static_cast<unsigned>(len));
-    if (w < 0) return 0;
+    if (w < 0)
+      return 0;
     off += w;
   }
   if (data != nullptr && len >= 1 && len <= 8 && static_cast<std::size_t>(off) < cap) {
@@ -519,10 +571,12 @@ inline int format_raw_dump(uint16_t address, const uint8_t* data, uint8_t len, c
     const int64_t s = sign_extend_le(u, len);
     const int w = std::snprintf(out + off, cap - static_cast<std::size_t>(off), "  u=%llu i=%lld",
                                 static_cast<unsigned long long>(u), static_cast<long long>(s));
-    if (w < 0) return 0;
+    if (w < 0)
+      return 0;
     off += w;
   }
-  if (static_cast<std::size_t>(off) >= cap) off = static_cast<int>(cap) - 1;  // truncated; snprintf NUL-terminated
+  if (static_cast<std::size_t>(off) >= cap)
+    off = static_cast<int>(cap) - 1;  // truncated; snprintf NUL-terminated
   return off;
 }
 

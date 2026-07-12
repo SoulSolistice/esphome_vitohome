@@ -28,14 +28,15 @@ uint8_t g_last_payload[8] = {0};
 uint16_t g_last_addr = 0;
 }  // namespace
 
-static void pump(Engine& a, int n = 6) {
-  for (int i = 0; i < n; ++i) a.loop();
+static void pump(Engine &a, int n = 6) {
+  for (int i = 0; i < n; ++i)
+    a.loop();
 }
 
 int main() {
   FakeOptolink uart;
   Engine adapter(&uart);  // GWGEngine under -DVITOHOME_PROTOCOL_GWG
-  adapter.onResponse([](const uint8_t* data, uint8_t length, uint16_t address) {
+  adapter.onResponse([](const uint8_t *data, uint8_t length, uint16_t address) {
     g_responses++;
     g_last_len = length;
     g_last_addr = address;
@@ -47,9 +48,10 @@ int main() {
   adapter.begin();
 
   int failures = 0;
-  auto check = [&failures](bool ok, const char* what) {
+  auto check = [&failures](bool ok, const char *what) {
     std::printf("  %-44s %s\n", what, ok ? "ok" : "FAIL");
-    if (!ok) failures++;
+    if (!ok)
+      failures++;
   };
 
   // --- READ of a 2-byte datapoint (upstream waited for 5 bytes here) --------

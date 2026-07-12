@@ -74,11 +74,7 @@ def test_duplicate_write_values_are_allowed():
 # min_temperature would wrap to a large positive temperature on the wire.
 # _validate_setpoint_range rejects it at config time.
 
-from esphome.const import (  # noqa: E402
-    CONF_MAX_TEMPERATURE,
-    CONF_MIN_TEMPERATURE,
-    CONF_VISUAL,
-)
+from esphome.const import CONF_MAX_TEMPERATURE, CONF_MIN_TEMPERATURE, CONF_VISUAL  # noqa: E402
 
 from components.vitohome.climate import _validate_setpoint_range  # noqa: E402
 

@@ -13,8 +13,8 @@ for _p in (_REPO_ROOT, os.path.join(_REPO_ROOT, "scripts")):
         sys.path.insert(0, _p)
 
 import esphome.config_validation as cv  # noqa: E402
-import gen_catalog as gc  # noqa: E402
 from esphome.core import CORE  # noqa: E402
+import gen_catalog as gc  # noqa: E402
 
 from components.vitohome import MAX_P300_READ_LENGTH  # noqa: E402
 from components.vitohome.number import CONFIG_SCHEMA as NUMBER_SCHEMA  # noqa: E402

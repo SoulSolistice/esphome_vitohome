@@ -33,7 +33,7 @@ class VS2Engine {
   // response frame (a real wire-level datum), so a caller can match it against
   // the request it dispatched. Correlation of a response to its originating
   // request is the caller's job (the engine is strictly single-in-flight).
-  typedef std::function<void(const uint8_t* data, uint8_t length, uint16_t address)> OnResponseCallback;
+  typedef std::function<void(const uint8_t *data, uint8_t length, uint16_t address)> OnResponseCallback;
   typedef std::function<void(OptolinkResult error, uint16_t address)> OnErrorCallback;
 
   // Named timeouts (ms). Values are byte-identical to the previous inline
@@ -42,8 +42,8 @@ class VS2Engine {
   static constexpr uint32_t HANDSHAKE_RETRY_MS = 3000;     // RESET-ACK / INIT-ACK window
   static constexpr uint32_t KEEPALIVE_INTERVAL_MS = 3000;  // idle re-INIT keepalive
 
-  template <class C>
-  explicit VS2Engine(C* interface)
+  template<class C>
+  explicit VS2Engine(C *interface)
       : _state(State::UNDEFINED),
         _currentMillis(optolink_millis()),
         _lastMillis(_currentMillis),
@@ -65,14 +65,14 @@ class VS2Engine {
     }
   }
   ~VS2Engine();
-  VS2Engine(const VS2Engine&) = delete;
-  VS2Engine& operator=(const VS2Engine&) = delete;
+  VS2Engine(const VS2Engine &) = delete;
+  VS2Engine &operator=(const VS2Engine &) = delete;
 
   void onResponse(OnResponseCallback callback);
   void onError(OnErrorCallback callback);
 
   bool read(uint16_t address, uint8_t length);
-  bool write(uint16_t address, const uint8_t* data, uint8_t length);
+  bool write(uint16_t address, const uint8_t *data, uint8_t length);
 
   bool begin();
   void loop();
@@ -99,7 +99,7 @@ class VS2Engine {
   uint32_t _lastMillis;
   uint32_t _requestTime;
   uint8_t _bytesTransferred;
-  internals::SerialInterface* _interface;
+  internals::SerialInterface *_interface;
   internals::ParserVS2 _parser;
   // In-flight request context (no Datapoint): the address is echoed back to
   // the caller, the length is retained for symmetry with the byte-oriented

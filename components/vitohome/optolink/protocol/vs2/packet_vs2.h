@@ -40,14 +40,14 @@ class PacketVS2 {
 
   PacketVS2();
   ~PacketVS2() = default;
-  PacketVS2(const PacketVS2&) = default;
-  PacketVS2& operator=(const PacketVS2&) = default;
+  PacketVS2(const PacketVS2 &) = default;
+  PacketVS2 &operator=(const PacketVS2 &) = default;
   operator bool() const;
-  uint8_t& operator[](std::size_t index);
+  uint8_t &operator[](std::size_t index);
 
  public:
   bool createPacket(PacketType pt, FunctionCode fc, uint8_t id, uint16_t addr, uint8_t len,
-                    const uint8_t* data = nullptr);
+                    const uint8_t *data = nullptr);
   bool setLength(uint8_t length);
   uint8_t length() const;
   PacketType packetType() const;
@@ -55,7 +55,7 @@ class PacketVS2 {
   uint8_t id() const;
   uint16_t address() const;
   uint8_t dataLength() const;
-  const uint8_t* data() const;
+  const uint8_t *data() const;
 
   uint8_t checksum() const;
 

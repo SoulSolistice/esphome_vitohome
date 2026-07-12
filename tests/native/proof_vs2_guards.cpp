@@ -35,8 +35,9 @@ uint8_t g_last_payload[8] = {0};
 uint8_t g_last_len = 0;
 }  // namespace
 
-static void pump(Engine& a, int n = 8) {
-  for (int i = 0; i < n; ++i) a.loop();
+static void pump(Engine &a, int n = 8) {
+  for (int i = 0; i < n; ++i)
+    a.loop();
 }
 
 // Wire frame after the 0x41 lead-in: {len, type, fc, addr_hi, addr_lo, plen,
@@ -51,7 +52,7 @@ static std::vector<uint8_t> frame(std::vector<uint8_t> body) {
 
 // Drive RESET/INIT to IDLE: engine writes EOT, expects ENQ, writes SYNC,
 // expects ACK.
-static void handshake(Engine& a, FakeOptolink& u) {
+static void handshake(Engine &a, FakeOptolink &u) {
   pump(a);         // RESET: engine writes EOT (0x04)
   u.feed({0x05});  // device ENQ
   pump(a);         // INIT: engine writes SYNC 16 00 00
@@ -63,7 +64,7 @@ static void handshake(Engine& a, FakeOptolink& u) {
 int main() {
   FakeOptolink uart;
   Engine adapter(&uart);
-  adapter.onResponse([](const uint8_t* data, uint8_t length, uint16_t) {
+  adapter.onResponse([](const uint8_t *data, uint8_t length, uint16_t) {
     g_responses++;
     g_last_len = length;
     if (data != nullptr && length <= sizeof(g_last_payload)) {
@@ -78,9 +79,10 @@ int main() {
   handshake(adapter, uart);
 
   int failures = 0;
-  auto check = [&failures](bool ok, const char* what) {
+  auto check = [&failures](bool ok, const char *what) {
     std::printf("  %-52s %s\n", what, ok ? "ok" : "FAIL");
-    if (!ok) failures++;
+    if (!ok)
+      failures++;
   };
 
   // --- A. ERROR-type frame must not be delivered as data --------------------
