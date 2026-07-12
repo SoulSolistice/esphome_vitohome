@@ -14,13 +14,13 @@ substitutions:
   device_description: "Viessmann Optolink Heating Control"
   ## Project name MUST be "namespace.project" (dot-separated) or validation fails.
   project_name:       "viessmann-optolink.VScotHO1_72"
-  debug_level:        "DEBUG"
+  debug_level:        "INFO"
   ## --- Firmware source -------------------------------------------------------
   ## Upgrade the whole firmware by bumping vitohome_ref to a new git tag.
   ## This one value drives BOTH the packages include and the C++ component,
   ## so there is nothing else to edit or merge on update.
   vitohome_repo:    "https://github.com/SoulSolistice/esphome_vitohome"
-  vitohome_ref:     "main"      # pin to a tag (e.g. "v0.1") for reproducible builds
+  vitohome_ref:     "v0.2"      # pin to a tag (e.g. "v0.1") for reproducible builds
 
 esphome:
   name:           ${device_name}
@@ -129,7 +129,7 @@ uart:
 vitohome:
   id: vito
   uart_id: uart_optolink
-  protocol: KW
+  protocol: P300
   update_interval: 60s
   identify_device: true
   # Log every Optolink telegram as one line under the `vitohome.frames` tag
@@ -137,7 +137,7 @@ vitohome:
   # delimiter guess. Compile-time flag: set to false (or drop the key) and the
   # buffer and per-byte branch vanish from the firmware. Turn it off once the
   # bus is behaving -- at 60 s x ~40 datapoints it is a lot of log lines.
-  log_frames: true
+  log_frames: false
   # Device-clock sync from Home Assistant time.
   # drift_threshold 60s avoids rewriting the clock on every check.
   time_id: homeassistant_time
