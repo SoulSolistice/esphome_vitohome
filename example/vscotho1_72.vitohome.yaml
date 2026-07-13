@@ -20,7 +20,7 @@ substitutions:
   ## This one value drives BOTH the packages include and the C++ component,
   ## so there is nothing else to edit or merge on update.
   vitohome_repo:    "https://github.com/SoulSolistice/esphome_vitohome"
-  vitohome_ref:     "v0.2"      # pin to a tag (e.g. "v0.1") for reproducible builds
+  vitohome_ref:     "v0.3"      # pin to a tag (e.g. "v0.1") for reproducible builds
 
 esphome:
   name:           ${device_name}
