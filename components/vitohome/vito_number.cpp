@@ -1,4 +1,5 @@
 #include "vito_number.h"
+#ifdef USE_NUMBER
 
 #include <cmath>
 
@@ -106,3 +107,4 @@ void VitoNumber::handle_error(optolink::OptolinkResult /*error*/) {
 }
 
 }  // namespace esphome::vitohome
+#endif  // USE_NUMBER

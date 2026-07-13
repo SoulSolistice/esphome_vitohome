@@ -1,4 +1,7 @@
 #pragma once
+#include "esphome/core/defines.h"
+
+#ifdef USE_SENSOR
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/core/component.h"
 #include "vito_entity.h"
@@ -58,3 +61,4 @@ class VitoSensor : public sensor::Sensor, public Component, public VitoEntityBas
 };
 
 }  // namespace esphome::vitohome
+#endif  // USE_SENSOR

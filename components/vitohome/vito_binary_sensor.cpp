@@ -1,4 +1,5 @@
 #include "vito_binary_sensor.h"
+#ifdef USE_BINARY_SENSOR
 
 #include "decode.h"
 #include "esphome/core/log.h"
@@ -36,3 +37,4 @@ void VitoBinarySensor::handle_error(optolink::OptolinkResult /*error*/) {
 }
 
 }  // namespace esphome::vitohome
+#endif  // USE_BINARY_SENSOR

@@ -1,4 +1,5 @@
 #include "vito_sensor.h"
+#ifdef USE_SENSOR
 
 #include <cmath>
 
@@ -86,3 +87,4 @@ void VitoSensor::handle_error(optolink::OptolinkResult /*error*/) {
 }
 
 }  // namespace esphome::vitohome
+#endif  // USE_SENSOR

@@ -1,4 +1,5 @@
 #include "vito_select.h"
+#ifdef USE_SELECT
 
 #include "decode.h"
 #include "esphome/core/log.h"
@@ -86,3 +87,4 @@ void VitoSelect::handle_error(optolink::OptolinkResult /*error*/) {
 }
 
 }  // namespace esphome::vitohome
+#endif  // USE_SELECT

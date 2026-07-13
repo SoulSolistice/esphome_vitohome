@@ -1,4 +1,7 @@
 #pragma once
+#include "esphome/core/defines.h"
+
+#ifdef USE_TEXT_SENSOR
 #include <utility>
 #include <vector>
 
@@ -56,3 +59,4 @@ class VitoTextSensor : public text_sensor::TextSensor, public Component, public 
 };
 
 }  // namespace esphome::vitohome
+#endif  // USE_TEXT_SENSOR

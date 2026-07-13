@@ -1,4 +1,7 @@
 #pragma once
+#include "esphome/core/defines.h"
+
+#ifdef USE_BUTTON
 #include "esphome/components/button/button.h"
 #include "esphome/core/component.h"
 
@@ -23,3 +26,4 @@ class VitoRefreshButton : public button::Button, public Component {
 };
 
 }  // namespace esphome::vitohome
+#endif  // USE_BUTTON

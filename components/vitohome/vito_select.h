@@ -1,4 +1,7 @@
 #pragma once
+#include "esphome/core/defines.h"
+
+#ifdef USE_SELECT
 #include <vector>
 
 #include "esphome/components/select/select.h"
@@ -40,3 +43,4 @@ class VitoSelect : public select::Select, public Component, public VitoEntityBas
 };
 
 }  // namespace esphome::vitohome
+#endif  // USE_SELECT

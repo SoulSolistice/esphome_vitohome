@@ -1,4 +1,5 @@
 #include "vito_event.h"
+#ifdef USE_EVENT
 
 #include <cstdio>
 
@@ -63,3 +64,4 @@ void VitoEvent::handle_error(optolink::OptolinkResult /*error*/) {
 }
 
 }  // namespace esphome::vitohome
+#endif  // USE_EVENT

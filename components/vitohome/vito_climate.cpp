@@ -1,4 +1,5 @@
 #include "vito_climate.h"
+#ifdef USE_CLIMATE
 
 #include <cmath>
 
@@ -219,3 +220,4 @@ void VitoClimate::dump_config() {
 }
 
 }  // namespace esphome::vitohome
+#endif  // USE_CLIMATE

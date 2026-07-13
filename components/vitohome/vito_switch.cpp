@@ -1,4 +1,5 @@
 #include "vito_switch.h"
+#ifdef USE_SWITCH
 
 #include "decode.h"
 #include "esphome/core/log.h"
@@ -88,3 +89,4 @@ void VitoSwitch::handle_error(optolink::OptolinkResult /*error*/) {
 }
 
 }  // namespace esphome::vitohome
+#endif  // USE_SWITCH

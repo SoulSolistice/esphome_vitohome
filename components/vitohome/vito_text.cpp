@@ -1,4 +1,5 @@
 #include "vito_text.h"
+#ifdef USE_TEXT
 
 #include "decode.h"
 #include "esphome/core/log.h"
@@ -66,3 +67,4 @@ void VitoText::handle_error(optolink::OptolinkResult /*error*/) {
 }
 
 }  // namespace esphome::vitohome
+#endif  // USE_TEXT

@@ -1,4 +1,7 @@
 #pragma once
+#include "esphome/core/defines.h"
+
+#ifdef USE_TEXT
 #include <string>
 
 #include "esphome/components/text/text.h"
@@ -33,3 +36,4 @@ class VitoText : public text::Text, public Component, public VitoEntityBase {
 };
 
 }  // namespace esphome::vitohome
+#endif  // USE_TEXT

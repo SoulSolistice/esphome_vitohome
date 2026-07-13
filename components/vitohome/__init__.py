@@ -33,23 +33,16 @@ _LOGGER = logging.getLogger(__name__)
 
 CODEOWNERS = ["@SoulSolistice"]
 DEPENDENCIES = ["uart"]
-# Every vito_*.cpp in this directory is always compiled, so each platform's
-# base component must be available even when the user's config declares no
-# entity of that type. AUTO_LOAD pulls the bases in (defining USE_<X> and
-# copying their headers) so the component builds regardless of which
-# platforms a given device config uses.
-AUTO_LOAD = [
-    "sensor",
-    "binary_sensor",
-    "text_sensor",
-    "number",
-    "select",
-    "switch",
-    "text",
-    "climate",
-    "event",
-    "button",
-]
+# This component ships platform entities (sensor, binary_sensor, ...), but it
+# deliberately does NOT AUTO_LOAD their base components. Each
+# vito_<platform>.{h,cpp} guards its body with #ifdef USE_<PLATFORM>, and the hub
+# guards the few platform-typed members it owns (link binary_sensors, device-id
+# and scan-result text_sensors) the same way. A base is therefore pulled in --
+# and USE_<PLATFORM> defined -- only when the user actually configures that
+# platform via its own `sensor:` / `binary_sensor:` / ... block, so a device
+# config compiles just the platforms it uses instead of all ten. Forcing all
+# platform bases in via AUTO_LOAD is disallowed by the ESPHome component
+# guidelines for exactly this reason.
 MULTI_CONF = False
 
 CONF_VITOCONNECT_ID = "vitohome_id"

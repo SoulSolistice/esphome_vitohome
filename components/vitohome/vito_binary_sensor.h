@@ -1,4 +1,7 @@
 #pragma once
+#include "esphome/core/defines.h"
+
+#ifdef USE_BINARY_SENSOR
 #include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/core/component.h"
 #include "vito_entity.h"
@@ -21,3 +24,4 @@ class VitoBinarySensor : public binary_sensor::BinarySensor, public Component, p
 };
 
 }  // namespace esphome::vitohome
+#endif  // USE_BINARY_SENSOR

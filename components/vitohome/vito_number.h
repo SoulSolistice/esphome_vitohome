@@ -1,4 +1,7 @@
 #pragma once
+#include "esphome/core/defines.h"
+
+#ifdef USE_NUMBER
 #include "esphome/components/number/number.h"
 #include "esphome/core/component.h"
 #include "vito_entity.h"
@@ -45,3 +48,4 @@ class VitoNumber : public number::Number, public Component, public VitoEntityBas
 };
 
 }  // namespace esphome::vitohome
+#endif  // USE_NUMBER

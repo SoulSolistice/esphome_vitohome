@@ -358,9 +358,11 @@ void VitoHomeComponent::dump_config() {
   if (this->ident_state_ == IdentState::DONE) {
     ESP_LOGCONFIG(TAG, "  Device: %s", this->ident_string_().c_str());
   }
+#ifdef USE_TEXT_SENSOR
   if (!this->raw_result_sensors_.empty()) {
     ESP_LOGCONFIG(TAG, "  Scan console: %zu scan_result sensor(s) attached", this->raw_result_sensors_.size());
   }
+#endif
   if (ESPHomeUARTInterface::frame_logging_enabled()) {
     ESP_LOGCONFIG(TAG, "  Frame logging: ON (tag 'vitohome.frames')");
   }
@@ -485,8 +487,12 @@ void VitoHomeComponent::raw_handle_error_(optolink::OptolinkResult error) {
 }
 
 void VitoHomeComponent::raw_publish_(const std::string &line) {
+#ifdef USE_TEXT_SENSOR
   for (auto *ts : this->raw_result_sensors_)
     ts->publish_state(line);
+#else
+  (void) line;
+#endif
 }
 
 // ---------------------------------------------------------------------------
@@ -679,8 +685,10 @@ void VitoHomeComponent::publish_link_(bool up) {
     return;
   this->link_state_ = next;
   ESP_LOGI(TAG, "Optolink link %s", up ? "online" : "offline");
+#ifdef USE_BINARY_SENSOR
   for (auto *bs : this->link_sensors_)
     bs->publish_state(up);
+#endif
 }
 
 void VitoHomeComponent::link_note_error_() {
@@ -870,9 +878,11 @@ void VitoHomeComponent::ident_finish_() {
     ESP_LOGI(TAG, "Software index (0xFB) unavailable — when picking datapoints from the "
                   "Vitosoft data, match on the family only and verify on the wire.");
   }
+#ifdef USE_TEXT_SENSOR
   for (auto *ts : this->device_id_sensors_) {
     ts->publish_state(s);
   }
+#endif
 }
 
 }  // namespace esphome::vitohome

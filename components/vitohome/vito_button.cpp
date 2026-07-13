@@ -1,4 +1,5 @@
 #include "vito_button.h"
+#ifdef USE_BUTTON
 
 #include "esphome/core/log.h"
 #include "vitohome.h"
@@ -18,3 +19,4 @@ void VitoRefreshButton::press_action() {
 }
 
 }  // namespace esphome::vitohome
+#endif  // USE_BUTTON

@@ -1,4 +1,5 @@
 #include "vito_text_sensor.h"
+#ifdef USE_TEXT_SENSOR
 
 #include <cstdio>
 #include <string>
@@ -223,3 +224,4 @@ void VitoTextSensor::handle_error(optolink::OptolinkResult /*error*/) {
 }
 
 }  // namespace esphome::vitohome
+#endif  // USE_TEXT_SENSOR

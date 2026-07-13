@@ -4,8 +4,14 @@
 #include <string>
 #include <vector>
 
+#include "esphome/core/defines.h"
+
+#ifdef USE_BINARY_SENSOR
 #include "esphome/components/binary_sensor/binary_sensor.h"
+#endif
+#ifdef USE_TEXT_SENSOR
 #include "esphome/components/text_sensor/text_sensor.h"
+#endif
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/component.h"
 #include "optolink/optolink.h"
@@ -63,17 +69,21 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   // when start-up protocol verification fails or after
   // LINK_OFFLINE_AFTER_ERRORS consecutive protocol errors (watchdog
   // expiries included). State is edge-published (no per-response spam).
+#ifdef USE_BINARY_SENSOR
   void register_link_sensor(binary_sensor::BinarySensor *bs) {
     if (bs != nullptr)
       this->link_sensors_.push_back(bs);
   }
+#endif
 
   // device_id text sensors don't poll the bus themselves — they subscribe to
   // the hub's one-shot identification result (see identification below).
+#ifdef USE_TEXT_SENSOR
   void register_device_id_sensor(text_sensor::TextSensor *ts) {
     if (ts != nullptr)
       this->device_id_sensors_.push_back(ts);
   }
+#endif
 
   void set_identify_device(bool v) { this->identify_device_ = v; }
 
@@ -97,10 +107,12 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   // --- raw scan console (debug) --------------------------------------------
   // Subscribe a hub-fed text sensor (text_sensor: type: scan_result) to the
   // raw-op result line. Mirrors register_device_id_sensor: it never polls.
+#ifdef USE_TEXT_SENSOR
   void register_raw_result_sensor(text_sensor::TextSensor *ts) {
     if (ts != nullptr)
       this->raw_result_sensors_.push_back(ts);
   }
+#endif
 
   // Queue a one-off read / write to an arbitrary address, dispatched ahead of
   // regular polling (just after identification). The result -- hex + 64-bit
@@ -187,8 +199,12 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   bool link_established_{false};
 
   std::vector<VitoEntityBase *> entities_;
+#ifdef USE_TEXT_SENSOR
   std::vector<text_sensor::TextSensor *> device_id_sensors_;
+#endif
+#ifdef USE_BINARY_SENSOR
   std::vector<binary_sensor::BinarySensor *> link_sensors_;
+#endif
   // tri-state: -1 unknown (nothing published yet), 0 offline, 1 online
   int8_t link_state_{-1};
   uint8_t link_error_streak_{0};
@@ -253,7 +269,9 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   // Length of the last dispatched raw write, kept only for the ack log line
   // (the payload itself is copied into the engine's packet at dispatch).
   uint8_t raw_write_len_{0};
+#ifdef USE_TEXT_SENSOR
   std::vector<text_sensor::TextSensor *> raw_result_sensors_;
+#endif
 
   // System-time sync state. time_source_ == nullptr means the feature is off.
   time::RealTimeClock *time_source_{nullptr};

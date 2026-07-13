@@ -1,4 +1,7 @@
 #pragma once
+#include "esphome/core/defines.h"
+
+#ifdef USE_SWITCH
 #include <vector>
 
 #include "esphome/components/switch/switch.h"
@@ -53,3 +56,4 @@ class VitoSwitch : public switch_::Switch, public Component, public VitoEntityBa
 };
 
 }  // namespace esphome::vitohome
+#endif  // USE_SWITCH

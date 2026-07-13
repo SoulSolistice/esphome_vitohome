@@ -1,4 +1,7 @@
 #pragma once
+#include "esphome/core/defines.h"
+
+#ifdef USE_EVENT
 #include <utility>
 #include <vector>
 
@@ -37,3 +40,4 @@ class VitoEvent : public event::Event, public Component, public VitoEntityBase {
 };
 
 }  // namespace esphome::vitohome
+#endif  // USE_EVENT

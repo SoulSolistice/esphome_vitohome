@@ -1,4 +1,7 @@
 #pragma once
+#include "esphome/core/defines.h"
+
+#ifdef USE_CLIMATE
 #include <string>
 #include <vector>
 
@@ -100,3 +103,4 @@ class VitoClimate : public climate::Climate, public Component {
 };
 
 }  // namespace esphome::vitohome
+#endif  // USE_CLIMATE
