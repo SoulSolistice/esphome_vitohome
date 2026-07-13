@@ -136,6 +136,11 @@ class ESPHomeUARTInterface {
   static constexpr uint32_t FRAME_GAP_MS = 30;
   static constexpr const char *TAG_FRAMES = "vitohome.frames";
 
+  // rx_last_ms_/tx_last_ms_ record actual byte-arrival time on the wire. These
+  // use fresh millis() by design, not App.get_loop_component_start_time(): the
+  // cached loop-start time is a single snapshot per dispatch and would be stale
+  // relative to bytes streaming in during that same iteration, collapsing the
+  // inter-byte gap that FRAME_GAP_MS measures.
   void note_rx_(uint8_t b) {
     if (this->rx_len_ >= BUF_SIZE)
       this->flush_rx_();

@@ -4,8 +4,11 @@ import esphome.config_validation as cv
 from esphome.const import CONF_ADDRESS, CONF_NAME, CONF_OPTIONS, CONF_UPDATE_INTERVAL
 
 from . import (
+    CONF_BYTE_LENGTH,
+    CONF_BYTE_OFFSET,
     CONF_LENGTH,
     CONF_READ_BACK,
+    CONF_STATE_ADDRESS,
     CONF_VITOCONNECT_ID,
     MAX_P300_READ_LENGTH,
     VitoHomeComponent,
@@ -16,19 +19,15 @@ from . import (
 
 DEPENDENCIES = ["vitohome"]
 
+
 # Optional read/state address, distinct from the command (write) CONF_ADDRESS,
 # for mode controls whose live value is read elsewhere (read/write split).
-CONF_STATE_ADDRESS = "state_address"
 # Aligned block extraction on the STATE read (mirrors sensor.py): with
 # byte_offset, `length` is the block read at the state address and the enum
 # field is the byte_length (default 1) bytes at byte_offset. The write still
 # targets CONF_ADDRESS -- the field's own register -- which is why byte_offset
 # requires an explicit state_address (writing field-width bytes at the block
 # base would hit the wrong register).
-CONF_BYTE_OFFSET = "byte_offset"
-CONF_BYTE_LENGTH = "byte_length"  # enum field width at byte_offset (1..2)
-
-
 def _field_width(config):
     """The enum value width: byte_length with extraction, else length."""
     if CONF_BYTE_OFFSET in config:

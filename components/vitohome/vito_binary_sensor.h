@@ -8,7 +8,7 @@
 
 namespace esphome::vitohome {
 
-class VitoBinarySensor : public binary_sensor::BinarySensor, public Component, public VitoEntityBase {
+class VitoBinarySensor final : public binary_sensor::BinarySensor, public Component, public VitoEntityBase {
  public:
   void set_byte_offset(uint8_t offset) { this->byte_offset_ = offset; }
   void set_bit_mask(uint8_t mask) { this->bit_mask_ = mask; }

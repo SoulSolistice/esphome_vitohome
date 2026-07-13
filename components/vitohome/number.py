@@ -4,10 +4,13 @@ import esphome.config_validation as cv
 from esphome.const import CONF_ADDRESS, CONF_MAX_VALUE, CONF_MIN_VALUE, CONF_NAME, CONF_STEP, CONF_UPDATE_INTERVAL
 
 from . import (
+    CONF_BYTE_LENGTH,
+    CONF_BYTE_OFFSET,
     CONF_CONVERTER,
     CONF_LENGTH,
     CONF_READ_BACK,
     CONF_SIGNED,
+    CONF_STATE_ADDRESS,
     CONF_VITOCONNECT_ID,
     CONVERTERS,
     MAX_P300_READ_LENGTH,
@@ -25,19 +28,15 @@ DEPENDENCIES = ["vitohome"]
 
 VitoNumber = vitohome_ns.class_("VitoNumber", number.Number, cg.Component)
 
+
 # Optional read/state address, distinct from the command (write) CONF_ADDRESS
 # -- the same read/write split select.py / switch.py support.
-CONF_STATE_ADDRESS = "state_address"
 # Aligned block extraction on the STATE read (mirrors select.py/switch.py):
 # with byte_offset, `length` is the block read at the state address and the
 # numeric field is the byte_length (default 1, max 4) bytes at byte_offset.
 # The write still targets CONF_ADDRESS -- the field's own register -- which is
 # why byte_offset requires an explicit state_address (writing field-width
 # bytes at the block base would hit the wrong register).
-CONF_BYTE_OFFSET = "byte_offset"
-CONF_BYTE_LENGTH = "byte_length"  # numeric field width at byte_offset (1..4)
-
-
 def _field_width(config):
     """The wire value width: byte_length with extraction, else length."""
     if CONF_BYTE_OFFSET in config:

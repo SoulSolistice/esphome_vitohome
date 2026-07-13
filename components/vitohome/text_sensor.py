@@ -4,6 +4,8 @@ import esphome.config_validation as cv
 from esphome.const import CONF_ADDRESS, CONF_NAME, CONF_OPTIONS, CONF_TYPE, CONF_UPDATE_INTERVAL
 
 from . import (
+    CONF_BYTE_LENGTH,
+    CONF_BYTE_OFFSET,
     CONF_LENGTH,
     CONF_VITOCONNECT_ID,
     MAX_P300_READ_LENGTH,
@@ -42,9 +44,7 @@ _VALUE_MAP = cv.Schema({cv.uint32_t: cv.string})
 # byte_offset): with byte_offset, `length` is the block read at `address` (the
 # block base) and the enum field is the byte_length (default 1, max 4) bytes
 # at byte_offset. Read-only, so there is no write side and no state_address.
-CONF_BYTE_OFFSET = "byte_offset"
-CONF_BYTE_LENGTH = "byte_length"  # field width at byte_offset
-
+#
 # The widest string BlockLength in the Vitosoft export is 42 (Beschriftung_HK1..3
 # / WPR3_Beschriftung_*: BlockLength 42, BytePosition 2, ByteLength 40), and a
 # 42-byte read is hardware-proven on P300. Same ceiling as every other block

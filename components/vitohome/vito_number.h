@@ -13,7 +13,7 @@ namespace esphome::vitohome {
 // raw-bytes write; the periodic read path keeps the entity in sync with
 // changes made at the boiler panel. No flash preferences are used: the
 // device itself is the source of truth, restored by the first poll.
-class VitoNumber : public number::Number, public Component, public VitoEntityBase {
+class VitoNumber final : public number::Number, public Component, public VitoEntityBase {
  public:
   void set_scale(double scale) { this->scale_ = scale; }
   void set_signed(bool s) { this->signed_ = s; }

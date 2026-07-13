@@ -20,7 +20,7 @@ class VitoClimate;
 // and MODE (Betriebsart, whose live state is read at one address and commanded
 // at another -- the read/write split). Reads are handed to the parent climate;
 // writes are staged as a single raw byte and queued through the hub.
-class VitoClimateChannel : public VitoEntityBase {
+class VitoClimateChannel final : public VitoEntityBase {
  public:
   enum Kind : uint8_t { SETPOINT, MODE };
   VitoClimateChannel(VitoClimate *parent, Kind kind) : parent_(parent), kind_(kind) {}
@@ -59,7 +59,7 @@ struct VitoClimatePreset {
 // the device registers; writes propagate and the read-back reconciles all of
 // them, so there is no ownership conflict -- only the preset table guarantees
 // each state is representable.
-class VitoClimate : public climate::Climate, public Component {
+class VitoClimate final : public climate::Climate, public Component {
  public:
   VitoClimate() : setpoint_(this, VitoClimateChannel::SETPOINT), mode_(this, VitoClimateChannel::MODE) {}
 

@@ -11,7 +11,7 @@ from esphome.const import (
     CONF_VISUAL,
 )
 
-from . import CONF_READ_BACK, CONF_VITOCONNECT_ID, VitoHomeComponent, datapoint_expression, vitohome_ns
+from . import CONF_READ_BACK, CONF_STATE_ADDRESS, CONF_VITOCONNECT_ID, VitoHomeComponent, datapoint_expression, vitohome_ns
 
 DEPENDENCIES = ["vitohome"]
 
@@ -30,7 +30,6 @@ CLIMATE_MODES = {
 
 CONF_TARGET_ADDRESS = "target_address"
 CONF_OPERATING_MODE = "operating_mode"
-CONF_STATE_ADDRESS = "state_address"
 CONF_PRESETS = "presets"
 CONF_WRITE = "write"
 CONF_READ = "read"

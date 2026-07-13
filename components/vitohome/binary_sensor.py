@@ -3,11 +3,18 @@ from esphome.components import binary_sensor
 import esphome.config_validation as cv
 from esphome.const import CONF_ADDRESS, CONF_NAME, CONF_UPDATE_INTERVAL
 
-from . import CONF_LENGTH, CONF_VITOCONNECT_ID, MAX_P300_READ_LENGTH, VitoHomeComponent, datapoint_expression, vitohome_ns
+from . import (
+    CONF_BYTE_OFFSET,
+    CONF_LENGTH,
+    CONF_VITOCONNECT_ID,
+    MAX_P300_READ_LENGTH,
+    VitoHomeComponent,
+    datapoint_expression,
+    vitohome_ns,
+)
 
 DEPENDENCIES = ["vitohome"]
 
-CONF_BYTE_OFFSET = "byte_offset"
 CONF_BIT_MASK = "bit_mask"
 
 VitoBinarySensor = vitohome_ns.class_("VitoBinarySensor", binary_sensor.BinarySensor, cg.Component)

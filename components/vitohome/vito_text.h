@@ -19,7 +19,7 @@ namespace esphome::vitohome {
 // written. Read and write use the same address, so the hub's read-back re-reads
 // exactly the bytes just written. No flash preferences: the device is the
 // source of truth, restored by the first poll.
-class VitoText : public text::Text, public Component, public VitoEntityBase {
+class VitoText final : public text::Text, public Component, public VitoEntityBase {
  public:
   void set_read_back(bool v) { this->read_back_ = v; }
 

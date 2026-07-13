@@ -22,7 +22,7 @@ namespace esphome::vitohome {
 // The FIRST successful poll only records a baseline and never fires:
 // whatever fault happens to sit in the slot at boot would otherwise spam the
 // logbook on every reboot.
-class VitoEvent : public event::Event, public Component, public VitoEntityBase {
+class VitoEvent final : public event::Event, public Component, public VitoEntityBase {
  public:
   void add_code(uint32_t value, const char *label) { this->codes_.emplace_back(value, label); }
 

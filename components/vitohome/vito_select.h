@@ -15,7 +15,7 @@ namespace esphome::vitohome {
 // wire values in the same order. Only the index-based control() is
 // overridden — that is the non-deprecated path in current ESPHome (the
 // string-based default forwards to it).
-class VitoSelect : public select::Select, public Component, public VitoEntityBase {
+class VitoSelect final : public select::Select, public Component, public VitoEntityBase {
  public:
   void add_raw_value(uint32_t value) { this->raw_values_.push_back(value); }
   void set_read_back(bool v) { this->read_back_ = v; }

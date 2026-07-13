@@ -71,11 +71,19 @@ TIME_SYNC_SCHEMA = cv.Schema(
     }
 )
 
-# Shared platform option names (used by sensor/number/select/text_sensor).
+# Shared platform option names. Centralised here (rather than redefined in each
+# platform file) so a single string change propagates to every consumer -- the
+# same reason ESPHome core hoists shared CONF_ keys into components/const. The
+# per-platform validation of these keys (e.g. the byte_length int_range, which
+# differs 1..4 vs 1..2 by platform) stays in each platform's schema; only the
+# option *name* is shared.
 CONF_LENGTH = "length"
 CONF_CONVERTER = "converter"
 CONF_SIGNED = "signed"
 CONF_READ_BACK = "read_back"
+CONF_STATE_ADDRESS = "state_address"
+CONF_BYTE_OFFSET = "byte_offset"
+CONF_BYTE_LENGTH = "byte_length"
 
 vitohome_ns = cg.esphome_ns.namespace("vitohome")
 

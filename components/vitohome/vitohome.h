@@ -32,7 +32,7 @@ class RealTimeClock;
 
 namespace vitohome {
 
-class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
+class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice {
  public:
   // ESPHomeUARTInterface stores `this` (as UARTDevice*); valid in the
   // member init list because base subobjects are already constructed.

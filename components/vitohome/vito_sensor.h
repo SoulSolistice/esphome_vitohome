@@ -8,7 +8,7 @@
 
 namespace esphome::vitohome {
 
-class VitoSensor : public sensor::Sensor, public Component, public VitoEntityBase {
+class VitoSensor final : public sensor::Sensor, public Component, public VitoEntityBase {
  public:
   // Component-side conversion (Stage 2): the raw little-endian payload is
   // extracted as int64/uint64, scaled in double, and only the final value is

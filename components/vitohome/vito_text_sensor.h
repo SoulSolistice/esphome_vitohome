@@ -21,7 +21,7 @@ enum class TextSensorType : uint8_t {
   SCAN_RESULT,    // no bus reads of its own — fed by the hub's raw scan console
 };
 
-class VitoTextSensor : public text_sensor::TextSensor, public Component, public VitoEntityBase {
+class VitoTextSensor final : public text_sensor::TextSensor, public Component, public VitoEntityBase {
  public:
   void set_type(TextSensorType type) { this->type_ = type; }
   // ENUM labels / ERROR_HISTORY code texts. Codegen feeds these one by one;

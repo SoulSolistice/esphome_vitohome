@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include "decode.h"
+#include "esphome/core/application.h"
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
 #include "poll_schedule.h"
@@ -103,6 +104,9 @@ void VitoHomeComponent::setup() {
   if (verify_window < PROTOCOL_VERIFY_MIN_MS)
     verify_window = PROTOCOL_VERIFY_MIN_MS;
   this->protocol_verify_pending_ = true;
+  // A one-shot setup anchor, not a hot-loop read. App.get_loop_component_start_time()
+  // exists to avoid repeated slow millis() reads on hot paths; that benefit does not
+  // apply to a single setup-time deadline, so a fresh read is kept deliberately.
   this->protocol_verify_deadline_ms_ = millis() + verify_window;
 
   // Per-entity intervals are scheduled at hub-tick granularity, so anything
@@ -169,7 +173,7 @@ void VitoHomeComponent::loop() {
     if (this->link_established_) {
       this->protocol_verify_pending_ = false;
       ESP_LOGI(TAG, "%s link established", PROTOCOL_NAME);
-    } else if (static_cast<int32_t>(millis() - this->protocol_verify_deadline_ms_) >= 0) {
+    } else if (static_cast<int32_t>(App.get_loop_component_start_time() - this->protocol_verify_deadline_ms_) >= 0) {
       // Rollover-safe signed-diff compare, matching the scheduler and the
       // time-sync tick (a direct >= compares wrong across the 49.7-day wrap).
       this->protocol_verify_pending_ = false;
@@ -182,7 +186,7 @@ void VitoHomeComponent::loop() {
   // Watchdog: if a request has been in flight too long, surface that and
   // free the slot.
   if (this->in_flight_ != nullptr || this->ident_in_flight_ || this->raw_in_flight_) {
-    uint32_t now = millis();
+    uint32_t now = App.get_loop_component_start_time();
     if (now - this->in_flight_started_ms_ > IN_FLIGHT_WATCHDOG_MS) {
       // A lost engine callback is a link-health signal too.
       this->link_note_error_();
@@ -234,7 +238,7 @@ void VitoHomeComponent::dispatch_raw_front_() {
   if (dispatched) {
     this->raw_write_len_ = op.is_write ? op.bytes_len : 0;
     this->raw_in_flight_ = true;
-    this->in_flight_started_ms_ = millis();
+    this->in_flight_started_ms_ = App.get_loop_component_start_time();
     ESP_LOGV(TAG, "Dispatched raw %s 0x%04X len %u", op.is_write ? "write" : "read", op.address, op.length);
     this->raw_queue_.pop_front();
   }
@@ -249,7 +253,7 @@ void VitoHomeComponent::dispatch_next_() {
   if (this->ident_state_ != IdentState::IDLE && this->ident_state_ != IdentState::DONE) {
     if (this->vito_->read(this->ident_dp_.address(), this->ident_dp_.length())) {
       this->ident_in_flight_ = true;
-      this->in_flight_started_ms_ = millis();
+      this->in_flight_started_ms_ = App.get_loop_component_start_time();
       ESP_LOGV(TAG, "Dispatched identification read 0x%04X len %u", this->ident_dp_.address(),
                this->ident_dp_.length());
     }
@@ -279,7 +283,7 @@ void VitoHomeComponent::dispatch_next_() {
     if (this->vito_->write(entity->get_write_datapoint().address(), entity->write_data(), entity->write_length())) {
       this->in_flight_ = entity;
       this->in_flight_op_ = OpType::WRITE;
-      this->in_flight_started_ms_ = millis();
+      this->in_flight_started_ms_ = App.get_loop_component_start_time();
       this->write_queue_.pop_front();
       // It has left the queue and is now in flight. Clearing write_queued_ here
       // (rather than on completion) lets a value changed during the in-flight
@@ -306,7 +310,7 @@ void VitoHomeComponent::dispatch_next_() {
   if (this->vito_->read(dp.address(), dp.length())) {
     this->in_flight_ = entity;
     this->in_flight_op_ = OpType::READ;
-    this->in_flight_started_ms_ = millis();
+    this->in_flight_started_ms_ = App.get_loop_component_start_time();
     this->read_queue_.pop_front();
     ESP_LOGV(TAG, "Dispatched read for %s", entity->get_datapoint().name());
   }
@@ -314,7 +318,7 @@ void VitoHomeComponent::dispatch_next_() {
 }
 
 void VitoHomeComponent::schedule_due_entities_() {
-  const uint32_t now = millis();
+  const uint32_t now = App.get_loop_component_start_time();
   // Two bugs lived in the old two-liner (`if (now < next_due) continue;
   // next_due = now + interval;`), both hardware-observed on VScotHO1_72 with
   // the SAME firmware binary across two 2026-07-09 logs:
@@ -520,7 +524,7 @@ void VitoHomeComponent::time_sync_tick_() {
 #ifdef VITOHOME_TIME_SYNC
   if (this->time_source_ == nullptr)
     return;
-  const uint32_t now = millis();
+  const uint32_t now = App.get_loop_component_start_time();
   if (!this->time_sync_did_boot_) {
     // Defer the first sync until the time source has a valid time at least once.
     if (!this->time_source_->now().is_valid())
@@ -678,6 +682,11 @@ void VitoHomeComponent::on_response_(const ResponseView &response, uint16_t requ
 }
 
 bool VitoHomeComponent::refresh_all() {
+  // Fresh millis() is deliberate here (not App.get_loop_component_start_time()):
+  // refresh_all() is a rare cold path entered from a button press or a user
+  // lambda -- i.e. from another component's loop dispatch, not the hub's -- so it
+  // is neither hot nor guaranteed to run in the hub's own dispatch context. A
+  // single fresh read is the correct anchor for this rate-limit guard.
   const uint32_t now = millis();
   if (this->last_refresh_all_ms_ != 0 && now - this->last_refresh_all_ms_ < REFRESH_ALL_MIN_INTERVAL_MS) {
     ESP_LOGW(TAG, "refresh_all() suppressed (last one %" PRIu32 " ms ago, min interval %" PRIu32 " ms)",

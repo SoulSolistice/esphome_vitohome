@@ -4,6 +4,8 @@ import esphome.config_validation as cv
 from esphome.const import CONF_ADDRESS, CONF_NAME, CONF_UPDATE_INTERVAL
 
 from . import (
+    CONF_BYTE_LENGTH,
+    CONF_BYTE_OFFSET,
     CONF_CONVERTER,
     CONF_LENGTH,
     CONF_SIGNED,
@@ -21,8 +23,6 @@ from . import (
 
 DEPENDENCIES = ["vitohome"]
 
-CONF_BYTE_OFFSET = "byte_offset"
-CONF_BYTE_LENGTH = "byte_length"  # field width to extract at byte_offset (1..4)
 
 VitoSensor = vitohome_ns.class_("VitoSensor", sensor.Sensor, cg.Component)
 

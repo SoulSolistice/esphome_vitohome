@@ -14,7 +14,7 @@ class VitoHomeComponent;
 // only; the existing queue discipline throttles the burst). Usable from the
 // HA UI and from automations via button.press; ESPHome-side automations can
 // call id(vito).refresh_all() directly instead.
-class VitoRefreshButton : public button::Button, public Component {
+class VitoRefreshButton final : public button::Button, public Component {
  public:
   void set_vitohome_parent(VitoHomeComponent *parent) { this->vh_parent_ = parent; }
   void dump_config() override;
