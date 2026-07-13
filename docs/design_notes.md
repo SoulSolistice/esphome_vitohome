@@ -197,7 +197,8 @@ do not infer the constraints.
 `number`, `select` and `switch` stage a raw payload (`encode_scaled`, or a
 little-endian enum/boolean value) into the entity's buffer and call
 `request_write(this)` on the hub.
-The hub keeps separate read and write deques and **writes preempt reads**, so a
+The hub keeps separate read and write queues (fixed-capacity ring buffers — see
+§5a) and **writes preempt reads**, so a
 user setpoint change doesn't wait behind a full poll cycle. On the device ACK,
 with `read_back: true` (default) a read of the same address is pushed to the
 *front* of the read queue, so Home Assistant reflects the device's own view
@@ -249,10 +250,38 @@ The state model here is subtle and was the source of a real bug:
   a `SCAN` op enqueued *behind* a not-yet-dispatched `CLOCK_*` op still has to
   wait for that `CLOCK_*` op's own turn (which itself now waits on
   `write_queue_`) — the priority split is by the queue's front purpose, not a
-  full reordering of the deque. In practice this window is narrow (a clock op
+  full reordering of the queue. In practice this window is narrow (a clock op
   is enqueued one step at a time, only once its predecessor's response has
   landed) and self-resolving within one or two dispatch cycles; a real fix
   would give `CLOCK_*` its own lane instead of sharing `raw_queue_`.
+
+### 5a. The three lanes are sized-at-setup ring buffers, not deques
+
+`read_queue_`, `write_queue_` and `raw_queue_` are `RingBuffer<T>`
+(`components/vitohome/ring_buffer.h`), not `std::deque`. A deque mutated on every
+tick — which all three are — allocates and frees as it grows and drains: heap
+churn *after* `setup()`, the one thing the memory-discipline rules forbid on the
+C3. The ring makes **exactly one allocation per lane, in `reserve()` at
+`setup()`, and never again**; every push/pop is O(1) with no allocation, so
+run-loop traffic can't fragment the heap. It is double-ended because the write-ACK
+read-back (above) prepends to the front of the read lane, so plain FIFO wouldn't
+do.
+
+**Why each lane is sized to its real need at `setup()` rather than a compile-time
+cap.** `register_entity()` registers *every* defined entity, and the scheduler
+polls all of them — `disabled_by_default` is a Home Assistant hint the device
+ignores (§9). So `entities_.size()` is the *total defined* count, and the
+generated catalogs under `example/` are meant to be `packages:`-included whole,
+ranging into the thousands of datapoints. A fixed compile-time ceiling would
+hard-fail a legitimate full-catalog config **at boot while `esphome config`
+passes** — a config-valid-but-runtime-dead split. So the read/write lanes are
+`reserve()`d to `entities_.size()` (their true ceiling: the `read_queued_` /
+`write_queued_` flags admit an entity to a lane at most once, so it can never
+fill), and the raw lane to `RAW_QUEUE_MAX`. One boot-time allocation each; no
+arbitrary ceiling; no wasted headroom. The cost is that the raw lane reserves its
+full `RAW_QUEUE_MAX` up front even when the scan console and clock sync are idle.
+Semantics are pinned in `tests/native/proof_ring_buffer.cpp` under ASan/UBSan
+(FIFO, wraparound, `push_front`, full-rejection, POD round-trip).
 
 ---
 

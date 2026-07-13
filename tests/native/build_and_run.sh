@@ -56,5 +56,12 @@ g++ -std=c++17 -Wall -Wextra -fsanitize=address,undefined \
   -I"$ROOT" proof_scheduler.cpp -o proof_scheduler
 ./proof_scheduler
 
+# Ring-buffer proof: the fixed-capacity ring that replaced the three std::deque
+# run-loop queues (read/write/raw). FIFO + push_front + wraparound + full-drop
+# must hold, and a bad modulo would be an out-of-bounds slot access under ASan.
+g++ -std=c++17 -Wall -Wextra -fsanitize=address,undefined \
+  -I"$ROOT" proof_ring_buffer.cpp -o proof_ring_buffer
+./proof_ring_buffer
+
 # Protocol-adapter proofs: all three engines compile + the GWG poke stays off.
 bash "$(dirname "$0")/build_and_run_protocols.sh" "$ROOT"

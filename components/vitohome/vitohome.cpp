@@ -40,6 +40,20 @@ void VitoHomeComponent::setup() {
   if (this->is_failed())
     return;
 
+  // Size the run-loop queues once, now that registration is complete (the
+  // entity-count log below is proof). Each lane makes exactly one allocation
+  // here and never allocates again: the read/write lanes to the registered
+  // entity count (an entity is enqueued at most once, so that is their true
+  // ceiling and they can never fill), the raw lane to its scan-sweep cap. After
+  // this, run-loop queue traffic is heap-free. A failure here is out of heap at
+  // boot -- fail loudly rather than run without working queues.
+  if (!this->read_queue_.reserve(this->entities_.size()) || !this->write_queue_.reserve(this->entities_.size()) ||
+      !this->raw_queue_.reserve(RAW_QUEUE_MAX)) {
+    ESP_LOGE(TAG, "failed to allocate poll queues for %zu entities (out of heap)", this->entities_.size());
+    this->mark_failed();
+    return;
+  }
+
   // The engine is build-time-selected (protocol_select.h) and deduces the
   // interface type, wrapping &iface_ in a GenericInterface internally.
   this->vito_ = std::make_unique<optolink::OptolinkEngine<SelectedProtocol>>(&this->iface_);
@@ -421,7 +435,7 @@ void VitoHomeComponent::queue_raw_write(uint16_t address, const std::vector<uint
 
 void VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes,
                                      uint8_t bytes_len, RawPurpose purpose) {
-  if (this->raw_queue_.size() >= RAW_QUEUE_MAX) {
+  if (this->raw_queue_.full()) {
     ESP_LOGW(TAG, "raw queue full (%zu); dropping %s 0x%04X", this->raw_queue_.size(), is_write ? "write" : "read",
              address);
     return;

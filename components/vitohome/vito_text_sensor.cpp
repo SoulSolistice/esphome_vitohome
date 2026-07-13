@@ -5,6 +5,7 @@
 #include <string>
 
 #include "decode.h"
+#include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
 
 namespace esphome::vitohome {
@@ -54,16 +55,18 @@ const char *VitoTextSensor::lookup_(uint32_t value) const {
 }
 
 void VitoTextSensor::publish_raw_hex_(const uint8_t *data, uint8_t len) {
-  std::string out;
-  out.reserve(static_cast<size_t>(len) * 3);
-  char b[4];
-  for (uint8_t i = 0; i < len; i++) {
-    snprintf(b, sizeof(b), "%02X", data[i]);
-    if (i != 0)
-      out += ' ';
-    out += b;
-  }
-  this->publish_state(out);
+  // The raw schema caps CONF_LENGTH at 1..4, but size for the widest response
+  // the parser could ever hand back (a P300 read at MAX_P300_READ_LENGTH = 48)
+  // so an over-length reply is rendered, not silently cut. format_hex_pretty_to
+  // NUL-terminates and hard-clamps the write to the buffer, so this is
+  // overflow-safe regardless. A space separator with no length suffix
+  // reproduces the previous "%02X"-joined output byte-for-byte, and
+  // publish_state(const char *) assigns into the reused member string -- no
+  // per-publish std::string allocation, which is the reserve()+= heap churn the
+  // guidelines flag.
+  char buf[format_hex_pretty_size(48)];
+  format_hex_pretty_to(buf, data, len, ' ');
+  this->publish_state(buf);
 }
 
 void VitoTextSensor::publish_enum_(const uint8_t *data, uint8_t len) {

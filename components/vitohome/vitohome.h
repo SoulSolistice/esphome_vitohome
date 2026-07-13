@@ -1,5 +1,4 @@
 #pragma once
-#include <deque>
 #include <memory>
 #include <string>
 #include <vector>
@@ -17,6 +16,7 @@
 #include "optolink/optolink.h"
 #include "protocol_select.h"
 #include "response_view.h"
+#include "ring_buffer.h"
 #include "vito_entity.h"
 #include "vito_uart_interface.h"
 
@@ -213,8 +213,17 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
   static constexpr uint32_t REFRESH_ALL_MIN_INTERVAL_MS = 5000;
   void publish_link_(bool up);
   void link_note_error_();
-  std::deque<VitoEntityBase *> read_queue_;
-  std::deque<VitoEntityBase *> write_queue_;
+  // Read and write lanes. Each entity carries a read_queued_ / write_queued_
+  // flag that forbids a second enqueue while it is still pending, so an entity is
+  // in a lane at most once and neither lane can ever exceed the registered entity
+  // count. That count is only known once registration finishes, so both lanes are
+  // sized to entities_.size() by a single reserve() in setup() (see the ring's
+  // header): exact capacity, no wasted RAM and no arbitrary ceiling, so a device
+  // that runs its full generated catalog (which can be many hundreds of
+  // datapoints) is sized for rather than rejected. After setup() the lanes never
+  // allocate again.
+  RingBuffer<VitoEntityBase *> read_queue_;
+  RingBuffer<VitoEntityBase *> write_queue_;
   VitoEntityBase *in_flight_{nullptr};
   OpType in_flight_op_{OpType::NONE};
   uint32_t in_flight_started_ms_{0};
@@ -260,8 +269,12 @@ class VitoHomeComponent : public PollingComponent, public uart::UARTDevice {
     uint8_t bytes_len;
     RawPurpose purpose;
   };
+  // Raw lane: bounded by RAW_QUEUE_MAX because a scan sweep can enqueue faster
+  // than the link drains (unlike the entity lanes, which the at-most-once flag
+  // bounds). Sized to that cap by reserve() in setup(); enqueue_raw_ drops and
+  // logs when full.
   static constexpr size_t RAW_QUEUE_MAX = 256;
-  std::deque<RawOp> raw_queue_;
+  RingBuffer<RawOp> raw_queue_;
   bool raw_in_flight_{false};
   bool raw_is_write_{false};
   RawPurpose raw_purpose_{RawPurpose::SCAN};
