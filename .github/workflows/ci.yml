@@ -33,8 +33,20 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -r requirements.txt pytest
-      - run: pytest tests/unit -v
+      # pytest/pytest-cov are installed HERE and deliberately NOT added to
+      # requirements.txt: that file is the ESPHome pin, and the compile job's
+      # PlatformIO toolchain cache is keyed on hashFiles('requirements.txt').
+      # Adding a test-only dependency there would bust a ~2 min toolchain cache
+      # on every job for no build reason.
+      - run: pip install -r requirements.txt pytest pytest-cov
+      # Coverage config lives in pyproject.toml ([tool.coverage.run] targets
+      # scripts/, branch=True). Reported, NOT gated: this number is here to be
+      # looked at, and a threshold would be guesswork until it has been. Note
+      # the source is scripts/ only -- components/vitohome/__init__.py is
+      # deliberately out of scope because its to_code()/codegen half is
+      # exercised by `esphome config`/`compile`, not by pytest, so including it
+      # would report a low number for a reason that is not a defect.
+      - run: pytest tests/unit -v --cov --cov-report=term-missing
 
   native:
     name: host tests (c++)
@@ -45,7 +57,40 @@ jobs:
       - run: /tmp/test_decode
       - name: VS2 transaction harness (vendored optolink engine)
         working-directory: tests/native
+        # Chains build_and_run_protocols.sh. Every g++ line in both scripts
+        # carries -Wall -Wextra -Werror; see the header note in build_and_run.sh.
         run: bash build_and_run.sh
+      # Narrow, deliberate coverage ratchet on decode.h ONLY -- the one file
+      # that is pure, 100% host-executable, and where a missed branch is a
+      # wrong number on a boiler rather than a compile error. Uses gcov (ships
+      # with the gcc this job already uses): no pip package, no third-party
+      # action, no upload, no token. See the script header for why this is not
+      # a repo-wide number.
+      - name: decode.h coverage ratchet
+        run: bash scripts/coverage_decode.sh
+
+  examples:
+    name: example configs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install ESPHome
+        run: pip install -r requirements.txt
+      # `esphome config` over the STANDALONE configs in example/ -- the files a
+      # user actually flashes, which nothing gated before this. The script
+      # classifies each file by whether it has a top-level `esphome:` block
+      # (standalone) or not (package fragment consumed via packages:/!include),
+      # and asserts the *.dp.*.yaml naming convention agrees in BOTH
+      # directions, so a new example is validated automatically and a
+      # misnamed one fails loudly rather than being silently skipped.
+      # Config-only on purpose: these are YAML/codegen gates, and the compile
+      # matrix already covers the C++ under the same component.
+      - name: Validate example configs
+        run: bash scripts/validate_examples.sh
 
   compile:
     name: ${{ matrix.config }}
@@ -68,6 +113,16 @@ jobs:
           # compile/link; this builds them end-to-end through ESPHome.)
           - test.esp32-idf-gwg.yaml   # GWG  / esp-idf
           - test.esp32-idf-kw.yaml    # KW   / esp-idf  (beyond P300+GWG; drop if leaner CI wanted)
+          # Sensor-ONLY config: the only entry that does not include
+          # common.yaml. common.yaml instantiates every platform, so under it
+          # every USE_<PLATFORM> macro is defined and every `#ifdef` in
+          # vito_*.h/.cpp and vitohome.h/.cpp takes its TRUE branch. The false
+          # branch -- what a user hits the moment they write a trimmed config --
+          # was compiled by nothing. This is the gate for the AUTO_LOAD /
+          # #ifdef USE_<PLATFORM> architecture; do not delete it as "redundant
+          # with the P300 entries", and do not add platforms to the config it
+          # points at. See the file's own header.
+          - test.esp32-idf-single-platform.yaml   # P300 / esp-idf / sensor only
     steps:
       - uses: actions/checkout@v7
 

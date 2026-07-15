@@ -8,6 +8,12 @@
 #     formatter width is not imposed on it.
 #   * coverage targets scripts/ (the tested Python here), the adapted inverse
 #     of ESPHome's monorepo .coveragerc, which omits its components/ tree.
+#     components/vitohome/__init__.py is deliberately NOT in scope: its
+#     to_code()/codegen half is exercised by `esphome config`/`compile`, not by
+#     pytest, so including it would report a low number for a reason that is
+#     not a defect. This config is consumed by the `unit` CI job
+#     (`pytest --cov`); it is REPORTED, not gated. The one coverage RATCHET in
+#     this repo is on the C++ side -- scripts/coverage_decode.sh, decode.h only.
 
 [tool.ruff]
 required-version = ">=0.5.0"

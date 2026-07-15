@@ -1,0 +1,103 @@
+# Single-platform compile gate: the ONLY config in this tree that does not
+# `<<: !include common.yaml`, and deliberately so.
+#
+# WHAT THIS GUARDS
+# ----------------
+# components/vitohome/__init__.py declares DEPENDENCIES = ["uart"] and
+# deliberately does NOT AUTO_LOAD the entity base components (pulling platform
+# bases in via AUTO_LOAD is disallowed by the ESPHome component guidelines).
+# The consequence is that USE_SENSOR / USE_BINARY_SENSOR / USE_TEXT_SENSOR /
+# USE_NUMBER / USE_SELECT / USE_SWITCH / USE_TEXT / USE_CLIMATE / USE_EVENT /
+# USE_BUTTON are defined ONLY when the user's own config instantiates that base
+# component. Every vito_*.h / vito_*.cpp is wrapped in its matching
+# `#ifdef USE_<PLATFORM>`, and vitohome.h/.cpp guard the hub-fed members the
+# same way (link_sensors_, device_id_sensors_, raw_result_sensors_ and their
+# register_*/loop bodies).
+#
+# tests/common.yaml instantiates EVERY platform, so under it every USE_* macro
+# is defined and every `#ifdef` takes its true branch. The false branch --
+# the one a real user hits the moment they write a sensor-only config -- was
+# never compiled by CI. An unguarded include, an unguarded member reference, or
+# a lambda capturing a guarded-away vector would pass the whole matrix and fail
+# on the first user who trimmed their config.
+#
+# WHY sensor-ONLY
+# ---------------
+# `sensor` is the minimal platform that still exercises the hub's poll/dispatch
+# path end to end, and choosing it leaves USE_BINARY_SENSOR and USE_TEXT_SENSOR
+# undefined -- which are precisely the two macros vitohome.h/.cpp guard on
+# (link/device_id/scan_result are hub-fed and live behind them). It is the
+# cheapest config that puts the maximum number of `#ifdef` guards on their
+# false branch.
+#
+# Do NOT "improve" this file by adding platforms. Every platform added here
+# switches another guard back to its true branch and gives away the coverage
+# this config exists to buy. If a second single-platform shape is ever worth
+# gating (e.g. binary_sensor-only), add a sibling file rather than growing this
+# one.
+#
+# esp-idf framework on the PlatformIO toolchain: matches test.esp32-idf.yaml,
+# i.e. what this project actually ships. The axis under test here is the
+# USE_<PLATFORM> guard set, not the framework, so it is gated once.
+
+substitutions:
+  name: vitohome-test-single-platform
+
+esp32:
+  board: esp32dev
+  # See test.esp32-idf.yaml for why the toolchain is pinned explicitly.
+  toolchain: platformio
+  framework:
+    type: esp-idf
+
+esphome:
+  name: ${name}
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [vitohome]
+
+logger:
+  level: DEBUG
+
+uart:
+  - id: uart_optolink
+    rx_pin: GPIO16
+    tx_pin: GPIO17
+    baud_rate: 4800
+    data_bits: 8
+    parity: EVEN
+    stop_bits: 2
+
+vitohome:
+  id: vito
+  uart_id: uart_optolink
+  protocol: P300
+  update_interval: 60s
+  # identify_device drives the hub's one-shot identification, whose RESULT
+  # surface (text_sensor: type: device_id) is compiled out here because
+  # USE_TEXT_SENSOR is undefined. Left ON deliberately: this is the exact
+  # shape where the hub identifies but has nothing to publish to, so the
+  # `#ifdef USE_TEXT_SENSOR` around device_id_sensors_ and its publish loop
+  # must hold on its own.
+  identify_device: true
+  log_frames: false
+  # The raw lane's result surface (text_sensor: type: scan_result) is likewise
+  # compiled out. Keep the lane allocated so the raw_result_sensors_ guard is
+  # exercised with the lane live rather than trivially disabled.
+  raw_queue_size: 16
+
+sensor:
+  # One entity, one converter, no byte_offset: the point of this config is the
+  # guard set, not converter coverage (tests/common.yaml owns that).
+  - platform: vitohome
+    name: "Single Platform Temp"
+    address: 0x0800
+    length: 2
+    converter: div10
+    unit_of_measurement: "C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1

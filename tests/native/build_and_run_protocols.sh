@@ -13,6 +13,9 @@
 #
 # The poke-ON path (EOT 0x04 emitted) is verified separately by flipping the
 # switch; this script guards the default-off invariant so it can't regress.
+#
+# EVERY g++ line here carries -Wall -Wextra -Werror; see the note in
+# build_and_run.sh for why that is a hard requirement and not a preference.
 set -euo pipefail
 ROOT="${1:-../../components/vitohome}"
 OPTO="$ROOT/optolink"
@@ -31,29 +34,29 @@ echo "== protocol engine: compile + link for each protocol =="
 for sel in "P300:" "KW:-DVITOHOME_PROTOCOL_KW" "GWG:-DVITOHOME_PROTOCOL_GWG"; do
   name="${sel%%:*}"
   flag="${sel#*:}"
-  g++ -std=c++17 -Wall -Wextra -pthread $flag -I"$ROOT" -I"$OPTO" \
+  g++ -std=c++17 -Wall -Wextra -Werror -pthread $flag -I"$ROOT" -I"$OPTO" \
     engine_compile_proof.cpp "${SRCS[@]}" -o engine_proof
   printf '  %-5s ' "$name"
   ./engine_proof
 done
 
 echo "== GWG read/write completion (THIRD_PARTY.md #8 fix) =="
-g++ -std=c++17 -Wall -Wextra -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
+g++ -std=c++17 -Wall -Wextra -Werror -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
   proof_gwg_read.cpp "${SRCS[@]}" -o gwg_read
 ./gwg_read
 
 echo "== VS1/KW write-ack completion (THIRD_PARTY.md #11 fix) =="
-g++ -std=c++17 -Wall -Wextra -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" -I"$OPTO" \
+g++ -std=c++17 -Wall -Wextra -Werror -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" -I"$OPTO" \
   proof_vs1_write.cpp "${SRCS[@]}" -o vs1_write
 ./vs1_write
 
 echo "== VS2 guards: ERROR-type frames + parser reset (#9 / #10) =="
-g++ -std=c++17 -Wall -Wextra -pthread -I"$ROOT" -I"$OPTO" \
+g++ -std=c++17 -Wall -Wextra -Werror -pthread -I"$ROOT" -I"$OPTO" \
   proof_vs2_guards.cpp "${SRCS[@]}" -o vs2_guards
 ./vs2_guards
 
 echo "== GWG sync poke: must be OFF by default =="
-g++ -std=c++17 -Wall -Wextra -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
+g++ -std=c++17 -Wall -Wextra -Werror -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
   proof_gwg_poke.cpp "${SRCS[@]}" -o gwg_poke
 out="$(./gwg_poke)"
 echo "  $out"

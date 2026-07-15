@@ -30,9 +30,18 @@ env/
 # Ruff caching (defined by ruff.toml)
 .ruff_cache/
 
-# Coverage tracking (if added later)
+# Coverage tracking.
+# Python: pytest-cov / coverage.py, configured in pyproject.toml
+# ([tool.coverage.run] source = scripts). CI runs `pytest --cov` in the `unit`
+# job; running it locally drops .coverage here.
 .coverage
 htmlcov/
+# C++: gcov artifacts. scripts/coverage_decode.sh confines its own build to a
+# mktemp dir and so emits none of these into the tree, but a manual
+# `g++ --coverage` in-tree will, so ignore them by extension.
+*.gcno
+*.gcda
+*.gcov
 
 # ==========================================
 # C++ Native Tests & Build Artifacts

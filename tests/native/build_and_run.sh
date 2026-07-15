@@ -10,10 +10,17 @@
 # This first harness compiles only the P300 path (OptolinkEngine<P300> ==
 # VS2Engine) for the transaction vectors; build_and_run_protocols.sh (chained at
 # the end) compiles the adapter against all three engines.
+#
+# EVERY g++ line here carries -Wall -Wextra -Werror. The -Werror is not
+# decoration: without it these compiles emit diagnostics and exit 0, so a new
+# warning lands in a green build and is never seen. ci.yml's separate
+# test_decode line has always had -Werror; these did not, which meant ~12 host
+# compiles were computing warnings and discarding them. Keep it on every line
+# added below -- a host compile that tolerates warnings is not a gate.
 set -euo pipefail
 ROOT="${1:-../../components/vitohome}"
 OPTO="$ROOT/optolink"
-g++ -std=c++17 -Wall -Wextra \
+g++ -std=c++17 -Wall -Wextra -Werror \
   -I"$ROOT" -I"$OPTO" \
   test_vs2_transaction.cpp \
   "$OPTO/constants.cpp" \
@@ -28,7 +35,7 @@ g++ -std=c++17 -Wall -Wextra \
 # Parser regression: a zero-payload VS2 frame must not walk past the packet
 # buffer (inherited upstream OOB, fixed in parser_vs2.cpp). Built under
 # AddressSanitizer/UBSan so the pre-fix code would trap here.
-g++ -std=c++17 -Wall -Wextra -fsanitize=address,undefined \
+g++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined \
   -I"$ROOT" -I"$OPTO" \
   proof_vs2_zero_payload.cpp \
   "$OPTO/protocol/vs2/parser_vs2.cpp" \
@@ -41,7 +48,7 @@ g++ -std=c++17 -Wall -Wextra -fsanitize=address,undefined \
 # writes (null-data, len > 250, buffer sizing). Pre-fix, a RESPONSE with len
 # 251-255 wrote past the 256-byte packet array and a null data pointer was
 # dereferenced -- both latent (engines only build REQUESTs) but ASan-trappable.
-g++ -std=c++17 -Wall -Wextra -fsanitize=address,undefined \
+g++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined \
   -I"$OPTO" \
   proof_packet_vs2_response.cpp \
   "$OPTO/protocol/vs2/packet_vs2.cpp" \
@@ -51,20 +58,20 @@ g++ -std=c++17 -Wall -Wextra -fsanitize=address,undefined \
 
 # Decode proof: multi-byte field extraction from a wide block read (the
 # P300-portable pattern gen_catalog emits for interior fields).
-g++ -std=gnu++20 -Wall -Wextra -I"$ROOT" -I"$OPTO" proof_extract.cpp -o proof_extract
+g++ -std=gnu++20 -Wall -Wextra -Werror -I"$ROOT" -I"$OPTO" proof_extract.cpp -o proof_extract
 ./proof_extract
 
 # String-offset proof: ascii/utf16 fields at BytePosition > 0 must be sliced out
 # of an aligned block read, never addressed at base+offset (P300 errors on the
 # interior address at any width; KW returns 0xFF fill, which decodes to "").
-g++ -std=gnu++20 -Wall -Wextra -fsanitize=address,undefined \
+g++ -std=gnu++20 -Wall -Wextra -Werror -fsanitize=address,undefined \
   -I"$ROOT" -I"$OPTO" proof_string_offset.cpp -o proof_string_offset
 ./proof_string_offset
 
 # Scheduler proof: per-entity poll intervals must fire on every hub tick when
 # interval == the hub tick, must not drift, and must survive the millis() wrap.
 # (Anchoring the next due time on `now` made this a jitter-decided coin flip.)
-g++ -std=c++17 -Wall -Wextra -fsanitize=address,undefined \
+g++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined \
   -I"$ROOT" proof_scheduler.cpp -o proof_scheduler
 ./proof_scheduler
 
@@ -75,7 +82,7 @@ g++ -std=c++17 -Wall -Wextra -fsanitize=address,undefined \
 # -DVITOHOME_NATIVE_TEST selects the header's no-op host mutex stand-in
 # (device builds use the real esphome::Mutex; ESPHome headers are not on the
 # host include path).
-g++ -std=c++17 -Wall -Wextra -fsanitize=address,undefined \
+g++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined \
   -DVITOHOME_NATIVE_TEST \
   -I"$ROOT" proof_ring_buffer.cpp -o proof_ring_buffer
 ./proof_ring_buffer
