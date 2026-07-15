@@ -13,12 +13,6 @@ namespace esphome::vitohome::optolink {
 
 PacketVS1::PacketVS1() : _buffer{} { reset(); }
 
-PacketVS1::operator bool() const {
-  if (_buffer[3] != 0)
-    return true;
-  return false;
-}
-
 uint8_t &PacketVS1::operator[](std::size_t index) { return _buffer[index]; }
 
 bool PacketVS1::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, const uint8_t *data) {
@@ -71,16 +65,6 @@ uint8_t PacketVS1::length() const {
 }
 
 uint8_t PacketVS1::packetType() const { return _buffer[0]; }
-
-uint16_t PacketVS1::address() const {
-  uint16_t retVal = _buffer[1] << 8;
-  retVal |= _buffer[2];
-  return retVal;
-}
-
-uint8_t PacketVS1::dataLength() const { return _buffer[3]; }
-
-const uint8_t *PacketVS1::data() const { return &_buffer[4]; }
 
 void PacketVS1::reset() { _buffer[3] = 0x00; }
 

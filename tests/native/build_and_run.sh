@@ -37,6 +37,18 @@ g++ -std=c++17 -Wall -Wextra -fsanitize=address,undefined \
   -o proof_vs2_zero_payload
 ./proof_vs2_zero_payload
 
+# Packet regression: RESPONSE-type frames must hit the same payload guards as
+# writes (null-data, len > 250, buffer sizing). Pre-fix, a RESPONSE with len
+# 251-255 wrote past the 256-byte packet array and a null data pointer was
+# dereferenced -- both latent (engines only build REQUESTs) but ASan-trappable.
+g++ -std=c++17 -Wall -Wextra -fsanitize=address,undefined \
+  -I"$OPTO" \
+  proof_packet_vs2_response.cpp \
+  "$OPTO/protocol/vs2/packet_vs2.cpp" \
+  "$OPTO/constants.cpp" \
+  -o proof_packet_vs2_response
+./proof_packet_vs2_response
+
 # Decode proof: multi-byte field extraction from a wide block read (the
 # P300-portable pattern gen_catalog emits for interior fields).
 g++ -std=gnu++20 -Wall -Wextra -I"$ROOT" -I"$OPTO" proof_extract.cpp -o proof_extract

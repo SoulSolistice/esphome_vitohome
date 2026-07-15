@@ -16,12 +16,10 @@ margin. Deleted copy operations restored.
 #pragma once
 
 #include <array>
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
 
 #include "../../constants.h"
-#include "../../helpers.h"
 #include "../../logging.h"
 
 namespace esphome::vitohome::optolink {
@@ -34,16 +32,12 @@ class PacketGWG {
   ~PacketGWG() = default;
   PacketGWG(const PacketGWG &) = default;
   PacketGWG &operator=(const PacketGWG &) = default;
-  operator bool() const;
   uint8_t &operator[](std::size_t index);
 
  public:
   bool createPacket(uint8_t packetType, uint16_t addr, uint8_t len, const uint8_t *data = nullptr);
   uint8_t length() const;
   uint8_t packetType() const;
-  uint16_t address() const;
-  uint8_t dataLength() const;
-  const uint8_t *data() const;
 
   void reset();
 

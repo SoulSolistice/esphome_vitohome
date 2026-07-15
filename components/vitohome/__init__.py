@@ -54,6 +54,9 @@ CONF_IDENTIFY_DEVICE = "identify_device"
 # rule. The `delimiter: [0x06]` recipe that circulates for Optolink is a P300
 # ACK byte and is an ordinary data byte on KW, where it tears frames apart.
 CONF_LOG_FRAMES = "log_frames"
+# Raw-lane (scan console + clock sync) queue capacity; see
+# VitoHomeComponent::set_raw_queue_capacity for the RAM trade-off.
+CONF_RAW_QUEUE_SIZE = "raw_queue_size"
 
 # System-time sync options (hub-level; see VitoHomeComponent::set_time_sync).
 CONF_TIME_SYNC = "time_sync"
@@ -319,6 +322,22 @@ def _validate_time_sync(config):
     return config
 
 
+def _validate_raw_queue_size(config):
+    """Clock sync rides the raw lane, so it needs at least one slot.
+
+    Scan-console calls on a zero-capacity lane degrade gracefully at runtime
+    (the enqueue is rejected with a warning), but a configured time sync that
+    can never enqueue would be a silently dead feature -- reject it here.
+    """
+    if CONF_TIME_ID in config and config[CONF_RAW_QUEUE_SIZE] == 0:
+        raise cv.Invalid(
+            f"system-time sync uses the raw operation lane; '{CONF_RAW_QUEUE_SIZE}' "
+            f"must be at least 1 when '{CONF_TIME_ID}' is set",
+            path=[CONF_RAW_QUEUE_SIZE],
+        )
+    return config
+
+
 CONFIG_SCHEMA = cv.All(
     cv.Schema(
         {
@@ -334,11 +353,18 @@ CONFIG_SCHEMA = cv.All(
             # time source when it drifts. Inert unless time_id is set.
             cv.Optional(CONF_TIME_ID): cv.use_id(time_.RealTimeClock),
             cv.Optional(CONF_TIME_SYNC): TIME_SYNC_SCHEMA,
+            # Capacity of the raw lane (scan console + clock sync). Each slot
+            # costs sizeof(RawOp) (~38 bytes on a 32-bit target), reserved once
+            # at setup(). The 256 default keeps the shipped scan-sweep
+            # behavior; a production config that never scans can reclaim
+            # ~10 KiB with a small value, or 0 to disable the lane entirely.
+            cv.Optional(CONF_RAW_QUEUE_SIZE, default=256): cv.int_range(min=0, max=1024),
         }
     )
     .extend(cv.polling_component_schema("60s"))
     .extend(uart.UART_DEVICE_SCHEMA),
     _validate_time_sync,
+    _validate_raw_queue_size,
 )
 
 
@@ -350,8 +376,10 @@ CONFIG_SCHEMA = cv.All(
 _ADDRESS_DOMAINS = ("sensor", "binary_sensor", "text_sensor", "number", "select", "switch", "text", "event", "climate")
 
 # GWG addresses a SINGLE BYTE. Source-confirmed in the vendored engine:
-# PacketGWG::createPacket() REJECTS any address above 0xFF (upstream silently
-# truncated to `addr & 0xFF`, so 0x2500 read datapoint 0x00). Corroborated by
+# PacketGWG::createPacket() REJECTS any address above 0xFF -- a guard
+# inherited verbatim from upstream VitoWiFi @ edc059a7 (source-confirmed
+# there too; an earlier comment here claimed upstream silently truncated,
+# which was wrong). Corroborated by
 # vcontrold, whose GWG device (ID 2053, "V200WB2 ID=2053 Protokoll:GWG_VBEM")
 # overrides every command onto single-byte addresses (0x63, 0xF8, 0x22, 0x01,
 # 0x17) rather than the 16-bit ones used on KW/P300.
@@ -549,6 +577,10 @@ async def to_code(config):
     if identify is None:
         identify = protocol in ("P300", "KW")
     cg.add(var.set_identify_device(identify))
+
+    # Raw-lane capacity is applied before setup() reserves the lane. Emitted
+    # unconditionally so the generated main.cpp states the size it runs with.
+    cg.add(var.set_raw_queue_capacity(config[CONF_RAW_QUEUE_SIZE]))
 
     # Optional system-time sync. The build flag compiles the now()-using paths
     # in the hub only when a time source is configured, so a build without

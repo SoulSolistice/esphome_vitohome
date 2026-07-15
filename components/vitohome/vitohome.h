@@ -118,6 +118,14 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   void set_identify_device(bool value) { this->identify_device_ = value; }
 
+  // Capacity for the raw operation lane (scan console + clock sync), applied
+  // by setup()'s one-shot reserve(). Each slot costs sizeof(RawOp), so the
+  // RAW_QUEUE_MAX default (256, ~10 KiB on a 32-bit target) is real RAM; a
+  // configuration that never scans can hand in a small value, or 0 to leave
+  // the lane unallocated (enqueue attempts are then rejected with a warning;
+  // config validation already requires >= 1 when time sync is enabled).
+  void set_raw_queue_capacity(std::size_t capacity) { this->raw_queue_capacity_ = capacity; }
+
   // System-time sync is optional. The hub periodically reads the device clock
   // at 0x088E and writes the configured time source back only when the measured
   // drift exceeds the configured threshold.
@@ -395,9 +403,12 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   //
   // RawOp carries RAW_WRITE_MAX inline bytes, so this cap has a significant
   // fixed RAM cost. RAW_QUEUE_MAX == 256 is roughly 10 KiB on a typical 32-bit
-  // ABI, but the exact value is sizeof(RawOp) * RAW_QUEUE_MAX on the selected
-  // compiler and target.
+  // ABI, but the exact value is sizeof(RawOp) * capacity on the selected
+  // compiler and target. RAW_QUEUE_MAX is the default; the YAML
+  // raw_queue_size option overrides it through set_raw_queue_capacity() so an
+  // idle lane does not have to carry the full sweep-sized allocation.
   static constexpr std::size_t RAW_QUEUE_MAX = 256;
+  std::size_t raw_queue_capacity_{RAW_QUEUE_MAX};
 
   RingBuffer<RawOp> raw_queue_;
 

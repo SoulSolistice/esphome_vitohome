@@ -53,6 +53,11 @@ void VitoHomeComponent::setup() {
   // component. Separate checks identify the allocation that failed.
   const std::size_t entity_count = this->entities_.size();
 
+  // Registration is complete, so the entity vector is final: release the
+  // growth slack vector doubling left behind. (Non-binding, but every
+  // mainstream libstdc++/libc++ honors it, and the vector never grows again.)
+  this->entities_.shrink_to_fit();
+
   if (!this->read_queue_.reserve(entity_count)) {
     ESP_LOGE(TAG, "failed to allocate read queue for %zu entities", entity_count);
     this->mark_failed();
@@ -65,8 +70,8 @@ void VitoHomeComponent::setup() {
     return;
   }
 
-  if (!this->raw_queue_.reserve(RAW_QUEUE_MAX)) {
-    ESP_LOGE(TAG, "failed to allocate raw queue with capacity %zu", RAW_QUEUE_MAX);
+  if (!this->raw_queue_.reserve(this->raw_queue_capacity_)) {
+    ESP_LOGE(TAG, "failed to allocate raw queue with capacity %zu", this->raw_queue_capacity_);
     this->mark_failed();
     return;
   }
@@ -515,6 +520,9 @@ void VitoHomeComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "VitoHome:");
   ESP_LOGCONFIG(TAG, "  Protocol: %s", PROTOCOL_NAME);
   ESP_LOGCONFIG(TAG, "  Entities: %zu", this->entities_.size());
+  // The raw lane's slots are the component's single largest fixed allocation
+  // (sizeof(RawOp) each), so the configured capacity is worth stating.
+  ESP_LOGCONFIG(TAG, "  Raw queue capacity: %zu", this->raw_queue_capacity_);
 
   if (this->ident_state_ == IdentState::DONE)
     ESP_LOGCONFIG(TAG, "  Device: %s", this->ident_string_().c_str());

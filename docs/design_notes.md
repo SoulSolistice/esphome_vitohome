@@ -140,15 +140,15 @@ signedness rules.
 ## 3. The vendored engine (`optolink/`)
 
 The `optolink/` subtree is a **vendored and modified** copy of VitoWiFi at
-`edc059a7`, de-branded into `esphome::vitohome::optolink`. The eleven intentional
-divergences from upstream (the namespace/class rename, removal of the platform
-serial adapters, the logging rework, the `std::array` packet buffers, the VS2
-write-payload guard, the named timeouts, the GWG one-shot bugfix, the GWG
-response-completion fix, the VS2 non-RESPONSE frame guard, the VS2 parser
-reset on engine reset, and the VS1 write-ack completion fix) are itemised in
+`edc059a7`, de-branded into `esphome::vitohome::optolink`. Every intentional
+divergence from upstream -- from the namespace rename and the `std::array`
+packet buffers through the protocol-level bugfixes and the dead-code sweeps --
+is itemised, numbered and classified (behavioral vs structural) in
 [`optolink/THIRD_PARTY.md`](../components/vitohome/optolink/THIRD_PARTY.md);
-licensing (MIT-into-GPLv3) is in [`NOTICE.md`](../NOTICE.md). They are not
-repeated here. What belongs here are the **lessons from doing the vendoring**,
+licensing (MIT-into-GPLv3) is in [`NOTICE.md`](../NOTICE.md). That file is the
+single source of truth for the divergence list: a count and summary previously
+repeated here drifted out of date as items were added, so neither is repeated
+anymore. What belongs here are the **lessons from doing the vendoring**,
 because they generalise:
 
 - **CI green ≠ the vendored engine compiled.** Before the build wiring was fixed,
@@ -628,10 +628,15 @@ they carry an inline payload.
 Source-confirmed, and it invalidates every generated catalog under
 `protocol: GWG`.
 
-`PacketGWG::createPacket()` serialises `_buffer[step++] = addr & 0xFF` — one
-address byte. The high byte is discarded **silently**: `0x2500` becomes `0x00`,
-`0x55DD` becomes `0xDD`. The device answers a different datapoint and nothing
-reports an error.
+`PacketGWG::createPacket()` carries one address byte and **rejects** any
+address above `0xFF` — a guard inherited verbatim from upstream `edc059a7`
+(the `addr & 0xFF` serialisation below the guard is unreachable for an
+over-range address). An earlier revision of this section claimed the high byte
+was discarded silently; that was wrong against both the vendored copy and
+upstream, and is corrected here. The rejection is memory-safe but *terminal*:
+a packet the engine refuses to build never leaves the hub's dispatch lane, so
+one such entity at the front of the read or write queue stalls that lane —
+and everything queued behind it — permanently.
 
 vcontrold agrees. Its GWG device — `<device ID="2053" name="GWG_VBEM"
 protocol="GWG"/>` — overrides **all 26** of its addresses onto a single byte
@@ -642,8 +647,8 @@ space.
 So the Vitosoft catalogs, which carry 16-bit addresses, **do not apply to GWG at
 all**. The hub's `FINAL_VALIDATE_SCHEMA` now rejects any `address`,
 `state_address` or `target_address` above `0xFF` when `protocol: GWG`. This is a
-hard error, not a warning: unlike the P300 length question, the truncation is a
-property of code we ship and is unconditionally wrong.
+hard error, not a warning: unlike the P300 length question, the permanent
+lane stall is a property of code we ship and is unconditionally wrong.
 
 This check immediately proved that `tests/common.yaml` had been addressing
 garbage under the GWG wrapper since it was written (`0x0800` → `0x00`). GWG now
@@ -932,8 +937,9 @@ Two limits worth re-stating because they are recurring footguns:
   decoded wrongly. Note this is *not* the same as `sec2hour`, which reads 4 bytes
   as a `uint32`. (`RotateBytes` and `HexByte2UTF16Byte` were previously in this
   commented-hint set and are now handled — the big-endian `rotatebytes` converter
-  and the `type: utf16` text_sensor, both host-tested in `test_decode.cpp`. Per
-  §4, the `rotatebytes` preset still wants a `tests/unit/test_validators.py` case.)
+  and the `type: utf16` text_sensor, both host-tested in `test_decode.cpp`; the
+  `rotatebytes` preset's registry shape and length rule are additionally pinned
+  in `tests/unit/test_validators.py`.)
 - **ESP32 build has two independent axes worth not conflating:**
   `esp32.framework.type` (`arduino`/`esp-idf` — which runtime SDK the code is
   compiled against; every test config here already uses `esp-idf`) and

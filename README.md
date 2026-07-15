@@ -132,6 +132,10 @@ vitohome:
   protocol: P300            # also KW (VS1), confirmed; GWG selectable but untested
   update_interval: 60s      # base poll tick
   identify_device: true     # read 0xF8..0xFB once at boot and log the device
+  # raw_queue_size: 256     # scan-console/clock-sync lane slots (~38 B each,
+  #                         # reserved once at boot). Default 256 keeps full
+  #                         # sweep capacity; shrink it (min 1 with time_sync,
+  #                         # 0 disables the lane) to reclaim RAM.
 
 sensor:
   - platform: vitohome

@@ -55,6 +55,7 @@ tests/native/vs1_write
 tests/native/test_decode
 tests/native/proof_extract
 tests/native/proof_vs2_zero_payload
+tests/native/proof_packet_vs2_response
 tests/native/proof_scheduler
 tests/native/proof_string_offset
 tests/native/proof_ring_buffer

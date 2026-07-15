@@ -217,12 +217,38 @@ These are intentional divergences from upstream `edc059a7`:
     `ParserVS2` now checks the frame's function code against the
     `FunctionCode::READ/WRITE/RPC` constants instead of bare literals, which
     also puts the previously-unreferenced `RPC` constant to use.
+    A follow-up pass removed the remaining zero-call-site packet accessors:
+    `operator bool()` on all three packet classes; `address()`,
+    `dataLength()` and `data()` on `PacketVS1` and `PacketGWG` (their engines
+    complete out of `_responseBuffer`, never the request packet); and `id()`
+    on `PacketVS2`. `PacketVS2` keeps `address()`/`dataLength()`/`data()`,
+    which feed the response callback and the parser. The packet headers also
+    dropped their vestigial `<cassert>` and `helpers.h` includes (no assert
+    and no helper macro is used in any packet translation unit).
+
+16. **VS2 RESPONSE packet payload guards (latent-bug fix, no behavior change
+    from any current call site).** `PacketVS2::createPacket`'s payload copy
+    runs for `fc == WRITE || pt == RESPONSE` (a read response echoes data
+    back), but upstream keyed the null-data check, the `len > 250` cap and
+    the buffer-size computation on `WRITE` alone. A RESPONSE with
+    `len` 251-255 therefore passed a size check computed for 6 bytes and then
+    copied `len` bytes -- an out-of-bounds write past the 256-byte packet
+    array -- and a RESPONSE with a null `data` pointer was dereferenced. Both
+    were latent: the engines only ever build REQUEST packets. The vendored
+    copy keys every guard on one `has_payload` condition matching the copy
+    loop, and serialises a payload-bearing RESPONSE with the
+    protocol-correct length byte `0x05 + len` (previously `0x05` regardless
+    -- an on-wire difference confined to the same never-exercised path).
+    Host-proven by `tests/native/proof_packet_vs2_response.cpp` under
+    ASan/UBSan; the same proof traps with a stack-buffer-overflow against the
+    upstream-shaped code.
 
 Items 7-12 are the only intentional changes to on-wire/runtime behavior;
-items 13-15 are structural (no behavior change). Everything else preserves
-upstream protocol behavior. Each behavioral item is covered by a host proof
-that fails against the upstream code, so none of them rests on inspection
-alone.
+items 13-16 are structural (no behavior change from any call site that
+exists -- item 16 alters bytes only on a RESPONSE-construction path nothing
+exercises). Everything else preserves upstream protocol behavior. Each
+behavioral item is covered by a host proof that fails against the upstream
+code, so none of them rests on inspection alone.
 
 ---
 
@@ -304,8 +330,9 @@ to propose upstream, so the workarounds could eventually be retired. The line
   responsibility; the numeric `encode` path already works and needs nothing.
 - **vitohome status.** Worked around uniformly: every `Datapoint` is `noconv`
   and **all** writes — numeric (`number`) and enumerated (`select`) — go through
-  the engine's raw-bytes `write(const Datapoint&, const uint8_t*, uint8_t)`
-  overload, with the component doing the encode itself in `decode.h`
+  the engine's raw byte-mover `write(uint16_t address, const uint8_t *data,
+  uint8_t length)` (the reshaped API of Part 1, item 14), with the component
+  doing the encode itself in `decode.h`
   (`encode_scaled` for numbers; the selected option's little-endian raw value for
   selects). This is what lets a `select` be written at all despite the absence of
   an enum converter, and it is the same path that carries the command/state

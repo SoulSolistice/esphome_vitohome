@@ -48,11 +48,12 @@ namespace esphome::vitohome {
 // Buffering reassembles that into one `>>> 41:05:00:01:73:62:28:03`.
 //
 // FRAME_GAP_MS = 30 is chosen from the wire, not from taste. At 4800 8E2 one
-// byte occupies 11 bits = 2.29 ms. Measured on P300: the gap between the three
-// TX pieces of one telegram is 18-20 ms, while the gap between the master's ACK
-// (0x06) and the next telegram's PACKETSTART is ~35 ms. 30 ms therefore joins a
-// telegram and separates the ACK from it. It is also >13 byte-times, far above
-// the intra-frame spacing, and far below KW's ~2.2 s idle-sync cadence.
+// byte occupies 12 bits (1 start + 8 data + 1 parity + 2 stop) = 2.5 ms.
+// Measured on P300: the gap between the three TX pieces of one telegram is
+// 18-20 ms, while the gap between the master's ACK (0x06) and the next
+// telegram's PACKETSTART is ~35 ms. 30 ms therefore joins a telegram and
+// separates the ACK from it. It is also 12 byte-times, far above the
+// intra-frame spacing, and far below KW's ~2.2 s idle-sync cadence.
 //
 // Everything below is compiled out entirely when the flag is absent: no buffers,
 // no timestamps, no per-byte branch. frame_tick() degrades to an empty inline.
@@ -129,8 +130,9 @@ class ESPHomeUARTInterface {
   uart::UARTDevice *dev_;
 
 #ifdef VITOHOME_LOG_FRAMES
-  // The longest single telegram this component moves is a 37-byte read (the
-  // P300 single-telegram limit) plus protocol framing; 64 covers it with
+  // The longest single telegram this component moves is a 48-byte P300 read
+  // (MAX_P300_READ_LENGTH) plus protocol framing: 0x41 + length byte + 5-byte
+  // header + 48 payload + checksum = 56 bytes on the wire. 64 covers it with
   // headroom, and a full buffer flushes early rather than truncating.
   static constexpr uint8_t BUF_SIZE = 64;
   static constexpr uint32_t FRAME_GAP_MS = 30;

@@ -138,6 +138,22 @@ static void test_encode_scaled() {
   CHECK(encode_scaled(65535.0, 1.0, false, 2, buf));
   CHECK(buf[0] == 0xFF && buf[1] == 0xFF);
   CHECK(!encode_scaled(65536.0, 1.0, false, 2, buf));
+
+  // llround-domain guard: magnitudes at/beyond 2^32 must be rejected BEFORE
+  // std::llround runs. Out of range, llround's result is UNSPECIFIED per C17
+  // (glibc saturates to LLONG_MAX/MIN -- host-verified -- but another libm
+  // may return an in-range value and transmit garbage). Not UBSan-detectable
+  // (a libm call, not a language-level cast), so these return-value
+  // assertions are the regression guard.
+  CHECK(!encode_scaled(1e30, 1.0, false, 4, buf));   // absurd value
+  CHECK(!encode_scaled(1.0, 1e-30, false, 4, buf));  // absurd scale
+  CHECK(!encode_scaled(-1e30, 1.0, true, 4, buf));   // absurd negative
+  // The guard moves no accept/reject boundary: the widest legal raw
+  // (2^32 - 1, unsigned len 4) still encodes, and 2^32 is still rejected by
+  // range, exactly as before.
+  CHECK(encode_scaled(4294967295.0, 1.0, false, 4, buf));
+  CHECK(buf[0] == 0xFF && buf[1] == 0xFF && buf[2] == 0xFF && buf[3] == 0xFF);
+  CHECK(!encode_scaled(4294967296.0, 1.0, false, 4, buf));
 }
 
 // --- bcd_to_int ------------------------------------------------------------

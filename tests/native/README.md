@@ -54,6 +54,10 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
   UART fragmentation.
 - `test_vs2_transaction.cpp` — data-driven runner: handshake into IDLE, then per
   vector replay request + chunked response and assert wire + payload.
+- `proof_packet_vs2_response.cpp` — ASan/UBSan regression for
+  `PacketVS2::createPacket`'s RESPONSE payload guards (null-data, `len > 250`,
+  buffer sizing): pre-fix, a RESPONSE with len 251–255 wrote past the packet
+  array and a null data pointer was dereferenced (see THIRD_PARTY.md #16).
 - `build_and_run.sh` — host compile + run. Optional `$1` is the component root
   containing `optolink/` (default `../../components/vitohome`); it compiles the
   P300 translation units (`constants`, `datapoint/*`, `protocol/vs2/*`).

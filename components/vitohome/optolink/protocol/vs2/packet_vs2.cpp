@@ -13,12 +13,6 @@ namespace esphome::vitohome::optolink {
 
 PacketVS2::PacketVS2() : _buffer{} { reset(); }
 
-PacketVS2::operator bool() const {
-  if (_buffer[0] != 0)
-    return true;
-  return false;
-}
-
 uint8_t &PacketVS2::operator[](std::size_t index) { return _buffer[index]; }
 
 bool PacketVS2::createPacket(PacketType pt, FunctionCode fc, uint8_t id, uint16_t addr, uint8_t len,
@@ -30,7 +24,15 @@ bool PacketVS2::createPacket(PacketType pt, FunctionCode fc, uint8_t id, uint16_
     optolink_log_w("Length error: %u", len);
     return false;
   }
-  if (fc == FunctionCode::WRITE && !data) {
+  // A frame carries an inline payload when it is a WRITE or a RESPONSE (a
+  // read response echoes the data back). Every payload guard below keys on
+  // this, matching the copy loop at the end. Keying the guards on WRITE alone
+  // (the upstream shape) let a RESPONSE pass the null-data check and a
+  // 6-byte size check and then copy `len` bytes -- a null dereference and,
+  // for len 251..255, an out-of-bounds write. Both were latent (the engines
+  // only build REQUESTs), but present.
+  const bool has_payload = (fc == FunctionCode::WRITE || pt == PacketType::RESPONSE);
+  if (has_payload && !data) {
     optolink_log_w("Function code - data mismatch");
     return false;
   }
@@ -38,13 +40,13 @@ bool PacketVS2::createPacket(PacketType pt, FunctionCode fc, uint8_t id, uint16_
     optolink_log_w("Message id overflow: %u > 7", id);
   }
 
-  // A VS2 write stores its P300 length byte as 0x05 + len, so the writable
-  // data payload must keep 0x05 + len inside a single byte: max len == 250.
-  if (fc == FunctionCode::WRITE && len > 250) {
-    optolink_log_w("Write payload too large: %u > 250", len);
+  // A VS2 payload frame stores its P300 length byte as 0x05 + len, so the
+  // payload must keep 0x05 + len inside a single byte: max len == 250.
+  if (has_payload && len > 250) {
+    optolink_log_w("Payload too large: %u > 250", len);
     return false;
   }
-  const std::size_t needed = (fc == FunctionCode::WRITE) ? len + 6 : 6;
+  const std::size_t needed = has_payload ? static_cast<std::size_t>(len) + 6 : 6;
   if (needed > _buffer.size()) {
     optolink_log_e("buffer overflow: need %u > %u", static_cast<unsigned>(needed),
                    static_cast<unsigned>(_buffer.size()));
@@ -53,17 +55,14 @@ bool PacketVS2::createPacket(PacketType pt, FunctionCode fc, uint8_t id, uint16_
 
   // Serialize into buffer
   size_t step = 0;
-  if (fc == FunctionCode::WRITE) {
-    _buffer[step++] = 0x05 + len;  // 0x05 = standard length: mt, fc, addr(2), len + data
-  } else {
-    _buffer[step++] = 0x05;
-  }
+  // 0x05 = standard length: mt, fc, addr(2), len; + data when a payload rides.
+  _buffer[step++] = has_payload ? 0x05 + len : 0x05;
   _buffer[step++] = static_cast<uint8_t>(pt);
   _buffer[step++] = static_cast<uint8_t>(fc) | id << 5;
   _buffer[step++] = (addr >> 8) & 0xFF;
   _buffer[step++] = addr & 0xFF;
   _buffer[step++] = len;
-  if (fc == FunctionCode::WRITE || pt == PacketType::RESPONSE) {
+  if (has_payload) {
     for (uint8_t i = 0; i < len; ++i) {
       _buffer[step++] = data[i];
     }
@@ -87,8 +86,6 @@ uint8_t PacketVS2::length() const { return _buffer[0] + 1; }
 PacketType PacketVS2::packetType() const { return static_cast<PacketType>(_buffer[1]); }
 
 FunctionCode PacketVS2::functionCode() const { return static_cast<FunctionCode>(_buffer[2] & 0x1F); }
-
-uint8_t PacketVS2::id() const { return _buffer[2] >> 5 & 0x07; }
 
 uint16_t PacketVS2::address() const {
   uint16_t retVal = _buffer[3] << 8;

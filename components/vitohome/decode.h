@@ -108,6 +108,18 @@ inline bool encode_scaled(double value, double scale, bool is_signed, uint8_t le
   const double raw_d = value / scale;
   if (!std::isfinite(raw_d))
     return false;
+  // Guard the llround argument itself. When the rounded value does not fit
+  // long long, C17 (7.12.9.7) leaves std::llround's numeric result
+  // UNSPECIFIED (a domain error may also occur). glibc happens to saturate to
+  // LLONG_MAX/LLONG_MIN -- which the per-width range checks below reject --
+  // but that is an implementation detail, not a guarantee: an unspecified
+  // value is permitted to land INSIDE the accepted range, turning an absurd
+  // value/scale pair (e.g. 1e30 / 0.1) into a transmitted garbage raw. This
+  // check makes the rejection deterministic. Any magnitude at or beyond 2^32
+  // is already out of range for every len <= 4 (the widest legal raw is
+  // 2^32 - 1, unsigned len 4), so it moves no accept/reject boundary.
+  if (raw_d >= 4294967296.0 || raw_d <= -4294967296.0)
+    return false;
   const int64_t raw = static_cast<int64_t>(std::llround(raw_d));
   if (is_signed) {
     const int64_t lo = -(1LL << (8 * len - 1));

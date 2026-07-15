@@ -18,12 +18,10 @@ operations are restored.
 #pragma once
 
 #include <array>
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
 
 #include "../../constants.h"
-#include "../../helpers.h"
 #include "../../logging.h"
 
 namespace esphome::vitohome::optolink {
@@ -42,7 +40,6 @@ class PacketVS2 {
   ~PacketVS2() = default;
   PacketVS2(const PacketVS2 &) = default;
   PacketVS2 &operator=(const PacketVS2 &) = default;
-  operator bool() const;
   uint8_t &operator[](std::size_t index);
 
  public:
@@ -52,7 +49,6 @@ class PacketVS2 {
   uint8_t length() const;
   PacketType packetType() const;
   FunctionCode functionCode() const;
-  uint8_t id() const;
   uint16_t address() const;
   uint8_t dataLength() const;
   const uint8_t *data() const;
