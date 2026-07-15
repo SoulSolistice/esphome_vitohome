@@ -225,13 +225,16 @@ void VS2Engine::_receive() {
       // -- through the response callback, so an error frame's payload was
       // decoded and published as data. The link-layer choreography is
       // unchanged (the frame is still ACKed via RECEIVE_ACK); only a
-      // non-RESPONSE type is now routed to the error callback instead.
+      // non-RESPONSE type is now routed to the error callback instead, as
+      // DEVICE_ERROR: the frame is complete and checksum-valid, so the peer
+      // demonstrably answered -- distinct from the malformed-traffic ERROR
+      // below, which proves nothing about the link (see constants.h).
       _setState(State::RECEIVE_ACK);
       if (_parser.packet().packetType() == PacketType::RESPONSE) {
         _tryOnResponse();
       } else {
         optolink_log_w("packet type 0x%02x is not a response", static_cast<unsigned>(_parser.packet().packetType()));
-        _tryOnError(OptolinkResult::ERROR);
+        _tryOnError(OptolinkResult::DEVICE_ERROR);
       }
       return;
     } else if (result == internals::ParserResult::CS_ERROR) {

@@ -56,10 +56,15 @@ g++ -std=c++17 -Wall -Wextra -fsanitize=address,undefined \
   -I"$ROOT" proof_scheduler.cpp -o proof_scheduler
 ./proof_scheduler
 
-# Ring-buffer proof: the fixed-capacity ring that replaced the three std::deque
-# run-loop queues (read/write/raw). FIFO + push_front + wraparound + full-drop
-# must hold, and a bad modulo would be an out-of-bounds slot access under ASan.
+# Ring-buffer proof: the fixed-capacity, task-synchronized ring that replaced
+# the three std::deque run-loop queues (read/write/raw). One-shot reserve() +
+# FIFO + push_front + consume_front_if + wraparound + full-drop must hold, and
+# a bad modulo would be an out-of-bounds slot access under ASan.
+# -DVITOHOME_NATIVE_TEST selects the header's no-op host mutex stand-in
+# (device builds use the real esphome::Mutex; ESPHome headers are not on the
+# host include path).
 g++ -std=c++17 -Wall -Wextra -fsanitize=address,undefined \
+  -DVITOHOME_NATIVE_TEST \
   -I"$ROOT" proof_ring_buffer.cpp -o proof_ring_buffer
 ./proof_ring_buffer
 

@@ -37,7 +37,14 @@ constexpr struct {
   uint8_t WRITE = 0xC8;
 } PacketGWGType;
 
-enum class OptolinkResult { CONTINUE, PACKET, TIMEOUT, LENGTH, NACK, CRC, ERROR };
+// DEVICE_ERROR vs ERROR (divergence from upstream, see THIRD_PARTY.md #9):
+// DEVICE_ERROR is a COMPLETE, checksum-valid frame whose type is not RESPONSE
+// (e.g. the VS2 device ERROR frame, PacketType 0x03) -- the peer demonstrably
+// received the request and answered, so it is proof of a live link speaking
+// this protocol. ERROR is malformed traffic (an invalid length/type/function
+// code after a start byte) -- possibly line noise -- and proves neither.
+// Callers that derive link health from results must not conflate the two.
+enum class OptolinkResult { CONTINUE, PACKET, TIMEOUT, LENGTH, NACK, CRC, ERROR, DEVICE_ERROR };
 
 const char *errorToString(OptolinkResult error);
 

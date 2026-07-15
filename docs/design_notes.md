@@ -280,8 +280,35 @@ passes** — a config-valid-but-runtime-dead split. So the read/write lanes are
 fill), and the raw lane to `RAW_QUEUE_MAX`. One boot-time allocation each; no
 arbitrary ceiling; no wasted headroom. The cost is that the raw lane reserves its
 full `RAW_QUEUE_MAX` up front even when the scan console and clock sync are idle.
+
+**The API is deliberately not the deque subset.** `reserve()` is **one-shot**
+(a second call is rejected, `reserve(0)` permanently initializes an unused
+lane; a *failed* allocation leaves it uninitialized so `setup()` can
+`mark_failed()`), and a reference-returning `front()`/`pop_front()` pair is not
+exposed — a reference could escape the lock, and a separate peek-then-pop is a
+race under concurrency. Instead: `try_front()`/`try_pop_front()` copy under one
+lock, and **`consume_front_if(consumer)`** implements the dispatch hand-off —
+it holds the lock while the hub offers the front item to the protocol engine
+and removes it only if the engine accepted (`EMPTY`/`RETAINED`/`REMOVED`). The
+consumer must not call back into the same ring: the mutex is non-recursive.
+Every mutating call is `[[nodiscard]]`; a rejected push **must roll back its
+companion bookkeeping** (`read_queued_`/`write_queued_`) rather than leave an
+entity marked queued but absent — the scheduler, `request_write()` and the
+read-back path all follow that set-flag-then-push-then-roll-back pattern.
+
+**Synchronization scope, stated precisely.** Each ring serializes its own
+operations through `esphome::Mutex` (FreeRTOS-backed on ESP32; an inline no-op
+on the single-threaded ESP8266/RP2040; the host proofs build with
+`-DVITOHOME_NATIVE_TEST`, which selects a no-op stand-in in the header since
+ESPHome headers aren't on the host include path). This makes a *single queue
+operation* safe against a producer on another FreeRTOS task — which is why
+`queue_raw_read()`/`queue_raw_write()` are safe to call from one: `enqueue_raw_`
+is a single self-contained `push_back`. It does **not** make the hub's compound
+entity-lane invariants (flag *and* queue updated together) multi-task-safe;
+entity control paths must stay on the ESPHome loop. Not ISR-safe by design.
 Semantics are pinned in `tests/native/proof_ring_buffer.cpp` under ASan/UBSan
-(FIFO, wraparound, `push_front`, full-rejection, POD round-trip).
+(one-shot reserve, FIFO, wraparound, `push_front`, full-rejection,
+`consume_front_if` outcomes, POD round-trip, the hub dispatch pattern).
 
 ---
 

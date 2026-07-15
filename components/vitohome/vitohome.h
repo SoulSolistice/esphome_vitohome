@@ -1,4 +1,7 @@
 #pragma once
+
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -34,104 +37,159 @@ namespace vitohome {
 
 class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice {
  public:
-  // ESPHomeUARTInterface stores `this` (as UARTDevice*); valid in the
-  // member init list because base subobjects are already constructed.
+  // ESPHomeUARTInterface stores `this` as a UARTDevice*. Base subobjects have
+  // already been constructed when member initialization begins, so passing
+  // this pointer to iface_ here is valid. iface_ must not invoke virtual hub
+  // behavior from its constructor.
   VitoHomeComponent() : iface_(this) {}
 
   void setup() override;
   void loop() override;
   void update() override;
   void dump_config() override;
+
   float get_setup_priority() const override { return setup_priority::AFTER_WIFI; }
 
+  // Register one hub-owned entity pointer. Registration occurs during
+  // code-generation setup, before VitoHomeComponent::setup() sizes the queues.
+  //
+  // Duplicate pointer registration is ignored defensively: the exact queue
+  // sizing relies on the registered entity count being an upper bound for the
+  // number of distinct entities that can be pending in a lane.
   void register_entity(VitoEntityBase *entity) {
     if (entity == nullptr)
       return;
+
+    for (auto *registered : this->entities_) {
+      if (registered == entity)
+        return;
+    }
+
     entity->set_vitohome_parent(this);
     this->entities_.push_back(entity);
   }
 
   // Force-refresh: mark every registered entity due on the next scheduler
   // tick by resetting its next_due_ms_ to the boot sentinel (0 = "never
-  // polled -> due now"). The EXISTING scheduler then does all the hard work:
+  // polled -> due now"). The existing scheduler then does all the hard work:
   // read_queued_ dedup, queue backpressure, writes still preempt, read-backs
-  // still jump the queue -- so a refresh is a self-throttling drain, the
-  // same burst boot produces. Reads only; in-flight writes are untouched.
-  // Debounced (REFRESH_ALL_MIN_INTERVAL_MS) so a misfiring HA automation
-  // loop cannot pin the bus; returns false when a call was suppressed.
-  // Callable from a lambda: id(vito).refresh_all();
+  // still jump the queue -- so a refresh is a self-throttling drain, the same
+  // burst boot produces.
+  //
+  // Reads only; in-flight writes are untouched. If an entity already has a
+  // read pending or in flight, the scheduler leaves it alone until that read
+  // completes. Because next_due_ms_ remains at the sentinel, one additional
+  // refresh read is scheduled afterward.
+  //
+  // Debounced by REFRESH_ALL_MIN_INTERVAL_MS so a misfiring Home Assistant
+  // automation cannot pin the bus. Returns false when a call is suppressed.
+  //
+  // Callable from a lambda:
+  //
+  //   id(vito).refresh_all();
   bool refresh_all();
 
-  // Connectivity binary sensors don't poll the bus themselves — the hub feeds
-  // them its own view of the Optolink link (device_class: connectivity in
-  // HA), so automations can react to link loss natively instead of templating
-  // over stale entity timestamps. ONLINE on any successful response; OFFLINE
-  // when start-up protocol verification fails or after
-  // LINK_OFFLINE_AFTER_ERRORS consecutive protocol errors (watchdog
-  // expiries included). State is edge-published (no per-response spam).
+  // Connectivity binary sensors do not poll the bus themselves. The hub feeds
+  // them its own view of the Optolink link, using device_class: connectivity in
+  // Home Assistant.
+  //
+  // A complete response, a NACK, or a complete device ERROR frame
+  // (OptolinkResult::DEVICE_ERROR) proves that the peer answered and resets
+  // the timeout streak; malformed traffic (ERROR/CRC/LENGTH) proves nothing
+  // and is ignored. OFFLINE is published after LINK_OFFLINE_AFTER_ERRORS
+  // consecutive timeout/lost-callback observations, or when start-up protocol
+  // verification fails. State is edge-published, so a healthy link does not
+  // publish on every response.
 #ifdef USE_BINARY_SENSOR
-  void register_link_sensor(binary_sensor::BinarySensor *bs) {
-    if (bs != nullptr)
-      this->link_sensors_.push_back(bs);
+  void register_link_sensor(binary_sensor::BinarySensor *sensor) {
+    if (sensor != nullptr)
+      this->link_sensors_.push_back(sensor);
   }
 #endif
 
-  // device_id text sensors don't poll the bus themselves — they subscribe to
-  // the hub's one-shot identification result (see identification below).
+  // device_id text sensors do not poll the bus themselves. They subscribe to
+  // the hub's one-shot identification result.
 #ifdef USE_TEXT_SENSOR
-  void register_device_id_sensor(text_sensor::TextSensor *ts) {
-    if (ts != nullptr)
-      this->device_id_sensors_.push_back(ts);
+  void register_device_id_sensor(text_sensor::TextSensor *sensor) {
+    if (sensor != nullptr)
+      this->device_id_sensors_.push_back(sensor);
   }
 #endif
 
-  void set_identify_device(bool v) { this->identify_device_ = v; }
+  void set_identify_device(bool value) { this->identify_device_ = value; }
 
-  // System-time sync (optional). The hub periodically reads the device clock
-  // (0x088E) and, when it differs from the configured time source by more than
-  // the drift threshold, writes the current time back. All three knobs are
-  // user-configured; sync is inert unless a time source is set.
-  void set_time_source(time::RealTimeClock *t) { this->time_source_ = t; }
+  // System-time sync is optional. The hub periodically reads the device clock
+  // at 0x088E and writes the configured time source back only when the measured
+  // drift exceeds the configured threshold.
+  //
+  // The feature is inert unless a time source is assigned. The associated
+  // method bodies are compiled with VITOHOME_TIME_SYNC so a configuration
+  // without a time component does not pull that component into the build.
+  void set_time_source(time::RealTimeClock *time_source) { this->time_source_ = time_source; }
+
   void set_time_sync(uint32_t interval_ms, uint32_t drift_threshold_s, bool sync_on_boot) {
     this->time_sync_interval_ms_ = interval_ms;
     this->time_drift_threshold_s_ = drift_threshold_s;
     this->time_sync_on_boot_ = sync_on_boot;
   }
 
-  // Queue a write for `entity` (payload already staged in the entity's write
-  // buffer). Writes are dispatched with priority over reads; the newest
-  // payload wins if the entity is re-controlled while still queued (the
-  // entity owns the buffer). Returns false if the entity has no payload.
+  // Queue a write for `entity`; the entity has already staged its payload in
+  // its fixed write buffer.
+  //
+  // Writes are dispatched with priority over reads. If the entity is already
+  // queued, the entity-owned payload is simply overwritten and the existing
+  // queue item transmits the newest value. If a write is already in flight,
+  // the entity may be queued once more so a newer value is sent afterward.
+  //
+  // Returns false when the entity/payload is invalid or the bounded write lane
+  // rejected the item.
+  //
+  // Normal ESPHome control callbacks are loop-dispatched. RingBuffer protects
+  // the queue itself, but does not independently synchronize concurrent writes
+  // to the entity-owned staging buffer. External FreeRTOS tasks must defer
+  // control operations to the ESPHome loop rather than mutate an entity
+  // directly.
   bool request_write(VitoEntityBase *entity);
 
   // --- raw scan console (debug) --------------------------------------------
-  // Subscribe a hub-fed text sensor (text_sensor: type: scan_result) to the
-  // raw-op result line. Mirrors register_device_id_sensor: it never polls.
+
+  // Subscribe a hub-fed text sensor (text_sensor: type: scan_result) to raw
+  // result lines. The sensor never polls.
 #ifdef USE_TEXT_SENSOR
-  void register_raw_result_sensor(text_sensor::TextSensor *ts) {
-    if (ts != nullptr)
-      this->raw_result_sensors_.push_back(ts);
+  void register_raw_result_sensor(text_sensor::TextSensor *sensor) {
+    if (sensor != nullptr)
+      this->raw_result_sensors_.push_back(sensor);
   }
 #endif
 
-  // Queue a one-off read / write to an arbitrary address, dispatched ahead of
-  // regular polling (just after identification). The result -- hex + 64-bit
-  // integer views for a read, ACK / error otherwise -- is logged and published
-  // to any scan_result sensor. Drives the scan console and HA range sweeps.
+  // Queue a one-off read or write to an arbitrary address.
+  //
+  // A SCAN item at the front of the shared raw FIFO is dispatched after
+  // identification and before normal writes. CLOCK_* items are dispatched
+  // after user writes. Because this is one FIFO, a scan item cannot overtake a
+  // clock item already ahead of it.
+  //
+  // Results are logged and published to every scan_result text sensor.
   void queue_raw_read(uint16_t address, uint8_t length);
   void queue_raw_write(uint16_t address, const std::vector<uint8_t> &bytes);
 
  protected:
-  enum class OpType : uint8_t { NONE, READ, WRITE };
+  enum class OpType : uint8_t {
+    NONE,
+    READ,
+    WRITE,
+  };
 
-  // One-shot device identification, run right after the protocol handshake:
-  //   step 0: read 0x00F8 length 4 (Identification + IdentificationExtension
-  //           in one transaction — the layout Vitosoft itself matches on);
-  //   fallback: four length-1 reads at 0xF8/0xF9/0xFA/0xFB (the length-1
-  //           reads at F8/F9 are wire-confirmed on the reference unit),
-  //           each one fail-soft.
-  // Result is logged at INFO, shown in dump_config, and pushed to any
-  // registered device_id text sensors.
+  // One-shot device identification, run immediately after protocol start-up:
+  //
+  //   step 0: read 0x00F8 length 4, covering F8..FB;
+  //
+  //   fallback: four length-1 reads at F8/F9/FA/FB. The length-1 reads at
+  //             F8/F9 are wire-confirmed on the reference unit. Every fallback
+  //             step is fail-soft.
+  //
+  // The result is logged, shown in dump_config(), and published to registered
+  // device_id text sensors.
   enum class IdentState : uint8_t {
     IDLE,
     READ4,
@@ -144,15 +202,22 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   void validate_uart_();
   void dispatch_next_();
-  // Dispatches raw_queue_.front() (caller must ensure it is non-empty) and
-  // pops it on successful hand-off to the engine. Shared by both raw-lane
-  // call sites in dispatch_next_() -- see the priority split there.
+
+  // Attempt to dispatch the current raw front item. The operation is removed
+  // atomically only after the protocol engine accepted it.
+  //
+  // RingBuffer::consume_front_if() keeps the observed front stable across the
+  // engine hand-off. The engine copies a write payload into its own packet
+  // synchronously, so no RawOp reference escapes that operation.
   void dispatch_raw_front_();
+
   void schedule_due_entities_();
+
   void on_response_(const ResponseView &response, uint16_t request_address);
   void on_error_(optolink::OptolinkResult error, uint16_t request_address);
 
-  // identification
+  // --- identification -------------------------------------------------------
+
   void ident_start_();
   void ident_dispatch_(IdentState state);
   void ident_handle_response_(const ResponseView &response);
@@ -160,107 +225,162 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   void ident_finish_();
   std::string ident_string_() const;
 
-  // raw scan console (debug)
-  // Purpose tag for raw-lane ops: SCAN is the debug console, the CLOCK_* values
-  // route a system-time read/write/verify through the same lane. Defined here so
-  // it precedes enqueue_raw_ and the RawOp struct below.
-  enum class RawPurpose : uint8_t { SCAN, CLOCK_READ, CLOCK_WRITE, CLOCK_VERIFY };
+  // --- raw scan console -----------------------------------------------------
+
+  // Purpose tag for raw-lane operations. SCAN belongs to the interactive debug
+  // console. CLOCK_* routes device-clock synchronization through the same
+  // bounded lane.
+  enum class RawPurpose : uint8_t {
+    SCAN,
+    CLOCK_READ,
+    CLOCK_WRITE,
+    CLOCK_VERIFY,
+  };
+
   void raw_handle_response_(const ResponseView &response);
   void raw_handle_error_(optolink::OptolinkResult error);
   void raw_publish_(const std::string &line);
-  // Shared enqueue for the raw lane; the scan console uses purpose SCAN, the
-  // clock sync uses the CLOCK_* purposes. bytes/bytes_len is the write payload
-  // (nullptr/0 for reads), copied into the queued op -- the lane is heap-free.
-  void enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes, uint8_t bytes_len,
+
+  // Shared enqueue for the raw lane. bytes/bytes_len is the write payload and
+  // must be nullptr/0 for a read. The payload is copied into RawOp, so queue
+  // storage remains self-contained and heap-free after setup.
+  //
+  // Returns false for invalid arguments or queue overflow. Multi-step callers
+  // such as clock synchronization can therefore report a dropped continuation
+  // instead of logging that it was queued successfully.
+  bool enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes, uint8_t bytes_len,
                     RawPurpose purpose);
 
-  // system-time sync (rides the raw lane)
+  // --- system-time sync; rides the raw lane --------------------------------
+
   void time_sync_tick_();
   void sync_system_time_();
   void clock_handle_read_(const ResponseView &response);
   void clock_handle_write_ack_();
   void clock_handle_verify_(const ResponseView &response);
-  static constexpr uint16_t CLOCK_ADDRESS = 0x088E;  // getSystemTime / setSystemTime
+
+  static constexpr uint16_t CLOCK_ADDRESS = 0x088E;
   static constexpr uint8_t CLOCK_LEN = 8;
 
   bool ident_in_flight_{false};
 
  private:
   ESPHomeUARTInterface iface_;
-  // The protocol engine, build-time-selected via protocol_select.h. All three
-  // engines share one byte-mover API (read/write on address/length primitives,
-  // callbacks delivering (data, length, address)), so the hub drives the
-  // selected engine directly; setup() wraps each callback's raw payload in a
-  // ResponseView for the entities.
+
+  // Build-time-selected protocol engine. All three engines expose the same
+  // byte-oriented read/write API and callback shape:
+  //
+  //   response(data, length, address)
+  //   error(result, request_address)
+  //
+  // setup() wraps the raw response payload in ResponseView before forwarding it
+  // to an entity or one of the hub's internal state machines.
   std::unique_ptr<optolink::OptolinkEngine<SelectedProtocol>> vito_;
-  // True once the engine has produced at least one valid response since
-  // begin(). A valid response means the device speaks the configured protocol,
-  // so this is the start-up verification signal.
+
+  // True after any verified response from the selected protocol, including a
+  // complete NACK/ERROR response that proves the peer spoke the protocol.
   bool link_established_{false};
 
+  // Registration vectors are populated by code generation before setup().
+  // Runtime queue sizing depends on entities_ being complete at setup time.
   std::vector<VitoEntityBase *> entities_;
+
 #ifdef USE_TEXT_SENSOR
   std::vector<text_sensor::TextSensor *> device_id_sensors_;
 #endif
+
 #ifdef USE_BINARY_SENSOR
   std::vector<binary_sensor::BinarySensor *> link_sensors_;
 #endif
-  // tri-state: -1 unknown (nothing published yet), 0 offline, 1 online
+
+  // Tri-state published connectivity:
+  //   -1 = unknown / nothing published
+  //    0 = offline
+  //    1 = online
   int8_t link_state_{-1};
+
   uint8_t link_error_streak_{0};
+
   static constexpr uint8_t LINK_OFFLINE_AFTER_ERRORS = 3;
+
   uint32_t last_refresh_all_ms_{0};
+
   static constexpr uint32_t REFRESH_ALL_MIN_INTERVAL_MS = 5000;
+
   void publish_link_(bool up);
+
+  // Record verified link activity. This resets the timeout streak, marks
+  // start-up protocol verification successful, and edge-publishes ONLINE.
+  void link_note_alive_();
+
+  // Record one no-response/lost-callback observation. OFFLINE is edge-published
+  // once the threshold is reached.
   void link_note_error_();
-  // Read and write lanes. Each entity carries a read_queued_ / write_queued_
-  // flag that forbids a second enqueue while it is still pending, so an entity is
-  // in a lane at most once and neither lane can ever exceed the registered entity
-  // count. That count is only known once registration finishes, so both lanes are
-  // sized to entities_.size() by a single reserve() in setup() (see the ring's
-  // header): exact capacity, no wasted RAM and no arbitrary ceiling, so a device
-  // that runs its full generated catalog (which can be many hundreds of
-  // datapoints) is sized for rather than rejected. After setup() the lanes never
-  // allocate again.
+
+  // --- entity queues and in-flight state ------------------------------------
+  //
+  // Under normal operation each entity's read_queued_ / write_queued_ flag
+  // prevents a second pending occurrence in the corresponding lane. The
+  // registered entity count is therefore the expected maximum lane depth.
+  //
+  // read_queued_ covers both a queued read and a read currently in flight. It
+  // is cleared by the response, error, mismatch, or watchdog completion path.
+  //
+  // write_queued_ covers only an item waiting in write_queue_. It is cleared
+  // when the engine accepts that item. write_in_flight_ then covers the
+  // transaction until ACK, error, mismatch, or watchdog completion. Keeping
+  // them separate lets a newer value enqueue while an older write is in flight.
+  //
+  // Every insertion is checked. A rejected push rolls back its companion flag
+  // instead of leaving the entity permanently marked as queued.
+  //
+  // RingBuffer synchronization is per object. Separate VitoHomeComponent
+  // instances therefore own independent queues and locks. That does not make
+  // it valid for multiple hubs to consume the same UART stream.
   RingBuffer<VitoEntityBase *> read_queue_;
   RingBuffer<VitoEntityBase *> write_queue_;
+
   VitoEntityBase *in_flight_{nullptr};
   OpType in_flight_op_{OpType::NONE};
   uint32_t in_flight_started_ms_{0};
 
-  // identification state
+  // --- identification state -------------------------------------------------
+
   bool identify_device_{true};
   IdentState ident_state_{IdentState::IDLE};
-  optolink::Datapoint ident_dp_{"ident", 0x00F8, 4, optolink::noconv};
-  int ident_group_{-1}, ident_controller_{-1}, ident_hw_{-1}, ident_sw_{-1};
 
-  // Raw scan console (debug). A small FIFO of one-off ops; exactly one is in
-  // flight at a time (raw_in_flight_), so bus arbitration stays single-owner
-  // like the ident lane. The same lane carries the system-time sync ops,
-  // tagged by RawPurpose (declared above) so the result is routed to the
-  // clock logic instead of the scan console.
+  optolink::Datapoint ident_dp_{"ident", 0x00F8, 4, optolink::noconv};
+
+  int ident_group_{-1};
+  int ident_controller_{-1};
+  int ident_hw_{-1};
+  int ident_sw_{-1};
+
+  // --- raw scan console and clock lane --------------------------------------
   //
-  // Priority is split by purpose in dispatch_next_(), not uniform for the
-  // whole lane: RawPurpose::SCAN is dispatched just below identification and
-  // above write_queue_/read_queue_, so scan-console sweeps stay interactive.
-  // RawPurpose::CLOCK_READ/CLOCK_WRITE/CLOCK_VERIFY are dispatched below
-  // write_queue_ instead -- clock sync is a background task nobody is
-  // watching, and it can take up to three sequential round trips, so it must
-  // not be able to stall a user-initiated write for that long.
-  // Write payloads are stored inline (heap-free, no per-retry copy): the cap
-  // in queue_raw_write is 32 bytes and the engines serialize the payload into
-  // their own packet buffer synchronously inside write(), so nothing needs to
-  // outlive the dispatch.
+  // The raw lane contains complete inline operations and has exactly one item
+  // in flight at a time. It carries both interactive scan-console operations
+  // and background device-clock synchronization.
+  //
+  // Priority is determined by the FRONT item's purpose:
+  //
+  //   * SCAN at front: after identification, before user writes;
+  //   * CLOCK_* at front: after user writes, before normal reads.
+  //
+  // This preserves FIFO order. A SCAN item behind CLOCK_* cannot overtake it.
+  // True purpose-wide priority would require separate scan and clock queues.
+  //
+  // Write payloads are stored inline. Protocol engines serialize the payload
+  // synchronously into their own packet buffer during write(), so queued bytes
+  // do not need to outlive dispatch.
   static constexpr uint8_t RAW_WRITE_MAX = 32;
-  // The READ cap is separate and larger: a raw read stores no payload, so the
-  // only limits are the engines' packet-length arithmetic (VS2 length byte is
-  // 0x05 + len, VS1 frame length is payload + 4 -- both safe well past 200) and
-  // format_raw_dump()'s output buffer. 48 matches text_sensor.py's
-  // MAX_TEXT_BLOCK_LENGTH, the widest block the catalogs emit (the 42-byte
-  // Beschriftung_* label blocks). Sized so the console can actually TEST the
-  // reads the generator produces: at 32 it could not, which is why the P300
-  // read-length question stayed open for a session longer than it needed to.
+
+  // The read cap is separate and larger because a raw read stores no outbound
+  // payload. Forty-eight bytes matches the widest catalog-generated text block
+  // currently emitted and keeps format_raw_dump() output within its fixed
+  // result buffer.
   static constexpr uint8_t RAW_READ_MAX = 48;
+
   struct RawOp {
     uint16_t address;
     uint8_t length;
@@ -269,42 +389,56 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
     uint8_t bytes_len;
     RawPurpose purpose;
   };
-  // Raw lane: bounded by RAW_QUEUE_MAX because a scan sweep can enqueue faster
-  // than the link drains (unlike the entity lanes, which the at-most-once flag
-  // bounds). Sized to that cap by reserve() in setup(); enqueue_raw_ drops and
-  // logs when full.
-  static constexpr size_t RAW_QUEUE_MAX = 256;
+
+  // The raw lane is explicitly bounded because a range sweep can enqueue much
+  // faster than a 4800-baud link drains.
+  //
+  // RawOp carries RAW_WRITE_MAX inline bytes, so this cap has a significant
+  // fixed RAM cost. RAW_QUEUE_MAX == 256 is roughly 10 KiB on a typical 32-bit
+  // ABI, but the exact value is sizeof(RawOp) * RAW_QUEUE_MAX on the selected
+  // compiler and target.
+  static constexpr std::size_t RAW_QUEUE_MAX = 256;
+
   RingBuffer<RawOp> raw_queue_;
+
   bool raw_in_flight_{false};
   bool raw_is_write_{false};
   RawPurpose raw_purpose_{RawPurpose::SCAN};
+
   optolink::Datapoint raw_dp_{"scan", 0, 1, optolink::noconv};
-  // Length of the last dispatched raw write, kept only for the ack log line
-  // (the payload itself is copied into the engine's packet at dispatch).
+
+  // Length of the last dispatched raw write. The payload itself is already in
+  // the engine packet; only this length is retained for the ACK log line.
   uint8_t raw_write_len_{0};
+
 #ifdef USE_TEXT_SENSOR
   std::vector<text_sensor::TextSensor *> raw_result_sensors_;
 #endif
 
-  // System-time sync state. time_source_ == nullptr means the feature is off.
-  time::RealTimeClock *time_source_{nullptr};
-  uint32_t time_sync_interval_ms_{0};    // 0 = no periodic sync
-  uint32_t time_drift_threshold_s_{60};  // only write if drift exceeds this
-  bool time_sync_on_boot_{true};         // sync once after time first valid
-  bool time_sync_did_boot_{false};       // boot sync already done
-  uint32_t time_sync_next_ms_{0};        // next periodic sync (millis)
+  // --- system-time synchronization state -----------------------------------
 
-  // Failsafe: if a request is in flight for longer than this, log and
-  // clear it. the optolink engine has its own internal timeout (via OptolinkResult
-  // ::TIMEOUT) but if a callback is somehow lost the queue stalls.
+  // nullptr disables the feature.
+  time::RealTimeClock *time_source_{nullptr};
+
+  uint32_t time_sync_interval_ms_{0};    // 0 = no periodic sync
+  uint32_t time_drift_threshold_s_{60};  // write only above this drift
+  bool time_sync_on_boot_{true};         // sync after time first becomes valid
+  bool time_sync_did_boot_{false};       // first-valid-time handling completed
+  uint32_t time_sync_next_ms_{0};        // next periodic sync deadline
+
+  // Failsafe for a lost engine callback. The protocol engines have their own
+  // shorter transaction timeouts, but this prevents a permanently occupied hub
+  // slot if a callback is ever lost because of an engine defect.
   static constexpr uint32_t IN_FLIGHT_WATCHDOG_MS = 10000;
 
-  // Start-up protocol check: the configured protocol must establish a link
-  // (the adapter sees a first valid response) within this window, else the
-  // component is marked failed. This catches a wrong protocol / wiring fault /
-  // offline device instead of polling silently forever. The effective window is
-  // max(this, 3x the hub update interval).
+  // Start-up protocol check. The selected engine must establish verified
+  // protocol activity within max(PROTOCOL_VERIFY_MIN_MS, 3 * hub interval).
+  //
+  // The implementation caps the derived interval to INT32_MAX because the
+  // rollover-safe signed-difference deadline comparison is valid only for
+  // deadlines less than 2^31 milliseconds away.
   static constexpr uint32_t PROTOCOL_VERIFY_MIN_MS = 90000;
+
   bool protocol_verify_pending_{false};
   uint32_t protocol_verify_deadline_ms_{0};
 };

@@ -112,7 +112,13 @@ These are intentional divergences from upstream `edc059a7`:
    the response callback -- including a device ERROR frame (PacketType
    `0x03`), whose payload was then decoded and published as data. The
    vendored engine routes a complete frame whose type is not `RESPONSE` to
-   the error callback (`OptolinkResult::ERROR`) instead. The link-layer
+   the error callback instead, as **`OptolinkResult::DEVICE_ERROR`** -- an
+   enum value added to upstream's `OptolinkResult` precisely so callers can
+   tell a complete, checksum-valid device answer (proof of a live peer
+   speaking this protocol; the hub's link-health tracking counts it as
+   alive) apart from `OptolinkResult::ERROR`, which the parser raises for
+   malformed traffic (an invalid length/type/function code after a start
+   byte -- possibly line noise, proof of nothing). The link-layer
    choreography is unchanged: the frame is still ACKed and the engine
    proceeds to IDLE. Host-proven by `tests/native/proof_vs2_guards.cpp`
    (test A); the golden-master transaction harness (8/8, frames lifted from

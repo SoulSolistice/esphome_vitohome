@@ -347,18 +347,42 @@ CONFIG_SCHEMA = cv.All(
 #
 # A platform schema cannot see which protocol its hub speaks. Two protocol-level
 # constraints therefore have to be checked once the whole config is known.
-_ADDRESS_DOMAINS = ("sensor", "binary_sensor", "text_sensor", "number", "select", "switch", "text")
+_ADDRESS_DOMAINS = ("sensor", "binary_sensor", "text_sensor", "number", "select", "switch", "text", "event", "climate")
 
 # GWG addresses a SINGLE BYTE. Source-confirmed in the vendored engine:
-# PacketGWG::createPacket() serialises `_buffer[step++] = addr & 0xFF`, i.e. the
-# high byte is silently discarded -- 0x2500 becomes 0x00. Corroborated by
+# PacketGWG::createPacket() REJECTS any address above 0xFF (upstream silently
+# truncated to `addr & 0xFF`, so 0x2500 read datapoint 0x00). Corroborated by
 # vcontrold, whose GWG device (ID 2053, "V200WB2 ID=2053 Protokoll:GWG_VBEM")
 # overrides every command onto single-byte addresses (0x63, 0xF8, 0x22, 0x01,
 # 0x17) rather than the 16-bit ones used on KW/P300.
 # Consequence: the generated catalogs, which carry 16-bit Vitosoft addresses,
-# are meaningless under `protocol: GWG`. Reading a truncated address is not an
-# error the device can report -- it just answers the wrong datapoint. Hard fail.
+# are meaningless under `protocol: GWG` -- and at runtime a rejected packet
+# never leaves the hub's dispatch lane, so ONE such entity at the front of the
+# read or write queue stalls that lane (and everything behind it) permanently.
+# That failure mode is exactly why this must be a hard `esphome config` error.
+# The check spans every platform that carries a 16-bit address: the flat
+# address/state_address keys, climate's target_address, and climate's nested
+# operating_mode block (handled in _entity_gwg_addresses below).
 _ADDRESS_KEYS = ("address", "state_address", "target_address")
+
+# climate: nests its Betriebsart command/state addresses one level down.
+_CLIMATE_OPERATING_MODE = "operating_mode"
+_NESTED_ADDRESS_KEYS = ("address", "state_address")
+
+
+def _entity_gwg_addresses(entity):
+    """Yield (key_path, address) for every Optolink address this entity config
+    carries, including climate's nested operating_mode block."""
+    for key in _ADDRESS_KEYS:
+        addr = entity.get(key)
+        if addr is not None:
+            yield key, addr
+    operating_mode = entity.get(_CLIMATE_OPERATING_MODE)
+    if isinstance(operating_mode, dict):
+        for key in _NESTED_ADDRESS_KEYS:
+            addr = operating_mode.get(key)
+            if addr is not None:
+                yield f"{_CLIMATE_OPERATING_MODE}.{key}", addr
 
 
 def _entities_for_hub(full, domains, hub_id):
@@ -382,15 +406,14 @@ def _final_validate(config):
 
     if protocol == "GWG":
         for domain, entity in _entities_for_hub(full, _ADDRESS_DOMAINS, hub_id):
-            for key in _ADDRESS_KEYS:
-                addr = entity.get(key)
-                if addr is not None and addr > 0xFF:
+            for key, addr in _entity_gwg_addresses(entity):
+                if addr > 0xFF:
                     raise cv.Invalid(
                         f"{domain} '{_entity_name(entity)}' uses {key} 0x{addr:04X}, but the GWG "
-                        f"protocol addresses a single byte -- the engine sends `addr & 0xFF`, so this "
-                        f"would silently read 0x{addr & 0xFF:02X} instead. GWG uses its own 8-bit "
-                        f"address space; the generated catalogs (16-bit Vitosoft addresses) do not "
-                        f"apply to it."
+                        f"protocol addresses a single byte (0x00..0xFF) -- the engine rejects the "
+                        f"request, which would permanently stall its dispatch lane at runtime. GWG "
+                        f"uses its own 8-bit address space; the generated catalogs (16-bit Vitosoft "
+                        f"addresses) do not apply to it."
                     )
 
     # There is deliberately NO P300 read-length check here. The warning that used

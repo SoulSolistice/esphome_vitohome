@@ -1,23 +1,38 @@
 // Host proof for components/vitohome/ring_buffer.h.
 //
 // RingBuffer replaces the three std::deque queues the hub pushed/popped in its
-// run loop (read_queue_, write_queue_, raw_queue_) with a ring whose capacity is
-// fixed by a single reserve() at setup(). This pins the semantics the call sites
-// rely on:
-//   - reserve() sizes the lane once; before it (capacity 0) every push is
-//     rejected and the buffer reports empty,
-//   - FIFO via push_back + front + pop_front (the poll/write/raw lanes all
-//     consume front-to-back),
+// run loop (read_queue_, write_queue_, raw_queue_) with a task-synchronized
+// ring whose capacity is fixed by a single reserve() at setup(). This pins the
+// semantics the call sites rely on:
+//   - reserve() is ONE-SHOT: it sizes the lane once (capacity 0 included) and
+//     every later reserve() is rejected; before it, capacity is 0 and every
+//     push is rejected while the buffer reports empty AND full,
+//   - FIFO via push_back + try_front + try_pop_front (the poll/write/raw lanes
+//     all consume front-to-back),
 //   - push_front prepends ahead of the queue (the write-ack read-back path),
-//   - full() rejects without corruption (the raw lane's RAW_QUEUE_MAX drop),
-//   - the head/tail wraparound arithmetic is correct across the modulo boundary,
+//     including into an empty ring and across the wrap boundary,
+//   - full() rejects without corruption (the raw lane's RAW_QUEUE_MAX drop;
+//     every rejected push leaves the buffer byte-identical),
+//   - consume_front_if() returns EMPTY / RETAINED / REMOVED and removes the
+//     front item exactly when the consumer accepted it -- the hub's dispatch
+//     hand-off (engine busy = RETAINED and retried; accepted = REMOVED),
+//   - the head/tail wraparound arithmetic is correct across the modulo
+//     boundary,
 //   - a POD struct element (like RawOp) round-trips by trivial copy.
 //
-// Built under -fsanitize=address,undefined: any off-by-one in the wraparound, a
-// push_front underflow, or a read of the unallocated backing would be an
+// Built under -fsanitize=address,undefined: any off-by-one in the wraparound,
+// a push_front underflow, or a read of the unallocated backing would be an
 // out-of-bounds access and trap here.
 //
-// Build: g++ -std=c++17 -Wall -Wextra -I<component root> proof_ring_buffer.cpp
+// -DVITOHOME_NATIVE_TEST selects the header's no-op host mutex stand-in, so
+// this proof needs no ESPHome include tree; device builds always use the real
+// esphome::Mutex. The proof is single-threaded by design -- it proves the
+// queue semantics, not the locking; the lock itself is ESPHome's audited
+// primitive.
+//
+// Build (see build_and_run.sh):
+//   g++ -std=c++17 -Wall -Wextra -fsanitize=address,undefined
+//       -DVITOHOME_NATIVE_TEST -I<component root> proof_ring_buffer.cpp
 
 #include <cstdint>
 #include <cstdio>
@@ -33,8 +48,8 @@ static void check(bool ok, const char *what) {
     ++g_fail;
 }
 
-// A POD stand-in for RawOp: exercises trivial-copy of a struct element, not just
-// a pointer/scalar.
+// A POD stand-in for RawOp: exercises trivial-copy of a struct element, not
+// just a pointer/scalar.
 struct Op {
   uint16_t address;
   uint8_t bytes[4];
@@ -42,17 +57,37 @@ struct Op {
 };
 
 static void test_unreserved() {
-  std::printf("== before reserve() / reserve(0): capacity 0 rejects ==\n");
+  std::printf("== before reserve(): capacity 0 rejects everything ==\n");
   RingBuffer<int> q;
+  int out = -1;
+  check(!q.initialized(), "unreserved buffer reports uninitialized");
   check(q.empty() && q.full() && q.size() == 0 && q.capacity() == 0, "unreserved buffer is empty, full, capacity 0");
   check(!q.push_back(1) && !q.push_front(2), "every push is rejected before reserve()");
-  check(q.size() == 0, "rejected pushes leave it empty");
-  check(q.reserve(0) && q.capacity() == 0, "reserve(0) succeeds as a no-op (an unused lane)");
-  check(!q.push_back(1), "reserve(0) still rejects pushes");
+  check(!q.try_front(out) && !q.try_pop_front(out) && out == -1, "try_front/try_pop_front reject and leave out alone");
+  check(q.consume_front_if([](int) { return true; }) == RingBuffer<int>::ConsumeResult::EMPTY,
+        "consume_front_if reports EMPTY before reserve()");
+}
+
+static void test_reserve_one_shot() {
+  std::printf("== reserve() is one-shot ==\n");
+  {
+    RingBuffer<int> q;
+    check(q.reserve(0) && q.initialized() && q.capacity() == 0, "reserve(0) initializes an unused lane");
+    check(!q.push_back(1), "reserve(0) still rejects pushes");
+    check(!q.reserve(4), "a second reserve() after reserve(0) is rejected");
+    check(q.capacity() == 0, "the rejected reserve() changed nothing");
+  }
+  {
+    RingBuffer<int> q;
+    check(q.reserve(4) && q.initialized() && q.capacity() == 4, "reserve(4) succeeds once");
+    check(!q.reserve(8), "a second reserve() is rejected");
+    check(q.capacity() == 4, "capacity is unchanged by the rejected reserve()");
+    check(q.push_back(1), "the buffer stays usable after the rejected reserve()");
+  }
 }
 
 static void test_fifo_and_full() {
-  std::printf("== FIFO fill / front / pop / full ==\n");
+  std::printf("== FIFO fill / try_front / try_pop_front / full ==\n");
   RingBuffer<int> q;
   check(q.reserve(4), "reserve(4) succeeds");
   check(q.empty() && !q.full() && q.size() == 0, "reserved buffer starts empty");
@@ -63,107 +98,164 @@ static void test_fifo_and_full() {
   check(q.push_back(40), "fourth push_back fills it");
   check(q.full() && q.size() == 4, "full() true at capacity");
 
+  int out = -1;
   check(!q.push_back(50), "push_back on a full buffer returns false");
-  check(q.size() == 4 && q.front() == 10, "rejected push leaves the buffer unchanged");
+  check(q.size() == 4 && q.try_front(out) && out == 10, "rejected push leaves the buffer unchanged");
 
-  check(q.front() == 10, "front is the oldest element");
-  q.pop_front();
-  check(q.front() == 20 && q.size() == 3, "pop_front advances to the next-oldest");
-  q.pop_front();
-  q.pop_front();
-  check(q.front() == 40 && q.size() == 1, "FIFO order preserved to the last element");
-  q.pop_front();
-  check(q.empty(), "buffer empty after draining every element");
+  check(q.try_front(out) && out == 10 && q.size() == 4, "try_front peeks without removing");
+  check(q.try_pop_front(out) && out == 10, "try_pop_front returns the oldest element");
+  check(q.try_front(out) && out == 20 && q.size() == 3, "pop advanced to the next-oldest");
+  check(q.try_pop_front(out) && out == 20, "FIFO order holds");
+  check(q.try_pop_front(out) && out == 30, "FIFO order holds");
+  check(q.try_pop_front(out) && out == 40 && q.empty(), "buffer empty after draining every element");
+  out = -1;
+  check(!q.try_pop_front(out) && out == -1, "try_pop_front on empty rejects and leaves out alone");
 }
 
 static void test_push_front() {
   std::printf("== push_front (read-back ahead of the queue) ==\n");
   RingBuffer<int> q;
-  q.reserve(4);
-  q.push_back(1);
-  q.push_back(2);
-  q.push_front(9);  // 9 jumps ahead of 1, 2
-  check(q.front() == 9 && q.size() == 3, "push_front prepends at the head");
-  q.pop_front();
-  check(q.front() == 1, "after the prepended element, FIFO order resumes");
+  check(q.reserve(4), "reserve(4) succeeds");
+
+  // Into an EMPTY ring first: head wraps from 0 to capacity-1.
+  check(q.push_front(7), "push_front into an empty ring succeeds");
+  int out = -1;
+  check(q.try_pop_front(out) && out == 7 && q.empty(), "the prepended element is the front");
+
+  check(q.push_back(1) && q.push_back(2), "two push_back succeed");
+  check(q.push_front(9), "push_front prepends ahead of 1, 2");
+  check(q.try_front(out) && out == 9 && q.size() == 3, "push_front prepends at the head");
+  check(q.try_pop_front(out) && out == 9, "prepended element pops first");
+  check(q.try_front(out) && out == 1, "after the prepended element, FIFO order resumes");
+
   // Buffer holds [1, 2] (size 2) in a capacity-4 ring; two more pushes fill it.
-  q.push_back(3);
-  check(q.push_back(4) && q.full(), "mix of front/back fills to capacity");
+  check(q.push_back(3) && q.push_back(4) && q.full(), "mix of front/back fills to capacity");
   check(!q.push_front(8), "push_front on a full buffer returns false");
-  check(q.front() == 1 && q.size() == 4, "rejected push_front leaves the buffer unchanged");
+  check(q.try_front(out) && out == 1 && q.size() == 4, "rejected push_front leaves the buffer unchanged");
+}
+
+static void test_consume_front_if() {
+  std::printf("== consume_front_if (the dispatch hand-off) ==\n");
+  using RB = RingBuffer<int>;
+  RingBuffer<int> q;
+  check(q.reserve(3), "reserve(3) succeeds");
+
+  int seen = -1;
+  check(q.consume_front_if([&](int v) {
+    seen = v;
+    return true;
+  }) == RB::ConsumeResult::EMPTY &&
+            seen == -1,
+        "EMPTY on an empty ring; consumer never invoked");
+
+  check(q.push_back(11) && q.push_back(22), "two elements queued");
+
+  // Engine busy: consumer declines, the item must stay at the front.
+  int calls = 0;
+  check(q.consume_front_if([&](int v) {
+    ++calls;
+    seen = v;
+    return false;
+  }) == RB::ConsumeResult::RETAINED,
+        "RETAINED when the consumer declines");
+  int out = -1;
+  check(calls == 1 && seen == 11, "consumer saw the front exactly once");
+  check(q.size() == 2 && q.try_front(out) && out == 11, "declined item stays at the front");
+
+  // Engine accepted: the item is removed, order behind it intact.
+  check(q.consume_front_if([&](int v) {
+    seen = v;
+    return true;
+  }) == RB::ConsumeResult::REMOVED,
+        "REMOVED when the consumer accepts");
+  check(seen == 11 && q.size() == 1, "the accepted item was the observed front");
+  check(q.try_front(out) && out == 22, "the next element moved up");
+
+  check(q.consume_front_if([](int) { return true; }) == RB::ConsumeResult::REMOVED, "drains to empty");
+  check(q.consume_front_if([](int) { return true; }) == RB::ConsumeResult::EMPTY, "EMPTY once drained");
 }
 
 static void test_wraparound() {
   std::printf("== head/tail wraparound across the modulo boundary ==\n");
-  // Capacity 3, run many fill/drain cycles at a rotating offset so head_ and the
+  // Capacity 3, many fill/drain cycles at a rotating offset so head_ and the
   // computed tail cross the capacity boundary in every position. An OOB slot
   // access from a bad modulo would trap under ASan; the value checks pin order.
   RingBuffer<int> q;
-  q.reserve(3);
+  check(q.reserve(3), "reserve(3) succeeds");
   int next = 0;
+  int out = -1;
   for (int cycle = 0; cycle < 50; cycle++) {
-    // Push a rotating 1..3 elements, then drain them, verifying FIFO each time.
     const int n = (cycle % 3) + 1;
-    int expect_first = next;
+    const int expect_first = next;
     for (int i = 0; i < n; i++)
       check(q.push_back(next++), "wrap: push");
     check(q.size() == static_cast<std::size_t>(n), "wrap: size after burst");
     for (int i = 0; i < n; i++) {
-      check(q.front() == expect_first + i, "wrap: FIFO value");
-      q.pop_front();
+      check(q.try_pop_front(out) && out == expect_first + i, "wrap: FIFO value");
     }
     check(q.empty(), "wrap: drained");
   }
 
-  // Interleaved push_front during wraparound: fill, pop one, prepend, ensure the
-  // prepended element lands at the (wrapped) head slot, not out of bounds.
-  q.push_back(100);
-  q.push_back(101);
-  q.push_back(102);
-  q.pop_front();      // head advances; a slot frees at the tail side
-  q.push_front(200);  // must wrap head_ down to the freed slot
-  check(q.front() == 200 && q.size() == 3, "wrap: push_front reuses the wrapped slot");
-  q.pop_front();
-  check(q.front() == 101, "wrap: order intact after wrapped push_front");
+  // Interleaved push_front during wraparound: fill, pop one, prepend, ensure
+  // the prepended element lands at the (wrapped) head slot, not out of bounds.
+  check(q.push_back(100) && q.push_back(101) && q.push_back(102), "wrap: refill");
+  check(q.try_pop_front(out) && out == 100, "wrap: head advances");
+  check(q.push_front(200), "wrap: push_front reuses the freed slot");
+  check(q.try_pop_front(out) && out == 200 && q.size() == 2, "wrap: prepended element pops first");
+  check(q.try_pop_front(out) && out == 101, "wrap: order intact after wrapped push_front");
 }
 
 static void test_pod_element() {
   std::printf("== POD struct element (RawOp-shaped) ==\n");
   RingBuffer<Op> q;
-  q.reserve(2);
-  q.push_back(Op{0x1234, {0xDE, 0xAD, 0xBE, 0xEF}, true});
-  q.push_back(Op{0x5678, {0x01, 0x02, 0x03, 0x04}, false});
+  check(q.reserve(2), "reserve(2) succeeds");
+  check(q.push_back(Op{0x1234, {0xDE, 0xAD, 0xBE, 0xEF}, true}), "first POD push succeeds");
+  check(q.push_back(Op{0x5678, {0x01, 0x02, 0x03, 0x04}, false}), "second POD push succeeds");
   check(q.full(), "POD ring fills");
-  const Op &a = q.front();
-  check(a.address == 0x1234 && a.bytes[0] == 0xDE && a.bytes[3] == 0xEF && a.is_write,
+  Op op{};
+  check(q.try_pop_front(op) && op.address == 0x1234 && op.bytes[0] == 0xDE && op.bytes[3] == 0xEF && op.is_write,
         "first POD element round-trips by trivial copy");
-  q.pop_front();
-  const Op &b = q.front();
-  check(b.address == 0x5678 && b.bytes[1] == 0x02 && !b.is_write, "second POD element round-trips");
+  check(q.try_pop_front(op) && op.address == 0x5678 && op.bytes[1] == 0x02 && !op.is_write,
+        "second POD element round-trips");
 }
 
 static void test_hub_pattern() {
   std::printf("== hub dispatch pattern (schedule -> dispatch -> read-back) ==\n");
   // Mirror how the hub drives read_queue_: entities are appended by the poll
-  // scheduler, dispatched front-to-back, and a write-ack read-back is prepended
-  // ahead of the pending polls.
+  // scheduler, handed to the engine via consume_front_if (a busy engine
+  // retains the front), and a write-ack read-back is prepended ahead of the
+  // pending polls.
+  using RB = RingBuffer<int>;
   RingBuffer<int> reads;
-  reads.reserve(8);
+  check(reads.reserve(8), "reserve(8) succeeds");
   for (int e = 1; e <= 5; e++)
-    reads.push_back(e);  // poll cycle queues entities 1..5
-  int dispatched = reads.front();
-  reads.pop_front();  // dispatch entity 1
-  check(dispatched == 1 && reads.front() == 2, "dispatch consumes the oldest poll");
-  reads.push_front(99);  // a write to entity 99 acks -> read-back jumps the queue
-  check(reads.front() == 99, "read-back is served before the remaining polls");
-  reads.pop_front();
-  check(reads.front() == 2 && reads.size() == 4, "remaining polls keep their order");
+    check(reads.push_back(e), "poll cycle queues an entity");
+
+  // First dispatch attempt: engine busy -> the front must survive.
+  check(reads.consume_front_if([](int) { return false; }) == RB::ConsumeResult::RETAINED,
+        "busy engine retains the front entity");
+
+  int dispatched = -1;
+  check(reads.consume_front_if([&](int e) {
+    dispatched = e;
+    return true;
+  }) == RB::ConsumeResult::REMOVED &&
+            dispatched == 1,
+        "dispatch consumes the oldest poll");
+
+  int out = -1;
+  check(reads.try_front(out) && out == 2, "next poll moved up");
+  check(reads.push_front(99), "a write ACKs -> read-back jumps the queue");
+  check(reads.try_pop_front(out) && out == 99, "read-back is served before the remaining polls");
+  check(reads.try_front(out) && out == 2 && reads.size() == 4, "remaining polls keep their order");
 }
 
 int main() {
   test_unreserved();
+  test_reserve_one_shot();
   test_fifo_and_full();
   test_push_front();
+  test_consume_front_if();
   test_wraparound();
   test_pod_element();
   test_hub_pattern();

@@ -1,10 +1,12 @@
 // Proves two VS2 engine guards against the vendored engine (P300 build):
 //
 //  A. THIRD_PARTY.md #9 -- a complete frame whose PacketType is NOT RESPONSE
-//     (the device ERROR type 0x03) must fire the ERROR callback, never the
-//     response callback (upstream decoded and delivered it as data). The
-//     link-layer choreography must stay intact: the frame is still ACKed and
-//     the very next transaction must succeed.
+//     (the device ERROR type 0x03) must fire the error callback with
+//     DEVICE_ERROR (a complete, checksum-valid device answer -- distinct from
+//     the malformed-traffic ERROR result), never the response callback
+//     (upstream decoded and delivered it as data). The link-layer
+//     choreography must stay intact: the frame is still ACKed and the very
+//     next transaction must succeed.
 //
 //  B. THIRD_PARTY.md #10 -- a request that times out MID-FRAME must not leave
 //     the byte-at-a-time parser stuck mid-parse: after the engine's own
@@ -93,7 +95,8 @@ int main() {
   // Device ERROR frame: type 0x03, fc READ, addr 0x0800, 2 payload bytes.
   uart.feed(frame({0x07, 0x03, 0x01, 0x08, 0x00, 0x02, 0xDE, 0xAD}));
   pump(adapter);
-  check(g_errors == 1 && g_last_error == optolink::OptolinkResult::ERROR, "A: ERROR frame -> onError(ERROR)");
+  check(g_errors == 1 && g_last_error == optolink::OptolinkResult::DEVICE_ERROR,
+        "A: ERROR frame -> onError(DEVICE_ERROR)");
   check(g_responses == 0, "A: ERROR frame NOT delivered as response");
   check(!adapter.isBusy(), "A: engine freed for the next request");
   uart.clear_written();

@@ -22,6 +22,8 @@ const char *errorToString(OptolinkResult error) {
     return "crc";
   } else if (error == OptolinkResult::ERROR) {
     return "error";
+  } else if (error == OptolinkResult::DEVICE_ERROR) {
+    return "device error";
   }
   return "invalid error";
 }
