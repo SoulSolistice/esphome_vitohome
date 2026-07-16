@@ -53,6 +53,18 @@ void VitoHomeComponent::setup() {
   // component. Separate checks identify the allocation that failed.
   const std::size_t entity_count = this->entities_.size();
 
+#ifdef VITOHOME_TIME_SYNC
+  // The clock has no platform, so no codegen registers it -- the hub owns it
+  // and must register it itself. This MUST happen before the lane sizing below:
+  // entity_count feeds reserve(), and the clock occupies a read slot (and,
+  // when drift is corrected, a write slot) like any other participant.
+  //
+  // Every platform entity has already registered by now: ESPHome emits those
+  // register_entity() calls into the generated setup() body, which runs before
+  // App.setup() reaches this component.
+  this->register_entity(&this->clock_);
+#endif
+
   // Registration is complete, so the entity vector is final: release the
   // growth slack vector doubling left behind. (Non-binding, but every
   // mainstream libstdc++/libc++ honors it, and the vector never grows again.)
@@ -311,11 +323,9 @@ void VitoHomeComponent::dispatch_raw_front_() {
   // if read()/write() accepts it. The engine copies a write payload into its
   // own fixed packet synchronously inside write().
   this->raw_queue_.consume_front_if([this](const RawOp &operation) {
-    this->raw_dp_ = optolink::Datapoint(operation.purpose == RawPurpose::SCAN ? "scan" : "clock", operation.address,
-                                        operation.length, optolink::noconv);
+    this->raw_dp_ = optolink::Datapoint("scan", operation.address, operation.length, optolink::noconv);
 
     this->raw_is_write_ = operation.is_write;
-    this->raw_purpose_ = operation.purpose;
 
     bool dispatched;
     if (operation.is_write) {
@@ -357,16 +367,21 @@ void VitoHomeComponent::dispatch_next_() {
   }
 
   // Interactive scan-console operations preempt regular polling and queued user
-  // writes only when a SCAN item is currently at the front of the shared raw
-  // FIFO. A CLOCK_* item already ahead of it retains FIFO order.
-  RawOp raw_front{};
-  if (this->raw_queue_.try_front(raw_front) && raw_front.purpose == RawPurpose::SCAN) {
+  // writes: the console is a human waiting at a button, and the lane is empty
+  // unless someone is actively scanning.
+  //
+  // This used to be conditional on a purpose tag, because device-clock
+  // synchronization shared this queue and had to keep FIFO order against SCAN
+  // items. The clock is now a VitoClock entity on the read/write lanes
+  // (vito_clock.h), so this lane has exactly one tenant and needs no
+  // arbitration.
+  if (!this->raw_queue_.empty()) {
     this->dispatch_raw_front_();
     return;
   }
 
-  // Writes preempt reads and background clock-sync operations. The ring keeps
-  // the entity stable at the front until the engine accepts it.
+  // Writes preempt reads. The ring keeps the entity stable at the front until
+  // the engine accepts it.
   const auto write_result = this->write_queue_.consume_front_if([this](VitoEntityBase *entity) {
     if (entity == nullptr) {
       // A null entry violates registration/enqueue invariants. Remove it so it
@@ -397,15 +412,6 @@ void VitoHomeComponent::dispatch_next_() {
   if (write_result != RingBuffer<VitoEntityBase *>::ConsumeResult::EMPTY)
     return;
 
-  // Background clock synchronization gets a turn once no user write is
-  // pending. The front may also be a SCAN item if another producer appended or
-  // otherwise changed queue state after the earlier snapshot; dispatching it
-  // here remains valid.
-  if (!this->raw_queue_.empty()) {
-    this->dispatch_raw_front_();
-    return;
-  }
-
   // Poll/read-back lane. read_queued_ remains true after the item leaves the
   // ring and while its request is in flight. Completion, error, mismatch, or
   // watchdog handling clears it.
@@ -428,6 +434,30 @@ void VitoHomeComponent::dispatch_next_() {
 
     return true;
   });
+}
+
+bool VitoHomeComponent::request_priority_read(VitoEntityBase *entity) {
+  if (entity == nullptr)
+    return false;
+
+  if (entity->read_queued_) {
+    // Already pending in the read lane; a second copy would poll the same
+    // datapoint twice. Nothing to add, and not a failure.
+    return true;
+  }
+
+  // Set the companion state before publishing the queue item, then roll it back
+  // if the bounded lane rejects it -- otherwise the entity is wedged as
+  // "queued" while absent from the queue. Same discipline as
+  // schedule_due_entities_() and request_write().
+  entity->read_queued_ = true;
+
+  if (!this->read_queue_.push_front(entity)) {
+    entity->read_queued_ = false;
+    return false;
+  }
+
+  return true;
 }
 
 void VitoHomeComponent::schedule_due_entities_() {
@@ -461,6 +491,13 @@ void VitoHomeComponent::schedule_due_entities_() {
 
   for (auto *entity : this->entities_) {
     if (entity == nullptr)
+      continue;
+
+    // VitoClock opts out: it is not polled on a datapoint interval but driven
+    // by its own sync schedule, which pushes to the HEAD of the read lane.
+    // Polling it here would both demote it behind every pending poll and run
+    // the drift compare on the hub's tick instead of the sync interval.
+    if (!entity->wants_polling())
       continue;
 
     if (entity->read_queued_) {
@@ -508,7 +545,11 @@ void VitoHomeComponent::update() {
   if (this->vito_ == nullptr || this->is_failed())
     return;
 
-  this->time_sync_tick_();
+#ifdef VITOHOME_TIME_SYNC
+  // Same tick the old time_sync_tick_() ran on, so the sync granularity is
+  // unchanged: the hub's update_interval.
+  this->clock_.tick(App.get_loop_component_start_time());
+#endif
 
   if (this->entities_.empty())
     return;
@@ -545,6 +586,14 @@ void VitoHomeComponent::dump_config() {
   // component, so ESPHome core already calls each one's dump_config() --
   // the old loop printed the entire entity list twice at boot
   // (hardware-observed, 2026-07-03 log).
+  //
+  // The clock is the one exception, and needs an explicit call: it is a
+  // hub-owned VitoEntityBase, NOT a registered ESPHome component, so core's
+  // fan-out never reaches it. It is also the only entity in entities_ for which
+  // that is true, which is why this is one call and not a loop.
+#ifdef VITOHOME_TIME_SYNC
+  this->clock_.dump_config();
+#endif
 }
 
 bool VitoHomeComponent::request_write(VitoEntityBase *entity) {
@@ -589,7 +638,7 @@ void VitoHomeComponent::queue_raw_read(uint16_t address, uint8_t length) {
     return;
   }
 
-  this->enqueue_raw_(address, length, false, nullptr, 0, RawPurpose::SCAN);
+  this->enqueue_raw_(address, length, false, nullptr, 0);
 }
 
 void VitoHomeComponent::queue_raw_write(uint16_t address, const std::vector<uint8_t> &bytes) {
@@ -602,11 +651,11 @@ void VitoHomeComponent::queue_raw_write(uint16_t address, const std::vector<uint
   }
 
   this->enqueue_raw_(address, static_cast<uint8_t>(bytes.size()), true, bytes.data(),
-                     static_cast<uint8_t>(bytes.size()), RawPurpose::SCAN);
+                     static_cast<uint8_t>(bytes.size()));
 }
 
 bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes,
-                                     uint8_t bytes_len, RawPurpose purpose) {
+                                     uint8_t bytes_len) {
   if (length == 0) {
     ESP_LOGW(TAG, "enqueue_raw_: zero-length operation rejected");
     return false;
@@ -633,16 +682,26 @@ bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
   operation.length = length;
   operation.is_write = is_write;
   operation.bytes_len = bytes_len;
-  operation.purpose = purpose;
 
   if (is_write)
     std::memcpy(operation.bytes, bytes, bytes_len);
 
   // push_back() is authoritative. A preceding full() check would be a
   // check/use race when multiple producers are possible.
+  // capacity 0 is the default: the scan console is opt-in, so an unallocated
+  // lane is the normal state, not an error. Name the option in the message --
+  // this is the only feedback a user gets for "my scan button does nothing".
   if (!this->raw_queue_.push_back(operation)) {
-    ESP_LOGW(TAG, "raw queue full (%zu/%zu); dropping %s 0x%04X", this->raw_queue_.size(), this->raw_queue_.capacity(),
-             is_write ? "write" : "read", address);
+    if (this->raw_queue_.capacity() == 0) {
+      ESP_LOGW(TAG,
+               "raw lane not allocated; dropping %s 0x%04X. Set raw_queue_size on the vitohome hub to use the "
+               "scan console.",
+               is_write ? "write" : "read", address);
+    } else {
+      ESP_LOGW(TAG, "raw queue full (%zu/%zu); dropping %s 0x%04X. Raise raw_queue_size for larger sweeps.",
+               this->raw_queue_.size(), this->raw_queue_.capacity(), is_write ? "write" : "read", address);
+    }
+
     return false;
   }
 
@@ -651,24 +710,6 @@ bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
 }
 
 void VitoHomeComponent::raw_handle_response_(const ResponseView &response) {
-  switch (this->raw_purpose_) {
-    case RawPurpose::CLOCK_READ:
-      this->clock_handle_read_(response);
-      return;
-
-    case RawPurpose::CLOCK_WRITE:
-      this->clock_handle_write_ack_();
-      return;
-
-    case RawPurpose::CLOCK_VERIFY:
-      this->clock_handle_verify_(response);
-      return;
-
-    case RawPurpose::SCAN:
-    default:
-      break;
-  }
-
   // "0xXXXX:" (7) + RAW_READ_MAX * 3 hex chars + the integer views for widths
   // 1..8 + NUL. 208 covers a 48-byte dump with room to spare.
   char buffer[208];
@@ -685,12 +726,6 @@ void VitoHomeComponent::raw_handle_response_(const ResponseView &response) {
 }
 
 void VitoHomeComponent::raw_handle_error_(optolink::OptolinkResult error) {
-  if (this->raw_purpose_ != RawPurpose::SCAN) {
-    ESP_LOGW(TAG, "System-time sync: %s 0x%04X failed (%s)", this->raw_is_write_ ? "write" : "read",
-             this->raw_dp_.address(), optolink::errorToString(error));
-    return;
-  }
-
   char buffer[96];
 
   snprintf(buffer, sizeof(buffer), "0x%04X: %s FAILED (%s)", this->raw_dp_.address(),
@@ -717,132 +752,6 @@ void VitoHomeComponent::raw_publish_(const std::string &line) {
 // The now()-using bodies are compiled only when a time source is configured
 // (-DVITOHOME_TIME_SYNC, set by to_code when time_id is present), so a build
 // without time sync pulls in no dependency on the time component.
-
-void VitoHomeComponent::time_sync_tick_() {
-#ifdef VITOHOME_TIME_SYNC
-  if (this->time_source_ == nullptr)
-    return;
-
-  const uint32_t now = App.get_loop_component_start_time();
-
-  if (!this->time_sync_did_boot_) {
-    // Defer the first sync until the time source has a valid time at least once.
-    if (!this->time_source_->now().is_valid())
-      return;
-
-    this->time_sync_did_boot_ = true;
-    this->time_sync_next_ms_ = now + this->time_sync_interval_ms_;
-
-    if (this->time_sync_on_boot_)
-      this->sync_system_time_();
-
-    return;
-  }
-
-  if (this->time_sync_interval_ms_ != 0 && static_cast<int32_t>(now - this->time_sync_next_ms_) >= 0) {
-    this->time_sync_next_ms_ = now + this->time_sync_interval_ms_;
-    this->sync_system_time_();
-  }
-#endif
-}
-
-void VitoHomeComponent::sync_system_time_() {
-#ifdef VITOHOME_TIME_SYNC
-  if (this->time_source_ == nullptr)
-    return;
-
-  if (!this->time_source_->now().is_valid()) {
-    ESP_LOGW(TAG, "System-time sync: time source not valid yet, skipping");
-    return;
-  }
-
-  // Read the device clock first; clock_handle_read_ compares it with the time
-  // source and only writes when the drift exceeds the threshold.
-  if (!this->enqueue_raw_(CLOCK_ADDRESS, CLOCK_LEN, false, nullptr, 0, RawPurpose::CLOCK_READ)) {
-    ESP_LOGW(TAG, "System-time sync: clock read could not be queued");
-  }
-#endif
-}
-
-void VitoHomeComponent::clock_handle_read_(const ResponseView &response) {
-#ifdef VITOHOME_TIME_SYNC
-  if (this->time_source_ == nullptr)
-    return;
-
-  const ESPTime time = this->time_source_->now();
-
-  if (!time.is_valid()) {
-    ESP_LOGW(TAG, "System-time sync: time source became invalid, skipping");
-    return;
-  }
-
-  BcdDateTime device_time{};
-  const bool device_time_ok = decode_datetime_bcd(response.data, response.data_length, 0, &device_time);
-
-  bool need_write = true;
-
-  if (device_time_ok) {
-    BcdDateTime source_time{};
-    source_time.year = time.year;
-    source_time.month = time.month;
-    source_time.day = time.day_of_month;
-    source_time.hour = time.hour;
-    source_time.minute = time.minute;
-    source_time.second = time.second;
-
-    const int64_t drift = civil_seconds(source_time) - civil_seconds(device_time);
-    const int64_t magnitude = drift < 0 ? -drift : drift;
-
-    if (magnitude <= static_cast<int64_t>(this->time_drift_threshold_s_)) {
-      ESP_LOGD(TAG, "System-time sync: drift %lds within %us, no write", static_cast<long>(drift),
-               this->time_drift_threshold_s_);
-      need_write = false;
-    } else {
-      ESP_LOGI(TAG, "System-time sync: drift %lds exceeds %us, updating device clock", static_cast<long>(drift),
-               this->time_drift_threshold_s_);
-    }
-  } else {
-    ESP_LOGI(TAG, "System-time sync: device clock unreadable, setting it");
-  }
-
-  if (!need_write)
-    return;
-
-  uint8_t buffer[CLOCK_LEN];
-  const uint8_t weekday = device_weekday_from_esptime(time.day_of_week);
-
-  if (!encode_datetime_bcd(time.year, time.month, time.day_of_month, weekday, time.hour, time.minute, time.second,
-                           buffer)) {
-    ESP_LOGW(TAG, "System-time sync: time source out of range, skipping");
-    return;
-  }
-
-  if (!this->enqueue_raw_(CLOCK_ADDRESS, CLOCK_LEN, true, buffer, CLOCK_LEN, RawPurpose::CLOCK_WRITE)) {
-    ESP_LOGW(TAG, "System-time sync: clock write could not be queued");
-  }
-#else
-  (void) response;
-#endif
-}
-
-void VitoHomeComponent::clock_handle_write_ack_() {
-  ESP_LOGI(TAG, "System-time sync: device clock set; reading back to confirm");
-
-  if (!this->enqueue_raw_(CLOCK_ADDRESS, CLOCK_LEN, false, nullptr, 0, RawPurpose::CLOCK_VERIFY)) {
-    ESP_LOGW(TAG, "System-time sync: verification read could not be queued");
-  }
-}
-
-void VitoHomeComponent::clock_handle_verify_(const ResponseView &response) {
-  BcdDateTime device_time{};
-
-  if (decode_datetime_bcd(response.data, response.data_length, 0, &device_time)) {
-    ESP_LOGI(TAG, "System-time sync: device clock now %04u-%02u-%02u %02u:%02u:%02u", device_time.year,
-             device_time.month, device_time.day, device_time.hour, device_time.minute, device_time.second);
-  } else {
-    ESP_LOGW(TAG, "System-time sync: read-back of device clock unreadable");
-  }
-}
 
 void VitoHomeComponent::on_response_(const ResponseView &response, uint16_t request_address) {
   if (this->ident_in_flight_) {
@@ -924,14 +833,10 @@ void VitoHomeComponent::on_response_(const ResponseView &response, uint16_t requ
 
     entity->handle_write_response(response);
 
-    if (entity->wants_read_back() && !entity->read_queued_) {
+    if (entity->wants_read_back()) {
       // Confirm by reading the device's view of the value, ahead of the regular
       // poll queue.
-      entity->read_queued_ = true;
-
-      if (!this->read_queue_.push_front(entity)) {
-        entity->read_queued_ = false;
-
+      if (!this->request_priority_read(entity)) {
         ESP_LOGE(TAG, "read queue full (%zu/%zu); immediate read-back for %s was not queued", this->read_queue_.size(),
                  this->read_queue_.capacity(), entity->get_datapoint().name());
       }

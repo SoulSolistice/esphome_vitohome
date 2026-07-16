@@ -235,25 +235,26 @@ The state model here is subtle and was the source of a real bug:
   deprecated/removed in 2026.7.0). Options are an **ordered `{raw_value: label}`
   map**, so the YAML author controls order; raw values are validated to fit the
   byte width and labels to be unique.
-- **The raw lane is not uniformly higher-priority than `write_queue_`.**
-  `dispatch_next_()` used to check `raw_queue_` ahead of `write_queue_`
-  unconditionally, which was fine while the raw lane only carried
+- **The raw lane is uniformly higher-priority than `write_queue_` again — and
+  that is now correct.** History, because the shape of the fix matters:
+  `dispatch_next_()` originally checked `raw_queue_` ahead of `write_queue_`
+  unconditionally, which was fine while the lane only carried
   `RawPurpose::SCAN` (interactive scan-console ops, which *should* jump ahead
   of a queued write so range sweeps feel immediate). Once system-time sync
-  started riding the same lane (`RawPurpose::CLOCK_READ/CLOCK_WRITE/
-  CLOCK_VERIFY`), that same unconditional priority let a background clock
-  sync — up to three sequential round trips, invisible to the user — stall a
-  queued setpoint write for the whole sync. `dispatch_next_()` now checks the
-  front op's purpose: `SCAN` still preempts `write_queue_`; `CLOCK_*` is
-  checked *after* `write_queue_` instead, so a pending user write always goes
-  out first. One known residual: because `raw_queue_` is a single FIFO,
-  a `SCAN` op enqueued *behind* a not-yet-dispatched `CLOCK_*` op still has to
-  wait for that `CLOCK_*` op's own turn (which itself now waits on
-  `write_queue_`) — the priority split is by the queue's front purpose, not a
-  full reordering of the queue. In practice this window is narrow (a clock op
-  is enqueued one step at a time, only once its predecessor's response has
-  landed) and self-resolving within one or two dispatch cycles; a real fix
-  would give `CLOCK_*` its own lane instead of sharing `raw_queue_`.
+  started riding the same lane (`RawPurpose::CLOCK_*`), that unconditional
+  priority let a background clock sync — up to three sequential round trips,
+  invisible to the user — stall a queued setpoint write for the whole sync. The
+  fix at the time split the priority by the *front op's purpose*: `SCAN` still
+  preempted `write_queue_`, `CLOCK_*` was checked after it. That left a known
+  residual, since a single FIFO cannot reorder: a `SCAN` enqueued *behind* a
+  not-yet-dispatched `CLOCK_*` still waited for it. The note ended by saying a
+  real fix would give `CLOCK_*` its own lane.
+  It got something better: clock sync is no longer a raw op at all. `VitoClock`
+  is an entity on the read/write lanes (see the raw-lane sizing section above),
+  so `raw_queue_` has exactly one tenant, the purpose tag and the arbitration it
+  required are both gone, and the unconditional `SCAN`-preempts-writes rule is
+  restored with nothing left to be wrong about. Writes still preempt reads, so
+  the clock's own write step is not starved either.
 
 ### 5a. The three lanes are sized-at-setup ring buffers, not deques
 
@@ -277,9 +278,54 @@ hard-fail a legitimate full-catalog config **at boot while `esphome config`
 passes** — a config-valid-but-runtime-dead split. So the read/write lanes are
 `reserve()`d to `entities_.size()` (their true ceiling: the `read_queued_` /
 `write_queued_` flags admit an entity to a lane at most once, so it can never
-fill), and the raw lane to `RAW_QUEUE_MAX`. One boot-time allocation each; no
-arbitrary ceiling; no wasted headroom. The cost is that the raw lane reserves its
-full `RAW_QUEUE_MAX` up front even when the scan console and clock sync are idle.
+fill), and the raw lane to `raw_queue_capacity_` — the YAML `raw_queue_size`,
+defaulting to `RAW_QUEUE_DEFAULT`. One boot-time allocation each; no arbitrary
+ceiling; no wasted headroom.
+
+The raw lane is the interactive scan console and nothing else, and it defaults
+to **0**: a debug tool should not tax every config, and on an ESP8266 (~40 KiB
+heap) a sweep-sized lane is a quarter of the budget. Scanning is opt-in — size
+`raw_queue_size` to the largest burst intended (1–2 for one-off
+`queue_raw_read()` presses; `example/vitohome-scanner-raw.yaml` uses 256,
+~9.7 KiB, for its RANGE SWEEP). An enqueue against an unallocated lane is
+rejected with a warning naming the option, so the failure is loud.
+
+That depth **cannot be derived from the config**: the lane is driven through
+`queue_raw_read()`/`queue_raw_write()` from lambdas, and the shipped sweep's
+count is a Home Assistant action parameter chosen at runtime, so no
+`FINAL_VALIDATE_SCHEMA` inspection could infer it. Hence an explicit knob rather
+than an auto-size.
+
+**Device-clock synchronization does not use this lane.** It used to, tagged with
+a `RawPurpose`, which coupled two unrelated tenants in one queue and forced a
+non-zero default. It is now `VitoClock` (`vito_clock.h`) — a hub-owned
+`VitoEntityBase` on the ordinary read/write lanes. The fit is exact rather than
+forced: `write_buf_` is 8 bytes and the clock datapoint (0x088E) is 8 bytes of
+BCD; `handle_response()` is the drift compare; and `wants_read_back()` — already
+true by default — makes the verify step the existing write-ACK read-back rather
+than bespoke code. `VitoEntityBase` inherits from nothing (the concrete types
+multiply-inherit their Home Assistant surface separately), so a pure subclass is
+a lane participant with no HA presence, which is exactly what clock sync is.
+
+Two failure modes disappeared with the move. A sweep filling the raw lane could
+starve a mid-chain clock write; and `raw_queue_size: 0` silently disabled time
+sync, which is why a validator once rejected that pair. The entity lanes are
+`reserve()`d to `entities_.size()` and the `read_queued_`/`write_queued_` flags
+admit an entity at most once, so a slot for the clock always exists. Pinned by
+`tests/native/proof_ring_buffer.cpp::test_clock_chain_on_entity_lanes`.
+
+Two details make the move behaviour-preserving rather than merely tidy. The raw
+lane was dispatched **ahead** of the poll lane; an ordinary polled entity is
+not, so the clock would have queued behind every pending poll (~150 s on a full
+catalog — harmless for drift, which is measured against the live time source at
+response time, but a visible regression for `sync_on_boot`). So `VitoClock`
+opts out of the poll rotation (`wants_polling() == false`) and pushes to the
+**head** of the read lane via `request_priority_read()` from its own schedule.
+And because the read lane cannot fill, a second sync could no longer be rejected
+by a full queue the way the depth-1 raw lane implicitly rejected it — so the
+chain guards itself with an explicit `Phase` (`IDLE`/`READING`/`VERIFYING`),
+which is `RawPurpose::CLOCK_*` moved out of the shared lane and made local to
+its only user.
 
 **The API is deliberately not the deque subset.** `reserve()` is **one-shot**
 (a second call is rejected, `reserve(0)` permanently initializes an unused

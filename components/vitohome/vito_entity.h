@@ -49,6 +49,15 @@ class VitoEntityBase {
   void set_poll_interval(uint32_t ms) { this->poll_interval_ms_ = ms; }
   uint32_t poll_interval() const { return this->poll_interval_ms_; }
 
+  // Whether the hub's poll scheduler may enqueue this entity on its datapoint
+  // interval. Every configured entity wants this; VitoClock does not -- it is
+  // not polled on an interval but driven by its own sync schedule, which pushes
+  // to the HEAD of the read lane to keep the dispatch priority the raw lane
+  // used to give it. Returning false only removes an entity from the poll
+  // rotation: it still counts toward the lane sizing at setup() and still
+  // receives responses and errors like any other.
+  virtual bool wants_polling() const { return true; }
+
   // Hub-side bookkeeping (only the hub touches these).
   uint32_t next_due_ms_{0};
   bool read_queued_{false};

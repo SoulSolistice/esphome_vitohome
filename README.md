@@ -132,10 +132,14 @@ vitohome:
   protocol: P300            # also KW (VS1), confirmed; GWG selectable but untested
   update_interval: 60s      # base poll tick
   identify_device: true     # read 0xF8..0xFB once at boot and log the device
-  # raw_queue_size: 256     # scan-console/clock-sync lane slots (~38 B each,
-  #                         # reserved once at boot). Default 256 keeps full
-  #                         # sweep capacity; shrink it (min 1 with time_sync,
-  #                         # 0 disables the lane) to reclaim RAM.
+  # raw_queue_size: 0       # scan-console lane slots (~38 B each, reserved once
+  #                         # at boot). Default 0: the scan console is a debug
+  #                         # tool, so it is opt-in and costs nothing unless
+  #                         # used. Set it only if you call queue_raw_read /
+  #                         # queue_raw_write or use a scan_result text_sensor:
+  #                         # 1–2 for one-off reads, 256 for RANGE SWEEPS
+  #                         # (~9.7 KiB — see example/vitohome-scanner-raw.yaml).
+  #                         # Time sync does NOT use this lane.
 
 sensor:
   - platform: vitohome

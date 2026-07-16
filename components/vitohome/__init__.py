@@ -54,8 +54,9 @@ CONF_IDENTIFY_DEVICE = "identify_device"
 # rule. The `delimiter: [0x06]` recipe that circulates for Optolink is a P300
 # ACK byte and is an ordinary data byte on KW, where it tears frames apart.
 CONF_LOG_FRAMES = "log_frames"
-# Raw-lane (scan console + clock sync) queue capacity; see
-# VitoHomeComponent::set_raw_queue_capacity for the RAM trade-off.
+# Interactive scan-console lane capacity; see
+# VitoHomeComponent::set_raw_queue_capacity for the RAM trade-off. Defaults to
+# 0 -- clock sync does not use this lane.
 CONF_RAW_QUEUE_SIZE = "raw_queue_size"
 
 # System-time sync options (hub-level; see VitoHomeComponent::set_time_sync).
@@ -322,22 +323,6 @@ def _validate_time_sync(config):
     return config
 
 
-def _validate_raw_queue_size(config):
-    """Clock sync rides the raw lane, so it needs at least one slot.
-
-    Scan-console calls on a zero-capacity lane degrade gracefully at runtime
-    (the enqueue is rejected with a warning), but a configured time sync that
-    can never enqueue would be a silently dead feature -- reject it here.
-    """
-    if CONF_TIME_ID in config and config[CONF_RAW_QUEUE_SIZE] == 0:
-        raise cv.Invalid(
-            f"system-time sync uses the raw operation lane; '{CONF_RAW_QUEUE_SIZE}' "
-            f"must be at least 1 when '{CONF_TIME_ID}' is set",
-            path=[CONF_RAW_QUEUE_SIZE],
-        )
-    return config
-
-
 CONFIG_SCHEMA = cv.All(
     cv.Schema(
         {
@@ -353,18 +338,29 @@ CONFIG_SCHEMA = cv.All(
             # time source when it drifts. Inert unless time_id is set.
             cv.Optional(CONF_TIME_ID): cv.use_id(time_.RealTimeClock),
             cv.Optional(CONF_TIME_SYNC): TIME_SYNC_SCHEMA,
-            # Capacity of the raw lane (scan console + clock sync). Each slot
-            # costs sizeof(RawOp) (~38 bytes on a 32-bit target), reserved once
-            # at setup(). The 256 default keeps the shipped scan-sweep
-            # behavior; a production config that never scans can reclaim
-            # ~10 KiB with a small value, or 0 to disable the lane entirely.
-            cv.Optional(CONF_RAW_QUEUE_SIZE, default=256): cv.int_range(min=0, max=1024),
+            # Capacity of the interactive scan console's lane. Each slot costs
+            # sizeof(RawOp) (~38 bytes on a 32-bit target), reserved once at
+            # setup().
+            #
+            # DEFAULT 0: this lane serves one feature -- queue_raw_read/write
+            # and the scan_result text_sensor -- and that feature is a debug
+            # tool, so it is opt-in. Time sync does NOT use this lane (it is a
+            # VitoClock entity on the read/write lanes), so there is no minimum
+            # and no cross-check against time_id.
+            #
+            # Size it to the largest burst you intend: a one-off raw read from a
+            # button needs 1; a RANGE SWEEP needs depth proportional to its
+            # count (example/vitohome-scanner-raw.yaml uses 256). The required
+            # depth cannot be derived here -- the lane is driven from lambdas,
+            # and the shipped sweep's count is a Home Assistant action parameter
+            # chosen at runtime. An enqueue against an unallocated lane is
+            # rejected with a warning naming this option.
+            cv.Optional(CONF_RAW_QUEUE_SIZE, default=0): cv.int_range(min=0, max=1024),
         }
     )
     .extend(cv.polling_component_schema("60s"))
     .extend(uart.UART_DEVICE_SCHEMA),
     _validate_time_sync,
-    _validate_raw_queue_size,
 )
 
 

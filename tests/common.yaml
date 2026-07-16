@@ -4,7 +4,9 @@
 # substitutions + the esp32 block, then `<<: !include` this file.
 #
 # No network stack here on purpose: a compile test does not need wifi/api/ota,
-# and leaving them out keeps the build fast and dependency-light.
+# and leaving them out keeps the build fast and dependency-light. That is also
+# why the time source below is an I2C RTC rather than sntp -- sntp pulls in
+# `network` (esphome rejects it outright without one), a ds1307 does not.
 
 esphome:
   name: ${name}
@@ -17,6 +19,24 @@ external_components:
 
 logger:
   level: DEBUG
+
+# A time source exists purely to switch VITOHOME_TIME_SYNC on, so CI compiles
+# the VitoClock entity (vito_clock.h/.cpp) and the hub's clock-registration and
+# dump_config paths. Without a time: component that whole feature is compiled
+# out -- and every config in this tree used to lack one, so none of it was ever
+# built by CI.
+#
+# The OFF branch is covered by test.esp32-idf-single-platform.yaml, which does
+# NOT include this file and has no time source. Between the two, both sides of
+# every `#ifdef VITOHOME_TIME_SYNC` are compiled. Keep it that way: if a time
+# source is ever added there, the OFF path loses its only build.
+i2c:
+  sda: GPIO21
+  scl: GPIO22
+
+time:
+  - platform: ds1307
+    id: test_time
 
 uart:
   - id: uart_optolink
@@ -37,6 +57,13 @@ vitohome:
   # CI compiles the -DVITOHOME_LOG_FRAMES branch of vito_uart_interface.h and
   # the branch without it.
   log_frames: ${log_frames}
+  # Drives -DVITOHOME_TIME_SYNC; see the time: block above.
+  time_id: test_time
+  # The raw lane defaults to 0 (the scan console is opt-in). This config drives
+  # queue_raw_read/queue_raw_write from the lambdas below, so it has to ask for
+  # a lane -- without this they would be rejected at runtime with a warning.
+  # Two slots: one per button, neither of which sweeps.
+  raw_queue_size: 2
 
 sensor:
   # div10 SIGNED via converter default

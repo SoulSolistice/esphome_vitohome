@@ -11,6 +11,8 @@ must fail at ``esphome config`` time rather than as a wrong/garbage write.
 """
 
 import os
+import pathlib
+import re
 import sys
 
 import pytest
@@ -28,8 +30,8 @@ from components.vitohome import (  # noqa: E402
     CONF_RAW_QUEUE_SIZE,
     CONF_SIGNED,
     CONF_TIME_ID,
+    CONFIG_SCHEMA,
     CONVERTERS,
-    _validate_raw_queue_size,
     converter_big_endian,
     converter_default_signed,
     converter_scale,
@@ -231,22 +233,76 @@ def test_rotatebytes_length_validation():
             validate_converter_length({CONF_CONVERTER: "rotatebytes", CONF_LENGTH: bad_length})
 
 
-# --- the hub raw_queue_size / time-sync cross-check --------------------------
+# --- the hub raw_queue_size default -----------------------------------------
+#
+# There is deliberately no raw_queue_size/time_id cross-check any more. Clock
+# sync used to ride the raw lane, so a zero-capacity lane silently disabled it
+# and a validator had to reject that combination. The clock is now a VitoClock
+# entity on the ordinary read/write lanes, so the raw lane serves only the
+# interactive scan console and 0 is a perfectly good value for it -- including
+# alongside time_id.
 
 
-def test_raw_queue_size_zero_without_time_sync_ok():
-    cfg = {CONF_RAW_QUEUE_SIZE: 0}
-    assert _validate_raw_queue_size(cfg) is cfg
+def _raw_queue_size_schema_key():
+    """Return the cv.Optional key object for raw_queue_size from CONFIG_SCHEMA."""
+    inner = CONFIG_SCHEMA.validators[0]
+    for key in inner.schema:
+        if str(key) == CONF_RAW_QUEUE_SIZE:
+            return key
+    raise AssertionError(f"{CONF_RAW_QUEUE_SIZE} not found in CONFIG_SCHEMA")
 
 
-def test_raw_queue_size_nonzero_with_time_sync_ok():
-    cfg = {CONF_TIME_ID: "my_time", CONF_RAW_QUEUE_SIZE: 1}
-    assert _validate_raw_queue_size(cfg) is cfg
+def test_raw_queue_size_defaults_to_zero():
+    """The scan console is opt-in; nobody pays for a lane they do not use.
+
+    This is the whole point of moving clock sync off the raw lane. If the
+    default drifts back above 0, every config -- including an ESP8266 build with
+    ~40 KiB of heap -- silently starts allocating a debug tool's queue again.
+    """
+    assert _raw_queue_size_schema_key().default() == 0
 
 
-def test_raw_queue_size_zero_with_time_sync_rejected():
+def test_no_raw_queue_size_cross_check_remains():
+    """time_id + raw_queue_size: 0 must be accepted -- it is now the DEFAULT.
+
+    The old _validate_raw_queue_size rejected exactly this pair, because clock
+    sync rode the raw lane. It no longer does, so the rule is gone; if it were
+    reintroduced it would reject the single most common config (time sync on,
+    no scan console). Pinned two ways: the helper must not exist any more, and
+    the config-level validators that DO remain must accept the pair.
+    """
+    import components.vitohome as vh
+
+    assert not hasattr(vh, "_validate_raw_queue_size")
+
+    cfg = {CONF_TIME_ID: "my_time", CONF_RAW_QUEUE_SIZE: 0}
+    for validator in CONFIG_SCHEMA.validators[1:]:
+        assert validator(cfg) is cfg
+
+
+def test_raw_queue_size_range():
+    key = _raw_queue_size_schema_key()
+    validator = CONFIG_SCHEMA.validators[0].schema[key]
+    assert validator(0) == 0
+    assert validator(1024) == 1024
     with pytest.raises(cv.Invalid):
-        _validate_raw_queue_size({CONF_TIME_ID: "my_time", CONF_RAW_QUEUE_SIZE: 0})
+        validator(-1)
+    with pytest.raises(cv.Invalid):
+        validator(1025)
+
+
+def test_raw_queue_size_cpp_and_python_defaults_agree():
+    """RAW_QUEUE_DEFAULT in vitohome.h must match the schema default.
+
+    to_code() always emits set_raw_queue_capacity(), so the Python default is
+    the one that actually takes effect and the C++ initializer is a fallback
+    for direct C++ users. They are two independent literals; nothing but this
+    test stops them drifting apart and making the header lie about behavior.
+    """
+    header = (pathlib.Path(__file__).resolve().parents[2] / "components" / "vitohome" / "vitohome.h").read_text()
+    match = re.search(r"constexpr\s+std::size_t\s+RAW_QUEUE_DEFAULT\s*=\s*(\d+)\s*;", header)
+    assert match is not None, "RAW_QUEUE_DEFAULT not found in vitohome.h"
+    assert int(match.group(1)) == _raw_queue_size_schema_key().default()
 
 
 # --- C++ literal / datapoint expression helpers ----------------------------

@@ -11,8 +11,11 @@
 //     all consume front-to-back),
 //   - push_front prepends ahead of the queue (the write-ack read-back path),
 //     including into an empty ring and across the wrap boundary,
-//   - full() rejects without corruption (the raw lane's RAW_QUEUE_MAX drop;
+//   - full() rejects without corruption (the raw lane's over-capacity drop;
 //     every rejected push leaves the buffer byte-identical),
+//   - the clock-sync chain rides the entity lanes without ever being droppable:
+//     push_front() puts the sync read ahead of pending polls, and a lane sized
+//     to entities_.size() always has the clock's own slot (vito_clock.h),
 //   - consume_front_if() returns EMPTY / RETAINED / REMOVED and removes the
 //     front item exactly when the consumer accepted it -- the hub's dispatch
 //     hand-off (engine busy = RETAINED and retried; accepted = REMOVED),
@@ -175,6 +178,86 @@ static void test_consume_front_if() {
   check(q.consume_front_if([](int) { return true; }) == RB::ConsumeResult::EMPTY, "EMPTY once drained");
 }
 
+static void test_clock_chain_on_entity_lanes() {
+  std::printf("== clock-sync chain on the read/write entity lanes ==\n");
+  // Mirrors VitoClock's chain (components/vitohome/vito_clock.h) after it moved
+  // off the raw scan-console lane and onto the ordinary entity lanes.
+  //
+  // The claim being pinned: the chain cannot be dropped. The read/write lanes
+  // are reserve()d to entities_.size() and the read_queued_/write_queued_ flags
+  // admit each entity at most once, so a slot for the clock ALWAYS exists --
+  // unlike the shared raw lane, where a sweep in progress could fill the queue
+  // and starve a mid-chain clock write.
+  //
+  // Entities are modelled as int ids (the real lanes are
+  // RingBuffer<VitoEntityBase *>); id 0 is the clock, 1..N are polled entities.
+  using RB = RingBuffer<int>;
+  constexpr int CLOCK = 0;
+  constexpr int ENTITY_COUNT = 5;  // 4 polled entities + the clock
+
+  RingBuffer<int> reads;
+  RingBuffer<int> writes;
+  check(reads.reserve(ENTITY_COUNT), "read lane reserved to entities_.size()");
+  check(writes.reserve(ENTITY_COUNT), "write lane reserved to entities_.size()");
+
+  // A poll cycle has the bus busy: every non-clock entity is queued.
+  for (int e = 1; e < ENTITY_COUNT; e++)
+    check(reads.push_back(e), "poll cycle queues an entity");
+  check(reads.size() == 4, "four polls pending");
+
+  // --- step 1: the sync read jumps the poll queue -------------------------
+  // VitoClock::tick() -> request_priority_read(), which push_front()s. This is
+  // what preserves the dispatch priority the raw lane used to provide: without
+  // it the clock read would wait out a full poll cycle (~150 s on a real
+  // catalog), which sync_on_boot would feel.
+  check(reads.push_front(CLOCK), "sync read is pushed to the HEAD of the read lane");
+  int front = -1;
+  check(reads.try_front(front) && front == CLOCK, "clock is ahead of every pending poll");
+  // 4 polls + the clock == 5 == capacity. The lane is exactly full, and that
+  // is the proof that the sizing is exact rather than lucky: reserve() covers
+  // every entity including the clock, and the read_queued_ dedup flag stops any
+  // of them being queued twice, so the ceiling can be hit but never exceeded.
+  check(reads.full(), "lane exactly full: every entity queued once, clock included");
+  check(reads.size() == ENTITY_COUNT, "no entity was displaced to make room");
+
+  int dispatched = -1;
+  check(reads.consume_front_if([&](int e) {
+    dispatched = e;
+    return true;
+  }) == RB::ConsumeResult::REMOVED,
+        "engine accepts the clock read");
+  check(dispatched == CLOCK, "the dispatched item was the clock");
+  check(reads.size() == 4, "the pending polls are untouched behind it");
+
+  // --- step 2: drift exceeded -> write ------------------------------------
+  // handle_response() -> set_write_payload_() -> request_write(), which
+  // push_back()s onto the write lane. Writes already preempt reads, so no
+  // priority handling is needed here.
+  check(writes.push_back(CLOCK), "drift correction queues the clock write");
+  check(writes.consume_front_if([&](int e) {
+    dispatched = e;
+    return true;
+  }) == RB::ConsumeResult::REMOVED,
+        "engine accepts the clock write");
+
+  // --- step 3: verify via the ordinary write-ACK read-back ----------------
+  // wants_read_back() is true, so the hub's ACK path calls
+  // request_priority_read() for us -- the verify step is not bespoke code.
+  check(reads.push_front(CLOCK), "write-ACK read-back pushes the clock to the head again");
+  check(reads.try_front(front) && front == CLOCK, "verify read-back is ahead of the pending polls");
+  check(reads.consume_front_if([](int) { return true; }) == RB::ConsumeResult::REMOVED, "engine accepts the verify");
+  check(reads.size() == 4, "chain completed; the poll backlog is still intact");
+
+  // --- the starvation mode that the raw lane had, and this one cannot ------
+  // Fill the read lane completely (every entity queued exactly once -- the
+  // read_queued_ flag makes this the true ceiling), then confirm the clock is
+  // ALREADY in it rather than being locked out. On the shared raw lane a burst
+  // of unrelated SCAN work could occupy every slot and drop the clock.
+  check(reads.push_front(CLOCK), "clock queued");
+  check(reads.full(), "lane at capacity == entities_.size(), clock included");
+  check(reads.try_front(front) && front == CLOCK, "a saturated poll backlog cannot displace the clock");
+}
+
 static void test_wraparound() {
   std::printf("== head/tail wraparound across the modulo boundary ==\n");
   // Capacity 3, many fill/drain cycles at a rotating offset so head_ and the
@@ -256,6 +339,7 @@ int main() {
   test_fifo_and_full();
   test_push_front();
   test_consume_front_if();
+  test_clock_chain_on_entity_lanes();
   test_wraparound();
   test_pod_element();
   test_hub_pattern();

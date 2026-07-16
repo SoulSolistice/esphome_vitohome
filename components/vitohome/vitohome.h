@@ -20,6 +20,7 @@
 #include "protocol_select.h"
 #include "response_view.h"
 #include "ring_buffer.h"
+#include "vito_clock.h"
 #include "vito_entity.h"
 #include "vito_uart_interface.h"
 
@@ -118,27 +119,41 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   void set_identify_device(bool value) { this->identify_device_ = value; }
 
-  // Capacity for the raw operation lane (scan console + clock sync), applied
-  // by setup()'s one-shot reserve(). Each slot costs sizeof(RawOp), so the
-  // RAW_QUEUE_MAX default (256, ~10 KiB on a 32-bit target) is real RAM; a
-  // configuration that never scans can hand in a small value, or 0 to leave
-  // the lane unallocated (enqueue attempts are then rejected with a warning;
-  // config validation already requires >= 1 when time sync is enabled).
+  // Capacity for the raw operation lane (the interactive scan console), applied
+  // by setup()'s one-shot reserve(). Each slot costs sizeof(RawOp) (38 B on a
+  // typical 32-bit ABI). RAW_QUEUE_DEFAULT is 0: the lane is a debug tool, so
+  // only configs that actually scan pay for it, and an unallocated lane rejects
+  // enqueues with a warning naming the option. Clock sync does NOT ride this
+  // lane -- it is a VitoClock entity on the read/write lanes (vito_clock.h) --
+  // so there is no minimum here.
   void set_raw_queue_capacity(std::size_t capacity) { this->raw_queue_capacity_ = capacity; }
 
   // System-time sync is optional. The hub periodically reads the device clock
   // at 0x088E and writes the configured time source back only when the measured
   // drift exceeds the configured threshold.
   //
-  // The feature is inert unless a time source is assigned. The associated
-  // method bodies are compiled with VITOHOME_TIME_SYNC so a configuration
-  // without a time component does not pull that component into the build.
-  void set_time_source(time::RealTimeClock *time_source) { this->time_source_ = time_source; }
+  // The feature is inert unless a time source is assigned. The implementation
+  // is a VitoClock (vito_clock.h) -- a hub-owned VitoEntityBase that rides the
+  // ordinary read/write lanes -- and the whole thing is compiled behind
+  // VITOHOME_TIME_SYNC so a configuration without a time component does not
+  // pull that component into the build. These setters keep the same signatures
+  // the codegen has always emitted and simply forward.
+  void set_time_source(time::RealTimeClock *time_source) {
+#ifdef VITOHOME_TIME_SYNC
+    this->clock_.set_time_source(time_source);
+#else
+    (void) time_source;
+#endif
+  }
 
   void set_time_sync(uint32_t interval_ms, uint32_t drift_threshold_s, bool sync_on_boot) {
-    this->time_sync_interval_ms_ = interval_ms;
-    this->time_drift_threshold_s_ = drift_threshold_s;
-    this->time_sync_on_boot_ = sync_on_boot;
+#ifdef VITOHOME_TIME_SYNC
+    this->clock_.set_config(interval_ms, drift_threshold_s, sync_on_boot);
+#else
+    (void) interval_ms;
+    (void) drift_threshold_s;
+    (void) sync_on_boot;
+#endif
   }
 
   // Queue a write for `entity`; the entity has already staged its payload in
@@ -158,6 +173,19 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // control operations to the ESPHome loop rather than mutate an entity
   // directly.
   bool request_write(VitoEntityBase *entity);
+
+  // Queue a read for `entity` at the HEAD of the read lane, ahead of any
+  // pending polls. Two callers, both of which need to jump the queue rather
+  // than wait out a poll cycle (~150 s on a full catalog):
+  //   * the write-ACK read-back, confirming the device's view of a value just
+  //     written;
+  //   * VitoClock's sync schedule, preserving the dispatch priority that clock
+  //     sync had when it rode the raw lane.
+  //
+  // Returns true if the entity is queued OR was already queued (nothing to
+  // add); false only if the bounded lane rejected the insertion, which the
+  // read_queued_ dedup flag plus reserve(entities_.size()) make unreachable.
+  bool request_priority_read(VitoEntityBase *entity);
 
   // --- raw scan console (debug) --------------------------------------------
 
@@ -234,16 +262,12 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   std::string ident_string_() const;
 
   // --- raw scan console -----------------------------------------------------
-
-  // Purpose tag for raw-lane operations. SCAN belongs to the interactive debug
-  // console. CLOCK_* routes device-clock synchronization through the same
-  // bounded lane.
-  enum class RawPurpose : uint8_t {
-    SCAN,
-    CLOCK_READ,
-    CLOCK_WRITE,
-    CLOCK_VERIFY,
-  };
+  //
+  // This lane is the interactive debug console and nothing else. It used to
+  // carry device-clock synchronization too, behind a RawPurpose tag; the clock
+  // is now a VitoClock entity on the ordinary read/write lanes (vito_clock.h),
+  // which removed the tag, the purpose-based arbitration, and the two failure
+  // modes the sharing created.
 
   void raw_handle_response_(const ResponseView &response);
   void raw_handle_error_(optolink::OptolinkResult error);
@@ -253,22 +277,8 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // must be nullptr/0 for a read. The payload is copied into RawOp, so queue
   // storage remains self-contained and heap-free after setup.
   //
-  // Returns false for invalid arguments or queue overflow. Multi-step callers
-  // such as clock synchronization can therefore report a dropped continuation
-  // instead of logging that it was queued successfully.
-  bool enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes, uint8_t bytes_len,
-                    RawPurpose purpose);
-
-  // --- system-time sync; rides the raw lane --------------------------------
-
-  void time_sync_tick_();
-  void sync_system_time_();
-  void clock_handle_read_(const ResponseView &response);
-  void clock_handle_write_ack_();
-  void clock_handle_verify_(const ResponseView &response);
-
-  static constexpr uint16_t CLOCK_ADDRESS = 0x088E;
-  static constexpr uint8_t CLOCK_LEN = 8;
+  // Returns false for invalid arguments or queue overflow.
+  bool enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes, uint8_t bytes_len);
 
   bool ident_in_flight_{false};
 
@@ -395,26 +405,47 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
     bool is_write;
     uint8_t bytes[RAW_WRITE_MAX];
     uint8_t bytes_len;
-    RawPurpose purpose;
   };
 
   // The raw lane is explicitly bounded because a range sweep can enqueue much
   // faster than a 4800-baud link drains.
   //
-  // RawOp carries RAW_WRITE_MAX inline bytes, so this cap has a significant
-  // fixed RAM cost. RAW_QUEUE_MAX == 256 is roughly 10 KiB on a typical 32-bit
-  // ABI, but the exact value is sizeof(RawOp) * capacity on the selected
-  // compiler and target. RAW_QUEUE_MAX is the default; the YAML
-  // raw_queue_size option overrides it through set_raw_queue_capacity() so an
-  // idle lane does not have to carry the full sweep-sized allocation.
-  static constexpr std::size_t RAW_QUEUE_MAX = 256;
-  std::size_t raw_queue_capacity_{RAW_QUEUE_MAX};
+  // RawOp carries RAW_WRITE_MAX inline bytes, so each slot is real RAM:
+  // sizeof(RawOp) is 38 bytes on a typical 32-bit ABI, exact value dependent on
+  // the selected compiler and target.
+  //
+  // DEFAULT 0: the lane is allocated only by configs that actually scan.
+  //
+  // This lane serves exactly one feature -- the interactive scan console
+  // (queue_raw_read() / queue_raw_write() / the scan_result text_sensor). It is
+  // a debug tool, so paying for it by default is backwards, and on a memory-
+  // constrained target (ESP8266: ~40 KiB heap) a sweep-sized lane is a
+  // quarter of the budget. Clock synchronization used to live here too and
+  // forced a non-zero default; it is now a VitoClock entity on the ordinary
+  // read/write lanes (vito_clock.h), so a config that does not scan needs no
+  // raw lane at all.
+  //
+  // Scanning is therefore opt-in. Size it to the largest burst you intend:
+  // a one-off queue_raw_read() from a button needs 1; a RANGE SWEEP needs
+  // depth proportional to its count (example/vitohome-scanner-raw.yaml uses
+  // 256, ~9.7 KiB). An enqueue against an unallocated lane is rejected with a
+  // warning naming this option, so the failure is loud rather than silent.
+  //
+  // The size cannot be derived from the config: the lane is driven through
+  // queue_raw_read()/queue_raw_write() from lambdas, and the shipped sweep's
+  // count is a Home Assistant action parameter chosen at runtime -- the
+  // required depth does not exist at codegen time in any form.
+  //
+  // This is the DEFAULT, not a ceiling; the YAML raw_queue_size option
+  // overrides it through set_raw_queue_capacity() and is validated to
+  // 0..1024 in __init__.py.
+  static constexpr std::size_t RAW_QUEUE_DEFAULT = 0;
+  std::size_t raw_queue_capacity_{RAW_QUEUE_DEFAULT};
 
   RingBuffer<RawOp> raw_queue_;
 
   bool raw_in_flight_{false};
   bool raw_is_write_{false};
-  RawPurpose raw_purpose_{RawPurpose::SCAN};
 
   optolink::Datapoint raw_dp_{"scan", 0, 1, optolink::noconv};
 
@@ -426,16 +457,18 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   std::vector<text_sensor::TextSensor *> raw_result_sensors_;
 #endif
 
-  // --- system-time synchronization state -----------------------------------
+  // --- system-time synchronization ------------------------------------------
 
-  // nullptr disables the feature.
-  time::RealTimeClock *time_source_{nullptr};
-
-  uint32_t time_sync_interval_ms_{0};    // 0 = no periodic sync
-  uint32_t time_drift_threshold_s_{60};  // write only above this drift
-  bool time_sync_on_boot_{true};         // sync after time first becomes valid
-  bool time_sync_did_boot_{false};       // first-valid-time handling completed
-  uint32_t time_sync_next_ms_{0};        // next periodic sync deadline
+  // The clock is a hub-OWNED entity, not a codegen'd one: it has no platform
+  // and no YAML of its own, so nothing else would construct it. setup()
+  // register_entity()s it before sizing the lanes, so it counts toward
+  // entities_.size() like any other participant.
+  //
+  // Under the #else there is no member at all -- a build without a time:
+  // component carries none of this.
+#ifdef VITOHOME_TIME_SYNC
+  VitoClock clock_;
+#endif
 
   // Failsafe for a lost engine callback. The protocol engines have their own
   // shorter transaction timeouts, but this prevents a permanently occupied hub
