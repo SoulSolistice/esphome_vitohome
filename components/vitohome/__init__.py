@@ -61,6 +61,7 @@ CONF_RAW_QUEUE_SIZE = "raw_queue_size"
 
 # System-time sync options (hub-level; see VitoHomeComponent::set_time_sync).
 CONF_TIME_SYNC = "time_sync"
+CONF_CLOCK_ADDRESS = "clock_address"
 CONF_DRIFT_THRESHOLD = "drift_threshold"
 CONF_SYNC_ON_BOOT = "sync_on_boot"
 
@@ -72,6 +73,38 @@ TIME_SYNC_SCHEMA = cv.Schema(
         cv.Optional(CONF_INTERVAL, default="24h"): cv.positive_time_period_milliseconds,
         cv.Optional(CONF_DRIFT_THRESHOLD, default="60s"): cv.positive_time_period_seconds,
         cv.Optional(CONF_SYNC_ON_BOOT, default=True): cv.boolean,
+        # The device clock datapoint. NOT a constant across Viessmann devices --
+        # source-confirmed against the Vitosoft DPDefinitions.xml link tables,
+        # which carry three distinct schemes:
+        #
+        #   NRF_Uhrzeit~0x088E   8-byte DateTimeBCD. The default here, and the
+        #                        address openv/vcontrold document for the
+        #                        Vitotronic family. Hardware-confirmed on a
+        #                        Vitodens 300-W (B3HA).
+        #   WPR_Uhrzeit~0x08E0   8-byte DateTimeBCD, but a DIFFERENT address --
+        #                        the WPR heat-pump controllers (V200WO1A,
+        #                        VBC700_AW, VBC700_BW_WW, VBC702_AW, VBC702_S,
+        #                        CU401B_A/G/S). Set clock_address: 0x08E0 there.
+        #   GWG_Uhrzeit_*        no BCD blob at all: three separate 1-byte
+        #                        registers (0x0074 weekday / 0x0075 hour /
+        #                        0x0076 minute). NOT reachable by changing this
+        #                        option -- the 8-byte read/write shape is wrong
+        #                        for it. _final_validate rejects time sync under
+        #                        GWG outright rather than let this look
+        #                        configurable when it isn't.
+        #
+        # Why an option and not a lookup from the device ident: only 16 of the
+        # 399 datapoint-type tokens list ANY clock datapoint in the XML, and the
+        # Vitodens 300-W token (VScotHO1_72) is NOT one of them even though
+        # 0x088E demonstrably works on it. A per-token lookup would therefore
+        # answer "unknown" for the overwhelming majority of real devices,
+        # including the reference unit. The XML is authoritative that 0x08E0
+        # exists and differs; it is not authoritative that 0x088E is right
+        # everywhere else.
+        #
+        # 8 bytes of BCD is assumed regardless (VitoClock::CLOCK_LEN): both
+        # DateTimeBCD variants are 8 bytes, only the address moves.
+        cv.Optional(CONF_CLOCK_ADDRESS, default=0x088E): cv.hex_uint16_t,
     }
 )
 
@@ -429,6 +462,30 @@ def _final_validate(config):
     hub_id = config[CONF_ID]
 
     if protocol == "GWG":
+        # System-time sync cannot work under GWG, at any address.
+        #
+        # GWG has no 8-byte DateTimeBCD clock datapoint at all: the Vitosoft
+        # data models its clock as three separate 1-byte registers
+        # (GWG_Uhrzeit_Wochentag~0x0074, _Stunde~0x0075, _Minute~0x0076), which
+        # is a different read/write shape entirely -- not something
+        # clock_address can point at. And the default 0x088E is over GWG's
+        # 8-bit address space, so PacketGWG::createPacket() rejects it on every
+        # single attempt.
+        #
+        # Without this check the feature is not broken-and-obvious, it is
+        # broken-and-quiet: the config validates, the boot log prints a clock
+        # dump_config block, and the only symptom is one engine warning per sync
+        # interval -- hours apart, easily missed. Reject at config time instead.
+        if CONF_TIME_ID in config:
+            raise cv.Invalid(
+                "system-time sync is not supported under the GWG protocol. GWG has no 8-byte "
+                "date/time datapoint -- its clock is three separate 1-byte registers (weekday "
+                "0x74 / hour 0x75 / minute 0x76), which this component does not implement -- and "
+                "the default clock_address 0x088E is outside GWG's single-byte address space, so "
+                "the engine would reject every request. Remove 'time_id' from the vitohome hub.",
+                path=[CONF_TIME_ID],
+            )
+
         for domain, entity in _entities_for_hub(full, _ADDRESS_DOMAINS, hub_id):
             for key, addr in _entity_gwg_addresses(entity):
                 if addr > 0xFF:
@@ -586,10 +643,14 @@ async def to_code(config):
         cg.add(var.set_time_source(time_var))
         cg.add_build_flag("-DVITOHOME_TIME_SYNC")
         sync = config.get(CONF_TIME_SYNC) or TIME_SYNC_SCHEMA({})
+        # TIME_SYNC_SCHEMA({}) above supplies every default, clock_address
+        # included, so the address is always explicit here even when the user
+        # omitted the whole time_sync: block.
         cg.add(
             var.set_time_sync(
                 int(sync[CONF_INTERVAL].total_milliseconds),
                 int(sync[CONF_DRIFT_THRESHOLD].total_seconds),
                 sync[CONF_SYNC_ON_BOOT],
+                sync[CONF_CLOCK_ADDRESS],
             )
         )

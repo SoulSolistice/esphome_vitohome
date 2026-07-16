@@ -146,13 +146,14 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 #endif
   }
 
-  void set_time_sync(uint32_t interval_ms, uint32_t drift_threshold_s, bool sync_on_boot) {
+  void set_time_sync(uint32_t interval_ms, uint32_t drift_threshold_s, bool sync_on_boot, uint16_t clock_address) {
 #ifdef VITOHOME_TIME_SYNC
-    this->clock_.set_config(interval_ms, drift_threshold_s, sync_on_boot);
+    this->clock_.set_config(interval_ms, drift_threshold_s, sync_on_boot, clock_address);
 #else
     (void) interval_ms;
     (void) drift_threshold_s;
     (void) sync_on_boot;
+    (void) clock_address;
 #endif
   }
 

@@ -11,21 +11,24 @@ namespace esphome::vitohome {
 
 static const char *const TAG = "vitohome.clock";
 
-// The device clock datapoint: 8 bytes of BCD at 0x088E. The length is what lets
-// this ride the entity write path unchanged -- VitoEntityBase::write_buf_ is
-// exactly 8 bytes.
-static constexpr uint16_t CLOCK_ADDRESS = 0x088E;
-static constexpr uint8_t CLOCK_LEN = 8;
-
 VitoClock::VitoClock() {
-  // noconv: like every other vitohome entity, this decodes and encodes the raw
-  // payload itself (decode.h) rather than using an optolink library converter.
-  this->set_datapoint(optolink::Datapoint("clock", CLOCK_ADDRESS, CLOCK_LEN, optolink::noconv));
+  this->set_clock_address(CLOCK_ADDRESS_DEFAULT);
 
   // wants_read_back() defaults true, which is what makes the verify step free:
   // the hub's write-ACK path pushes the read-back to the head of the read lane
   // for us. Stated explicitly because the whole VERIFYING phase depends on it.
   this->read_back_ = true;
+}
+
+// The ADDRESS is configurable (see the header); the LENGTH is not. Both known
+// DateTimeBCD variants -- NRF 0x088E and WPR 0x08E0 -- are 8 bytes, and 8 is
+// also exactly VitoEntityBase::write_buf_, which is what lets the clock ride
+// the ordinary entity write path with no growth anywhere.
+void VitoClock::set_clock_address(uint16_t address) {
+  this->clock_address_ = address;
+  // noconv: like every other vitohome entity, this decodes and encodes the raw
+  // payload itself (decode.h) rather than using an optolink library converter.
+  this->set_datapoint(optolink::Datapoint("clock", address, CLOCK_LEN, optolink::noconv));
 }
 
 void VitoClock::tick(uint32_t now_ms) {
@@ -217,7 +220,7 @@ void VitoClock::dump_config() {
   // entities_. VitoClock is hub-owned and not a component, so nothing would
   // print it otherwise.
   ESP_LOGCONFIG(TAG, "vitohome clock (system-time sync):");
-  ESP_LOGCONFIG(TAG, "  Datapoint: 0x%04X, %u bytes", CLOCK_ADDRESS, CLOCK_LEN);
+  ESP_LOGCONFIG(TAG, "  Datapoint: 0x%04X, %u bytes", this->clock_address_, CLOCK_LEN);
 
   if (this->interval_ms_ == 0) {
     ESP_LOGCONFIG(TAG, "  Periodic sync: OFF");

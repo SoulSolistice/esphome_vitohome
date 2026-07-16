@@ -25,6 +25,7 @@ if _REPO_ROOT not in sys.path:
 import esphome.config_validation as cv  # noqa: E402
 
 from components.vitohome import (  # noqa: E402
+    CONF_CLOCK_ADDRESS,
     CONF_CONVERTER,
     CONF_LENGTH,
     CONF_RAW_QUEUE_SIZE,
@@ -32,6 +33,7 @@ from components.vitohome import (  # noqa: E402
     CONF_TIME_ID,
     CONFIG_SCHEMA,
     CONVERTERS,
+    TIME_SYNC_SCHEMA,
     converter_big_endian,
     converter_default_signed,
     converter_scale,
@@ -303,6 +305,65 @@ def test_raw_queue_size_cpp_and_python_defaults_agree():
     match = re.search(r"constexpr\s+std::size_t\s+RAW_QUEUE_DEFAULT\s*=\s*(\d+)\s*;", header)
     assert match is not None, "RAW_QUEUE_DEFAULT not found in vitohome.h"
     assert int(match.group(1)) == _raw_queue_size_schema_key().default()
+
+
+# --- the clock address is a device property, not a constant -----------------
+
+
+def test_clock_address_defaults_to_nrf_vitotronic():
+    """0x088E is the NRF/Vitotronic clock, and the reference unit's.
+
+    Source-confirmed against the Vitosoft DPDefinitions.xml link tables:
+    NRF_Uhrzeit~0x088E. Hardware-confirmed on a Vitodens 300-W (B3HA).
+    """
+    assert TIME_SYNC_SCHEMA({})[CONF_CLOCK_ADDRESS] == 0x088E
+
+
+def test_clock_address_accepts_the_wpr_heat_pump_address():
+    """WPR heat-pump controllers put the same 8-byte DateTimeBCD at 0x08E0.
+
+    Tokens V200WO1A, VBC700_AW, VBC700_BW_WW, VBC702_AW, VBC702_S,
+    CU401B_A/G/S. This option is the ONLY thing that lets those devices sync --
+    without it the component reads 8 bytes from 0x088E, which on a heat pump is
+    a different datapoint entirely, and then blind-writes a BCD timestamp to it.
+    """
+    assert TIME_SYNC_SCHEMA({CONF_CLOCK_ADDRESS: 0x08E0})[CONF_CLOCK_ADDRESS] == 0x08E0
+
+
+def test_clock_address_rejects_out_of_range():
+    with pytest.raises(cv.Invalid):
+        TIME_SYNC_SCHEMA({CONF_CLOCK_ADDRESS: 0x10000})
+
+
+def test_clock_address_cpp_and_python_defaults_agree():
+    """CLOCK_ADDRESS_DEFAULT in vito_clock.h must match the schema default.
+
+    Same class of trap as RAW_QUEUE_DEFAULT: two independent literals, and the
+    Python one wins because to_code() always emits set_time_sync(). Nothing else
+    stops the header lying about behaviour.
+    """
+    header = (pathlib.Path(__file__).resolve().parents[2] / "components" / "vitohome" / "vito_clock.h").read_text()
+    match = re.search(r"constexpr\s+uint16_t\s+CLOCK_ADDRESS_DEFAULT\s*=\s*(0x[0-9A-Fa-f]+)\s*;", header)
+    assert match is not None, "CLOCK_ADDRESS_DEFAULT not found in vito_clock.h"
+    assert int(match.group(1), 16) == TIME_SYNC_SCHEMA({})[CONF_CLOCK_ADDRESS]
+
+
+def test_clock_len_is_fixed_at_eight():
+    """The address moves per device; the LENGTH must not.
+
+    Both DateTimeBCD variants are 8 bytes, and 8 is exactly
+    VitoEntityBase::write_buf_ -- which is what lets the clock ride the ordinary
+    entity write path with no growth. If CLOCK_LEN ever exceeds write_buf_,
+    set_write_payload_() starts rejecting the clock payload at runtime.
+    """
+    vito_clock = (pathlib.Path(__file__).resolve().parents[2] / "components" / "vitohome" / "vito_clock.h").read_text()
+    entity = (pathlib.Path(__file__).resolve().parents[2] / "components" / "vitohome" / "vito_entity.h").read_text()
+
+    clock_len = re.search(r"constexpr\s+uint8_t\s+CLOCK_LEN\s*=\s*(\d+)\s*;", vito_clock)
+    write_buf = re.search(r"write_buf_\[(\d+)\]", entity)
+    assert clock_len is not None and write_buf is not None
+    assert int(clock_len.group(1)) == 8
+    assert int(clock_len.group(1)) <= int(write_buf.group(1))
 
 
 # --- C++ literal / datapoint expression helpers ----------------------------

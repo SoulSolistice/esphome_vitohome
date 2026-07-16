@@ -55,14 +55,34 @@ namespace esphome::vitohome {
 // nothing special.
 class VitoClock : public VitoEntityBase {
  public:
+  // NRF_Uhrzeit~0x088E: the Vitotronic-family clock, and the schema default.
+  // Overridable per device -- see set_config(). Kept as a named constant so the
+  // C++ fallback and the Python default (__init__.py's CONF_CLOCK_ADDRESS) are
+  // each a single literal rather than scattered magic numbers.
+  static constexpr uint16_t CLOCK_ADDRESS_DEFAULT = 0x088E;
+
+  // Fixed, unlike the address: every DateTimeBCD variant in the Vitosoft data
+  // is 8 bytes, and 8 is exactly VitoEntityBase::write_buf_.
+  static constexpr uint8_t CLOCK_LEN = 8;
+
   VitoClock();
 
   void set_time_source(time::RealTimeClock *time_source) { this->time_source_ = time_source; }
 
-  void set_config(uint32_t interval_ms, uint32_t drift_threshold_s, bool sync_on_boot) {
+  // clock_address is NOT a constant across Viessmann devices: NRF/Vitotronic
+  // uses 0x088E (the schema default, hardware-confirmed on a Vitodens 300-W),
+  // while the WPR heat-pump controllers use 0x08E0 for the same 8-byte
+  // DateTimeBCD shape. Both are 8 bytes, so only the address moves -- which is
+  // why one option covers it. GWG is a different shape entirely (three 1-byte
+  // registers) and is rejected at config time rather than mis-served here.
+  //
+  // Called from to_code() before setup(), so the datapoint is rebuilt here
+  // rather than in the constructor.
+  void set_config(uint32_t interval_ms, uint32_t drift_threshold_s, bool sync_on_boot, uint16_t clock_address) {
     this->interval_ms_ = interval_ms;
     this->drift_threshold_s_ = drift_threshold_s;
     this->sync_on_boot_ = sync_on_boot;
+    this->set_clock_address(clock_address);
   }
 
   // Driven from VitoHomeComponent::update(), so the granularity is the hub's
@@ -98,7 +118,11 @@ class VitoClock : public VitoEntityBase {
   void handle_verify_(const ResponseView &response);
   void abort_(const char *why);
 
+  void set_clock_address(uint16_t address);
+
   time::RealTimeClock *time_source_{nullptr};
+
+  uint16_t clock_address_{CLOCK_ADDRESS_DEFAULT};
 
   uint32_t interval_ms_{0};         // 0 = no periodic sync
   uint32_t drift_threshold_s_{60};  // write only above this drift

@@ -314,6 +314,40 @@ sync, which is why a validator once rejected that pair. The entity lanes are
 admit an entity at most once, so a slot for the clock always exists. Pinned by
 `tests/native/proof_ring_buffer.cpp::test_clock_chain_on_entity_lanes`.
 
+**The clock address is a device property, not a constant** — source-confirmed
+against the Vitosoft `DPDefinitions.xml` link tables (399 `ecnDatapointType`
+tokens, 104,339 `ecnDataPointTypeEventTypeLink` rows). Three schemes exist:
+
+| Scheme | Address | Tokens |
+|---|---|---|
+| `NRF_Uhrzeit` | 0x088E, 8-byte `DateTimeBCD` | Ecotronic, VBC550P, VBC550S |
+| `WPR_Uhrzeit` | **0x08E0**, 8-byte `DateTimeBCD` | V200WO1A, VBC700_AW, VBC700_BW_WW, VBC702_AW, VBC702_S, CU401B_A/G/S (heat pumps) |
+| `GWG_Uhrzeit_*` | 0x0074/0x0075/0x0076, three 1-byte registers | GWG_VBES_00/03/21/35/36 |
+
+Hence `time_sync: clock_address:`, defaulting to 0x088E. WPR is the case that
+makes it necessary: 0x08E0 and 0x088E are both valid 16-bit addresses, so
+nothing would reject anything — the component would read 8 bytes from a
+datapoint that isn't the clock, compute nonsense drift, and then **blind-write a
+BCD timestamp to it**. Only the address is configurable: both `DateTimeBCD`
+variants are 8 bytes, and 8 is exactly `write_buf_`.
+
+GWG is not served by that option, because its clock is a different *shape*, not
+a different address — so `_final_validate` rejects `time_id` under `protocol:
+GWG` outright. (The default 0x088E is over GWG's 8-bit space anyway, and
+`PacketGWG::createPacket()` rejects it — loudly, once per sync interval, hours
+apart, which is exactly the kind of quiet breakage a config-time error is for.)
+
+**The XML is not a complete authority here, and the option is shaped around
+that.** Only **16 of the 399** tokens list any clock datapoint at all — and
+`VScotHO1_72`, the reference Vitodens 300-W, is *not* among them, despite 0x088E
+being hardware-confirmed on it. So the XML is authoritative that 0x08E0 exists
+and differs; it is *not* authoritative that 0x088E is correct for the other 383.
+That asymmetry is why this is a user-set option with a known-good default rather
+than a lookup keyed on the device ident: such a lookup would answer "unknown"
+for the overwhelming majority of real devices, including the one this component
+was developed against. `gen_catalog.py` skips `DateTimeBCD` entirely, so the
+clock is never a catalog datapoint either way.
+
 Two details make the move behaviour-preserving rather than merely tidy. The raw
 lane was dispatched **ahead** of the poll lane; an ordinary polled entity is
 not, so the clock would have queued behind every pending poll (~150 s on a full

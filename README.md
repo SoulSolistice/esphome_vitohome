@@ -132,6 +132,17 @@ vitohome:
   protocol: P300            # also KW (VS1), confirmed; GWG selectable but untested
   update_interval: 60s      # base poll tick
   identify_device: true     # read 0xF8..0xFB once at boot and log the device
+  # time_id: my_time       # optional: sync the device clock from a time source
+  # time_sync:
+  #   clock_address: 0x088E # device clock datapoint. NOT constant across
+  #                         # Viessmann devices: 0x088E is NRF/Vitotronic (the
+  #                         # default); WPR heat-pump controllers (Vitocal:
+  #                         # V200WO1A, VBC700_*, VBC702_*, CU401B_*) use
+  #                         # 0x08E0. Wrong address = a blind BCD write to a
+  #                         # datapoint that isn't the clock, so check yours.
+  #                         # Not supported under protocol: GWG (its clock is
+  #                         # three 1-byte registers, a different shape) —
+  #                         # rejected at config time.
   # raw_queue_size: 0       # scan-console lane slots (~38 B each, reserved once
   #                         # at boot). Default 0: the scan console is a debug
   #                         # tool, so it is opt-in and costs nothing unless
