@@ -1,6 +1,8 @@
 #include "vito_select.h"
 #ifdef USE_SELECT
 
+#include <cinttypes>
+
 #include "decode.h"
 #include "esphome/core/log.h"
 #include "vitohome.h"
@@ -39,7 +41,7 @@ void VitoSelect::control(size_t index) {
     ESP_LOGE(TAG, "%s: write could not be queued", this->datapoint_.name());
     return;
   }
-  ESP_LOGD(TAG, "%s: queued write option %zu (raw 0x%02X)", this->datapoint_.name(), index, raw);
+  ESP_LOGD(TAG, "%s: queued write option %zu (raw 0x%02" PRIX32 ")", this->datapoint_.name(), index, raw);
 }
 
 void VitoSelect::handle_response(const ResponseView &response) {
@@ -66,14 +68,14 @@ void VitoSelect::handle_response(const ResponseView &response) {
   const uint32_t raw = static_cast<uint32_t>(read_le(p, len > 4 ? 4 : len));
   for (size_t i = 0; i < this->raw_values_.size(); i++) {
     if (this->raw_values_[i] == raw) {
-      ESP_LOGD(TAG, "%s = option %zu (raw 0x%02X)", this->datapoint_.name(), i, raw);
+      ESP_LOGD(TAG, "%s = option %zu (raw 0x%02" PRIX32 ")", this->datapoint_.name(), i, raw);
       this->publish_state(i);
       return;
     }
   }
   // ESPHome selects can only publish mapped options; an unmapped wire value
   // stays unpublished and is surfaced in the log instead.
-  ESP_LOGW(TAG, "%s: device value 0x%02X is not in the configured options", this->datapoint_.name(), raw);
+  ESP_LOGW(TAG, "%s: device value 0x%02" PRIX32 " is not in the configured options", this->datapoint_.name(), raw);
 }
 
 void VitoSelect::handle_write_response(const ResponseView & /*response*/) {

@@ -1,6 +1,8 @@
 #include "vito_switch.h"
 #ifdef USE_SWITCH
 
+#include <cinttypes>
+
 #include "decode.h"
 #include "esphome/core/log.h"
 #include "vitohome.h"
@@ -11,8 +13,8 @@ static const char *const TAG = "vitohome.switch";
 
 void VitoSwitch::dump_config() {
   LOG_SWITCH("  ", "VitoHome Switch", this);
-  ESP_LOGCONFIG(TAG, "    Address: 0x%04X  Length: %u  On: 0x%02X  Off: 0x%02X", this->datapoint_.address(),
-                this->datapoint_.length(), this->on_value_, this->off_value_);
+  ESP_LOGCONFIG(TAG, "    Address: 0x%04X  Length: %u  On: 0x%02" PRIX32 "  Off: 0x%02" PRIX32,
+                this->datapoint_.address(), this->datapoint_.length(), this->on_value_, this->off_value_);
   if (this->extract_byte_ >= 0) {
     ESP_LOGCONFIG(TAG, "    Extract: %u byte(s) at offset %d of a %u-byte block read", this->extract_len_,
                   this->extract_byte_, this->datapoint_.length());
@@ -37,7 +39,7 @@ void VitoSwitch::write_state(bool state) {
   }
   // Not optimistic: like VitoSelect, the published state changes on read-back
   // (or on the write ack when read_back is off), never on the queue action.
-  ESP_LOGD(TAG, "%s: queued write %s (raw 0x%02X)", this->datapoint_.name(), ONOFF(state), raw);
+  ESP_LOGD(TAG, "%s: queued write %s (raw 0x%02" PRIX32 ")", this->datapoint_.name(), ONOFF(state), raw);
 }
 
 void VitoSwitch::handle_response(const ResponseView &response) {
@@ -63,19 +65,20 @@ void VitoSwitch::handle_response(const ResponseView &response) {
   const uint32_t raw = static_cast<uint32_t>(read_le(p, len > 4 ? 4 : len));
   for (uint32_t on : this->on_state_values_) {
     if (raw == on) {
-      ESP_LOGD(TAG, "%s = ON (raw 0x%02X)", this->datapoint_.name(), raw);
+      ESP_LOGD(TAG, "%s = ON (raw 0x%02" PRIX32 ")", this->datapoint_.name(), raw);
       this->publish_state(true);
       return;
     }
   }
   if (raw == this->off_value_) {
-    ESP_LOGD(TAG, "%s = OFF (raw 0x%02X)", this->datapoint_.name(), raw);
+    ESP_LOGD(TAG, "%s = OFF (raw 0x%02" PRIX32 ")", this->datapoint_.name(), raw);
     this->publish_state(false);
     return;
   }
   // Same policy as VitoSelect for unmapped wire values: keep the last state
   // and surface the raw value in the log (add it to on_values if it means on).
-  ESP_LOGW(TAG, "%s: device value 0x%02X is neither an on_values entry nor off_value", this->datapoint_.name(), raw);
+  ESP_LOGW(TAG, "%s: device value 0x%02" PRIX32 " is neither an on_values entry nor off_value", this->datapoint_.name(),
+           raw);
 }
 
 void VitoSwitch::handle_write_response(const ResponseView & /*response*/) {

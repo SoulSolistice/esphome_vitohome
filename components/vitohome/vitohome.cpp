@@ -209,7 +209,7 @@ void VitoHomeComponent::validate_uart_() {
   bool ok = true;
 
   if (bus->get_baud_rate() != 4800) {
-    ESP_LOGE(TAG, "UART baud_rate must be 4800, got %u", bus->get_baud_rate());
+    ESP_LOGE(TAG, "UART baud_rate must be 4800, got %" PRIu32, bus->get_baud_rate());
     ok = false;
   }
 

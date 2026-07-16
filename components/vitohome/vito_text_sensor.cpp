@@ -1,6 +1,7 @@
 #include "vito_text_sensor.h"
 #ifdef USE_TEXT_SENSOR
 
+#include <cinttypes>
 #include <cstdio>
 #include <string>
 
@@ -91,8 +92,8 @@ void VitoTextSensor::publish_enum_(const uint8_t *data, uint8_t len) {
     return;
   }
   char buf[24];
-  snprintf(buf, sizeof(buf), "Unbekannt (0x%02X)", raw);
-  ESP_LOGW(TAG, "%s: value 0x%02X has no mapped option", this->datapoint_.name(), raw);
+  snprintf(buf, sizeof(buf), "Unbekannt (0x%02" PRIX32 ")", raw);
+  ESP_LOGW(TAG, "%s: value 0x%02" PRIX32 " has no mapped option", this->datapoint_.name(), raw);
   this->publish_state(buf);
 }
 
