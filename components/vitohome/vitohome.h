@@ -52,23 +52,22 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   float get_setup_priority() const override { return setup_priority::AFTER_WIFI; }
 
   // Register one hub-owned entity pointer. Registration occurs during
-  // code-generation setup, before VitoHomeComponent::setup() sizes the queues.
+  // code-generation setup, and for the hub-owned clock inside setup() itself --
+  // in both cases before setup() sizes the queues.
   //
   // Duplicate pointer registration is ignored defensively: the exact queue
   // sizing relies on the registered entity count being an upper bound for the
   // number of distinct entities that can be pending in a lane.
-  void register_entity(VitoEntityBase *entity) {
-    if (entity == nullptr)
-      return;
-
-    for (auto *registered : this->entities_) {
-      if (registered == entity)
-        return;
-    }
-
-    entity->set_vitohome_parent(this);
-    this->entities_.push_back(entity);
-  }
+  //
+  // That upper bound is the whole basis for the lanes being unable to fill, so
+  // a registration arriving after setup() sized them would silently reintroduce
+  // exactly the shortfall this guard exists to catch. Reject it loudly instead:
+  // an entity absent from entities_ is never scheduled, which is a visibly dead
+  // entity rather than a lane that rejects an arbitrary victim once per cycle.
+  //
+  // Out-of-line: it runs once per entity at boot, so nothing here is worth
+  // inlining, and the diagnostic needs the TAG that lives in vitohome.cpp.
+  void register_entity(VitoEntityBase *entity);
 
   // Force-refresh: mark every registered entity due on the next scheduler
   // tick by resetting its next_due_ms_ to the boot sentinel (0 = "never
@@ -303,6 +302,12 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // Registration vectors are populated by code generation before setup().
   // Runtime queue sizing depends on entities_ being complete at setup time.
   std::vector<VitoEntityBase *> entities_;
+
+  // Latched by setup() the moment entities_.size() is sampled for reserve().
+  // From then on entities_ is frozen: register_entity() refuses to grow it,
+  // because a later arrival would leave the lanes one slot short of the count
+  // they are supposed to bound.
+  bool lanes_sized_{false};
 
 #ifdef USE_TEXT_SENSOR
   std::vector<text_sensor::TextSensor *> device_id_sensors_;

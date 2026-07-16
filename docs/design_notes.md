@@ -311,8 +311,20 @@ Two failure modes disappeared with the move. A sweep filling the raw lane could
 starve a mid-chain clock write; and `raw_queue_size: 0` silently disabled time
 sync, which is why a validator once rejected that pair. The entity lanes are
 `reserve()`d to `entities_.size()` and the `read_queued_`/`write_queued_` flags
-admit an entity at most once, so a slot for the clock always exists. Pinned by
-`tests/native/proof_ring_buffer.cpp::test_clock_chain_on_entity_lanes`.
+admit an entity at most once, so a slot for the clock always exists.
+
+The lane *mechanics* under that claim are pinned by
+`tests/native/proof_ring_buffer.cpp::test_clock_chain_on_entity_lanes`; the
+*count* is not, and cannot be from a host proof — the derivation is inside
+`VitoHomeComponent::setup()`. That distinction had teeth: `setup()` sampled
+`entities_.size()` one line above the `VITOHOME_TIME_SYNC` block that registers
+the clock, so the lanes were reserved to `size() - 1` and the clock's priority
+read cost one due entity its slot on every boot
+(`read queue rejected 1 due entities (size=55, capacity=55)` against
+`Entities: 56`, hardware-observed on VScotHO1_72, 2026-07-16) while the proof
+stayed green. The count is now sampled after every `register_entity()` call, and
+`lanes_sized_` latches at that moment so a late registration is rejected loudly
+instead of silently re-opening the shortfall.
 
 **The clock address is a device property, not a constant** — source-confirmed
 against the Vitosoft `DPDefinitions.xml` link tables (399 `ecnDatapointType`

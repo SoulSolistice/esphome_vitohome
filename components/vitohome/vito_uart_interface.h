@@ -48,12 +48,21 @@ namespace esphome::vitohome {
 // Buffering reassembles that into one `>>> 41:05:00:01:73:62:28:03`.
 //
 // FRAME_GAP_MS = 30 is chosen from the wire, not from taste. At 4800 8E2 one
-// byte occupies 12 bits (1 start + 8 data + 1 parity + 2 stop) = 2.5 ms.
-// Measured on P300: the gap between the three TX pieces of one telegram is
-// 18-20 ms, while the gap between the master's ACK (0x06) and the next
-// telegram's PACKETSTART is ~35 ms. 30 ms therefore joins a telegram and
-// separates the ACK from it. It is also 12 byte-times, far above the
-// intra-frame spacing, and far below KW's ~2.2 s idle-sync cadence.
+// byte occupies 12 bits (1 start + 8 data + 1 parity + 2 stop) = 2.5 ms, so 30
+// ms is 12 byte-times. It sits between the two bounds that matter: far above
+// the 18-20 ms spacing between the three TX pieces of one P300 telegram (which
+// it must join), and far below KW's ~2.2 s idle-sync cadence (which it must not
+// swallow).
+//
+// It does NOT reliably split the master's P300 ACK off the telegram that
+// follows it, and does not need to. flush_tx_() runs only on the next read() or
+// on a frame_tick() that observes the gap, and the hub emits 0x06 and the next
+// PACKETSTART without reading in between -- so whether the two land on one log
+// line is decided by loop timing. Hardware-observed on VScotHO1_72
+// (2026-07-16, P300): 85 of 88 request telegrams reached the log joined as
+// `>>> 06:41:...` and 3 as a standalone `>>> 06`. Both forms are unambiguous to
+// read and to re-parse, because 0x06 can never be mistaken for the 0x41
+// PACKETSTART that opens a telegram.
 //
 // Everything below is compiled out entirely when the flag is absent: no buffers,
 // no timestamps, no per-byte branch. frame_tick() degrades to an empty inline.

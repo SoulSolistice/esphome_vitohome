@@ -37,21 +37,28 @@ static const char *ident_family_name(uint16_t ident) {
   }
 }
 
+void VitoHomeComponent::register_entity(VitoEntityBase *entity) {
+  if (entity == nullptr)
+    return;
+
+  if (this->lanes_sized_) {
+    ESP_LOGE(TAG, "register_entity() after the lanes were sized; entity ignored");
+    return;
+  }
+
+  for (auto *registered : this->entities_) {
+    if (registered == entity)
+      return;
+  }
+
+  entity->set_vitohome_parent(this);
+  this->entities_.push_back(entity);
+}
+
 void VitoHomeComponent::setup() {
   this->validate_uart_();
   if (this->is_failed())
     return;
-
-  // Size the run-loop queues once, now that registration is complete. Each
-  // lane makes exactly one element-storage allocation here and never
-  // reallocates:
-  //
-  //   * read/write lanes: registered entity count;
-  //   * raw lane: configured scan-sweep cap.
-  //
-  // All failures are handled at boot rather than leaving a partially working
-  // component. Separate checks identify the allocation that failed.
-  const std::size_t entity_count = this->entities_.size();
 
 #ifdef VITOHOME_TIME_SYNC
   // The clock has no platform, so no codegen registers it -- the hub owns it
@@ -69,6 +76,32 @@ void VitoHomeComponent::setup() {
   // growth slack vector doubling left behind. (Non-binding, but every
   // mainstream libstdc++/libc++ honors it, and the vector never grows again.)
   this->entities_.shrink_to_fit();
+
+  // Size the run-loop queues once, now that registration is complete. Each
+  // lane makes exactly one element-storage allocation here and never
+  // reallocates:
+  //
+  //   * read/write lanes: registered entity count;
+  //   * raw lane: configured scan-sweep cap.
+  //
+  // All failures are handled at boot rather than leaving a partially working
+  // component. Separate checks identify the allocation that failed.
+  //
+  // entity_count is sampled HERE, after every register_entity() call, and not
+  // one line earlier. Sampling it above the VITOHOME_TIME_SYNC block reserved
+  // entities_.size() - 1 and cost the clock's slot: with the clock's priority
+  // read occupying the lane, the last due entity of a full poll cycle was
+  // rejected every boot -- hardware-observed on VScotHO1_72 (2026-07-16):
+  //
+  //   [C][vitohome:563]: Entities: 56
+  //   [E][vitohome:537]: Poll cycle: read queue rejected 1 due entities
+  //                      (size=55, capacity=55)
+  //
+  // lanes_sized_ turns the ordering requirement from a comment into an
+  // enforced invariant: register_entity() rejects anything arriving after this
+  // point rather than silently under-sizing the lanes again.
+  const std::size_t entity_count = this->entities_.size();
+  this->lanes_sized_ = true;
 
   if (!this->read_queue_.reserve(entity_count)) {
     ESP_LOGE(TAG, "failed to allocate read queue for %zu entities", entity_count);

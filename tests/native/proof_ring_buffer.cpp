@@ -183,11 +183,22 @@ static void test_clock_chain_on_entity_lanes() {
   // Mirrors VitoClock's chain (components/vitohome/vito_clock.h) after it moved
   // off the raw scan-console lane and onto the ordinary entity lanes.
   //
-  // The claim being pinned: the chain cannot be dropped. The read/write lanes
-  // are reserve()d to entities_.size() and the read_queued_/write_queued_ flags
-  // admit each entity at most once, so a slot for the clock ALWAYS exists --
-  // unlike the shared raw lane, where a sweep in progress could fill the queue
-  // and starve a mid-chain clock write.
+  // The claim being pinned: GIVEN a lane reserved to the true entity count, the
+  // chain cannot be dropped -- the read_queued_/write_queued_ flags admit each
+  // entity at most once, so a slot for the clock always exists, unlike the
+  // shared raw lane where a sweep in progress could fill the queue and starve a
+  // mid-chain clock write.
+  //
+  // WHAT THIS DOES *NOT* PIN, and cannot. ENTITY_COUNT below is a literal, so
+  // this exercises the lane mechanics for a correct count and says nothing
+  // about how setup() derives that count. That gap was real: setup() sampled
+  // entities_.size() one line ABOVE the VITOHOME_TIME_SYNC block that registers
+  // the clock, reserved size() - 1, and rejected one due entity per boot on
+  // VScotHO1_72 (2026-07-16) while this proof stayed green. The derivation
+  // lives inside VitoHomeComponent::setup() and needs all of ESPHome, so it is
+  // not reachable from a host proof; it is held instead by the ordering in
+  // setup() and by VitoHomeComponent::lanes_sized_, which makes any
+  // registration arriving after the sample loud rather than silent.
   //
   // Entities are modelled as int ids (the real lanes are
   // RingBuffer<VitoEntityBase *>); id 0 is the clock, 1..N are polled entities.
@@ -213,10 +224,11 @@ static void test_clock_chain_on_entity_lanes() {
   check(reads.push_front(CLOCK), "sync read is pushed to the HEAD of the read lane");
   int front = -1;
   check(reads.try_front(front) && front == CLOCK, "clock is ahead of every pending poll");
-  // 4 polls + the clock == 5 == capacity. The lane is exactly full, and that
-  // is the proof that the sizing is exact rather than lucky: reserve() covers
-  // every entity including the clock, and the read_queued_ dedup flag stops any
-  // of them being queued twice, so the ceiling can be hit but never exceeded.
+  // 4 polls + the clock == 5 == capacity. The lane is exactly full: the ceiling
+  // can be HIT but never exceeded, because the read_queued_ dedup flag stops
+  // any entity being queued twice. Note what that does and does not show --
+  // it shows the flags bound the lane at the entity count, not that setup()
+  // reserves the right count (see the header note above).
   check(reads.full(), "lane exactly full: every entity queued once, clock included");
   check(reads.size() == ENTITY_COUNT, "no entity was displaced to make room");
 
