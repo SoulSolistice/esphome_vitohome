@@ -5,4 +5,4 @@
 #
 # Drift against the moving `beta`/`dev` channels is tracked separately and is
 # non-blocking: see .github/workflows/upstream-canary.yml.
-esphome==2026.6.2
+esphome==2026.7.0
