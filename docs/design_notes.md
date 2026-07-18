@@ -373,6 +373,19 @@ chain guards itself with an explicit `Phase` (`IDLE`/`READING`/`VERIFYING`),
 which is `RawPurpose::CLOCK_*` moved out of the shared lane and made local to
 its only user.
 
+**The Phase guard creates a recovery obligation, and it was violated once.**
+`tick()` refuses to start while `phase_ != IDLE`, and — unlike polled entities
+— nothing ever re-queues the clock, so *every* path that ends a clock
+transaction without a `handle_response()` must notify `handle_error()` /
+`handle_write_error()` (whose whole job is resetting the phase). The engine
+error path always did; the hub's **response-address-mismatch drop** in
+`on_response_()` did not — it cleared `read_queued_`/`write_in_flight_` and
+returned, so one crossed response during `READING`/`VERIFYING` wedged
+`phase_` permanently and time sync died silently until reboot (2026-07 audit
+finding, fixed the same week: the mismatch path now notifies exactly as
+`on_error_()` does). The rule for any future completion path: clearing the
+bookkeeping flags is not enough — the entity must hear about it.
+
 **The API is deliberately not the deque subset.** `reserve()` is **one-shot**
 (a second call is rejected, `reserve(0)` permanently initializes an unused
 lane; a *failed* allocation leaves it uninitialized so `setup()` can
@@ -467,28 +480,43 @@ implausible years (`< 1990`) so an all-zero slot doesn't decode as year 0. The
 `error_history` text sensor emits `"<label> (0x<code>) @ YYYY-MM-DD HH:MM:SS"`,
 falling back to code-only when the timestamp is empty/invalid.
 
-**Error history is catalog-driven, not a single hardcoded address.** A unit may
-not keep its fault log at `0x7507` at all: VScotHO1_72 exposes its log as the
-per-slot datapoints `FehlerHisFA01..20` at `0x7590..0x763B` (9 bytes each) and
-has **no** event at `0x7507`. `gen_catalog.py` therefore emits one
-`error_history` entity per `FehlerHis*` slot at its own address — `FA01` →
-"Letzter Fehler", `FA02..20` → "Fehler NN" (disabled by default) — all under
-`entity_category: diagnostic`. When such per-slot datapoints exist they are
-authoritative and the generic `ecnsysEventType~Error` / `0x7507` slot is
-**suppressed**, so there is exactly one "Letzter Fehler". The `codes:` map is
-selected with `--error-code-set` from `scripts/fault_codes.py` (the single
-source of truth: `openv` (41 codes), `vd200` (59), `vd300` (94, the Vitodens
-300-W B3HA = VScotHO1_72 set and the **default**), or `union` (105, all merged,
+**Error history is catalog-driven, and a unit can carry TWO DIFFERENT
+archives — not two addresses for one.** An earlier revision of this section
+claimed VScotHO1_72 "has no event at `0x7507`" and crowned `FehlerHisFA01`
+"Letzter Fehler"; on hardware that read the **wrong archive**, and the claim
+is retracted (see `gen_catalog.py::_is_error_history`, which records the
+correction). The current, hardware-confirmed picture on VScotHO1_72:
+
+- `ecnsysEventType~Error` at **`0x7507`** is the Vitotronic **system** fault
+  history — BlockLength 90 / BlockFactor 10, i.e. ten 9-byte slots at
+  `base + i*stride`, slot 1 newest ("Letzter Fehler", enabled; slots 2..10
+  disabled). This is the log the Bedienteil shows and vcontrold's
+  `getError0..9` read, and the one the `--error-code-set` map applies to.
+- `FehlerHisFA01..20` at **`0x7590..0x763B`** is the **Feuerungsautomat (GFA
+  burner control unit)** history — a different subsystem with a different code
+  space (`GFA_Kennung` @ `0x7650`; K38 is `KonfiFehlerByteGFA`). Emitted as
+  "GFA Fehler NN", all disabled by default, with **no** Vitotronic code map
+  attached.
+
+`gen_catalog.py` emits both when the export carries both, all under
+`entity_category: diagnostic`; a genuinely distinct **second system archive**
+on the same unit (e.g. the Vitotwin's `0x7000` SW02 archive) gets a
+name/seed tag so the two do not collide. The `codes:` map is selected with
+`--error-code-set` from `scripts/fault_codes.py` (the single source of truth:
+`openv` (41 codes), `vd200` (59), `vd300` (94, the Vitodens 300-W B3HA =
+VScotHO1_72 set and the **default**), or `union` (105, all merged,
 most-specific manual wins); openv-vs-VD200 disagreements are kept in
 `fault_codes.CONFLICTS`, not overwritten — see `NOTICE.md`). It maps
-the display-Stoerungscode space (byte[0]) only, not the GFA byte (`0x5738`), the
-LON alarm record, or the self-describing sensor-status enums.
+the display-Stoerungscode space (byte[0]) of the **system** archive only — not
+the GFA slots above, the GFA byte (`0x5738`), the LON alarm record, or the
+self-describing sensor-status enums.
 
-> **Hardware caveat (unresolved).** A **9-byte block read** per slot (the
-> `FehlerHis*` addresses above, or a block at `0x7507` on units that use it) is a
-> different transaction than the per-byte reads that NAKed on the reference unit,
-> and is how Viessmann2MQTT reads it — but it must be confirmed on the actual
-> unit. If the device NAKs the block read, drop `length:` to 1 for a code-only
+> **Hardware status.** The 9-byte slot read of the system archive is
+> **hardware-confirmed** on the reference unit (slot 1 @ `0x7507`, newest
+> first). Slot reads of the GFA archive at `0x7590..` are **model-derived** —
+> the layout comes from the export and the KW/P300 read shape is the same
+> proven 9-byte transaction, but nobody has confirmed a GFA slot on this unit
+> yet. If a device NAKs a slot read, drop `length:` to 1 for a code-only
 > sensor.
 
 ---

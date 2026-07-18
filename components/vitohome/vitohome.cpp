@@ -780,11 +780,13 @@ void VitoHomeComponent::raw_publish_(const std::string &line) {
 }
 
 // ---------------------------------------------------------------------------
-// System-time sync (rides the raw lane)
+// Engine callbacks: response / error routing
 // ---------------------------------------------------------------------------
-// The now()-using bodies are compiled only when a time source is configured
-// (-DVITOHOME_TIME_SYNC, set by to_code when time_id is present), so a build
-// without time sync pulls in no dependency on the time component.
+// Every completed engine transaction lands here and is routed to its owner:
+// the identification state machine, the raw scan-console lane, or the
+// in-flight entity (which since the NTP refactor includes VitoClock -- system
+// time sync is an ordinary entity on the read/write lanes, not a raw-lane
+// rider).
 
 void VitoHomeComponent::on_response_(const ResponseView &response, uint16_t request_address) {
   if (this->ident_in_flight_) {
@@ -834,12 +836,26 @@ void VitoHomeComponent::on_response_(const ResponseView &response, uint16_t requ
     ESP_LOGW(TAG, "Response address 0x%04X does not match in-flight 0x%04X; dropping", response.address,
              expected_address);
 
-    // Clear only the state belonging to this operation. If a newer write was
-    // queued while an older one was in flight, write_queued_ remains set.
+    // Clear only the state belonging to this operation (if a newer write was
+    // queued while an older one was in flight, write_queued_ remains set) and
+    // notify the entity exactly as on_error_ does for the same operation. The
+    // notification is not optional: a drop without it left VitoClock wedged
+    // permanently -- its tick() refuses to start while phase_ != IDLE and,
+    // unlike polled entities, nothing ever re-queues it -- so one crossed
+    // response during READING/VERIFYING silently killed time sync until
+    // reboot. handle_error() is VitoClock's designed recovery hook (it resets
+    // the phase), and for streak-tracking entities (sensor/number) a dropped
+    // read is a failed read, same as a timeout. ERROR matches the raw lane's
+    // mismatch path above; the specific code is advisory (no handler branches
+    // on it). Link health is unaffected either way: link_note_alive_() already
+    // ran for this frame in the onResponse callback, which is correct -- a
+    // checksum-valid, mis-addressed frame still proves the peer answers.
     if (operation == OpType::READ) {
       entity->read_queued_ = false;
+      entity->handle_error(optolink::OptolinkResult::ERROR);
     } else if (operation == OpType::WRITE) {
       entity->write_in_flight_ = false;
+      entity->handle_write_error(optolink::OptolinkResult::ERROR);
     }
 
     return;

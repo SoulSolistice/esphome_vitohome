@@ -100,12 +100,15 @@ vitohome:
   uart_id: uart_optolink
   protocol: P300
   update_interval: 30s          # raw ops are independent of this tick
-  # REQUIRED FOR SWEEPS. The hub default is 8 slots -- enough for clock sync
-  # (which needs exactly 1) and one-off READ-NOW / RAW WRITE presses, but NOT
-  # for the RANGE SWEEP below, which enqueues `count` reads in one burst from a
-  # Home Assistant action. The lane drains at ~4-5 ops/s over 4800 baud, so a
-  # sweep fills it far faster than it empties; anything past capacity is
-  # dropped with a "raw queue full (n/n); dropping read 0x...." warning.
+  # REQUIRED. The hub default is 0 slots -- the scan console is opt-in, and
+  # nothing else uses this lane (system-time sync is a VitoClock entity on the
+  # ordinary read/write lanes, not a raw-lane rider). Without this option every
+  # READ-NOW / RAW WRITE press and the RANGE SWEEP below would be rejected at
+  # runtime. The sweep is also why the value is large: it enqueues `count`
+  # reads in one burst from a Home Assistant action, and the lane drains at
+  # only ~4-5 ops/s over 4800 baud, so it fills far faster than it empties;
+  # anything past capacity is dropped with a "raw queue full (n/n); dropping
+  # read 0x...." warning.
   #
   # 256 slots x sizeof(RawOp) (38 B) = ~9.7 KiB. That is the price of sweeping,
   # which is why it is opt-in here rather than charged to every config. Size it

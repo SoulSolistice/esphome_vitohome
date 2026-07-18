@@ -35,7 +35,8 @@ CONFIG_SCHEMA = cv.All(
     .extend(
         {
             cv.GenerateID(CONF_VITOCONNECT_ID): cv.use_id(VitoHomeComponent),
-            # The newest-fault slot (FA01), e.g. 0x7507 on the B3HA.
+            # The newest-fault slot: slot 1 of the system archive, 0x7507 on
+            # the B3HA (not a FehlerHisFA* GFA slot -- different code space).
             cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
             # Slot layout is code byte + 8-byte BCD timestamp; only the code
             # byte drives events, but reading the full slot (default 9) keeps

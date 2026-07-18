@@ -235,10 +235,13 @@ _CULTURES = {
 # datapoints at these addresses are suppressed when --device-id is on.
 _IDENT_ADDRESSES = (0x00F8, 0x00F9, 0x00FA, 0x00FB)
 
-# Canonical Vitotronic error-history block address (10 slots x 9 bytes at 0x7507,
-# slot index at 0x7561). Used as a fallback only; per-slot FehlerHis* tokens take
-# precedence (see _is_error_history) because some units (e.g. VScotHO1_72) carry
-# their fault log at FehlerHisFA01..20 (0x7590..0x763B) and have NO 0x7507 event.
+# Canonical Vitotronic SYSTEM error-history block address (10 slots x 9 bytes at
+# 0x7507, slot index at 0x7561). Used as an address FALLBACK for exports whose
+# system archive carries no recognizable token. NOT an either/or with the
+# FehlerHis* tokens: those are the GFA burner-control archive, a different
+# subsystem, and a unit can carry both (VScotHO1_72 does; 0x7507 is
+# hardware-confirmed there). See _is_error_history for the full correction of
+# the earlier no-0x7507 claim, and _error_history_entries for emission rules.
 _ERROR_HISTORY_ADDRESS = 0x7507
 
 # Fault-code maps (OPENV / VITOTRONIC_VD200 / UNION) and the openv-vs-VD200

@@ -11,8 +11,10 @@
 
 namespace esphome::vitohome {
 
-// Fault-event entity: polls a fault-history slot (typically FA01, the newest
-// fault, e.g. 0x7507 on the B3HA: code byte + 8-byte BCD timestamp) and fires
+// Fault-event entity: polls a fault-history slot (typically slot 1 of the
+// Vitotronic SYSTEM archive -- the newest fault, 0x7507 on the B3HA: code byte
+// + 8-byte BCD timestamp; NOT the FehlerHisFA* GFA burner archive, whose codes
+// live in a different space -- see design_notes.md SS7) and fires
 // a Home Assistant event when the code CHANGES -- a new fault fires its hex
 // code ("0x10"), a cleared slot fires "cleared", a code outside the
 // configured set fires "unknown" with the raw value in the log. This lands in

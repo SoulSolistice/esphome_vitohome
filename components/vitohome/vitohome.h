@@ -200,10 +200,13 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   // Queue a one-off read or write to an arbitrary address.
   //
-  // A SCAN item at the front of the shared raw FIFO is dispatched after
-  // identification and before normal writes. CLOCK_* items are dispatched
-  // after user writes. Because this is one FIFO, a scan item cannot overtake a
-  // clock item already ahead of it.
+  // These feed the interactive scan console's raw lane, which since the NTP
+  // refactor has exactly one tenant: scan operations. (Device-clock sync used
+  // to share this FIFO behind a purpose tag; it is now a VitoClock entity on
+  // the ordinary read/write lanes -- see vito_clock.h.) The front raw item is
+  // dispatched after identification and ahead of user writes and polls: the
+  // console is a human waiting at a button, and the lane is empty unless
+  // someone is actively scanning.
   //
   // Results are logged and published to every scan_result text sensor.
   void queue_raw_read(uint16_t address, uint8_t length);
@@ -380,19 +383,15 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   int ident_hw_{-1};
   int ident_sw_{-1};
 
-  // --- raw scan console and clock lane --------------------------------------
+  // --- raw scan console lane -------------------------------------------------
   //
   // The raw lane contains complete inline operations and has exactly one item
-  // in flight at a time. It carries both interactive scan-console operations
-  // and background device-clock synchronization.
-  //
-  // Priority is determined by the FRONT item's purpose:
-  //
-  //   * SCAN at front: after identification, before user writes;
-  //   * CLOCK_* at front: after user writes, before normal reads.
-  //
-  // This preserves FIFO order. A SCAN item behind CLOCK_* cannot overtake it.
-  // True purpose-wide priority would require separate scan and clock queues.
+  // in flight at a time. Its single tenant is the interactive scan console
+  // (queue_raw_read / queue_raw_write). Device-clock synchronization used to
+  // share this FIFO behind a RawPurpose tag; since the NTP refactor it is a
+  // VitoClock entity on the ordinary read/write lanes (vito_clock.h), so this
+  // lane needs no per-item arbitration: the front raw item simply preempts
+  // user writes and polls (dispatch_next_ has the rationale).
   //
   // Write payloads are stored inline. Protocol engines serialize the payload
   // synchronously into their own packet buffer during write(), so queued bytes

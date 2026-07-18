@@ -68,6 +68,11 @@ A `converter:` is one of several ways a value is read. The full set:
 | `text_sensor` `type: enum` | raw value mapped to a label | `options`, `byte_offset`, `byte_length` |
 | `text_sensor` `type: device_id` | the device identification string | (none) |
 | `text` | 8-byte-per-day switching-time program, read/write as a canonical `"HH:MM-HH:MM ..."` string | `address`, `read_back` |
+| `select` | raw value mapped to a label, writable | `options`, `address`, `state_address`, `byte_offset`, `byte_length` |
+| `switch` | boolean register, writable | `on_value` / `off_value`, `on_values`, `address`, `state_address`, `byte_offset`, `byte_length` |
+| `binary_sensor` `type: connectivity` | hub-fed Optolink link state, no address | (none) |
+| `event` | fault-code slot; fires an HA event on code change | `address`, `length`, `codes` |
+| `button` | force-refresh: marks all datapoints due | (none) |
 
 ### Aligned field extraction (`byte_offset` / `byte_length`)
 
@@ -96,8 +101,10 @@ So a 2-byte `div10` room-setpoint at offset 12 of a 22-byte block is:
   converter: div10
 ```
 
-The block read must stay within the P300 single-telegram cap (37 bytes); a
-field in a larger block, or wider than 4 bytes, can't be a scalar extract.
+The block read must stay within `MAX_P300_READ_LENGTH` (48 bytes -- the
+attempt ceiling; a 42-byte read is hardware-proven, see the constant's note in
+`components/vitohome/__init__.py`); a field in a larger block, or wider than
+4 bytes, can't be a scalar extract.
 `scripts/gen_catalog.py` emits this form automatically for interior fields.
 
 A writable `select`, `switch` or `number` supports the same extraction on its
@@ -116,11 +123,6 @@ The read-only `text_sensor` `type: enum` supports the same extraction with no
 write side at all: `address` is simply the block base, `length` the block
 read, and the enum field the `byte_length` bytes at `byte_offset` matched
 against `options`.
-| `select` | raw value mapped to a label, writable | `options`, `address`, `state_address`, `byte_offset`, `byte_length` |
-| `switch` | boolean register, writable | `on_value` / `off_value`, `on_values`, `address`, `state_address`, `byte_offset`, `byte_length` |
-| `binary_sensor` `type: connectivity` | hub-fed Optolink link state, no address | (none) |
-| `event` | fault-code slot; fires an HA event on code change | `address`, `length`, `codes` |
-| `button` | force-refresh: marks all datapoints due | (none) |
 
 **ASCII** (`type: ascii`): each raw byte is one character. A NUL byte
 terminates the string, trailing spaces are trimmed, and any non-printable byte
