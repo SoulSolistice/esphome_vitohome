@@ -102,15 +102,17 @@ class VitoClock : public VitoEntityBase {
   bool wants_polling() const override { return false; }
 
  protected:
-  // Which step of the chain a read response belongs to. A verify read-back
-  // arrives through the same handle_response() as the initial read, so without
-  // this the compare would run again and could write again, forever.
+  // Which step of the chain the entity is in. A verify read-back arrives
+  // through the same handle_response() as the initial read, so without this the
+  // compare would run again and could write again, forever.
   //
   // This is not new state: it is RawPurpose::CLOCK_{READ,WRITE,VERIFY} moved
-  // out of the shared raw lane and made local to the only thing that used it.
+  // out of the shared raw lane and made local to the only thing that used it --
+  // the three tags map one-to-one onto READING/WRITING/VERIFYING.
   enum class Phase : uint8_t {
     IDLE,       // no chain in flight
     READING,    // initial read dispatched; response drives the drift compare
+    WRITING,    // clock write dispatched; awaiting the device ACK
     VERIFYING,  // write ACKed; the read-back confirms what the device stored
   };
 

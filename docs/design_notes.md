@@ -369,7 +369,8 @@ opts out of the poll rotation (`wants_polling() == false`) and pushes to the
 **head** of the read lane via `request_priority_read()` from its own schedule.
 And because the read lane cannot fill, a second sync could no longer be rejected
 by a full queue the way the depth-1 raw lane implicitly rejected it — so the
-chain guards itself with an explicit `Phase` (`IDLE`/`READING`/`VERIFYING`),
+chain guards itself with an explicit `Phase`
+(`IDLE`/`READING`/`WRITING`/`VERIFYING`),
 which is `RawPurpose::CLOCK_*` moved out of the shared lane and made local to
 its only user.
 
@@ -1067,9 +1068,12 @@ Two limits worth re-stating because they are recurring footguns:
   the compile). The second one is what the rest of this entry is about.
   - **What happened.** ESPHome 2026.5.0 shipped a native ESP-IDF toolchain
     that drives `idf.py`/CMake directly instead of wrapping PlatformIO,
-    opt-in alongside the existing default. ESPHome's `dev` channel has since
-    flipped the *default* from `platformio` to `esp-idf` (confirmed not yet
-    in `beta` or stable). That broke the `upstream-canary` workflow: under
+    opt-in alongside the existing default. That default has since flipped
+    from `platformio` to `esp-idf` — first on `dev`, and as of **2026.7.0
+    (this project's pinned version)** in stable too (verified in the installed
+    `esp32/__init__.py`: `CONF_TOOLCHAIN` defaults to `Toolchain.ESP_IDF`), so
+    the native toolchain is now what an unpinned config gets. The flip first
+    broke the `upstream-canary` workflow on `dev`: under
     the native toolchain, our vendored optolink engine's `file://`
     PlatformIO-library registration
     (`components/vitohome/__init__.py::to_code`) gets routed through
@@ -1079,10 +1083,12 @@ Two limits worth re-stating because they are recurring footguns:
     tries (and fails) to `git clone` a local directory.
   - **Two separate, complementary fixes, not one.**
     (1) `tests/test.esp32-idf.yaml` / `tests/test.esp32-arduino.yaml` pin
-    `toolchain: platformio` explicitly — a no-op against the pinned build
-    and `beta` (both already default to it), and it restores the working
-    path on `dev`. This makes the canary test what this project actually
-    ships, not an unrelated upstream default change.
+    `toolchain: platformio` explicitly. As of 2026.7.0 this is no longer a
+    no-op: the default is now `esp-idf`, so the pin actively selects the
+    PlatformIO path this project ships and validates against rather than
+    tracking the upstream default. (Before 2026.7.0 it matched the default;
+    the flip is what made it load-bearing.) This keeps the canary testing
+    what this project ships, not an unrelated upstream default change.
     (2) `esp32.toolchain: esp-idf` is *also* now genuinely supported, not
     just avoided — `to_code` has a toolchain-conditional branch:
     `esp32.add_idf_component(name="optolink", path=optolink_dir)` (writing a
@@ -1099,9 +1105,11 @@ Two limits worth re-stating because they are recurring footguns:
     manifests at all). One real bug was caught building this, not just
     anticipated: the project-wide `-I<component_dir>` flag that makes
     `#include "optolink/optolink.h"` resolve is silently dropped under the
-    native toolchain (`build_gen/espidf.py::get_project_cmakelists`, pinned
-    2026.6.2, only propagates `-D`/`-W` flags project-wide), so
-    `optolink/CMakeLists.txt` exposes its own parent directory via
+    native toolchain (`build_gen/espidf.py::get_project_cmakelists` emits only
+    the flags `framework_helpers.py::get_project_compile_flags` returns — `-D`
+    defines and non-`-Wl,` `-W` warnings, re-verified on 2026.7.0; `-I` is
+    filtered out), so `optolink/CMakeLists.txt` exposes its own parent
+    directory via
     `INCLUDE_DIRS ".."` instead — "main" already implicitly `REQUIRES`
     optolink via the `path:` dependency, and ESP-IDF auto-propagates a
     required component's public `INCLUDE_DIRS` to the requiring component.
@@ -1111,18 +1119,25 @@ Two limits worth re-stating because they are recurring footguns:
     `toolchain: esp-idf`, each ending in "Successfully compiled program."
     with real `firmware.factory.bin` output, not just codegen succeeding.
     Reproducible with `esphome compile tests/test.esp32-idf-native.yaml`.
-    Neither has been run on real hardware, and nothing selects
-    `toolchain: esp-idf` in any shipped config today — treat "compiles
-    cleanly" as exactly that claim. `esp32.add_idf_component(path=...)` has
+    Neither has been run on real hardware — treat "compiles cleanly" as
+    exactly that claim. (As of 2026.7.0 the native toolchain is the default,
+    so an unpinned deployment *does* use this path, and it is compiled on
+    every push by the `compile-idf-native` CI job below — but CI is still not
+    hardware.) `esp32.add_idf_component(path=...)` has
     no other call site anywhere in ESPHome's own component tree as of this
     writing (every other user of that function passes `name=`/`ref=` for a
     registry or git component) — the mechanism is real, documented ESP-IDF
     functionality and now proven by two clean builds here, but this project
     is among the first to exercise this exact path inside ESPHome's codegen.
-  - **Not wired into any CI workflow.** `tests/test.esp32-idf-native.yaml`
-    is manual/local-only for now. If/when `esp32.toolchain: esp-idf`
-    actually reaches a real ESPHome release, that's the point to decide
-    whether it also becomes a real CI leg.
+  - **Now a CI job.** `esp32.toolchain: esp-idf` reached stable in 2026.7.0
+    (as the default), so `tests/test.esp32-idf-native.yaml` is compiled on
+    every push by the `compile-idf-native` job in `ci.yml`. It is a dedicated
+    job rather than a `compile`-matrix leg because the native toolchain does
+    not use PlatformIO: it caches its SDK under `~/.cache/esphome/idf` (the
+    `compile` matrix keys its cache on `~/.platformio`, which is empty here).
+    The SDK download is several GB on a cold cache, so the cache key is the
+    ESPHome pin (`requirements.txt`), matching the matrix's pattern. Still
+    local-friendly via `esphome compile tests/test.esp32-idf-native.yaml`.
   - **Not yet filed upstream.** No existing esphome/esphome issue for the
     `file://`-as-git gap was found when checked. The surrounding module is
     under active development — a closely related git-ref bug in the same

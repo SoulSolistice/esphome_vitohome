@@ -150,3 +150,44 @@ jobs:
 
       - name: Compile
         run: esphome compile tests/${{ matrix.config }}
+
+  compile-idf-native:
+    # The native ESP-IDF toolchain (esp32.toolchain: esp-idf) -- the DEFAULT as
+    # of ESPHome 2026.7.0, and the path an unpinned deployment now uses. The
+    # `compile` matrix above pins toolchain: platformio, so nothing there
+    # exercises this build system. A dedicated job rather than a matrix leg
+    # because it does NOT use PlatformIO: it drives idf.py/CMake directly and
+    # caches its SDK under ~/.cache/esphome/idf, so the matrix's ~/.platformio
+    # cache key does not apply. See design_notes.md §11.
+    name: test.esp32-idf-native.yaml
+    runs-on: ubuntu-latest
+    needs: [lint, unit, native]   # same gate as `compile`: don't fetch the IDF SDK for code that won't lint
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Cache ESP-IDF toolchain
+        uses: actions/cache@v6
+        with:
+          # ESPHome installs the ESP-IDF SDK + tools here for the native
+          # toolchain (espidf/framework.py::get_idf_tools_path -> platformdirs
+          # user cache / "idf"). Several GB uncompressed; keyed on the ESPHome
+          # pin so a new pin (which may want a new IDF) re-fetches, matching the
+          # `compile` matrix's cache pattern.
+          path: ~/.cache/esphome/idf
+          key: idf-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            idf-${{ runner.os }}-
+
+      - name: Install ESPHome
+        run: pip install -r requirements.txt
+
+      - name: Validate config
+        run: esphome config tests/test.esp32-idf-native.yaml
+
+      - name: Compile
+        run: esphome compile tests/test.esp32-idf-native.yaml

@@ -6,22 +6,20 @@ substitutions:
 
 esp32:
   board: esp32dev
-  # Pin the PlatformIO toolchain explicitly (matches the current default on
-  # every ESPHome release channel this project supports today: pinned
-  # 2026.6.2, beta). ESPHome's `dev` channel has switched the ESP32 default
-  # to `esp-idf`, and (until the toolchain-conditional registration in
-  # components/vitohome/__init__.py::to_code) that toolchain's
-  # PlatformIO-library-to-IDF-component converter
-  # (esphome/platformio/library.py::convert_libraries) treated ANY non-empty
-  # `cg.add_library(..., repository)` as a git remote and tried to
-  # `git clone` it -- including our vendored optolink engine's `file://`
-  # local-path library, which isn't its own git repo and so failed with
-  # "does not appear to be a git repository". This pin makes the canary test
-  # what this project actually ships (the PlatformIO toolchain) rather than
-  # an unrelated, not-yet-shipped upstream default change. See
-  # design_notes.md §11 for the full writeup, including the separate,
-  # already-implemented support for esp32.toolchain: esp-idf
-  # (tests/test.esp32-idf-native.yaml).
+  # Pin the PlatformIO toolchain explicitly. As of ESPHome 2026.7.0 (this
+  # project's pin) the ESP32 default is `esp-idf`, so this pin now DIVERGES
+  # from the default on purpose: it selects the PlatformIO build this project
+  # actually ships and validates against. (The native `esp-idf` toolchain is
+  # covered separately by tests/test.esp32-idf-native.yaml.) The pin also
+  # keeps the upstream-canary meaningful: without it, under the native
+  # toolchain the PlatformIO-library-to-IDF-component converter
+  # (esphome/platformio/library.py::convert_libraries) treats ANY non-empty
+  # `cg.add_library(..., repository)` as a git remote and tries to
+  # `git clone` it -- including the vendored optolink engine's `file://`
+  # local-path library, which isn't its own git repo and failed with
+  # "does not appear to be a git repository" before the toolchain-conditional
+  # registration in components/vitohome/__init__.py::to_code landed. See
+  # design_notes.md §11 for the full writeup.
   toolchain: platformio
   framework:
     type: esp-idf

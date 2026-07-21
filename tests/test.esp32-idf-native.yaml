@@ -8,14 +8,15 @@ esp32:
   board: esp32dev
   # The native ESP-IDF toolchain (esp32.toolchain: esp-idf), not to be
   # confused with esp32.framework.type: esp-idf which every other test config
-  # already uses. This is the not-yet-default build system introduced in
-  # ESPHome 2026.5.0 that drives idf.py/CMake directly instead of wrapping
-  # PlatformIO -- see design_notes.md SS11 for the full writeup, including why
-  # the vendored optolink engine needed its own CMakeLists.txt to work under
-  # it. Not wired into ci.yml or upstream-canary.yml: this validates that the
-  # forward-proofing compiles, on the pinned ESPHome version, in a sandbox --
-  # it has not been run on real hardware, and this toolchain isn't anything a
-  # deployed device uses today. Run manually with `esphome compile
+  # already uses. This is the build system introduced in ESPHome 2026.5.0
+  # that drives idf.py/CMake directly instead of wrapping PlatformIO; as of
+  # 2026.7.0 (this project's pin) it is the DEFAULT, so an unpinned deployment
+  # uses this path -- see design_notes.md SS11 for the full writeup, including
+  # why the vendored optolink engine needed its own CMakeLists.txt to work
+  # under it. Compiled on every push by the `compile-idf-native` job in
+  # ci.yml (a dedicated job, since this toolchain caches its SDK under
+  # ~/.cache/esphome/idf rather than ~/.platformio). Not yet run on real
+  # hardware. Run locally with `esphome compile
   # tests/test.esp32-idf-native.yaml` after touching anything under
   # components/vitohome/optolink/ or the toolchain branch in
   # components/vitohome/__init__.py::to_code.

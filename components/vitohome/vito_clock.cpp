@@ -92,6 +92,15 @@ void VitoClock::handle_response(const ResponseView &response) {
       this->handle_read_(response);
       return;
 
+    case Phase::WRITING:
+      // Awaiting the write ACK (handle_write_response) / error
+      // (handle_write_error), not a read response. The hub is single-in-flight
+      // and the in-flight op here is the write, so a read response in this
+      // phase is anomalous; ignore it rather than comparing off an unsolicited
+      // read.
+      ESP_LOGD(TAG, "System-time sync: read response while awaiting write ACK, ignoring");
+      return;
+
     case Phase::VERIFYING:
       this->handle_verify_(response);
       return;
@@ -107,8 +116,9 @@ void VitoClock::handle_response(const ResponseView &response) {
 }
 
 void VitoClock::handle_read_(const ResponseView &response) {
-  // The compare is finished with this read either way; only a successful write
-  // request re-arms the chain into VERIFYING.
+  // The compare is finished with this read; drop to IDLE so any early return
+  // below (no drift, unreadable source, encode/queue failure) leaves the chain
+  // cleanly idle. A successful write re-arms it into WRITING at the end.
   this->phase_ = Phase::IDLE;
 
   if (this->time_source_ == nullptr)
@@ -175,15 +185,22 @@ void VitoClock::handle_read_(const ResponseView &response) {
     return;
   }
 
-  // The chain continues in handle_write_response() once the device ACKs.
+  // Re-arm into WRITING now that the write is queued. Until the device ACKs
+  // (handle_write_response -> VERIFYING) the chain is still in flight, so a
+  // tick() landing in this window must not start a second read of the same
+  // datapoint -- the phase guard in tick() blocks that only while phase_ is
+  // non-IDLE, which before this was not the case here. request_write() merely
+  // enqueues; the ACK arrives later through the engine callback, so there is
+  // no reentrancy. The chain continues in handle_write_response().
+  this->phase_ = Phase::WRITING;
 }
 
 void VitoClock::handle_write_response(const ResponseView & /*response*/) {
   ESP_LOGI(TAG, "System-time sync: device clock set; reading back to confirm");
 
-  // Arm the verify BEFORE returning: the hub enqueues the read-back
-  // (wants_read_back()) immediately after this call returns, so the phase must
-  // already be VERIFYING when that response lands.
+  // WRITING -> VERIFYING. Arm the verify BEFORE returning: the hub enqueues the
+  // read-back (wants_read_back()) immediately after this call returns, so the
+  // phase must already be VERIFYING when that response lands.
   this->phase_ = Phase::VERIFYING;
 }
 
