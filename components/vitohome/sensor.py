@@ -9,7 +9,7 @@ from . import (
     CONF_CONVERTER,
     CONF_LENGTH,
     CONF_SIGNED,
-    CONF_VITOCONNECT_ID,
+    CONF_VITOHOME_ID,
     CONVERTERS,
     MAX_P300_READ_LENGTH,
     VitoHomeComponent,
@@ -87,7 +87,7 @@ CONFIG_SCHEMA = cv.All(
     sensor.sensor_schema(VitoSensor)
     .extend(
         {
-            cv.GenerateID(CONF_VITOCONNECT_ID): cv.use_id(VitoHomeComponent),
+            cv.GenerateID(CONF_VITOHOME_ID): cv.use_id(VitoHomeComponent),
             cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
             cv.Required(CONF_LENGTH): cv.positive_int,
             cv.Optional(CONF_CONVERTER, default="noconv"): cv.enum(CONVERTERS, lower=True),
@@ -105,7 +105,7 @@ CONFIG_SCHEMA = cv.All(
 
 
 async def to_code(config):
-    parent = await cg.get_variable(config[CONF_VITOCONNECT_ID])
+    parent = await cg.get_variable(config[CONF_VITOHOME_ID])
     # Pop the reserved update_interval BEFORE register_component: it would
     # otherwise emit set_update_interval(), a PollingComponent method our
     # passive entities don't have. The hub drives polling; we keep this only as

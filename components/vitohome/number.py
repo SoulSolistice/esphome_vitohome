@@ -11,7 +11,7 @@ from . import (
     CONF_READ_BACK,
     CONF_SIGNED,
     CONF_STATE_ADDRESS,
-    CONF_VITOCONNECT_ID,
+    CONF_VITOHOME_ID,
     CONVERTERS,
     MAX_P300_READ_LENGTH,
     VitoHomeComponent,
@@ -123,7 +123,7 @@ CONFIG_SCHEMA = cv.All(
     number.number_schema(VitoNumber)
     .extend(
         {
-            cv.GenerateID(CONF_VITOCONNECT_ID): cv.use_id(VitoHomeComponent),
+            cv.GenerateID(CONF_VITOHOME_ID): cv.use_id(VitoHomeComponent),
             cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
             cv.Optional(CONF_STATE_ADDRESS): cv.hex_uint16_t,
             cv.Optional(CONF_LENGTH, default=1): cv.positive_int,
@@ -146,7 +146,7 @@ CONFIG_SCHEMA = cv.All(
 
 
 async def to_code(config):
-    parent = await cg.get_variable(config[CONF_VITOCONNECT_ID])
+    parent = await cg.get_variable(config[CONF_VITOHOME_ID])
     # See sensor.py: pop the reserved update_interval before register_component.
     poll_interval = config.pop(CONF_UPDATE_INTERVAL, None)
     var = await number.new_number(

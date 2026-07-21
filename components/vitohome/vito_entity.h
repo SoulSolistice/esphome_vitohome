@@ -13,13 +13,20 @@ class VitoHomeComponent;
 // errors back to the originating entity via its in-flight pointer. Concrete
 // subclasses translate raw Optolink payloads into ESPHome state publishes.
 //
-// Stage 2 additions:
+// Beyond the read path, the base also carries:
 //  * per-entity poll interval (0 = poll on every hub cycle), scheduled by
 //    the hub at hub-tick granularity;
 //  * a small write buffer + handle_write_response() hook for the encode
 //    path (number/select). Entities fill write_buf_/write_len_ and call
 //    VitoHomeComponent::request_write(this); the hub owns bus arbitration.
 class VitoEntityBase {
+  // Hub-side bookkeeping (the fields in the private section below) is the
+  // "invariant coupling" case in ESPHome's component guidelines: it is the
+  // hub's queue-state machine, not entity state, so it lives private to this
+  // base and is reachable only by the one class that owns it. The forward
+  // declaration is at file scope above.
+  friend class VitoHomeComponent;
+
  public:
   virtual ~VitoEntityBase() = default;
 
@@ -57,18 +64,6 @@ class VitoEntityBase {
   // rotation: it still counts toward the lane sizing at setup() and still
   // receives responses and errors like any other.
   virtual bool wants_polling() const { return true; }
-
-  // Hub-side bookkeeping (only the hub touches these).
-  uint32_t next_due_ms_{0};
-  bool read_queued_{false};
-  // write_queued_ means "sitting in the hub write_queue_, awaiting dispatch";
-  // write_in_flight_ means "dispatched to the engine, awaiting ACK/error". They
-  // are deliberately independent: a value changed while a write is in flight
-  // must be able to re-enqueue (write_queued_ = true) even though the entity is
-  // still in flight, so the newest value is transmitted once the in-flight
-  // transaction completes. Conflating them silently drops the newer write.
-  bool write_queued_{false};
-  bool write_in_flight_{false};
 
   // --- read path ------------------------------------------------------------
   // Called by the component on a successful read response. Packet length and
@@ -133,6 +128,23 @@ class VitoEntityBase {
   uint8_t write_len_{0};
   bool read_back_{true};
   uint32_t poll_interval_ms_{0};
+
+ private:
+  // Hub-side bookkeeping. Private, not public: only VitoHomeComponent (the
+  // friend above) reads or writes these -- they are the hub's queue-state
+  // machine, not entity state, and a subclass touching them would corrupt lane
+  // arbitration. The poll scheduler sees next_due_ms_ only as a by-value
+  // argument the hub passes to poll_schedule_step().
+  uint32_t next_due_ms_{0};
+  bool read_queued_{false};
+  // write_queued_ means "sitting in the hub write_queue_, awaiting dispatch";
+  // write_in_flight_ means "dispatched to the engine, awaiting ACK/error". They
+  // are deliberately independent: a value changed while a write is in flight
+  // must be able to re-enqueue (write_queued_ = true) even though the entity is
+  // still in flight, so the newest value is transmitted once the in-flight
+  // transaction completes. Conflating them silently drops the newer write.
+  bool write_queued_{false};
+  bool write_in_flight_{false};
 };
 
 }  // namespace esphome::vitohome

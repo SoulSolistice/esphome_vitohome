@@ -7,7 +7,7 @@ from . import (
     CONF_BYTE_LENGTH,
     CONF_BYTE_OFFSET,
     CONF_LENGTH,
-    CONF_VITOCONNECT_ID,
+    CONF_VITOHOME_ID,
     MAX_P300_READ_LENGTH,
     VitoHomeComponent,
     datapoint_expression,
@@ -134,7 +134,7 @@ def _validate_code_bytes(config):
 
 
 _BASE = {
-    cv.GenerateID(CONF_VITOCONNECT_ID): cv.use_id(VitoHomeComponent),
+    cv.GenerateID(CONF_VITOHOME_ID): cv.use_id(VitoHomeComponent),
 }
 
 
@@ -235,7 +235,7 @@ CONFIG_SCHEMA = cv.typed_schema(
 
 
 async def to_code(config):
-    parent = await cg.get_variable(config[CONF_VITOCONNECT_ID])
+    parent = await cg.get_variable(config[CONF_VITOHOME_ID])
     # See sensor.py: pop the reserved update_interval before register_component.
     # (device_id has no such key, so this is a no-op there.)
     poll_interval = config.pop(CONF_UPDATE_INTERVAL, None)

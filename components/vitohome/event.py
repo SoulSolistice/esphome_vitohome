@@ -3,7 +3,7 @@ from esphome.components import event
 import esphome.config_validation as cv
 from esphome.const import CONF_ADDRESS, CONF_NAME, CONF_UPDATE_INTERVAL
 
-from . import CONF_LENGTH, CONF_VITOCONNECT_ID, VitoHomeComponent, datapoint_expression, validate_length_in, vitohome_ns
+from . import CONF_LENGTH, CONF_VITOHOME_ID, VitoHomeComponent, datapoint_expression, validate_length_in, vitohome_ns
 
 DEPENDENCIES = ["vitohome"]
 
@@ -34,7 +34,7 @@ CONFIG_SCHEMA = cv.All(
     event.event_schema(VitoEvent)
     .extend(
         {
-            cv.GenerateID(CONF_VITOCONNECT_ID): cv.use_id(VitoHomeComponent),
+            cv.GenerateID(CONF_VITOHOME_ID): cv.use_id(VitoHomeComponent),
             # The newest-fault slot: slot 1 of the system archive, 0x7507 on
             # the B3HA (not a FehlerHisFA* GFA slot -- different code space).
             cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
@@ -52,7 +52,7 @@ CONFIG_SCHEMA = cv.All(
 
 
 async def to_code(config):
-    parent = await cg.get_variable(config[CONF_VITOCONNECT_ID])
+    parent = await cg.get_variable(config[CONF_VITOHOME_ID])
     # See sensor.py: pop the reserved update_interval before register_component.
     poll_interval = config.pop(CONF_UPDATE_INTERVAL, None)
 

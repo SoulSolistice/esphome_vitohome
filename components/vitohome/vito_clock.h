@@ -53,7 +53,7 @@ namespace esphome::vitohome {
 // pushes to the HEAD of the read lane from its own schedule, preserving the
 // original ordering. Writes already preempt reads, so the write step needs
 // nothing special.
-class VitoClock : public VitoEntityBase {
+class VitoClock final : public VitoEntityBase {
  public:
   // NRF_Uhrzeit~0x088E: the Vitotronic-family clock, and the schema default.
   // Overridable per device -- see set_config(). Kept as a named constant so the

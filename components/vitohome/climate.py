@@ -11,7 +11,7 @@ from esphome.const import (
     CONF_VISUAL,
 )
 
-from . import CONF_READ_BACK, CONF_STATE_ADDRESS, CONF_VITOCONNECT_ID, VitoHomeComponent, datapoint_expression, vitohome_ns
+from . import CONF_READ_BACK, CONF_STATE_ADDRESS, CONF_VITOHOME_ID, VitoHomeComponent, datapoint_expression, vitohome_ns
 
 DEPENDENCIES = ["vitohome"]
 
@@ -104,7 +104,7 @@ CONFIG_SCHEMA = cv.All(
     climate.climate_schema(VitoClimate)
     .extend(
         {
-            cv.GenerateID(CONF_VITOCONNECT_ID): cv.use_id(VitoHomeComponent),
+            cv.GenerateID(CONF_VITOHOME_ID): cv.use_id(VitoHomeComponent),
             cv.Required(CONF_TARGET_ADDRESS): cv.hex_uint16_t,
             cv.Optional(CONF_OPERATING_MODE): OPERATING_MODE_SCHEMA,
             cv.Optional(CONF_UPDATE_INTERVAL): cv.update_interval,
@@ -121,7 +121,7 @@ def _read_init(values):
 
 
 async def to_code(config):
-    parent = await cg.get_variable(config[CONF_VITOCONNECT_ID])
+    parent = await cg.get_variable(config[CONF_VITOHOME_ID])
     # See sensor.py: pop the reserved update_interval before register_component.
     poll_interval = config.pop(CONF_UPDATE_INTERVAL, None)
     var = await climate.new_climate(config)

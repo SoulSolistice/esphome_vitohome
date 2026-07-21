@@ -9,7 +9,7 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 #pragma once
 
-#include <cassert>
+#include <cstdlib>  // abort()
 
 #include "serial_interface.h"
 

@@ -69,7 +69,6 @@ void GWGEngine::loop() {
       // begin() not yet called
       break;
   }
-  // double timeout to accomodate for connection initialization
   if (_busy && _currentMillis - _requestTime > REQUEST_TIMEOUT_MS) {
     _setState(State::INIT);
     _tryOnError(OptolinkResult::TIMEOUT);

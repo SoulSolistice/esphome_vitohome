@@ -2,7 +2,7 @@ import esphome.codegen as cg
 from esphome.components import button
 import esphome.config_validation as cv
 
-from . import CONF_VITOCONNECT_ID, VitoHomeComponent, vitohome_ns
+from . import CONF_VITOHOME_ID, VitoHomeComponent, vitohome_ns
 
 DEPENDENCIES = ["vitohome"]
 
@@ -21,7 +21,7 @@ CONFIG_SCHEMA = (
     )
     .extend(
         {
-            cv.GenerateID(CONF_VITOCONNECT_ID): cv.use_id(VitoHomeComponent),
+            cv.GenerateID(CONF_VITOHOME_ID): cv.use_id(VitoHomeComponent),
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
@@ -29,7 +29,7 @@ CONFIG_SCHEMA = (
 
 
 async def to_code(config):
-    parent = await cg.get_variable(config[CONF_VITOCONNECT_ID])
+    parent = await cg.get_variable(config[CONF_VITOHOME_ID])
     var = await button.new_button(config)
     await cg.register_component(var, config)
     cg.add(var.set_vitohome_parent(parent))

@@ -15,6 +15,7 @@ timeouts are lifted to named constexpr members (values unchanged).
 
 #pragma once
 
+#include <cassert>
 #include <functional>
 
 #include "../../constants.h"

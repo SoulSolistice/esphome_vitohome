@@ -107,9 +107,9 @@ jobs:
           - test.esp32-idf.yaml       # P300 / esp-idf
           # Each remaining protocol once (esp-idf, the modern default): the
           # protocol axis stresses that engine's translation units + the
-          # ProtocolAdapter branch + the -DVITOHOME_PROTOCOL_* flow through
+          # protocol_select.h #if chain + the -DVITOHOME_PROTOCOL_* flow through
           # ESPHome's build. UNTESTED on hardware -- this is a compile gate only.
-          # (The host `native` job already proves these adapter branches
+          # (The host `native` job already proves these engine branches
           # compile/link; this builds them end-to-end through ESPHome.)
           - test.esp32-idf-gwg.yaml   # GWG  / esp-idf
           - test.esp32-idf-kw.yaml    # KW   / esp-idf  (beyond P300+GWG; drop if leaner CI wanted)

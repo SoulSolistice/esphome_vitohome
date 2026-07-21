@@ -6,7 +6,7 @@ from esphome.const import CONF_ADDRESS, CONF_NAME, CONF_UPDATE_INTERVAL
 from . import (
     CONF_BYTE_OFFSET,
     CONF_LENGTH,
-    CONF_VITOCONNECT_ID,
+    CONF_VITOHOME_ID,
     MAX_P300_READ_LENGTH,
     VitoHomeComponent,
     datapoint_expression,
@@ -59,7 +59,7 @@ _CONNECTIVITY_SCHEMA = binary_sensor.binary_sensor_schema(
     entity_category="diagnostic",
 ).extend(
     {
-        cv.GenerateID(CONF_VITOCONNECT_ID): cv.use_id(VitoHomeComponent),
+        cv.GenerateID(CONF_VITOHOME_ID): cv.use_id(VitoHomeComponent),
     }
 )
 
@@ -67,7 +67,7 @@ _DATAPOINT_SCHEMA = cv.All(
     binary_sensor.binary_sensor_schema(VitoBinarySensor)
     .extend(
         {
-            cv.GenerateID(CONF_VITOCONNECT_ID): cv.use_id(VitoHomeComponent),
+            cv.GenerateID(CONF_VITOHOME_ID): cv.use_id(VitoHomeComponent),
             cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
             cv.Optional(CONF_LENGTH, default=1): cv.positive_int,
             cv.Optional(CONF_BYTE_OFFSET, default=0): cv.int_range(min=0, max=MAX_P300_READ_LENGTH - 1),
@@ -91,7 +91,7 @@ CONFIG_SCHEMA = cv.typed_schema(
 
 
 async def _connectivity_to_code(config):
-    parent = await cg.get_variable(config[CONF_VITOCONNECT_ID])
+    parent = await cg.get_variable(config[CONF_VITOHOME_ID])
     var = await binary_sensor.new_binary_sensor(config)
     cg.add(parent.register_link_sensor(var))
 
@@ -100,7 +100,7 @@ async def to_code(config):
     if config.get(CONF_TYPE) == "connectivity":
         await _connectivity_to_code(config)
         return
-    parent = await cg.get_variable(config[CONF_VITOCONNECT_ID])
+    parent = await cg.get_variable(config[CONF_VITOHOME_ID])
     # See sensor.py: pop the reserved update_interval before register_component
     # so it doesn't emit set_update_interval() on our passive entity.
     poll_interval = config.pop(CONF_UPDATE_INTERVAL, None)

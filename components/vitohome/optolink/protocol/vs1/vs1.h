@@ -16,6 +16,7 @@ constexpr members (values unchanged), including the two 50ms sync windows.
 #pragma once
 
 #include <array>
+#include <cassert>
 #include <functional>
 
 #include "../../constants.h"

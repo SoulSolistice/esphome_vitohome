@@ -65,6 +65,10 @@ uint8_t PacketGWG::length() const {
     return 0;
   if (_buffer[1] == PacketGWGType.READ)
     return 5;
+  // NOTE: uint8_t arithmetic -- wraps for a payload length >= 251.
+  // Unreachable today (the raw lane caps writes at 32 bytes; entity writes are
+  // <= 8), but a live trap if those caps are ever raised. Mirrors the same note
+  // on PacketVS1::length() (whose +4 wraps at >= 252).
   if (_buffer[1] == PacketGWGType.WRITE)
     return _buffer[3] + 5;
   return 0;  // should not be possible

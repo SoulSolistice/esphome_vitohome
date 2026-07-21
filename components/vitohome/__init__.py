@@ -1,18 +1,21 @@
 """ESPHome component for Viessmann Optolink (vendored optolink engine).
 
 P300 (VS2) is the validated protocol; KW (VS1) and GWG are build-time selectable
-through the same adapter but untested. Platforms: sensor, binary_sensor,
-text_sensor, number and select. The component decodes and encodes raw Optolink
-payloads itself (see ``decode.h``) and uses the in-tree optolink engine (under
+through the same engine template (protocol_select.h) but untested. Platforms:
+sensor, binary_sensor, text_sensor, number, select, switch, text, button,
+climate and event. The component decodes and encodes raw Optolink payloads
+itself (see ``decode.h``) and uses the in-tree optolink engine (under
 ``optolink/``) only as the wire/transport layer; the engine's converters are
 never exercised (every ``Datapoint`` is built with ``optolink::noconv`` and the
 raw-bytes write overload is used).
 
-Why decode in-component rather than via the engine's converters:
-  * ``optolink::VariantValue`` is a non-discriminated union, so reading the
-    wrong member silently returns garbage; and
-  * the engine does all converter math in float32, which loses precision for
-    4-byte counters (uint32 -> float drops bits above 2**24).
+Why the component decodes rather than using engine converters -- upstream ships
+a converter layer, but the vendored copy removed it (THIRD_PARTY.md 13/15)
+precisely because:
+  * its accessor returned a tagless union with no record of which member was
+    written, so reading the wrong member silently returned garbage; and
+  * it did all converter math in float32, which loses precision for 4-byte
+    counters (uint32 -> float drops bits above 2**24).
 ``decode.h`` extracts the integer in int64/uint64, scales in double, and only
 narrows the *final* value to the float32 ESPHome state requires.
 """
@@ -45,7 +48,7 @@ DEPENDENCIES = ["uart"]
 # guidelines for exactly this reason.
 MULTI_CONF = False
 
-CONF_VITOCONNECT_ID = "vitohome_id"
+CONF_VITOHOME_ID = "vitohome_id"
 CONF_PROTOCOL = "protocol"
 CONF_IDENTIFY_DEVICE = "identify_device"
 # Optional in-component Optolink frame logging (hub-level). See
@@ -127,7 +130,7 @@ vitohome_ns = cg.esphome_ns.namespace("vitohome")
 VitoHomeComponent = vitohome_ns.class_("VitoHomeComponent", cg.PollingComponent, uart.UARTDevice)
 
 # Selectable protocols. P300 (VS2) is the only one exercised on hardware; KW
-# (VS1) and GWG are wired through the same adapter but untested -- selecting
+# (VS1) and GWG build through the same engine template but untested -- selecting
 # either emits a warning at compile time. The value is the build-flag token
 # (P300/KW/GWG) that selects the engine via protocol_select.h.
 PROTOCOLS = {
@@ -153,8 +156,7 @@ class Converter:
     VitoWiFi at the pinned commit: ``Div2`` and ``Div10`` are signed (so a
     sub-zero temperature decodes correctly), everything else is unsigned.
 
-    Note (vs. Stage 1): because the component now decodes the payload itself,
-    these length sets are about what is *physically sensible and float32-safe
+    Note: because the component decodes the payload itself, these length sets are about what is *physically sensible and float32-safe
     after scaling*, not about VitoWiFi's internal asserts. The values that are
     still load-bearing are the per-``number`` encodable-range checks in
     ``number.py`` (a raw value that does not fit the byte width is rejected at
@@ -367,8 +369,9 @@ CONFIG_SCHEMA = cv.All(
             # Log every Optolink telegram (>>> TX / <<< RX) under the
             # 'vitohome.frames' tag. Compile-time: off costs nothing.
             cv.Optional(CONF_LOG_FRAMES, default=False): cv.boolean,
-            # Optional system-time sync: write the device clock (0x088E) from a
-            # time source when it drifts. Inert unless time_id is set.
+            # Optional system-time sync: write the device clock (default
+            # 0x088E, overridable via time_sync.clock_address) from a time
+            # source when it drifts. Inert unless time_id is set.
             cv.Optional(CONF_TIME_ID): cv.use_id(time_.RealTimeClock),
             cv.Optional(CONF_TIME_SYNC): TIME_SYNC_SCHEMA,
             # Capacity of the interactive scan console's lane. Each slot costs
@@ -447,7 +450,7 @@ def _entities_for_hub(full, domains, hub_id):
         for entity in full.get(domain, []):
             if entity.get("platform") != "vitohome":
                 continue
-            if entity.get(CONF_VITOCONNECT_ID) not in (None, hub_id):
+            if entity.get(CONF_VITOHOME_ID) not in (None, hub_id):
                 continue  # targets a different hub
             yield domain, entity
 
@@ -596,7 +599,7 @@ async def to_code(config):
     # -DVITOHOME_PROTOCOL_VS1 for `protocol: VS1`, a flag protocol_select.h does
     # not recognise -- so the VS1/VS2 aliases silently built the default P300
     # engine. Normalise through PROTOCOLS so the flag is always one of
-    # P300/KW/GWG, the tokens the adapter's #if chain actually checks.
+    # P300/KW/GWG, the tokens protocol_select.h's #if chain actually checks.
     protocol = PROTOCOLS[str(config[CONF_PROTOCOL])]
     cg.add_build_flag(f"-DVITOHOME_PROTOCOL_{protocol}")
     if protocol == "GWG":

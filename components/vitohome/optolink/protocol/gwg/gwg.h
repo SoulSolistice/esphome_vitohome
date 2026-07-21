@@ -20,6 +20,7 @@ that flag for the vcontrold/VS1 rationale.
 #pragma once
 
 #include <array>
+#include <cassert>
 #include <functional>
 
 #include "../../constants.h"

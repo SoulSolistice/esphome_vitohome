@@ -274,11 +274,12 @@ to propose upstream, so the workarounds could eventually be retired. The line
 
 ### B. `VariantValue` is a tagless union — wrong member reads silent garbage
 
-- **Limitation.** `VariantValue` (still present in the vendored
-  `datapoint/converter.h`) records nothing about which member was written, so
-  reading the wrong member returns whatever bit pattern is there rather than an
-  error, and choosing the right member requires the converter that produced it.
-  (Rationale and the canonical bug instance: `docs/design_notes.md` §1a.)
+- **Limitation.** Upstream's `VariantValue` (the tagless union its converter
+  `decode()`/`encode()` returned) records nothing about which member was
+  written, so reading the wrong member returns whatever bit pattern is there
+  rather than an error, and choosing the right member requires the converter
+  that produced it. (Rationale and the canonical bug instance:
+  `docs/design_notes.md` §1a.)
 - **Upstream proposal.** Tag the union (store which member is active) and have
   accessors check the tag, or return `std::optional<T>` / an explicit type enum
   alongside the value, so "read as the wrong type" becomes a detectable error.

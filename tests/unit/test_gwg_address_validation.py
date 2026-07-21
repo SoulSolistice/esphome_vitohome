@@ -34,7 +34,7 @@ import esphome.config_validation as cv  # noqa: E402
 from esphome.const import CONF_ID, CONF_NAME  # noqa: E402
 import esphome.final_validate as fv  # noqa: E402
 
-from components.vitohome import CONF_PROTOCOL, CONF_VITOCONNECT_ID, _final_validate  # noqa: E402
+from components.vitohome import CONF_PROTOCOL, CONF_VITOHOME_ID, _final_validate  # noqa: E402
 
 _HUB_ID = "vito_test_hub"
 
@@ -54,7 +54,7 @@ def _validate(protocol: str, full_config: dict):
 
 
 def _entity(domain_extra: dict, name: str = "dp") -> dict:
-    entity = {"platform": "vitohome", CONF_NAME: name, CONF_VITOCONNECT_ID: _HUB_ID}
+    entity = {"platform": "vitohome", CONF_NAME: name, CONF_VITOHOME_ID: _HUB_ID}
     entity.update(domain_extra)
     return entity
 
@@ -159,7 +159,7 @@ def test_p300_accepts_16bit_addresses():
 
 def test_gwg_ignores_entities_bound_to_another_hub():
     other = _entity({"address": 0x7507})
-    other[CONF_VITOCONNECT_ID] = "some_other_hub"
+    other[CONF_VITOHOME_ID] = "some_other_hub"
     full = {"event": [other]}
     _validate("GWG", full)  # acceptance == does not raise (return is discarded by ESPHome)
 

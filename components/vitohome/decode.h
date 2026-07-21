@@ -11,7 +11,7 @@ namespace esphome::vitohome {
 // be unit-tested on the host without the optolink engine or ESPHome headers
 // (tests/native/test_decode.cpp).
 //
-// Why this file exists (Stage 2): the optolink engine's converters decode through a
+// Why this file exists: the optolink engine's converters decode through a
 // non-discriminated union and do their math in float32, which silently loses
 // precision for 4-byte counters (uint32 -> float drops bits above 2^24; a
 // burner-seconds counter of ~212,000,000 is already past that). vitohome
@@ -21,7 +21,7 @@ namespace esphome::vitohome {
 // small (hours, degrees, percent), so the final narrowing is harmless.
 
 // ---------------------------------------------------------------------------
-// bit/byte extraction (Stage 1, unchanged)
+// bit/byte extraction
 // ---------------------------------------------------------------------------
 
 // Returns false (and leaves *out untouched) if byte_offset is out of range.
@@ -34,7 +34,7 @@ inline bool decode_masked_bit(const uint8_t *data, std::size_t data_len, uint8_t
 }
 
 // ---------------------------------------------------------------------------
-// numeric decode/encode (Stage 2)
+// numeric decode/encode
 // ---------------------------------------------------------------------------
 
 // Optolink payloads are little-endian (verified against the optolink engine
@@ -141,7 +141,7 @@ inline bool encode_scaled(double value, double scale, bool is_signed, uint8_t le
 }
 
 // ---------------------------------------------------------------------------
-// BCD / DateTimeBCD (Stage 2 — error history, full date)
+// BCD / DateTimeBCD (error history, full date)
 // ---------------------------------------------------------------------------
 
 // Decode one packed-BCD byte (0x25 -> 25). Returns false on a non-BCD nibble
