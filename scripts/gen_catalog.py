@@ -396,7 +396,7 @@ def _find_dpdefinitions(data_dir):
         for f in files
         if re.match(r"DPDefinitions.*\.xml$", f, re.IGNORECASE)
     ]
-    return sorted(hits)[0] if hits else None
+    return min(hits) if hits else None
 
 
 # --- text / unit resolution ------------------------------------------------
@@ -793,7 +793,7 @@ class Catalog:
                 pool = [below[-1]]
                 why = "software-index floor (SW beyond catalog ranges; latest revision)"
             else:
-                pool = [sorted(cand, key=lambda t: sw_range(t)[0])[0]]
+                pool = [min(cand, key=lambda t: sw_range(t)[0])]
                 why = "lowest software index (SW below catalog ranges)"
 
         f0_aware = [t for t in pool if t["f0"] is not None]
@@ -1227,8 +1227,10 @@ def emit_entity(ev: Event, profile: str):
         return (
             "comment",
             [
-                f"# {name} @ 0x{addr:04X}: WRITE-ONLY register (Vitosoft AccessMode 'Write');"
-                " a trigger with no read-back -> not auto-emitted."
+                (
+                    f"# {name} @ 0x{addr:04X}: WRITE-ONLY register (Vitosoft AccessMode 'Write');"
+                    " a trigger with no read-back -> not auto-emitted."
+                )
             ],
         )
 
@@ -1332,9 +1334,11 @@ def emit_entity(ev: Event, profile: str):
         return (
             "comment",
             [
-                f"# {name} @ 0x{addr:04X}: {field_width}-byte field at BytePosition {field_off} of a "
-                f"{block_len}-byte block -- cannot be expressed as an aligned block read "
-                f"(block > {MAX_P300_READ_LENGTH} bytes, or field > 4 bytes)"
+                (
+                    f"# {name} @ 0x{addr:04X}: {field_width}-byte field at BytePosition {field_off} of a "
+                    f"{block_len}-byte block -- cannot be expressed as an aligned block read "
+                    f"(block > {MAX_P300_READ_LENGTH} bytes, or field > 4 bytes)"
+                )
             ],
         )
     addr_line = f"  address: 0x{addr:04X}"
@@ -1398,8 +1402,10 @@ def emit_entity(ev: Event, profile: str):
             return (
                 "comment",
                 [
-                    f"# {name} @ 0x{addr:04X}: ascii field of {length} bytes at BytePosition {field_off} "
-                    f"of a {block_len}-byte block -- block read exceeds {MAX_TEXT_BLOCK_LENGTH} bytes"
+                    (
+                        f"# {name} @ 0x{addr:04X}: ascii field of {length} bytes at BytePosition {field_off} "
+                        f"of a {block_len}-byte block -- block read exceeds {MAX_TEXT_BLOCK_LENGTH} bytes"
+                    )
                 ],
             )
         str_lines.append("  entity_category: diagnostic")
@@ -1420,8 +1426,10 @@ def emit_entity(ev: Event, profile: str):
             return (
                 "comment",
                 [
-                    f"# {name} @ 0x{addr:04X}: utf16 field of {length} bytes at BytePosition {field_off} "
-                    f"of a {block_len}-byte block -- block read exceeds {MAX_TEXT_BLOCK_LENGTH} bytes"
+                    (
+                        f"# {name} @ 0x{addr:04X}: utf16 field of {length} bytes at BytePosition {field_off} "
+                        f"of a {block_len}-byte block -- block read exceeds {MAX_TEXT_BLOCK_LENGTH} bytes"
+                    )
                 ],
             )
         if field_off:
@@ -1455,8 +1463,10 @@ def emit_entity(ev: Event, profile: str):
             return (
                 "comment",
                 [
-                    f"# {name} @ 0x{addr:04X}: RotateBytes (big-endian) at {length} bytes is not"
-                    " decodable by the component (rotatebytes supports 2) -> custom decode"
+                    (
+                        f"# {name} @ 0x{addr:04X}: RotateBytes (big-endian) at {length} bytes is not"
+                        " decodable by the component (rotatebytes supports 2) -> custom decode"
+                    )
                 ],
             )
         if writable:
@@ -1638,9 +1648,11 @@ def emit_entity(ev: Event, profile: str):
             return (
                 "comment",
                 [
-                    f"# {name} @ 0x{addr:04X}: BitPosition {bit_pos} implies byte {byte_off} but the "
-                    f"export declares BytePosition {ev.byte_position} -- contradictory, needs hardware "
-                    f"confirmation before it can be emitted"
+                    (
+                        f"# {name} @ 0x{addr:04X}: BitPosition {bit_pos} implies byte {byte_off} but the "
+                        f"export declares BytePosition {ev.byte_position} -- contradictory, needs hardware "
+                        f"confirmation before it can be emitted"
+                    )
                 ],
             )
         # binary_sensor reads a block at the block base and indexes byte_offset
@@ -1650,8 +1662,10 @@ def emit_entity(ev: Event, profile: str):
             return (
                 "comment",
                 [
-                    f"# {name} @ 0x{addr:04X}: bit {bit_pos} of a {block_len}-byte block "
-                    f"(byte {byte_off}) exceeds binary_sensor length/offset limits -> custom handling"
+                    (
+                        f"# {name} @ 0x{addr:04X}: bit {bit_pos} of a {block_len}-byte block "
+                        f"(byte {byte_off}) exceeds binary_sensor length/offset limits -> custom handling"
+                    )
                 ],
             )
         lines += [

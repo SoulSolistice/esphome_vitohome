@@ -64,6 +64,7 @@ ignore = [
   "PLR0912", # too many branches
   "PLR0913", # too many arguments to function call
   "PLR0915", # too many statements
+  "PLR0917", # too many positional arguments (positional variant of PLR0913)
   "PLW1641", # object does not implement `__hash__`
   "PLR2004", # magic value used in comparison
   "PLW2901", # loop variable overwritten by inner target
