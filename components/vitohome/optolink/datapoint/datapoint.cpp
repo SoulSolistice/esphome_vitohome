@@ -11,9 +11,10 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 namespace esphome::vitohome::optolink {
 
-Datapoint::Datapoint(const char *name, uint16_t address, uint8_t length, const Converter &converter)
-    : _name(name), _address(address), _length(length), _converter(&converter) {
-  // empty
+Datapoint::Datapoint(const char *name, uint16_t address, uint8_t length, const Converter & /*converter*/)
+    : _name(name), _address(address), _length(length) {
+  // The Converter tag is accepted for signature/codegen stability but not
+  // stored; decode/encode happens in the component (decode.h), not the engine.
 }
 
 const char *Datapoint::name() const { return _name; }

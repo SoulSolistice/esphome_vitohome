@@ -9,8 +9,7 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 #pragma once
 
-#include <cstdlib>  // abort()
-
+#include "../helpers.h"  // optolink_abort()
 #include "serial_interface.h"
 
 namespace esphome::vitohome::optolink {
@@ -20,7 +19,11 @@ template<class C> class GenericInterface : public SerialInterface {
  public:
   explicit GenericInterface(C *interface) : _interface(interface) {
     if (!interface) {
-      abort();
+      // Same single abort hook the engines use (helpers.h). A null interface is
+      // a construction-time programmer error, not a runtime condition, and is
+      // unreachable here: the interface is always the address of a
+      // VitoHomeComponent member.
+      optolink_abort();
     }
   }
   bool begin() override { return _interface->begin(); }

@@ -231,10 +231,6 @@ def converter_default_signed(name: str) -> bool:
     return CONVERTERS[name].default_signed
 
 
-def converter_lengths(name: str) -> tuple:
-    return CONVERTERS[name].lengths
-
-
 # Widest BLOCK READ this component will issue in one telegram.
 #
 # EVIDENCE. A 42-byte read succeeds on P300 (VScotHO1_72, 2026-07-10):

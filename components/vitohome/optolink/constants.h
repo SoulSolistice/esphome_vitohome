@@ -44,7 +44,11 @@ constexpr struct {
 // this protocol. ERROR is malformed traffic (an invalid length/type/function
 // code after a start byte) -- possibly line noise -- and proves neither.
 // Callers that derive link health from results must not conflate the two.
-enum class OptolinkResult { CONTINUE, PACKET, TIMEOUT, LENGTH, NACK, CRC, ERROR, DEVICE_ERROR };
+// PACKET was an upstream parser-progress value that never surfaced as a result
+// here and had no references anywhere; removed. CONTINUE is retained: it is
+// never produced at runtime, but proof_vs2_guards.cpp uses it as a "no error
+// observed yet" sentinel. The live parser-progress enum is ParserResult (below).
+enum class OptolinkResult { CONTINUE, TIMEOUT, LENGTH, NACK, CRC, ERROR, DEVICE_ERROR };
 
 const char *errorToString(OptolinkResult error);
 

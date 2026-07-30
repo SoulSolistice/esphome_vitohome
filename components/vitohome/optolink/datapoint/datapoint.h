@@ -18,8 +18,10 @@ namespace esphome::vitohome::optolink {
 class Datapoint {
  public:
   // The Converter argument is a vestigial tag (always `noconv`; see
-  // converter.h) -- stored but never read. Kept so the constructor signature
-  // and the Python codegen that emits it stay stable.
+  // converter.h). It is accepted but neither stored nor read -- the constructor
+  // signature and the Python codegen that emits it stay stable (and diverge
+  // minimally from upstream), while the component decodes/encodes raw payloads
+  // itself in decode.h.
   Datapoint(const char *name, uint16_t address, uint8_t length, const Converter &converter);
 
   const char *name() const;
@@ -30,7 +32,6 @@ class Datapoint {
   const char *_name;
   uint16_t _address;
   uint8_t _length;
-  const Converter *_converter;
 };
 
 }  // namespace esphome::vitohome::optolink
