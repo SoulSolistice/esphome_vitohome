@@ -719,17 +719,23 @@ void VitoHomeComponent::queue_raw_read(uint16_t address, uint8_t length) {
   this->enqueue_raw_(address, length, false, nullptr, 0);
 }
 
-void VitoHomeComponent::queue_raw_write(uint16_t address, const std::vector<uint8_t> &bytes) {
+void VitoHomeComponent::queue_raw_write(uint16_t address, const uint8_t *data, std::size_t len) {
   // The 32-byte cap also keeps packet-length arithmetic safe: the VS2 length
   // byte is 0x05 + len and the VS1 frame length is payload + 4. See the packet
   // implementations before raising this cap.
-  if (bytes.empty() || bytes.size() > RAW_WRITE_MAX) {
-    ESP_LOGW(TAG, "queue_raw_write: %zu bytes out of range (1..%u)", bytes.size(), RAW_WRITE_MAX);
+  if (data == nullptr || len == 0 || len > RAW_WRITE_MAX) {
+    ESP_LOGW(TAG, "queue_raw_write: %zu bytes out of range (1..%u)", len, RAW_WRITE_MAX);
     return;
   }
 
-  this->enqueue_raw_(address, static_cast<uint8_t>(bytes.size()), true, bytes.data(),
-                     static_cast<uint8_t>(bytes.size()));
+  this->enqueue_raw_(address, static_cast<uint8_t>(len), true, data, static_cast<uint8_t>(len));
+}
+
+void VitoHomeComponent::queue_raw_write(uint16_t address, const std::vector<uint8_t> &bytes) {
+  // Ergonomic overload for callers that already hold a vector (e.g. a lambda's
+  // braced-init-list). Forwards to the pointer/length form so both share one
+  // validation-and-enqueue path.
+  this->queue_raw_write(address, bytes.data(), bytes.size());
 }
 
 bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes,
@@ -813,8 +819,11 @@ void VitoHomeComponent::raw_handle_error_(optolink::OptolinkResult error) {
   this->raw_publish_(buffer);
 }
 
-void VitoHomeComponent::raw_publish_(const std::string &line) {
+void VitoHomeComponent::raw_publish_(const char *line) {
 #ifdef USE_TEXT_SENSOR
+  // The callers all pass a fixed char buffer; publish_state(const char *)
+  // assigns into each sensor's reused state string, whereas a const std::string
+  // & parameter would construct (and heap-allocate) a std::string per call.
   for (auto *sensor : this->raw_result_sensors_) {
     if (sensor != nullptr)
       sensor->publish_state(line);

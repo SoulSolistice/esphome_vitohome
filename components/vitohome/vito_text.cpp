@@ -48,7 +48,10 @@ void VitoText::handle_response(const ResponseView &response) {
     return;
   }
   ESP_LOGD(TAG, "%s = '%s'", this->datapoint_.name(), out);
-  this->publish_state(std::string(out));
+  // publish_state(const char *) assigns into the text sensor's reused state
+  // string; wrapping `out` in std::string(out) would force a fresh per-response
+  // heap allocation instead.
+  this->publish_state(out);
 }
 
 void VitoText::handle_write_response(const ResponseView & /*response*/) {

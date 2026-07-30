@@ -210,6 +210,10 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   //
   // Results are logged and published to every scan_result text sensor.
   void queue_raw_read(uint16_t address, uint8_t length);
+  // Two write overloads: the pointer/length form is the no-allocation path for
+  // callers holding a stack buffer; the vector form is the ergonomic one for
+  // lambdas building a braced-init-list, and forwards to the pointer form.
+  void queue_raw_write(uint16_t address, const uint8_t *data, std::size_t len);
   void queue_raw_write(uint16_t address, const std::vector<uint8_t> &bytes);
 
  protected:
@@ -274,7 +278,7 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   void raw_handle_response_(const ResponseView &response);
   void raw_handle_error_(optolink::OptolinkResult error);
-  void raw_publish_(const std::string &line);
+  void raw_publish_(const char *line);
 
   // Shared enqueue for the raw lane. bytes/bytes_len is the write payload and
   // must be nullptr/0 for a read. The payload is copied into RawOp, so queue
