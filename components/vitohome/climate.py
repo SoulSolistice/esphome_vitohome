@@ -84,18 +84,55 @@ OPERATING_MODE_SCHEMA = cv.Schema(
 
 
 def _validate_setpoint_range(config):
-    """The setpoint is encoded as a single unsigned degC byte
-    (vito_climate.cpp: static_cast<uint8_t>(lroundf(t))), so a negative clamp
-    bound would wrap to a large positive value on write. Viessmann room
-    setpoints are always >= 0, so reject a negative visual min_temperature at
-    config time rather than letting it wrap silently on the wire."""
+    """The setpoint is encoded as a single unsigned whole-degree degC byte
+    (vito_climate.cpp: static_cast<uint8_t>(lroundf(t)) after clamping the target
+    to [setpoint_min_, setpoint_max_]). The clamp bounds therefore have to be
+    whole numbers in 0..255, or they corrupt the setpoint on the wire:
+
+      * a negative bound wraps to a large positive value,
+      * a bound above 255 wraps low (e.g. 300 -> 300 & 0xFF == 44), and
+      * a fractional bound is silently truncated to a whole degree by the
+        ``int()`` in to_code() below, quietly moving the clamp.
+
+    Reject all three at config time rather than letting them reach the wire.
+    to_code()'s ``int()`` is lossless once this validator has run."""
     visual = config.get(CONF_VISUAL, {})
-    if CONF_MIN_TEMPERATURE in visual and float(visual[CONF_MIN_TEMPERATURE]) < 0:
+    bounds = {}
+    for key in (CONF_MIN_TEMPERATURE, CONF_MAX_TEMPERATURE):
+        if key not in visual:
+            continue
+        value = float(visual[key])
+        if value != int(value):
+            raise cv.Invalid(
+                f"visual.{key} must be a whole number of degrees: the vitohome "
+                "climate setpoint is written as an integer degC byte, so a "
+                "fractional bound would be silently truncated on the wire",
+                [CONF_VISUAL, key],
+            )
+        if value < 0:
+            raise cv.Invalid(
+                f"visual.{key} must be >= 0: the vitohome climate setpoint is "
+                "written as an unsigned degC byte, so a negative bound would wrap "
+                "to a large positive temperature on the wire",
+                [CONF_VISUAL, key],
+            )
+        if value > 255:
+            raise cv.Invalid(
+                f"visual.{key} must be <= 255: the vitohome climate setpoint is "
+                "written as an unsigned degC byte, so a bound above 255 would wrap "
+                "to a low temperature on the wire",
+                [CONF_VISUAL, key],
+            )
+        bounds[key] = value
+    if (
+        CONF_MIN_TEMPERATURE in bounds
+        and CONF_MAX_TEMPERATURE in bounds
+        and bounds[CONF_MIN_TEMPERATURE] > bounds[CONF_MAX_TEMPERATURE]
+    ):
         raise cv.Invalid(
-            "visual.min_temperature must be >= 0: the vitohome climate setpoint "
-            "is written as an unsigned degC byte, so a negative bound would wrap "
-            "to a large positive temperature on the wire",
-            [CONF_VISUAL, CONF_MIN_TEMPERATURE],
+            "visual.max_temperature must be >= visual.min_temperature: an "
+            "inverted setpoint clamp range would pin every target to one bound",
+            [CONF_VISUAL, CONF_MAX_TEMPERATURE],
         )
     return config
 

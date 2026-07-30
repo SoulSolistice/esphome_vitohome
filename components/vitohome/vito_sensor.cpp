@@ -35,7 +35,8 @@ void VitoSensor::handle_response(const ResponseView &response) {
     // extract_len_ bytes at the offset. The bound check is against the bytes
     // actually received, so a short response fail-softs instead of reading
     // past the end. Little-endian only: every extracted field in the Vitosoft
-    // data is LE (the big-endian RotateBytes converter never uses extraction).
+    // data is LE, and sensor.py rejects a big-endian converter combined with
+    // byte_offset, so a big-endian extracted field cannot reach this path.
     const uint16_t off = static_cast<uint16_t>(this->extract_byte_);
     ok = off + this->extract_len_ <= have &&
          decode_scaled(data + off, this->extract_len_, this->extract_len_, this->signed_, this->scale_, &value);

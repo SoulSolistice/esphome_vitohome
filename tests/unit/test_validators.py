@@ -25,6 +25,8 @@ if _REPO_ROOT not in sys.path:
 import esphome.config_validation as cv  # noqa: E402
 
 from components.vitohome import (  # noqa: E402
+    CONF_BYTE_LENGTH,
+    CONF_BYTE_OFFSET,
     CONF_CLOCK_ADDRESS,
     CONF_CONVERTER,
     CONF_LENGTH,
@@ -44,6 +46,7 @@ from components.vitohome import (  # noqa: E402
     resolve_signed,
     validate_converter_length,
 )
+from components.vitohome.sensor import _validate_converter_length_effective  # noqa: E402
 
 # --- converter registry ----------------------------------------------------
 
@@ -381,3 +384,31 @@ def test_datapoint_expression_uses_noconv_and_hex():
     assert "esphome::vitohome::optolink::noconv" in expr  # always bypass the engine converter
     assert "0x0802" in expr
     assert '\\"K\\"' in expr  # name escaping survived
+
+
+# --- F5: byte_offset extraction is little-endian only -----------------------
+#
+# vito_sensor.cpp's extraction branch decodes decode_scaled (LE) regardless of
+# big_endian_. A big-endian converter (rotatebytes) combined with byte_offset
+# passes the field-width check but would be silently mis-decoded, so the
+# validator rejects that combination.
+
+
+def test_byte_offset_rejects_big_endian_converter():
+    with pytest.raises(cv.Invalid):
+        _validate_converter_length_effective({CONF_CONVERTER: "rotatebytes", CONF_BYTE_OFFSET: 0, CONF_BYTE_LENGTH: 2})
+
+
+def test_byte_offset_accepts_little_endian_converter():
+    # A little-endian converter with a width it supports is unaffected.
+    cfg = {CONF_CONVERTER: "div10", CONF_BYTE_OFFSET: 1, CONF_BYTE_LENGTH: 2}
+    assert _validate_converter_length_effective(cfg) is cfg
+    # noconv (the default) at a single-byte offset stays valid too.
+    cfg2 = {CONF_CONVERTER: "noconv", CONF_BYTE_OFFSET: 3, CONF_BYTE_LENGTH: 1}
+    assert _validate_converter_length_effective(cfg2) is cfg2
+
+
+def test_byte_offset_still_rejects_bad_width_for_le_converter():
+    # The pre-existing field-width check is preserved: div1000 has no 1-byte form.
+    with pytest.raises(cv.Invalid):
+        _validate_converter_length_effective({CONF_CONVERTER: "div1000", CONF_BYTE_OFFSET: 0, CONF_BYTE_LENGTH: 1})

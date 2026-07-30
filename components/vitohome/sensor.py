@@ -71,6 +71,16 @@ def _validate_converter_length_effective(config):
     # normal converter-vs-length check.
     if CONF_BYTE_OFFSET in config:
         name = config[CONF_CONVERTER]
+        # The block-extraction path (vito_sensor.cpp) decodes the field
+        # little-endian only; a big-endian converter (rotatebytes) would be
+        # silently mis-decoded. Enforce the LE-only invariant that path relies on
+        # rather than letting the combination through to produce a wrong value.
+        if converter_big_endian(name):
+            raise cv.Invalid(
+                f"converter '{name}' is big-endian and cannot be combined with "
+                "byte_offset: the extracted field is decoded little-endian only",
+                path=[CONF_CONVERTER],
+            )
         allowed = CONVERTERS[name].lengths
         field_width = config.get(CONF_BYTE_LENGTH, 1)
         if field_width not in allowed:

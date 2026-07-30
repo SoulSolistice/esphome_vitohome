@@ -98,3 +98,31 @@ def test_absent_visual_block_allowed():
     # No visual block -> the to_code default (3) applies; nothing to reject.
     cfg = {}
     assert _validate_setpoint_range(cfg) is cfg
+
+
+def test_max_temperature_ceiling_rejected():
+    # Without the guard, 300 is written as 300 & 0xFF == 44 on the wire.
+    with pytest.raises(cv.Invalid, match="max_temperature must be <= 255"):
+        _validate_setpoint_range({CONF_VISUAL: {CONF_MAX_TEMPERATURE: 300}})
+    # 255 is the last representable byte value and must still pass.
+    ok = {CONF_VISUAL: {CONF_MAX_TEMPERATURE: 255}}
+    assert _validate_setpoint_range(ok) is ok
+
+
+def test_fractional_bound_rejected():
+    # int() in to_code would silently truncate 37.9 -> 37; reject up front.
+    with pytest.raises(cv.Invalid, match="whole number"):
+        _validate_setpoint_range({CONF_VISUAL: {CONF_MAX_TEMPERATURE: 37.9}})
+    with pytest.raises(cv.Invalid, match="whole number"):
+        _validate_setpoint_range({CONF_VISUAL: {CONF_MIN_TEMPERATURE: 3.5}})
+    # A float that is exactly a whole number is fine.
+    ok = {CONF_VISUAL: {CONF_MIN_TEMPERATURE: 3.0, CONF_MAX_TEMPERATURE: 37.0}}
+    assert _validate_setpoint_range(ok) is ok
+
+
+def test_inverted_range_rejected():
+    with pytest.raises(cv.Invalid, match="max_temperature must be >="):
+        _validate_setpoint_range({CONF_VISUAL: {CONF_MIN_TEMPERATURE: 40, CONF_MAX_TEMPERATURE: 37}})
+    # Equal bounds are a degenerate-but-legal single-value clamp.
+    ok = {CONF_VISUAL: {CONF_MIN_TEMPERATURE: 20, CONF_MAX_TEMPERATURE: 20}}
+    assert _validate_setpoint_range(ok) is ok
