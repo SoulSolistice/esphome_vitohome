@@ -45,6 +45,11 @@ g++ -std=c++17 -Wall -Wextra -Werror -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" 
   proof_gwg_read.cpp "${SRCS[@]}" -o gwg_read
 ./gwg_read
 
+echo "== GWG dispatch-stall discriminator (isBusy() permanent vs transient) =="
+g++ -std=c++17 -Wall -Wextra -Werror -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
+  proof_gwg_dispatch_stall.cpp "${SRCS[@]}" -o gwg_dispatch_stall
+./gwg_dispatch_stall
+
 echo "== VS1/KW write-ack completion (THIRD_PARTY.md #11 fix) =="
 g++ -std=c++17 -Wall -Wextra -Werror -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" -I"$OPTO" \
   proof_vs1_write.cpp "${SRCS[@]}" -o vs1_write

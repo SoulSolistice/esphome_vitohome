@@ -367,8 +367,25 @@ void VitoHomeComponent::dispatch_raw_front_() {
       dispatched = this->vito_->read(this->raw_dp_.address(), this->raw_dp_.length());
     }
 
-    if (!dispatched)
-      return false;
+    if (!dispatched) {
+      // read()/write() returning false is overloaded: transient backpressure
+      // (the engine is _busy with an in-flight transaction -- retry next loop)
+      // versus a permanent createPacket() rejection for this (address, length,
+      // type). The live permanent case is a raw op with a 16-bit address on a
+      // GWG device (PacketGWG rejects addr > 0xFF); every other createPacket
+      // failure mode is blocked by the schema and the RAW_*_MAX caps. Retaining
+      // the head on a permanent refusal stalls this lane forever, and because
+      // dispatch_next_() services the raw queue before the read/write lanes and
+      // returns, it silently freezes ALL bus traffic until reboot -- with
+      // nothing in flight for IN_FLIGHT_WATCHDOG_MS to catch. Distinguish the
+      // two with isBusy() and drop a permanently-refused op so the lane moves.
+      if (this->vito_->isBusy())
+        return false;  // transient: keep the item at the head and retry
+      ESP_LOGE(TAG, "Engine refused raw %s 0x%04X len %u (permanent); dropping", operation.is_write ? "write" : "read",
+               operation.address, operation.length);
+      this->raw_handle_error_(optolink::OptolinkResult::ERROR);
+      return true;  // permanent: drop so the read/write lanes are reached
+    }
 
     this->raw_write_len_ = operation.is_write ? operation.bytes_len : 0;
     this->raw_in_flight_ = true;
@@ -394,6 +411,14 @@ void VitoHomeComponent::dispatch_next_() {
 
       ESP_LOGV(TAG, "Dispatched identification read 0x%04X len %u", this->ident_dp_.address(),
                this->ident_dp_.length());
+    } else if (!this->vito_->isBusy()) {
+      // Permanent createPacket() rejection (unreachable: every ident address is
+      // <= 0x00FB). Without this, a permanent refusal would spin here forever
+      // before the raw/read/write lanes are reached, with nothing in flight for
+      // the watchdog. Advance the ident state machine exactly as the watchdog
+      // does on a lost callback, so identification degrades field-by-field.
+      ESP_LOGE(TAG, "Engine refused identification read 0x%04X (permanent); skipping", this->ident_dp_.address());
+      this->ident_handle_error_();
     }
 
     return;
@@ -424,7 +449,18 @@ void VitoHomeComponent::dispatch_next_() {
     }
 
     if (!this->vito_->write(entity->get_write_datapoint().address(), entity->write_data(), entity->write_length())) {
-      return false;
+      // Transient (_busy) versus a permanent createPacket() rejection. Config-
+      // declared write addresses/payloads are schema-validated, so the
+      // permanent case is unreachable today; this mirrors the raw-lane guard so
+      // the write lane can never spin on a permanent refusal. Drop it, clear
+      // write_queued_ so a fresh value can enqueue, and log loudly. No
+      // handle_write_error() here: some entities (VitoClock) re-queue on write
+      // error, which would re-add a permanently-refused item and churn.
+      if (this->vito_->isBusy())
+        return false;  // transient: retain at the head
+      ESP_LOGE(TAG, "Engine refused write for %s (permanent); dropping", entity->get_datapoint().name());
+      entity->write_queued_ = false;
+      return true;  // permanent: drop so the read lane is reached
     }
 
     this->in_flight_ = entity;
@@ -456,8 +492,17 @@ void VitoHomeComponent::dispatch_next_() {
 
     const optolink::Datapoint &datapoint = entity->get_datapoint();
 
-    if (!this->vito_->read(datapoint.address(), datapoint.length()))
-      return false;
+    if (!this->vito_->read(datapoint.address(), datapoint.length())) {
+      // See the write lane above: transient _busy retains, a permanent
+      // createPacket() rejection (unreachable for schema-validated poll
+      // addresses) is dropped so the lane cannot spin. read_queued_ is cleared
+      // so the poll scheduler can re-schedule it when next due.
+      if (this->vito_->isBusy())
+        return false;  // transient: retain at the head
+      ESP_LOGE(TAG, "Engine refused read for %s (permanent); dropping", entity->get_datapoint().name());
+      entity->read_queued_ = false;
+      return true;  // permanent: drop
+    }
 
     this->in_flight_ = entity;
     this->in_flight_op_ = OpType::READ;
