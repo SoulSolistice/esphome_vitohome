@@ -965,7 +965,7 @@ three states of the VS2 send machine, each issuing its own `write()` one `loop()
 apart. A single request reached the log as three lines.
 
 The 30 ms constant comes off the wire, not from taste. At 4800 8E2 a byte occupies
-11 bits = 2.29 ms. Measured on P300: the gap between the three TX pieces of one
+12 bits (1 start + 8 data + 1 even-parity + 2 stop) = 2.5 ms. Measured on P300: the gap between the three TX pieces of one
 telegram is 18–20 ms, while the gap between the master's ACK (`0x06`) and the next
 telegram's `PACKETSTART` is ~35 ms. 30 ms therefore joins a telegram and separates
 the ACK from it, and is still far below KW's ~2.2 s idle-sync cadence.
@@ -991,8 +991,8 @@ host C++ : engine / GWG compile-proofs    engine_compile_proof.cpp, proof_gwg_po
 host C++ : VS2 parser zero-payload (OOB)  tests/native/proof_vs2_zero_payload.cpp  (ASan/UBSan)
 python   : validators + catalog generator tests/unit/  (pytest)
 lint     : ruff check / ruff format
-format   : clang-format  (pinned v22.1.5)
-config   : esphome config   (both test YAMLs)
+format   : clang-format  (pinned v22.1.8)
+config   : esphome config   (all six CI wrappers under tests/)
 compile  : esphome compile  (esp-idf AND arduino)
 run      : esphome run       (real heater — the definitive gate)
 ```

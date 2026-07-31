@@ -549,14 +549,15 @@ async def to_code(config):
     # native compiles in this project's sandbox -- both esp32.framework.type:
     # esp-idf and : arduino, each ending in "Successfully compiled program."
     # with real firmware.factory.bin/firmware.ota.bin output, on the pinned
-    # ESPHome version (2026.6.2) -- not just codegen succeeding. One real bug
+    # ESPHome version (2026.7.0) -- not just codegen succeeding. One real bug
     # was caught and fixed in the process: see optolink/CMakeLists.txt's
     # ``INCLUDE_DIRS ".."`` note. Reproducible with
     # ``esphome compile tests/test.esp32-idf-native.yaml``. Still never run
-    # against real hardware, and nothing selects esp32.toolchain: esp-idf
-    # today -- this is forward-proofing for if/when that becomes the default,
-    # not a currently-exercised path. Re-run that test config after any
-    # change here or under optolink/ before relying on it again.
+    # against real hardware, but esp32.toolchain: esp-idf is now the DEFAULT
+    # (esp32/__init__.py defaults CONF_TOOLCHAIN to Toolchain.ESP_IDF), and the
+    # CI ``compile-idf-native`` job exercises this exact path on every push --
+    # so it is a live, gated path, not forward-proofing. Re-run that test config
+    # after any change here or under optolink/ before relying on it again.
     #
     # The ``-I`` flag puts the component dir on the include path so the
     # component's ``#include "optolink/optolink.h"`` (and the engine's header
@@ -565,7 +566,7 @@ async def to_code(config):
     # real native-toolchain compile failing on exactly this include with the
     # flag left unconditional. ESPHome's native-toolchain generator
     # (``build_gen/espidf.py::get_project_cmakelists``, pinned version
-    # 2026.6.2) filters ``CORE.build_flags`` down to flags starting with
+    # 2026.7.0) filters ``CORE.build_flags`` down to flags starting with
     # ``-D``/``-W`` before propagating them project-wide; a plain ``-I`` flag
     # is silently dropped, and "main"'s own generated
     # ``idf_component_register()`` hardcodes ``INCLUDE_DIRS "." "esphome"``

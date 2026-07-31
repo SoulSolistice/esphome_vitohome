@@ -21,7 +21,7 @@
 # empty. Checked against a real native-toolchain compile in this project's
 # sandbox validation: ESP-IDF's own compile-options propagation
 # (esphome/build_gen/espidf.py::get_project_cmakelists, pinned version
-# 2026.6.2) filters CORE.build_flags down to only "-D"/"-W" prefixed flags
+# 2026.7.0) filters CORE.build_flags down to only "-D"/"-W" prefixed flags
 # before emitting them project-wide -- the existing project-wide
 # ``-I<component_dir>`` flag from to_code() (which the platformio toolchain
 # uses to make "optolink/optolink.h" resolve) is silently dropped under the

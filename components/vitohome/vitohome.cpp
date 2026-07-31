@@ -667,8 +667,10 @@ void VitoHomeComponent::dump_config() {
   //
   // The clock is the one exception, and needs an explicit call: it is a
   // hub-owned VitoEntityBase, NOT a registered ESPHome component, so core's
-  // fan-out never reaches it. It is also the only entity in entities_ for which
-  // that is true, which is why this is one call and not a loop.
+  // fan-out never reaches it. The climate setpoint/mode channels are also
+  // hub-owned VitoEntityBase entities in entities_ that core's fan-out misses,
+  // but their dump_config() is empty; the clock is the only non-component
+  // entity with anything to print, which is why this is one call and not a loop.
 #ifdef VITOHOME_TIME_SYNC
   this->clock_.dump_config();
 #endif
