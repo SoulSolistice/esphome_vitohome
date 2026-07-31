@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "esphome/core/defines.h"
+#include "esphome/core/helpers.h"  // FixedVector
 
 #ifdef USE_BINARY_SENSOR
 #include "esphome/components/binary_sensor/binary_sensor.h"
@@ -67,6 +68,11 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   //
   // Out-of-line: it runs once per entity at boot, so nothing here is worth
   // inlining, and the diagnostic needs the TAG that lives in vitohome.cpp.
+  // Size the entity registry once, before any register_entity() call. The
+  // capacity is a codegen-computed upper bound on the runtime registration count
+  // (see __init__.py: _entity_capacity_upper_bound). Emitted from the hub's
+  // to_code(), so it runs ahead of every platform's register_entity() statement.
+  void reserve_entities(std::size_t capacity);
   void register_entity(VitoEntityBase *entity);
 
   // Force-refresh: mark every registered entity due on the next scheduler
@@ -308,7 +314,12 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   // Registration vectors are populated by code generation before setup().
   // Runtime queue sizing depends on entities_ being complete at setup time.
-  std::vector<VitoEntityBase *> entities_;
+  // Single-allocation entity registry: reserve_entities() (from codegen) calls
+  // init() once with an upper bound on the registration count, then
+  // register_entity() push_back()s into it. FixedVector never reallocates and
+  // never over-allocates via geometric growth (ESPHome container guidance,
+  // developers.esphome.io/contributing/code), so no shrink_to_fit() is needed.
+  FixedVector<VitoEntityBase *> entities_;
 
   // Latched by setup() the moment entities_.size() is sampled for reserve().
   // From then on entities_ is frozen: register_entity() refuses to grow it,

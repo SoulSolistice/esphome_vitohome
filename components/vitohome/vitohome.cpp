@@ -37,6 +37,8 @@ static const char *ident_family_name(uint16_t ident) {
   }
 }
 
+void VitoHomeComponent::reserve_entities(std::size_t capacity) { this->entities_.init(capacity); }
+
 void VitoHomeComponent::register_entity(VitoEntityBase *entity) {
   if (entity == nullptr)
     return;
@@ -49,6 +51,17 @@ void VitoHomeComponent::register_entity(VitoEntityBase *entity) {
   for (auto *registered : this->entities_) {
     if (registered == entity)
       return;
+  }
+
+  // reserve_entities() sized entities_ to a codegen upper bound on the
+  // registration count, so this must never be full. If it is, the codegen count
+  // undercounted -- FixedVector would silently drop the push_back and the entity
+  // would never poll, so fail loudly at boot instead.
+  if (this->entities_.full()) {
+    ESP_LOGE(TAG, "entity registry full (capacity %zu); '%s' dropped -- codegen entity count is wrong",
+             this->entities_.capacity(), entity->get_datapoint().name());
+    this->mark_failed();
+    return;
   }
 
   entity->set_vitohome_parent(this);
@@ -71,11 +84,6 @@ void VitoHomeComponent::setup() {
   // App.setup() reaches this component.
   this->register_entity(&this->clock_);
 #endif
-
-  // Registration is complete, so the entity vector is final: release the
-  // growth slack vector doubling left behind. (Non-binding, but every
-  // mainstream libstdc++/libc++ honors it, and the vector never grows again.)
-  this->entities_.shrink_to_fit();
 
   // Size the run-loop queues once, now that registration is complete. Each
   // lane makes exactly one element-storage allocation here and never

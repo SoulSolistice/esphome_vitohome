@@ -361,10 +361,10 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_PROTOCOL, default="P300"): cv.enum(PROTOCOLS, upper=True),
             # Default depends on the protocol (on for P300, off for KW/GWG,
             # whose boot identification scheme differs); resolved in to_code.
-            cv.Optional(CONF_IDENTIFY_DEVICE): cv.boolean,
+            cv.Optional(CONF_IDENTIFY_DEVICE, visibility=cv.Visibility.ADVANCED): cv.boolean,
             # Log every Optolink telegram (>>> TX / <<< RX) under the
             # 'vitohome.frames' tag. Compile-time: off costs nothing.
-            cv.Optional(CONF_LOG_FRAMES, default=False): cv.boolean,
+            cv.Optional(CONF_LOG_FRAMES, default=False, visibility=cv.Visibility.ADVANCED): cv.boolean,
             # Optional system-time sync: write the device clock (default
             # 0x088E, overridable via time_sync.clock_address) from a time
             # source when it drifts. Inert unless time_id is set.
@@ -387,7 +387,7 @@ CONFIG_SCHEMA = cv.All(
             # and the shipped sweep's count is a Home Assistant action parameter
             # chosen at runtime. An enqueue against an unallocated lane is
             # rejected with a warning naming this option.
-            cv.Optional(CONF_RAW_QUEUE_SIZE, default=0): cv.int_range(min=0, max=1024),
+            cv.Optional(CONF_RAW_QUEUE_SIZE, default=0, visibility=cv.Visibility.ADVANCED): cv.int_range(min=0, max=1024),
         }
     )
     .extend(cv.polling_component_schema("60s"))
@@ -451,6 +451,38 @@ def _entities_for_hub(full, domains, hub_id):
             yield domain, entity
 
 
+# Entity-registering platform domains: each vitohome entry in one of these
+# registers exactly one VitoEntityBase via register_entity(). (Connectivity
+# binary_sensors and device_id/scan_result text_sensors early-return onto the
+# link / device-id / raw-result lanes and never reach register_entity(); climate
+# is handled separately below because it contributes one or two channels.)
+_ENTITY_DOMAINS = ("sensor", "binary_sensor", "text_sensor", "number", "select", "switch", "text", "event")
+
+# Internal, codegen-only key: the entity-registry capacity computed by
+# _final_validate and consumed by to_code. Not a user-facing YAML option.
+_CONF_ENTITY_CAPACITY = "_entity_capacity"
+
+
+def _entity_capacity_upper_bound(full, hub_id, has_clock):
+    """Upper bound on register_entity() calls for one hub, used to size entities_.
+
+    Deliberately an UPPER bound, never exact: FixedVector::push_back silently
+    drops pushes past capacity, so an undercount would lose entities, while an
+    overcount only wastes a pointer or two. Sources of (safe) slack versus the
+    runtime count: connectivity binary_sensors and device_id/scan_result
+    text_sensors register on other lanes rather than as entities, and a climate
+    without operating_mode has one channel, not the two assumed here.
+    register_entity() also guards the dangerous direction -- it marks the
+    component failed rather than dropping silently -- if this bound is ever low.
+    """
+    n = sum(1 for _domain, _entity in _entities_for_hub(full, _ENTITY_DOMAINS, hub_id))
+    # Each climate contributes a setpoint channel plus at most one mode channel.
+    n += 2 * sum(1 for _domain, _entity in _entities_for_hub(full, ("climate",), hub_id))
+    if has_clock:
+        n += 1  # VitoClock, registered in setup() under VITOHOME_TIME_SYNC
+    return n
+
+
 def _entity_name(entity):
     return entity.get(CONF_NAME, entity.get(CONF_ID, "<unnamed>"))
 
@@ -501,6 +533,13 @@ def _final_validate(config):
     # That address was fabricated by the catalog generator (block base +
     # BytePosition), and a 2-byte read at the same address fails identically --
     # so the observation says nothing about length. See MAX_P300_READ_LENGTH.
+
+    # Codegen sizing (all protocols): a conservative upper bound on this hub's
+    # register_entity() count, so entities_ can be a single-allocation
+    # FixedVector. Computed here because the full config -- every platform's
+    # entities -- is visible; read back in to_code(). This mutates the live
+    # config node in place (final-validate return values are discarded).
+    config[_CONF_ENTITY_CAPACITY] = _entity_capacity_upper_bound(full, hub_id, CONF_TIME_ID in config)
 
 
 FINAL_VALIDATE_SCHEMA = _final_validate
@@ -588,6 +627,20 @@ async def to_code(config):
         cg.add_library("optolink", None, f"file://{optolink_dir}")
     cg.add_build_flag(f"-I{component_dir}")
 
+    # The VITOHOME_* gates below (protocol select, LOG_FRAMES, TIME_SYNC) are
+    # emitted as global -D build flags, not via cg.add_define(). ESPHome's
+    # contributor guide steers layout-affecting gates toward cg.add_define()
+    # (developers.esphome.io/contributing/code) for two reasons: build-wide
+    # consistency -- every TU sees the same #ifdef state, avoiding ODR
+    # violations -- and tooling visibility, since the checked-in
+    # esphome/core/defines.h declares every USE_* so clangd/IDEs can resolve
+    # guarded paths. A global -D already delivers the first: it is applied to
+    # every TU (platformio build_flags / native CMakeLists), so there is no
+    # per-TU divergence and no ODR hazard. The second does NOT transfer to an
+    # out-of-tree component -- it cannot add symbols to ESPHome's checked-in
+    # defines.h -- so cg.add_define() would buy no extra IDE resolution here.
+    # The build-flag form is kept deliberately; a considered deviation.
+
     # Build-time protocol selection: emit exactly one VITOHOME_PROTOCOL_* flag,
     # which selects the engine via protocol_select.h.
     #
@@ -618,6 +671,12 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     await uart.register_uart_device(var, config)
+
+    # Size entities_ once, ahead of every platform's register_entity() statement.
+    # The hub's to_code runs before the platforms' (they DEPENDENCIES=["vitohome"]),
+    # so this setter call is emitted first and runs first. _final_validate injected
+    # the capacity (a safe upper bound); see _entity_capacity_upper_bound.
+    cg.add(var.reserve_entities(config[_CONF_ENTITY_CAPACITY]))
 
     # Identification reads 0xF8..0xFB once at boot. Default ON for P300 and
     # KW: on KW the block read at 0x00F8 falls back to four length-1 reads,

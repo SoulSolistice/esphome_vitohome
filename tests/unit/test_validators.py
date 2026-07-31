@@ -412,3 +412,52 @@ def test_byte_offset_still_rejects_bad_width_for_le_converter():
     # The pre-existing field-width check is preserved: div1000 has no 1-byte form.
     with pytest.raises(cv.Invalid):
         _validate_converter_length_effective({CONF_CONVERTER: "div1000", CONF_BYTE_OFFSET: 0, CONF_BYTE_LENGTH: 1})
+
+
+def _vh_entity(**kw):
+    """A minimal vitohome platform entity for capacity-bound tests."""
+    return {"platform": "vitohome", **kw}
+
+
+def test_entity_capacity_upper_bound_arithmetic():
+    from components.vitohome import _entity_capacity_upper_bound
+
+    # Empty config: nothing to register.
+    assert _entity_capacity_upper_bound({}, "hub", has_clock=False) == 0
+
+    # One entry in each single-entity domain => one slot each.
+    single = {
+        d: [_vh_entity()] for d in ("sensor", "binary_sensor", "text_sensor", "number", "select", "switch", "text", "event")
+    }
+    assert _entity_capacity_upper_bound(single, "hub", has_clock=False) == 8
+    # The clock (time sync) adds exactly one slot.
+    assert _entity_capacity_upper_bound(single, "hub", has_clock=True) == 9
+
+    # Each climate contributes two slots (setpoint + at-most-one mode channel).
+    assert _entity_capacity_upper_bound({"climate": [_vh_entity(), _vh_entity()]}, "hub", has_clock=False) == 4
+
+    # Non-vitohome platforms and other-hub targets are excluded.
+    mixed = {"sensor": [_vh_entity(), {"platform": "other"}], "climate": [_vh_entity()]}
+    assert _entity_capacity_upper_bound(mixed, "hub", has_clock=False) == 1 + 2
+
+
+def test_entity_capacity_is_never_an_undercount():
+    # The bound must be >= the actual runtime register_entity() count. Entries
+    # that early-return onto the link / device-id / raw-result lanes
+    # (connectivity binary_sensors, device_id/scan_result text_sensors) register
+    # zero entities, and a climate without operating_mode registers one channel,
+    # not two -- the bound overcounts all of these, never undercounts. An
+    # undercount would make FixedVector silently drop entities.
+    from components.vitohome import _entity_capacity_upper_bound
+
+    full = {
+        "sensor": [_vh_entity(), _vh_entity()],  # 2 real entities
+        "binary_sensor": [_vh_entity(), _vh_entity(type="connectivity")],  # 1 entity + 1 link (0)
+        "text_sensor": [_vh_entity(), _vh_entity(type="device_id"), _vh_entity(type="scan_result")],  # 1 + 0 + 0
+        "climate": [_vh_entity()],  # 1 or 2 channels
+    }
+    bound = _entity_capacity_upper_bound(full, "hub", has_clock=True)
+    actual_runtime_max = 2 + 1 + 1 + 2 + 1  # sensors + bs + ts + climate(with mode) + clock
+    assert bound >= actual_runtime_max
+    # And it does overcount the three other-lane entries (safe slack).
+    assert bound == 7 + 2 + 1  # all 7 domain entries + 2*climate + clock
