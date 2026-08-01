@@ -23,9 +23,13 @@ void VitoSwitch::dump_config() {
 
 void VitoSwitch::write_state(bool state) {
   const uint32_t raw = state ? this->on_value_ : this->off_value_;
-  const uint8_t len = this->get_write_datapoint().length();
+  // The state value is a uint32_t (<= 4 bytes). Clamp the write length to the
+  // staging buffer so an over-long write-datapoint length can't make
+  // set_write_payload_() copy past buf. Mirrors the read path's clamp.
   uint8_t buf[4];
-  for (uint8_t i = 0; i < len && i < 4; i++) {
+  const uint8_t dplen = this->get_write_datapoint().length();
+  const uint8_t len = dplen > sizeof(buf) ? static_cast<uint8_t>(sizeof(buf)) : dplen;
+  for (uint8_t i = 0; i < len; i++) {
     buf[i] = static_cast<uint8_t>((raw >> (8 * i)) & 0xFF);
   }
   if (!this->set_write_payload_(buf, len)) {
@@ -46,6 +50,10 @@ void VitoSwitch::handle_response(const ResponseView &response) {
   // With extraction the response is the whole block read at the state
   // address; the field is extract_len_ bytes at extract_byte_ (see
   // VitoSelect::handle_response for the identical pattern).
+  if (response.data == nullptr) {
+    ESP_LOGW(TAG, "%s: null response payload", this->datapoint_.name());
+    return;
+  }
   const uint8_t *p = response.data;
   uint8_t len = this->datapoint_.length();
   if (this->extract_byte_ >= 0) {

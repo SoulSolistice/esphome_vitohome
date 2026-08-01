@@ -54,6 +54,10 @@ void VitoNumber::handle_response(const ResponseView &response) {
   // response is the whole block read at the state address; the numeric field
   // is extract_len_ bytes at extract_byte_ (bound-checked against the bytes
   // actually received, like VitoSensor).
+  if (response.data == nullptr) {
+    ESP_LOGW(TAG, "%s: null response payload", this->datapoint_.name());
+    return;
+  }
   double value = NAN;
   bool ok;
   if (this->extract_byte_ >= 0) {

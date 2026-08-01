@@ -152,7 +152,7 @@ void VitoClimate::control(const climate::ClimateCall &call) {
 }
 
 void VitoClimate::on_setpoint_read(const ResponseView &response) {
-  if (response.data_length < 1) {
+  if (response.data == nullptr || response.data_length < 1) {
     ESP_LOGW(TAG, "%s: setpoint response too short", this->get_name().c_str());
     return;
   }
@@ -162,7 +162,7 @@ void VitoClimate::on_setpoint_read(const ResponseView &response) {
 }
 
 void VitoClimate::on_mode_read(const ResponseView &response) {
-  if (response.data_length < 1) {
+  if (response.data == nullptr || response.data_length < 1) {
     ESP_LOGW(TAG, "%s: mode response too short", this->get_name().c_str());
     return;
   }

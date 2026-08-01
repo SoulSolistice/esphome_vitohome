@@ -27,9 +27,14 @@ void VitoSelect::control(size_t index) {
     return;
   }
   const uint32_t raw = this->raw_values_[index];
-  const uint8_t len = this->get_write_datapoint().length();
+  // The option value is a uint32_t (<= 4 bytes). Clamp the write length to the
+  // staging buffer so an over-long write-datapoint length can't make
+  // set_write_payload_() copy past buf. Mirrors the read path's
+  // read_le(p, len > 4 ? 4 : len) clamp.
   uint8_t buf[4];
-  for (uint8_t i = 0; i < len && i < 4; i++) {
+  const uint8_t dplen = this->get_write_datapoint().length();
+  const uint8_t len = dplen > sizeof(buf) ? static_cast<uint8_t>(sizeof(buf)) : dplen;
+  for (uint8_t i = 0; i < len; i++) {
     buf[i] = static_cast<uint8_t>((raw >> (8 * i)) & 0xFF);
   }
   if (!this->set_write_payload_(buf, len)) {
@@ -49,6 +54,10 @@ void VitoSelect::handle_response(const ResponseView &response) {
   // address; the enum field is extract_len_ bytes at extract_byte_. The
   // bound check is against the bytes actually received, so a short response
   // fail-softs instead of reading past the end.
+  if (response.data == nullptr) {
+    ESP_LOGW(TAG, "%s: null response payload", this->datapoint_.name());
+    return;
+  }
   const uint8_t *p = response.data;
   uint8_t len = this->datapoint_.length();
   if (this->extract_byte_ >= 0) {
