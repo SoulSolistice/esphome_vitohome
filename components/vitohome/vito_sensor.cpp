@@ -26,6 +26,16 @@ void VitoSensor::handle_response(const ResponseView &response) {
   // layer — float math and the tagless VariantValue union — is fully removed
   // from the vendored engine (THIRD_PARTY.md items 13/15); see
   // docs/design_notes.md SS1 for why this path exists.
+  // A null payload with a NON-ZERO length is a documented engine state, not a
+  // hypothetical: PacketVS2::data() returns nullptr for a WRITE frame while
+  // dataLength() stays non-zero, and vs2.cpp::_tryOnResponse states the
+  // obligation outright ("the caller must guard on data() before reading").
+  // The else-branch below is safe without this (decode_scaled null-checks), but
+  // the extraction branch forms `data + off` before any check.
+  if (response.data == nullptr) {
+    ESP_LOGW(TAG, "%s: null response payload", this->datapoint_.name());
+    return;
+  }
   const uint8_t *data = response.data;
   const uint8_t have = response.data_length;
   double value = NAN;

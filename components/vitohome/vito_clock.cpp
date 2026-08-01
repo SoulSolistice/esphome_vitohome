@@ -218,16 +218,24 @@ void VitoClock::handle_verify_(const ResponseView &response) {
 }
 
 void VitoClock::handle_error(optolink::OptolinkResult error) {
+  (void) error;
+  // No chain in flight: there is nothing to reset, and abort_() would report
+  // "clock read failed" for a sync that never started. The clock stays in
+  // entities_, so an error CAN be routed here outside a chain (a stray or
+  // late engine callback), which is exactly the case this filters out.
+  if (this->phase_ == Phase::IDLE)
+    return;
   // Read error: the hub logs the specific protocol result. Reset so the next
   // tick() can start a fresh chain rather than wedging in READING/VERIFYING
   // forever.
   this->abort_(this->phase_ == Phase::VERIFYING ? "read-back of device clock failed" : "clock read failed");
-  (void) error;
 }
 
 void VitoClock::handle_write_error(optolink::OptolinkResult error) {
-  this->abort_("device clock write failed");
   (void) error;
+  if (this->phase_ == Phase::IDLE)
+    return;
+  this->abort_("device clock write failed");
 }
 
 void VitoClock::dump_config() {

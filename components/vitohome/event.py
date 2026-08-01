@@ -56,12 +56,26 @@ async def to_code(config):
     # See sensor.py: pop the reserved update_interval before register_component.
     poll_interval = config.pop(CONF_UPDATE_INTERVAL, None)
 
-    event_types = [f"0x{code:02X}" for code in config[CONF_CODES]]
+    # 0x00 is the EMPTY slot, not a fault: VitoEvent::handle_response
+    # short-circuits on it and fires the built-in "cleared" type, so it never
+    # reaches label_for_(). Emitting it anyway would register an event type Home
+    # Assistant can never receive plus a label that can never be returned.
+    #
+    # Filtered here rather than rejected in the schema ON PURPOSE. The fault-code
+    # map is legitimately SHARED with the `error_history` text_sensor, where 0x00
+    # IS meaningful and IS looked up (publish_error_history_ prints its label for
+    # a healthy device) -- example/vscotho1_72.dp.curated.yaml defines the map
+    # once as a YAML anchor in the text_sensor and reuses it here via
+    # `codes: *vd300_codes`. Rejecting 0x00 would force that ~200-entry map to be
+    # duplicated just to drop one key.
+    fault_codes = {code: label for code, label in config[CONF_CODES].items() if code != 0x00}
+
+    event_types = [f"0x{code:02X}" for code in fault_codes]
     event_types += ["cleared", "unknown"]
     var = await event.new_event(config, event_types=event_types)
     await cg.register_component(var, config)
 
-    for code, label in config[CONF_CODES].items():
+    for code, label in fault_codes.items():
         cg.add(var.add_code(code, label))
 
     cg.add(var.set_datapoint(datapoint_expression(config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH])))
