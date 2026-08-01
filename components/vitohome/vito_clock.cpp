@@ -2,6 +2,7 @@
 #ifdef VITOHOME_TIME_SYNC
 
 #include <cinttypes>
+#include <cstdio>
 
 #include "decode.h"
 #include "esphome/core/log.h"
@@ -244,17 +245,24 @@ void VitoClock::dump_config() {
   // fan-out reaches on its own, which is exactly why the hub has no loop over
   // entities_. VitoClock is hub-owned and not a component, so nothing would
   // print it otherwise.
-  ESP_LOGCONFIG(TAG, "vitohome clock (system-time sync):");
-  ESP_LOGCONFIG(TAG, "  Datapoint: 0x%04X, %u bytes", this->clock_address_, CLOCK_LEN);
-
+  // One ESP_LOGCONFIG with \n separators rather than six calls (ESPHome core's
+  // convention -- see wifi_component.cpp). The periodic-sync line is the only
+  // variable one, so it is rendered into a small stack buffer first instead of
+  // being split back out into its own call.
+  char periodic[32];
   if (this->interval_ms_ == 0) {
-    ESP_LOGCONFIG(TAG, "  Periodic sync: OFF");
+    std::snprintf(periodic, sizeof(periodic), "OFF");
   } else {
-    ESP_LOGCONFIG(TAG, "  Periodic sync: every %" PRIu32 " ms", this->interval_ms_);
+    std::snprintf(periodic, sizeof(periodic), "every %" PRIu32 " ms", this->interval_ms_);
   }
 
-  ESP_LOGCONFIG(TAG, "  Drift threshold: %" PRIu32 " s", this->drift_threshold_s_);
-  ESP_LOGCONFIG(TAG, "  Sync on boot: %s", YESNO(this->sync_on_boot_));
+  ESP_LOGCONFIG(TAG,
+                "vitohome clock (system-time sync):\n"
+                "  Datapoint: 0x%04X, %u bytes\n"
+                "  Periodic sync: %s\n"
+                "  Drift threshold: %" PRIu32 " s\n"
+                "  Sync on boot: %s",
+                this->clock_address_, CLOCK_LEN, periodic, this->drift_threshold_s_, YESNO(this->sync_on_boot_));
 }
 
 }  // namespace esphome::vitohome

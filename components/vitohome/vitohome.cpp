@@ -60,7 +60,7 @@ void VitoHomeComponent::register_entity(VitoEntityBase *entity) {
   if (this->entities_.full()) {
     ESP_LOGE(TAG, "entity registry full (capacity %zu); '%s' dropped -- codegen entity count is wrong",
              this->entities_.capacity(), entity->get_datapoint().name());
-    this->mark_failed();
+    this->mark_failed(LOG_STR("entity registry full"));
     return;
   }
 
@@ -113,19 +113,19 @@ void VitoHomeComponent::setup() {
 
   if (!this->read_queue_.reserve(entity_count)) {
     ESP_LOGE(TAG, "failed to allocate read queue for %zu entities", entity_count);
-    this->mark_failed();
+    this->mark_failed(LOG_STR("read queue allocation failed"));
     return;
   }
 
   if (!this->write_queue_.reserve(entity_count)) {
     ESP_LOGE(TAG, "failed to allocate write queue for %zu entities", entity_count);
-    this->mark_failed();
+    this->mark_failed(LOG_STR("write queue allocation failed"));
     return;
   }
 
   if (!this->raw_queue_.reserve(this->raw_queue_capacity_)) {
     ESP_LOGE(TAG, "failed to allocate raw queue with capacity %zu", this->raw_queue_capacity_);
-    this->mark_failed();
+    this->mark_failed(LOG_STR("raw queue allocation failed"));
     return;
   }
 
@@ -184,7 +184,7 @@ void VitoHomeComponent::setup() {
 
   if (!this->vito_->begin()) {
     ESP_LOGE(TAG, "optolink engine begin() failed");
-    this->mark_failed();
+    this->mark_failed(LOG_STR("optolink engine begin() failed"));
     return;
   }
 
@@ -243,7 +243,7 @@ void VitoHomeComponent::validate_uart_() {
   auto *bus = this->parent_;
   if (bus == nullptr) {
     ESP_LOGE(TAG, "UART parent is not configured");
-    this->mark_failed();
+    this->mark_failed(LOG_STR("no UART parent"));
     return;
   }
 
@@ -271,7 +271,7 @@ void VitoHomeComponent::validate_uart_() {
 
   if (!ok) {
     ESP_LOGE(TAG, "Optolink requires 4800 8E2; fix the uart: block.");
-    this->mark_failed();
+    this->mark_failed(LOG_STR("UART is not 4800 8E2"));
   }
 }
 
@@ -300,7 +300,7 @@ void VitoHomeComponent::loop() {
       ESP_LOGE(TAG, "%s link not established; check wiring and that the device speaks this protocol", PROTOCOL_NAME);
 
       this->publish_link_(false);
-      this->mark_failed();
+      this->mark_failed(LOG_STR("no Optolink link established"));
 
       // Do not continue into watchdog handling or dispatch after failure.
       return;
@@ -644,12 +644,19 @@ void VitoHomeComponent::update() {
 }
 
 void VitoHomeComponent::dump_config() {
-  ESP_LOGCONFIG(TAG, "VitoHome:");
-  ESP_LOGCONFIG(TAG, "  Protocol: %s", PROTOCOL_NAME);
-  ESP_LOGCONFIG(TAG, "  Entities: %zu", this->entities_.size());
+  // Consecutive lines are emitted as ONE ESP_LOGCONFIG with \n separators --
+  // the convention ESPHome core converged on (see wifi_component.cpp). Each
+  // extra call site costs another TAG pointer and call sequence in flash, which
+  // adds up across a component with eleven dump_config() bodies.
+  //
   // The raw lane's slots are the component's single largest fixed allocation
   // (sizeof(RawOp) each), so the configured capacity is worth stating.
-  ESP_LOGCONFIG(TAG, "  Raw queue capacity: %zu", this->raw_queue_capacity_);
+  ESP_LOGCONFIG(TAG,
+                "VitoHome:\n"
+                "  Protocol: %s\n"
+                "  Entities: %zu\n"
+                "  Raw queue capacity: %zu",
+                PROTOCOL_NAME, this->entities_.size(), this->raw_queue_capacity_);
 
   if (this->ident_state_ == IdentState::DONE)
     ESP_LOGCONFIG(TAG, "  Device: %s", this->ident_string_().c_str());
@@ -1015,14 +1022,24 @@ void VitoHomeComponent::link_note_alive_() {
   this->link_established_ = true;
   this->link_error_streak_ = 0;
   this->publish_link_(true);
+  // Mirror the link state onto the STANDARD component status as well, not only
+  // onto the optional connectivity binary_sensor. The binary_sensor is opt-in,
+  // so without this a user who did not configure one gets no indication at all
+  // that the hub is up but the peer has gone silent -- no status LED, no
+  // component-status diagnostic in Home Assistant.
+  this->status_clear_warning();
 }
 
 void VitoHomeComponent::link_note_error_() {
   if (this->link_error_streak_ < LINK_OFFLINE_AFTER_ERRORS)
     ++this->link_error_streak_;
 
-  if (this->link_error_streak_ == LINK_OFFLINE_AFTER_ERRORS)
+  if (this->link_error_streak_ == LINK_OFFLINE_AFTER_ERRORS) {
     this->publish_link_(false);
+    // Same edge as publish_link_(false): raised once when the streak crosses
+    // the threshold, cleared by link_note_alive_(). See the note there.
+    this->status_set_warning("optolink link offline");
+  }
 }
 
 void VitoHomeComponent::on_error_(optolink::OptolinkResult error, uint16_t request_address) {

@@ -1,7 +1,7 @@
 import esphome.codegen as cg
 from esphome.components import switch
 import esphome.config_validation as cv
-from esphome.const import CONF_ADDRESS, CONF_NAME, CONF_RESTORE_MODE, CONF_UPDATE_INTERVAL
+from esphome.const import CONF_ADDRESS, CONF_NAME, CONF_ON_VALUE, CONF_RESTORE_MODE, CONF_UPDATE_INTERVAL
 
 from . import (
     CONF_BYTE_LENGTH,
@@ -19,7 +19,8 @@ from . import (
 
 DEPENDENCIES = ["vitohome"]
 
-CONF_ON_VALUE = "on_value"
+# CONF_ON_VALUE comes from esphome.const (same "on_value" literal). The other
+# two have no upstream counterpart and stay local.
 CONF_OFF_VALUE = "off_value"
 CONF_ON_VALUES = "on_values"
 

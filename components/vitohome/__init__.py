@@ -28,7 +28,7 @@ from pathlib import Path
 import esphome.codegen as cg
 from esphome.components import esp32, time as time_, uart
 import esphome.config_validation as cv
-from esphome.const import CONF_ID, CONF_INTERVAL, CONF_NAME, CONF_TIME_ID
+from esphome.const import CONF_ID, CONF_INTERVAL, CONF_LENGTH, CONF_NAME, CONF_PROTOCOL, CONF_TIME_ID
 from esphome.core import CORE
 import esphome.final_validate as fv
 
@@ -49,7 +49,6 @@ DEPENDENCIES = ["uart"]
 MULTI_CONF = False
 
 CONF_VITOHOME_ID = "vitohome_id"
-CONF_PROTOCOL = "protocol"
 CONF_IDENTIFY_DEVICE = "identify_device"
 # Optional in-component Optolink frame logging (hub-level). See
 # vito_uart_interface.h: the adapter already knows where a telegram starts
@@ -117,7 +116,12 @@ TIME_SYNC_SCHEMA = cv.Schema(
 # per-platform validation of these keys (e.g. the byte_length int_range, which
 # differs 1..4 vs 1..2 by platform) stays in each platform's schema; only the
 # option *name* is shared.
-CONF_LENGTH = "length"
+#
+# CONF_LENGTH and CONF_PROTOCOL are NOT defined here: they already exist in
+# esphome.const with identical values, so they are imported above and re-exported
+# through this module like the rest. Defining a second literal for a key ESPHome
+# core already owns is how the two drift apart. Everything below is genuinely
+# component-specific and has no upstream counterpart.
 CONF_CONVERTER = "converter"
 CONF_SIGNED = "signed"
 CONF_READ_BACK = "read_back"

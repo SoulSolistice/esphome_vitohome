@@ -164,7 +164,11 @@ async def to_code(config):
     var = await climate.new_climate(config)
     await cg.register_component(var, config)
 
-    name = config.get(CONF_NAME) or "vito_climate"
+    # CONF_NAME is always populated after validation: ESPHome's
+    # _entity_base_validator copies `id:` into it when `name:` is omitted (and
+    # errors out if neither is given), so no fallback is reachable here. Matches
+    # the other eight platforms, which all index it directly.
+    name = config[CONF_NAME]
 
     # Setpoint clamp range from the standard visual block (also the HA gauge).
     visual = config.get(CONF_VISUAL, {})

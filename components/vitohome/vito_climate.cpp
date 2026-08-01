@@ -208,9 +208,16 @@ void VitoClimate::on_mode_read(const ResponseView &response) {
 }
 
 void VitoClimate::dump_config() {
-  ESP_LOGCONFIG(TAG, "VitoHome Climate '%s'", this->get_name().c_str());
-  ESP_LOGCONFIG(TAG, "  Setpoint address: 0x%04X  range: %d..%d degC", this->setpoint_.get_datapoint().address(),
-                this->setpoint_min_, this->setpoint_max_);
+  // The two UNCONDITIONAL lines are merged into one ESP_LOGCONFIG with a \n
+  // separator (ESPHome core's convention -- see wifi_component.cpp): one fewer
+  // TAG pointer and call sequence in flash. The conditional mode line stays its
+  // own call on purpose -- duplicating the header into both branches would
+  // store the shared format string twice and cost MORE flash than it saves.
+  ESP_LOGCONFIG(TAG,
+                "VitoHome Climate '%s'\n"
+                "  Setpoint address: 0x%04X  range: %d..%d degC",
+                this->get_name().c_str(), this->setpoint_.get_datapoint().address(), this->setpoint_min_,
+                this->setpoint_max_);
   if (this->has_mode_) {
     ESP_LOGCONFIG(TAG, "  Mode read 0x%04X  write 0x%04X  presets: %zu", this->mode_.get_datapoint().address(),
                   this->mode_.get_write_datapoint().address(), this->presets_.size());

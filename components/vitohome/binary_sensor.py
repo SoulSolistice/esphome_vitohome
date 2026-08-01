@@ -1,7 +1,7 @@
 import esphome.codegen as cg
 from esphome.components import binary_sensor
 import esphome.config_validation as cv
-from esphome.const import CONF_ADDRESS, CONF_NAME, CONF_UPDATE_INTERVAL
+from esphome.const import CONF_ADDRESS, CONF_NAME, CONF_TYPE, CONF_UPDATE_INTERVAL
 
 from . import (
     CONF_BYTE_OFFSET,
@@ -80,7 +80,6 @@ _DATAPOINT_SCHEMA = cv.All(
     _validate_offset_within_length,
 )
 
-CONF_TYPE = "type"
 CONFIG_SCHEMA = cv.typed_schema(
     {
         "datapoint": _DATAPOINT_SCHEMA,
