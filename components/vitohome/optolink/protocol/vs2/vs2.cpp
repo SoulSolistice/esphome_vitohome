@@ -49,6 +49,8 @@ bool VS2Engine::write(uint16_t address, const uint8_t *data, uint8_t length) {
 }
 
 bool VS2Engine::begin() {
+  if (_interface == nullptr)
+    return false;
   _setState(State::RESET);
   return _interface->begin();
 }

@@ -49,6 +49,8 @@ bool VS1Engine::write(uint16_t address, const uint8_t *data, uint8_t length) {
 }
 
 bool VS1Engine::begin() {
+  if (_interface == nullptr)
+    return false;
   if (_interface->begin()) {
     while (_interface->available()) {
       _interface->read();  // clear rx buffer

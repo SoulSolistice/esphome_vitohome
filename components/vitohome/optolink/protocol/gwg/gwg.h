@@ -15,6 +15,9 @@ callback (see THIRD_PARTY.md) so GWG is no longer one-shot.
 Sync poke: optional EOT (0x04) nudge while waiting for the device ENQ, gated by
 GWGEngine::SEND_ENQ_POKE (default off, so the default build is unchanged); see
 that flag for the vcontrold/VS1 rationale.
+Fail-soft: the constructor no longer abort()s on serial-interface allocation
+failure; it leaves the engine in a failed state and begin() returns false (see
+THIRD_PARTY.md), so the wrapper mark_failed()s instead of the firmware aborting.
 */
 
 #pragma once
@@ -73,8 +76,13 @@ class GWGEngine {
     assert(interface != nullptr);
     _interface = new (std::nothrow) internals::GenericInterface<C>(interface);
     if (!_interface) {
+      // Fail soft on allocation failure: leave _interface null and let the
+      // object be constructed in a failed state. begin() then returns false and
+      // the ESPHome wrapper mark_failed()s the component (see
+      // VitoHomeComponent::setup), rather than abort()ing the whole firmware on
+      // a transient OOM. The vendored engine has no ESPHome dependency, so it
+      // signals failure through begin()'s return value, not mark_failed().
       optolink_log_e("Could not create serial interface");
-      optolink_abort();
     }
   }
   ~GWGEngine();

@@ -243,12 +243,35 @@ These are intentional divergences from upstream `edc059a7`:
     ASan/UBSan; the same proof traps with a stack-buffer-overflow against the
     upstream-shaped code.
 
-Items 7-12 are the only intentional changes to on-wire/runtime behavior;
-items 13-16 are structural (no behavior change from any call site that
-exists -- item 16 alters bytes only on a RESPONSE-construction path nothing
-exercises). Everything else preserves upstream protocol behavior. Each
-behavioral item is covered by a host proof that fails against the upstream
-code, so none of them rests on inspection alone.
+17. **Engine fail-soft on interface-allocation failure (behavioral divergence,
+    error handling -- no on-wire or normal-path change).** Upstream's engine
+    constructors `abort()` (terminate the firmware) when the serial-interface
+    allocation fails: `new (std::nothrow) internals::GenericInterface<C>(interface)`
+    returns null on OOM, and the constructor logs and aborts. The vendored
+    engines fail soft instead -- the constructor leaves `_interface` null (still
+    logging the failure), and `begin()` returns false when `_interface` is null.
+    The ESPHome wrapper already treats a false `begin()` as fatal for the
+    component (`VitoHomeComponent::setup()`: `if (!vito_->begin()) { ESP_LOGE(...);
+    mark_failed(); return; }`), so on a transient allocation failure the
+    component is disabled cleanly instead of the whole firmware aborting. The
+    vendored engine has no ESPHome dependency, so it signals the failure through
+    `begin()`'s return value rather than calling `mark_failed()` itself; the
+    destructors were already null-safe (`delete nullptr`). The unreachable
+    null-`interface`-argument check in `GenericInterface`'s own constructor -- a
+    programmer error, since the interface is always the address of a hub member
+    -- is deliberately left aborting. This path (allocation failure) is not
+    host-triggerable without allocation injection, so it rests on inspection plus
+    the wrapper's existing `begin()` handling rather than a host proof.
+
+Items 7-12 are the only intentional changes to on-wire/runtime protocol
+behavior; items 13-16 are structural (no behavior change from any call site
+that exists -- item 16 alters bytes only on a RESPONSE-construction path
+nothing exercises); item 17 changes only construction-failure handling
+(abort -> fail-soft), not protocol or normal-path behavior. Everything else
+preserves upstream protocol behavior. Each of items 7-12 is covered by a host
+proof that fails against the upstream code; item 17's allocation-failure path
+is not host-triggerable and rests on inspection plus the wrapper's existing
+`begin()` -> `mark_failed()` handling.
 
 ---
 
