@@ -3,7 +3,17 @@ from esphome.components import event
 import esphome.config_validation as cv
 from esphome.const import CONF_ADDRESS, CONF_NAME, CONF_UPDATE_INTERVAL
 
-from . import CONF_LENGTH, CONF_VITOHOME_ID, VitoHomeComponent, datapoint_expression, validate_length_in, vitohome_ns
+from . import (
+    CONF_LENGTH,
+    CONF_VITOHOME_ID,
+    VitoHomeComponent,
+    datapoint_expression,
+    emit_poll_interval,
+    pop_poll_interval,
+    validate_fault_codes,
+    validate_length_in,
+    vitohome_ns,
+)
 
 DEPENDENCIES = ["vitohome"]
 
@@ -19,12 +29,9 @@ _CODES_MAP = cv.Schema({cv.uint32_t: cv.string})
 
 
 def _validate_codes(config):
-    for code in config[CONF_CODES]:
-        if not 0 <= code <= 0xFF:
-            raise cv.Invalid(
-                f"fault code 0x{code:X} does not fit one byte",
-                path=[CONF_CODES],
-            )
+    # Range check shared with text_sensor.py (type: error_history), which maps the
+    # same one-byte code space to labels.
+    validate_fault_codes(config, CONF_CODES)
     if not config[CONF_CODES]:
         raise cv.Invalid("at least one fault code is required", path=[CONF_CODES])
     return config
@@ -53,8 +60,7 @@ CONFIG_SCHEMA = cv.All(
 
 async def to_code(config):
     parent = await cg.get_variable(config[CONF_VITOHOME_ID])
-    # See sensor.py: pop the reserved update_interval before register_component.
-    poll_interval = config.pop(CONF_UPDATE_INTERVAL, None)
+    poll_ms = pop_poll_interval(config)
 
     # 0x00 is the EMPTY slot, not a fault: VitoEvent::handle_response
     # short-circuits on it and fires the built-in "cleared" type, so it never
@@ -79,7 +85,6 @@ async def to_code(config):
         cg.add(var.add_code(code, label))
 
     cg.add(var.set_datapoint(datapoint_expression(config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH])))
-    if poll_interval is not None:
-        cg.add(var.set_poll_interval(int(poll_interval.total_milliseconds)))
+    emit_poll_interval(var, poll_ms)
 
     cg.add(parent.register_entity(var))

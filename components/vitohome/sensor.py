@@ -15,6 +15,8 @@ from . import (
     VitoHomeComponent,
     converter_big_endian,
     datapoint_expression,
+    emit_poll_interval,
+    pop_poll_interval,
     resolve_signed,
     scale_literal,
     validate_converter_length,
@@ -116,11 +118,7 @@ CONFIG_SCHEMA = cv.All(
 
 async def to_code(config):
     parent = await cg.get_variable(config[CONF_VITOHOME_ID])
-    # Pop the reserved update_interval BEFORE register_component: it would
-    # otherwise emit set_update_interval(), a PollingComponent method our
-    # passive entities don't have. The hub drives polling; we keep this only as
-    # a per-datapoint poll interval.
-    poll_interval = config.pop(CONF_UPDATE_INTERVAL, None)
+    poll_ms = pop_poll_interval(config)
     var = await sensor.new_sensor(config)
     await cg.register_component(var, config)
 
@@ -134,9 +132,6 @@ async def to_code(config):
         cg.add(var.set_extract_byte(config[CONF_BYTE_OFFSET]))
         if CONF_BYTE_LENGTH in config:
             cg.add(var.set_extract_len(config[CONF_BYTE_LENGTH]))
-    if poll_interval is not None:
-        # TimePeriod -> ms. The hub schedules at hub-tick granularity (and
-        # warns at runtime if this is shorter than the hub interval).
-        cg.add(var.set_poll_interval(int(poll_interval.total_milliseconds)))
+    emit_poll_interval(var, poll_ms)
 
     cg.add(parent.register_entity(var))

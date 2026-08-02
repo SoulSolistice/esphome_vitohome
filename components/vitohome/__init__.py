@@ -28,7 +28,7 @@ from pathlib import Path
 import esphome.codegen as cg
 from esphome.components import esp32, time as time_, uart
 import esphome.config_validation as cv
-from esphome.const import CONF_ID, CONF_INTERVAL, CONF_LENGTH, CONF_NAME, CONF_PROTOCOL, CONF_TIME_ID
+from esphome.const import CONF_ID, CONF_INTERVAL, CONF_LENGTH, CONF_NAME, CONF_PROTOCOL, CONF_TIME_ID, CONF_UPDATE_INTERVAL
 from esphome.core import CORE
 import esphome.final_validate as fv
 
@@ -277,6 +277,125 @@ def validate_length_in(min_len: int, max_len: int):
         return value
 
     return validate
+
+
+def field_width(config) -> int:
+    """The wire value width: ``byte_length`` under extraction, else ``length``.
+
+    Shared by number/select/switch, which previously each carried a private
+    ``_field_width`` with an identical body.
+    """
+    if CONF_BYTE_OFFSET in config:
+        return config.get(CONF_BYTE_LENGTH, 1)
+    return config[CONF_LENGTH]
+
+
+def validate_block_extraction(plain_lengths: tuple):
+    """Return the shared ``length`` / ``byte_offset`` / ``byte_length`` validator.
+
+    number.py, select.py and switch.py all support aligned block extraction on
+    the STATE read with byte-identical rules; only the set of widths allowed
+    WITHOUT extraction differs (number accepts 1..4, select/switch 1..2), which
+    is what ``plain_lengths`` parameterises.
+
+    With ``byte_offset``, ``length`` is the block read at the state address and
+    the field is ``byte_length`` (default 1) bytes at ``byte_offset``. The write
+    still targets ``address`` -- the field's own register -- which is why
+    ``byte_offset`` requires an explicit ``state_address``: writing field-width
+    bytes at the block base would hit the wrong register.
+    """
+
+    def validate(config):
+        length = config[CONF_LENGTH]
+        if CONF_BYTE_OFFSET in config:
+            if not 1 <= length <= MAX_P300_READ_LENGTH:
+                raise cv.Invalid(
+                    f"with byte_offset, length is a block read and must be 1..{MAX_P300_READ_LENGTH} (got {length})",
+                    path=[CONF_LENGTH],
+                )
+            if CONF_STATE_ADDRESS not in config:
+                raise cv.Invalid(
+                    "byte_offset requires state_address: the aligned block is read at "
+                    "state_address while address stays the field's own write register",
+                    path=[CONF_BYTE_OFFSET],
+                )
+            width = config.get(CONF_BYTE_LENGTH, 1)
+            if config[CONF_BYTE_OFFSET] + width > length:
+                raise cv.Invalid(
+                    f"byte_offset ({config[CONF_BYTE_OFFSET]}) + byte_length ({width}) must be <= length ({length})",
+                    path=[CONF_BYTE_OFFSET],
+                )
+        else:
+            if CONF_BYTE_LENGTH in config:
+                raise cv.Invalid("byte_length requires byte_offset", path=[CONF_BYTE_LENGTH])
+            if length not in plain_lengths:
+                allowed = " or ".join(str(x) for x in plain_lengths)
+                if len(plain_lengths) > 2:
+                    raise cv.Invalid(f"length must be between 1 and 4 bytes (got {length})", path=[CONF_LENGTH])
+                raise cv.Invalid(f"length must be {allowed} bytes (got {length})", path=[CONF_LENGTH])
+        return config
+
+    return validate
+
+
+def validate_fault_codes(config, key):
+    """Reject fault-code map keys that cannot fit the one-byte wire code.
+
+    Shared by ``text_sensor`` (``type: error_history``) and ``event``: both map
+    the decoded code BYTE to a label, so a wider key is a dead entry that can
+    never match. Applied as a POST-validator, because a voluptuous key-marker
+    that raises is swallowed into a generic 'extra keys' error -- the range check
+    has to run after key parsing.
+    """
+    for code in config.get(key, {}):
+        if not 0 <= code <= 0xFF:
+            raise cv.Invalid(f"fault code 0x{code:X} does not fit one byte (0..0xFF)", path=[key])
+    return config
+
+
+def pop_poll_interval(config):
+    """Remove and return the per-datapoint ``update_interval``, in milliseconds.
+
+    MUST be called before ``cg.register_component``: ``update_interval`` is a
+    reserved ESPHome key, and register_component would emit
+    ``set_update_interval()`` -- a PollingComponent method these passive entities
+    do not have. The hub drives polling; this is kept only as a per-datapoint
+    poll interval, applied via :func:`emit_poll_interval`.
+    """
+    interval = config.pop(CONF_UPDATE_INTERVAL, None)
+    return None if interval is None else int(interval.total_milliseconds)
+
+
+def emit_poll_interval(var, poll_ms):
+    """Emit ``set_poll_interval()`` when a per-datapoint interval was given.
+
+    The hub schedules at hub-tick granularity and warns at runtime if this is
+    shorter than the hub's own interval.
+    """
+    if poll_ms is not None:
+        cg.add(var.set_poll_interval(poll_ms))
+
+
+def emit_write_target(var, config, read_addr, write_addr):
+    """Emit the write datapoint and any block-extraction setters.
+
+    Shared by number/select/switch, whose to_code() bodies carried three
+    byte-identical copies of this block.
+
+    Under extraction the state read is ``length`` bytes at the state address
+    while the WRITE datapoint carries only the FIELD width, so control() /
+    write_state() writes exactly the field's bytes to the field's own register.
+    Without extraction a write datapoint is emitted only when the read and write
+    addresses actually differ.
+    """
+    if CONF_BYTE_OFFSET in config:
+        width = config.get(CONF_BYTE_LENGTH, 1)
+        cg.add(var.set_write_datapoint(datapoint_expression(config[CONF_NAME], write_addr, width)))
+        cg.add(var.set_extract_byte(config[CONF_BYTE_OFFSET]))
+        if CONF_BYTE_LENGTH in config:
+            cg.add(var.set_extract_len(config[CONF_BYTE_LENGTH]))
+    elif read_addr != write_addr:
+        cg.add(var.set_write_datapoint(datapoint_expression(config[CONF_NAME], write_addr, config[CONF_LENGTH])))
 
 
 def validate_converter_length(config):

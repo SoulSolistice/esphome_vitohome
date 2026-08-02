@@ -13,7 +13,12 @@ from . import (
     MAX_P300_READ_LENGTH,
     VitoHomeComponent,
     datapoint_expression,
+    emit_poll_interval,
+    emit_write_target,
+    field_width,
+    pop_poll_interval,
     raw_fits,
+    validate_block_extraction,
     vitohome_ns,
 )
 
@@ -24,53 +29,17 @@ DEPENDENCIES = ["vitohome"]
 CONF_OFF_VALUE = "off_value"
 CONF_ON_VALUES = "on_values"
 
-
 # Optional state_address plus aligned block extraction on the STATE read -- the
 # same read/write split select.py supports (e.g. NRx Partybetrieb command 0x2330
-# vs BedienPartybetrieb state 0x2303). With byte_offset, `length` is the block
-# read at the state address and the boolean field is the byte_length (default 1)
-# bytes at byte_offset. The write still targets CONF_ADDRESS (the field's own
-# register), which is why byte_offset requires an explicit state_address.
-def _field_width(config):
-    """The on/off value width: byte_length with extraction, else length."""
-    if CONF_BYTE_OFFSET in config:
-        return config.get(CONF_BYTE_LENGTH, 1)
-    return config[CONF_LENGTH]
-
-
-def _validate_length_and_extraction(config):
-    length = config[CONF_LENGTH]
-    if CONF_BYTE_OFFSET in config:
-        if not 1 <= length <= MAX_P300_READ_LENGTH:
-            raise cv.Invalid(
-                f"with byte_offset, length is a block read and must be 1..{MAX_P300_READ_LENGTH} (got {length})",
-                path=[CONF_LENGTH],
-            )
-        if CONF_STATE_ADDRESS not in config:
-            raise cv.Invalid(
-                "byte_offset requires state_address: the aligned block is read at "
-                "state_address while address stays the field's own write register",
-                path=[CONF_BYTE_OFFSET],
-            )
-        field_width = config.get(CONF_BYTE_LENGTH, 1)
-        if config[CONF_BYTE_OFFSET] + field_width > length:
-            raise cv.Invalid(
-                f"byte_offset ({config[CONF_BYTE_OFFSET]}) + byte_length ({field_width}) must be <= length ({length})",
-                path=[CONF_BYTE_OFFSET],
-            )
-    else:
-        if CONF_BYTE_LENGTH in config:
-            raise cv.Invalid("byte_length requires byte_offset", path=[CONF_BYTE_LENGTH])
-        if length not in (1, 2):
-            raise cv.Invalid(f"length must be 1 or 2 bytes (got {length})", path=[CONF_LENGTH])
-    return config
-
-
+# vs BedienPartybetrieb state 0x2303). The rules are identical across
+# number/select/switch, so they live in validate_block_extraction() /
+# field_width() / emit_write_target() in __init__.py; only the set of widths
+# allowed WITHOUT extraction differs, and that is the factory's argument.
 VitoSwitch = vitohome_ns.class_("VitoSwitch", switch.Switch, cg.Component)
 
 
 def _validate_switch(config):
-    width = _field_width(config)
+    width = field_width(config)
     on_value = config[CONF_ON_VALUE]
     off_value = config[CONF_OFF_VALUE]
     if on_value == off_value:
@@ -124,15 +93,14 @@ CONFIG_SCHEMA = cv.All(
         }
     )
     .extend(cv.COMPONENT_SCHEMA),
-    _validate_length_and_extraction,
+    validate_block_extraction((1, 2)),
     _validate_switch,
 )
 
 
 async def to_code(config):
     parent = await cg.get_variable(config[CONF_VITOHOME_ID])
-    # See sensor.py: pop the reserved update_interval before register_component.
-    poll_interval = config.pop(CONF_UPDATE_INTERVAL, None)
+    poll_ms = pop_poll_interval(config)
 
     var = await switch.new_switch(config)
     await cg.register_component(var, config)
@@ -147,19 +115,8 @@ async def to_code(config):
     write_addr = config[CONF_ADDRESS]
     read_addr = config.get(CONF_STATE_ADDRESS, write_addr)
     cg.add(var.set_datapoint(datapoint_expression(config[CONF_NAME], read_addr, config[CONF_LENGTH])))
-    if CONF_BYTE_OFFSET in config:
-        # Block extraction: see select.py -- the write datapoint carries the
-        # FIELD width so write_state() writes exactly the field's bytes to the
-        # field's own register.
-        field_width = config.get(CONF_BYTE_LENGTH, 1)
-        cg.add(var.set_write_datapoint(datapoint_expression(config[CONF_NAME], write_addr, field_width)))
-        cg.add(var.set_extract_byte(config[CONF_BYTE_OFFSET]))
-        if CONF_BYTE_LENGTH in config:
-            cg.add(var.set_extract_len(config[CONF_BYTE_LENGTH]))
-    elif read_addr != write_addr:
-        cg.add(var.set_write_datapoint(datapoint_expression(config[CONF_NAME], write_addr, config[CONF_LENGTH])))
+    emit_write_target(var, config, read_addr, write_addr)
     cg.add(var.set_read_back(config[CONF_READ_BACK]))
-    if poll_interval is not None:
-        cg.add(var.set_poll_interval(int(poll_interval.total_milliseconds)))
+    emit_poll_interval(var, poll_ms)
 
     cg.add(parent.register_entity(var))

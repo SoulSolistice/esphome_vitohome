@@ -140,6 +140,25 @@ inline bool encode_scaled(double value, double scale, bool is_signed, uint8_t le
   return true;
 }
 
+// Write an already-raw (unscaled) value as `len` little-endian bytes -- the
+// enum/boolean write path, where the wire value IS the configured raw option and
+// no scaling applies. `encode_scaled` is the numeric counterpart.
+//
+// `len` is CLAMPED to `cap` (the caller's staging buffer size) and the effective
+// width is returned, so an over-long write-datapoint length can never make the
+// caller memcpy past its buffer. This mirrors the read path's
+// `read_le(p, len > 4 ? 4 : len)` clamp. Returns 0 for bad arguments, which the
+// caller must treat as "do not transmit".
+inline uint8_t encode_raw_le(uint32_t value, uint8_t len, uint8_t *buf, uint8_t cap) {
+  if (buf == nullptr || len == 0 || cap == 0)
+    return 0;
+  const uint8_t width = len > cap ? cap : len;
+  for (uint8_t i = 0; i < width; i++) {
+    buf[i] = static_cast<uint8_t>((value >> (8 * i)) & 0xFF);
+  }
+  return width;
+}
+
 // ---------------------------------------------------------------------------
 // BCD / DateTimeBCD (error history, full date)
 // ---------------------------------------------------------------------------

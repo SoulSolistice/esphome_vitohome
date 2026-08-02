@@ -11,7 +11,15 @@ from esphome.const import (
     CONF_VISUAL,
 )
 
-from . import CONF_READ_BACK, CONF_STATE_ADDRESS, CONF_VITOHOME_ID, VitoHomeComponent, datapoint_expression, vitohome_ns
+from . import (
+    CONF_READ_BACK,
+    CONF_STATE_ADDRESS,
+    CONF_VITOHOME_ID,
+    VitoHomeComponent,
+    datapoint_expression,
+    pop_poll_interval,
+    vitohome_ns,
+)
 
 DEPENDENCIES = ["vitohome"]
 
@@ -159,8 +167,9 @@ def _read_init(values):
 
 async def to_code(config):
     parent = await cg.get_variable(config[CONF_VITOHOME_ID])
-    # See sensor.py: pop the reserved update_interval before register_component.
-    poll_interval = config.pop(CONF_UPDATE_INTERVAL, None)
+    # 0 rather than None here: configure_setpoint/configure_mode take a uint32_t
+    # poll interval, where 0 means "poll on every hub cycle".
+    poll_ms = pop_poll_interval(config) or 0
     var = await climate.new_climate(config)
     await cg.register_component(var, config)
 
@@ -175,8 +184,6 @@ async def to_code(config):
     sp_min = int(visual.get(CONF_MIN_TEMPERATURE, 3))
     sp_max = int(visual.get(CONF_MAX_TEMPERATURE, 37))
     cg.add(var.set_setpoint_range(sp_min, sp_max))
-
-    poll_ms = int(poll_interval.total_milliseconds) if poll_interval is not None else 0
 
     # Setpoint channel: read == write at target_address, one integer degC byte.
     cg.add(var.configure_setpoint(parent, datapoint_expression(name, config[CONF_TARGET_ADDRESS], 1), poll_ms))

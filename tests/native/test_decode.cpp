@@ -97,6 +97,41 @@ static void test_decode_scaled() {
   CHECK(close_to(v, 123.0));
 }
 
+// --- encode_raw_le (the enum/boolean write path) ---------------------------
+// Shared by VitoSelect::control() and VitoSwitch::write_state(). The CLAMP is
+// the load-bearing property: an over-long write-datapoint length must never let
+// the caller memcpy past its 4-byte staging buffer.
+static void test_encode_raw_le() {
+  uint8_t buf[4];
+
+  std::memset(buf, 0xEE, sizeof(buf));
+  CHECK(encode_raw_le(0x01, 1, buf, sizeof(buf)) == 1);
+  CHECK(buf[0] == 0x01 && buf[1] == 0xEE);
+
+  std::memset(buf, 0xEE, sizeof(buf));
+  CHECK(encode_raw_le(0xABCD, 2, buf, sizeof(buf)) == 2);
+  CHECK(buf[0] == 0xCD && buf[1] == 0xAB && buf[2] == 0xEE);
+
+  std::memset(buf, 0xEE, sizeof(buf));
+  CHECK(encode_raw_le(0x12345678u, 4, buf, sizeof(buf)) == 4);
+  CHECK(buf[0] == 0x78 && buf[1] == 0x56 && buf[2] == 0x34 && buf[3] == 0x12);
+
+  // Clamped: a 9-byte datapoint length must write at most cap bytes.
+  std::memset(buf, 0xEE, sizeof(buf));
+  CHECK(encode_raw_le(0xFFFFFFFFu, 9, buf, sizeof(buf)) == 4);
+  CHECK(buf[0] == 0xFF && buf[3] == 0xFF);
+
+  // Bad arguments -> 0 ("do not transmit").
+  CHECK(encode_raw_le(1, 0, buf, sizeof(buf)) == 0);
+  CHECK(encode_raw_le(1, 1, nullptr, sizeof(buf)) == 0);
+  CHECK(encode_raw_le(1, 1, buf, 0) == 0);
+
+  // Round-trips against the read path the entities use.
+  std::memset(buf, 0, sizeof(buf));
+  encode_raw_le(0x00BEEF, 3, buf, sizeof(buf));
+  CHECK(read_le(buf, 3) == 0x00BEEFu);
+}
+
 // --- encode_scaled (the write path; inverse of decode_scaled) --------------
 static void test_encode_scaled() {
   uint8_t buf[4] = {0, 0, 0, 0};
@@ -524,6 +559,7 @@ int main() {
   test_sign_extend();
   test_decode_scaled();
   test_encode_scaled();
+  test_encode_raw_le();
   test_bcd();
   test_int_to_bcd();
   test_timebyte();

@@ -27,15 +27,14 @@ void VitoSelect::control(size_t index) {
     return;
   }
   const uint32_t raw = this->raw_values_[index];
-  // The option value is a uint32_t (<= 4 bytes). Clamp the write length to the
-  // staging buffer so an over-long write-datapoint length can't make
-  // set_write_payload_() copy past buf. Mirrors the read path's
-  // read_le(p, len > 4 ? 4 : len) clamp.
+  // encode_raw_le() clamps the write length to the staging buffer and returns
+  // the effective width, so an over-long write-datapoint length can't make
+  // set_write_payload_() copy past buf. Shared with VitoSwitch::write_state().
   uint8_t buf[4];
-  const uint8_t dplen = this->get_write_datapoint().length();
-  const uint8_t len = dplen > sizeof(buf) ? static_cast<uint8_t>(sizeof(buf)) : dplen;
-  for (uint8_t i = 0; i < len; i++) {
-    buf[i] = static_cast<uint8_t>((raw >> (8 * i)) & 0xFF);
+  const uint8_t len = encode_raw_le(raw, this->get_write_datapoint().length(), buf, sizeof(buf));
+  if (len == 0) {
+    ESP_LOGE(TAG, "%s: zero-length write datapoint", this->datapoint_.name());
+    return;
   }
   if (!this->set_write_payload_(buf, len)) {
     ESP_LOGE(TAG, "%s: failed to stage write payload", this->datapoint_.name());

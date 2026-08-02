@@ -195,14 +195,17 @@ void VitoHomeComponent::setup() {
   // therefore valid only for deadlines less than 2^31 milliseconds away.
   // Saturate the derived window at INT32_MAX instead of allowing either the
   // multiplication or the signed-difference assumption to overflow.
-  const uint32_t interval = this->get_update_interval();
+  // Read once and reuse below for the per-entity interval warning -- this used
+  // to be sampled twice into two differently-named locals (`interval` and
+  // `hub_interval`) holding the same value.
+  const uint32_t hub_interval = this->get_update_interval();
   constexpr uint32_t MAX_SIGNED_DEADLINE_MS = static_cast<uint32_t>(std::numeric_limits<int32_t>::max());
 
   uint32_t verify_window;
-  if (interval > MAX_SIGNED_DEADLINE_MS / 3u) {
+  if (hub_interval > MAX_SIGNED_DEADLINE_MS / 3u) {
     verify_window = MAX_SIGNED_DEADLINE_MS;
   } else {
-    verify_window = interval * 3u;
+    verify_window = hub_interval * 3u;
   }
 
   if (verify_window < PROTOCOL_VERIFY_MIN_MS)
@@ -218,7 +221,6 @@ void VitoHomeComponent::setup() {
   // Per-entity intervals are scheduled at hub-tick granularity, so anything
   // shorter than the hub interval silently degrades to the hub interval.
   // Surface that at setup instead of letting the user chase phantom lag.
-  const uint32_t hub_interval = this->get_update_interval();
   for (auto *entity : this->entities_) {
     if (entity == nullptr)
       continue;

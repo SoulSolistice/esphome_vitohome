@@ -10,6 +10,8 @@ from . import (
     MAX_P300_READ_LENGTH,
     VitoHomeComponent,
     datapoint_expression,
+    emit_poll_interval,
+    pop_poll_interval,
     vitohome_ns,
 )
 
@@ -100,9 +102,7 @@ async def to_code(config):
         await _connectivity_to_code(config)
         return
     parent = await cg.get_variable(config[CONF_VITOHOME_ID])
-    # See sensor.py: pop the reserved update_interval before register_component
-    # so it doesn't emit set_update_interval() on our passive entity.
-    poll_interval = config.pop(CONF_UPDATE_INTERVAL, None)
+    poll_ms = pop_poll_interval(config)
     var = await binary_sensor.new_binary_sensor(config)
     await cg.register_component(var, config)
 
@@ -112,7 +112,6 @@ async def to_code(config):
     cg.add(var.set_datapoint(datapoint_expression(config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH])))
     cg.add(var.set_byte_offset(config[CONF_BYTE_OFFSET]))
     cg.add(var.set_bit_mask(config[CONF_BIT_MASK]))
-    if poll_interval is not None:
-        cg.add(var.set_poll_interval(int(poll_interval.total_milliseconds)))
+    emit_poll_interval(var, poll_ms)
 
     cg.add(parent.register_entity(var))

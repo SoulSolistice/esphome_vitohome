@@ -3,7 +3,15 @@ from esphome.components import text
 import esphome.config_validation as cv
 from esphome.const import CONF_ADDRESS, CONF_NAME, CONF_UPDATE_INTERVAL
 
-from . import CONF_READ_BACK, CONF_VITOHOME_ID, VitoHomeComponent, datapoint_expression, vitohome_ns
+from . import (
+    CONF_READ_BACK,
+    CONF_VITOHOME_ID,
+    VitoHomeComponent,
+    datapoint_expression,
+    emit_poll_interval,
+    pop_poll_interval,
+    vitohome_ns,
+)
 
 DEPENDENCIES = ["vitohome"]
 
@@ -33,14 +41,12 @@ CONFIG_SCHEMA = (
 
 async def to_code(config):
     parent = await cg.get_variable(config[CONF_VITOHOME_ID])
-    # See sensor.py: pop the reserved update_interval before register_component.
-    poll_interval = config.pop(CONF_UPDATE_INTERVAL, None)
+    poll_ms = pop_poll_interval(config)
     var = await text.new_text(config, min_length=0, max_length=_MAX_LENGTH)
     await cg.register_component(var, config)
 
     cg.add(var.set_datapoint(datapoint_expression(config[CONF_NAME], config[CONF_ADDRESS], SCHALTZEITEN_LENGTH)))
     cg.add(var.set_read_back(config[CONF_READ_BACK]))
-    if poll_interval is not None:
-        cg.add(var.set_poll_interval(int(poll_interval.total_milliseconds)))
+    emit_poll_interval(var, poll_ms)
 
     cg.add(parent.register_entity(var))

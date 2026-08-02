@@ -11,6 +11,9 @@ from . import (
     MAX_P300_READ_LENGTH,
     VitoHomeComponent,
     datapoint_expression,
+    emit_poll_interval,
+    pop_poll_interval,
+    validate_fault_codes,
     validate_length_in,
     vitohome_ns,
 )
@@ -120,17 +123,8 @@ def _validate_enum_extraction(config):
 def _validate_code_bytes(config):
     """The error_history codes map is keyed by the decoded wire code BYTE, so
     every key must fit 0..0xFF -- a wider key is a dead entry that can never
-    match the 8-bit code. Mirrors event.py::_validate_codes so both fault
-    surfaces reject the same out-of-range keys, with a clear message. Applied as
-    a post-validator (a voluptuous key-marker that RAISES is swallowed into a
-    generic 'extra keys' error, so the range check must run after key parsing)."""
-    for code in config.get(CONF_CODES, {}):
-        if not 0 <= code <= 0xFF:
-            raise cv.Invalid(
-                f"fault code 0x{code:X} does not fit one byte (0..0xFF)",
-                path=[CONF_CODES],
-            )
-    return config
+    match. Shared with event.py, which validates the same code space."""
+    return validate_fault_codes(config, CONF_CODES)
 
 
 _BASE = {
@@ -236,9 +230,7 @@ CONFIG_SCHEMA = cv.typed_schema(
 
 async def to_code(config):
     parent = await cg.get_variable(config[CONF_VITOHOME_ID])
-    # See sensor.py: pop the reserved update_interval before register_component.
-    # (device_id has no such key, so this is a no-op there.)
-    poll_interval = config.pop(CONF_UPDATE_INTERVAL, None)
+    poll_ms = pop_poll_interval(config)
     var = await text_sensor.new_text_sensor(config)
     await cg.register_component(var, config)
     cg.add(var.set_type(TEXT_SENSOR_TYPES[config[CONF_TYPE]]))
@@ -269,7 +261,6 @@ async def to_code(config):
     for value, label in mapping.items():
         cg.add(var.add_option(value, label))
 
-    if poll_interval is not None:
-        cg.add(var.set_poll_interval(int(poll_interval.total_milliseconds)))
+    emit_poll_interval(var, poll_ms)
 
     cg.add(parent.register_entity(var))
