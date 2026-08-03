@@ -2,6 +2,8 @@
 #ifdef USE_CLIMATE
 
 #include <cmath>
+#include <cstring>
+#include <vector>
 
 #include "esphome/core/log.h"
 #include "vitohome.h"
@@ -51,11 +53,11 @@ void VitoClimate::setup() {
   // Register the configured preset names as custom presets so set_custom_preset_
   // accepts them. The const char* point into presets_ (a stable member), which
   // is filled once from codegen and never reallocated after setup.
-  if (this->has_mode_ && !this->presets_.empty()) {
+  if (this->has_mode_ && this->preset_count_ > 0) {
     std::vector<const char *> names;
-    names.reserve(this->presets_.size());
-    for (auto &p : this->presets_)
-      names.push_back(p.name.c_str());
+    names.reserve(this->preset_count_);
+    for (uint16_t i = 0; i < this->preset_count_; i++)
+      names.push_back(this->presets_[i].name);
     this->set_supported_custom_presets(names);
   }
   this->mode = this->has_mode_ ? climate::CLIMATE_MODE_OFF : climate::CLIMATE_MODE_HEAT;
@@ -70,8 +72,8 @@ climate::ClimateTraits VitoClimate::traits() {
   // whatever modes the configured presets derive.
   t.add_supported_mode(climate::CLIMATE_MODE_HEAT);
   if (this->has_mode_) {
-    for (auto &p : this->presets_)
-      t.add_supported_mode(p.mode);
+    for (uint16_t i = 0; i < this->preset_count_; i++)
+      t.add_supported_mode(this->presets_[i].mode);
   }
   // Default the HA card's gauge to the device's reality: the same range
   // control() clamps to, on the 1 degC grid the 1-byte setpoint register
@@ -85,17 +87,17 @@ climate::ClimateTraits VitoClimate::traits() {
 }
 
 const VitoClimatePreset *VitoClimate::find_preset_by_name_(const char *name) const {
-  for (auto &p : this->presets_) {
-    if (p.name == name)
-      return &p;
+  for (uint16_t i = 0; i < this->preset_count_; i++) {
+    if (std::strcmp(this->presets_[i].name, name) == 0)
+      return &this->presets_[i];
   }
   return nullptr;
 }
 
 const VitoClimatePreset *VitoClimate::first_preset_with_mode_(climate::ClimateMode mode) const {
-  for (auto &p : this->presets_) {
-    if (p.mode == mode)
-      return &p;
+  for (uint16_t i = 0; i < this->preset_count_; i++) {
+    if (this->presets_[i].mode == mode)
+      return &this->presets_[i];
   }
   return nullptr;
 }
@@ -131,7 +133,7 @@ void VitoClimate::control(const climate::ClimateCall &call) {
     }
     if (p != nullptr) {
       if (this->mode_.write_byte(p->write_value)) {
-        this->set_custom_preset_(p->name.c_str());
+        this->set_custom_preset_(p->name);
         this->mode = p->mode;  // optimistic; read-back reconciles
         changed = true;
       } else {
@@ -167,12 +169,13 @@ void VitoClimate::on_mode_read(const ResponseView &response) {
     return;
   }
   const uint8_t byte = response.data[0];
-  for (auto &p : this->presets_) {
-    for (uint8_t rv : p.read_values) {
-      if (rv == byte) {
-        this->set_custom_preset_(p.name.c_str());
+  for (uint16_t i = 0; i < this->preset_count_; i++) {
+    const VitoClimatePreset &p = this->presets_[i];
+    for (uint8_t j = 0; j < p.read_count; j++) {
+      if (p.read_values[j] == byte) {
+        this->set_custom_preset_(p.name);
         this->mode = p.mode;
-        ESP_LOGD(TAG, "%s mode = '%s' (read 0x%02X)", this->get_name().c_str(), p.name.c_str(), byte);
+        ESP_LOGD(TAG, "%s mode = '%s' (read 0x%02X)", this->get_name().c_str(), p.name, byte);
         this->publish_state();
         return;
       }
@@ -219,8 +222,8 @@ void VitoClimate::dump_config() {
                 this->get_name().c_str(), this->setpoint_.get_datapoint().address(), this->setpoint_min_,
                 this->setpoint_max_);
   if (this->has_mode_) {
-    ESP_LOGCONFIG(TAG, "  Mode read 0x%04X  write 0x%04X  presets: %zu", this->mode_.get_datapoint().address(),
-                  this->mode_.get_write_datapoint().address(), this->presets_.size());
+    ESP_LOGCONFIG(TAG, "  Mode read 0x%04X  write 0x%04X  presets: %u", this->mode_.get_datapoint().address(),
+                  this->mode_.get_write_datapoint().address(), this->preset_count_);
   } else {
     ESP_LOGCONFIG(TAG, "  Mode: setpoint-only (no operating_mode block)");
   }

@@ -70,8 +70,8 @@ void VitoSwitch::handle_response(const ResponseView &response) {
     return;
   }
   const uint32_t raw = static_cast<uint32_t>(read_le(p, len > 4 ? 4 : len));
-  for (uint32_t on : this->on_state_values_) {
-    if (raw == on) {
+  for (uint16_t i = 0; i < this->on_state_count_; i++) {
+    if (raw == this->on_state_values_[i]) {
       ESP_LOGD(TAG, "%s = ON (raw 0x%02" PRIX32 ")", this->datapoint_.name(), raw);
       this->publish_state(true);
       return;

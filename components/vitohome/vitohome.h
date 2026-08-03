@@ -107,18 +107,23 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // verification fails. State is edge-published, so a healthy link does not
   // publish on every response.
 #ifdef USE_BINARY_SENSOR
-  void register_link_sensor(binary_sensor::BinarySensor *sensor) {
-    if (sensor != nullptr)
-      this->link_sensors_.push_back(sensor);
+  // Codegen collects every connectivity binary_sensor and emits ONE static
+  // table (see __init__.py::_emit_hub_sensor_tables), so the hub stores a
+  // pointer and a count instead of growing a vector one push_back at a time.
+  // The pointees are mutated (publish_state), so this is an array of const
+  // pointers to non-const sensors, not the other way round.
+  void set_link_sensors(binary_sensor::BinarySensor *const *sensors, uint16_t count) {
+    this->link_sensors_ = sensors;
+    this->link_sensor_count_ = count;
   }
 #endif
 
   // device_id text sensors do not poll the bus themselves. They subscribe to
   // the hub's one-shot identification result.
 #ifdef USE_TEXT_SENSOR
-  void register_device_id_sensor(text_sensor::TextSensor *sensor) {
-    if (sensor != nullptr)
-      this->device_id_sensors_.push_back(sensor);
+  void set_device_id_sensors(text_sensor::TextSensor *const *sensors, uint16_t count) {
+    this->device_id_sensors_ = sensors;
+    this->device_id_sensor_count_ = count;
   }
 #endif
 
@@ -198,9 +203,9 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // Subscribe a hub-fed text sensor (text_sensor: type: scan_result) to raw
   // result lines. The sensor never polls.
 #ifdef USE_TEXT_SENSOR
-  void register_raw_result_sensor(text_sensor::TextSensor *sensor) {
-    if (sensor != nullptr)
-      this->raw_result_sensors_.push_back(sensor);
+  void set_raw_result_sensors(text_sensor::TextSensor *const *sensors, uint16_t count) {
+    this->raw_result_sensors_ = sensors;
+    this->raw_result_sensor_count_ = count;
   }
 #endif
 
@@ -328,11 +333,13 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   bool lanes_sized_{false};
 
 #ifdef USE_TEXT_SENSOR
-  std::vector<text_sensor::TextSensor *> device_id_sensors_;
+  text_sensor::TextSensor *const *device_id_sensors_{nullptr};
+  uint16_t device_id_sensor_count_{0};
 #endif
 
 #ifdef USE_BINARY_SENSOR
-  std::vector<binary_sensor::BinarySensor *> link_sensors_;
+  binary_sensor::BinarySensor *const *link_sensors_{nullptr};
+  uint16_t link_sensor_count_{0};
 #endif
 
   // Tri-state published connectivity:
@@ -474,7 +481,8 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   uint8_t raw_write_len_{0};
 
 #ifdef USE_TEXT_SENSOR
-  std::vector<text_sensor::TextSensor *> raw_result_sensors_;
+  text_sensor::TextSensor *const *raw_result_sensors_{nullptr};
+  uint16_t raw_result_sensor_count_{0};
 #endif
 
   // --- system-time synchronization ------------------------------------------

@@ -48,9 +48,9 @@ void VitoTextSensor::dump_config() {
 }
 
 const char *VitoTextSensor::lookup_(uint32_t value) const {
-  for (const auto &kv : this->options_) {
-    if (kv.first == value)
-      return kv.second;
+  for (uint16_t i = 0; i < this->option_count_; i++) {
+    if (this->options_[i].value == value)
+      return this->options_[i].label;
   }
   return nullptr;
 }

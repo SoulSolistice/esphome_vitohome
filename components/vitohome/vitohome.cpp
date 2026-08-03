@@ -664,8 +664,8 @@ void VitoHomeComponent::dump_config() {
     ESP_LOGCONFIG(TAG, "  Device: %s", this->ident_string_().c_str());
 
 #ifdef USE_TEXT_SENSOR
-  if (!this->raw_result_sensors_.empty()) {
-    ESP_LOGCONFIG(TAG, "  Scan console: %zu scan_result sensor(s) attached", this->raw_result_sensors_.size());
+  if (this->raw_result_sensor_count_ > 0) {
+    ESP_LOGCONFIG(TAG, "  Scan console: %u scan_result sensor(s) attached", this->raw_result_sensor_count_);
   }
 #endif
 
@@ -843,9 +843,9 @@ void VitoHomeComponent::raw_publish_(const char *line) {
   // The callers all pass a fixed char buffer; publish_state(const char *)
   // assigns into each sensor's reused state string, whereas a const std::string
   // & parameter would construct (and heap-allocate) a std::string per call.
-  for (auto *sensor : this->raw_result_sensors_) {
-    if (sensor != nullptr)
-      sensor->publish_state(line);
+  for (uint16_t i = 0; i < this->raw_result_sensor_count_; i++) {
+    if (this->raw_result_sensors_[i] != nullptr)
+      this->raw_result_sensors_[i]->publish_state(line);
   }
 #else
   (void) line;
@@ -1013,9 +1013,9 @@ void VitoHomeComponent::publish_link_(bool up) {
   ESP_LOGI(TAG, "Optolink link %s", up ? "online" : "offline");
 
 #ifdef USE_BINARY_SENSOR
-  for (auto *sensor : this->link_sensors_) {
-    if (sensor != nullptr)
-      sensor->publish_state(up);
+  for (uint16_t i = 0; i < this->link_sensor_count_; i++) {
+    if (this->link_sensors_[i] != nullptr)
+      this->link_sensors_[i]->publish_state(up);
   }
 #endif
 }
@@ -1294,9 +1294,9 @@ void VitoHomeComponent::ident_finish_() {
   }
 
 #ifdef USE_TEXT_SENSOR
-  for (auto *sensor : this->device_id_sensors_) {
-    if (sensor != nullptr)
-      sensor->publish_state(identification);
+  for (uint16_t i = 0; i < this->device_id_sensor_count_; i++) {
+    if (this->device_id_sensors_[i] != nullptr)
+      this->device_id_sensors_[i]->publish_state(identification);
   }
 #endif
 }

@@ -13,8 +13,8 @@ static const char *const TAG = "vitohome.select";
 
 void VitoSelect::dump_config() {
   LOG_SELECT("  ", "VitoHome Select", this);
-  ESP_LOGCONFIG(TAG, "    Address: 0x%04X  Length: %u  Options: %zu", this->datapoint_.address(),
-                this->datapoint_.length(), this->raw_values_.size());
+  ESP_LOGCONFIG(TAG, "    Address: 0x%04X  Length: %u  Options: %u", this->datapoint_.address(),
+                this->datapoint_.length(), this->raw_value_count_);
   if (this->extract_byte_ >= 0) {
     ESP_LOGCONFIG(TAG, "    Extract: %u byte(s) at offset %d of a %u-byte block read", this->extract_len_,
                   this->extract_byte_, this->datapoint_.length());
@@ -22,7 +22,7 @@ void VitoSelect::dump_config() {
 }
 
 void VitoSelect::control(size_t index) {
-  if (index >= this->raw_values_.size()) {
+  if (index >= this->raw_value_count_) {
     ESP_LOGE(TAG, "%s: index %zu out of range", this->datapoint_.name(), index);
     return;
   }
@@ -74,9 +74,9 @@ void VitoSelect::handle_response(const ResponseView &response) {
     return;
   }
   const uint32_t raw = static_cast<uint32_t>(read_le(p, len > 4 ? 4 : len));
-  for (size_t i = 0; i < this->raw_values_.size(); i++) {
+  for (uint16_t i = 0; i < this->raw_value_count_; i++) {
     if (this->raw_values_[i] == raw) {
-      ESP_LOGD(TAG, "%s = option %zu (raw 0x%02" PRIX32 ")", this->datapoint_.name(), i, raw);
+      ESP_LOGD(TAG, "%s = option %u (raw 0x%02" PRIX32 ")", this->datapoint_.name(), i, raw);
       this->publish_state(i);
       return;
     }

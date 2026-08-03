@@ -2,8 +2,6 @@
 #include "esphome/core/defines.h"
 
 #ifdef USE_SWITCH
-#include <vector>
-
 #include "esphome/components/switch/switch.h"
 #include "esphome/core/component.h"
 #include "vito_entity.h"
@@ -30,7 +28,11 @@ class VitoSwitch final : public switch_::Switch, public Component, public VitoEn
  public:
   void set_on_value(uint32_t v) { this->on_value_ = v; }
   void set_off_value(uint32_t v) { this->off_value_ = v; }
-  void add_on_state_value(uint32_t v) { this->on_state_values_.push_back(v); }
+  // Values that READ as on, as a codegen-emitted static array in .rodata.
+  void set_on_state_values(const uint32_t *values, uint16_t count) {
+    this->on_state_values_ = values;
+    this->on_state_count_ = count;
+  }
   void set_read_back(bool v) { this->read_back_ = v; }
   // Aligned block extraction on the state read -- identical semantics to
   // VitoSelect: the field is extract_len_ bytes (default 1) at extract_byte_
@@ -49,7 +51,8 @@ class VitoSwitch final : public switch_::Switch, public Component, public VitoEn
 
   uint32_t on_value_{1};
   uint32_t off_value_{0};
-  std::vector<uint32_t> on_state_values_;
+  const uint32_t *on_state_values_{nullptr};
+  uint16_t on_state_count_{0};
   bool pending_state_{false};
   int16_t extract_byte_{-1};
   uint8_t extract_len_{1};  // field width to slice at extract_byte_ (1..2)

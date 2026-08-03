@@ -2,9 +2,6 @@
 #include "esphome/core/defines.h"
 
 #ifdef USE_TEXT_SENSOR
-#include <utility>
-#include <vector>
-
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/core/component.h"
 #include "vito_entity.h"
@@ -24,9 +21,13 @@ enum class TextSensorType : uint8_t {
 class VitoTextSensor final : public text_sensor::TextSensor, public Component, public VitoEntityBase {
  public:
   void set_type(TextSensorType type) { this->type_ = type; }
-  // ENUM labels / ERROR_HISTORY code texts. Codegen feeds these one by one;
-  // labels are string literals from codegen (static storage).
-  void add_option(uint32_t value, const char *label) { this->options_.emplace_back(value, label); }
+  // ENUM labels / ERROR_HISTORY code texts, as a codegen-emitted static table
+  // in .rodata (see VitoOption). Pointer + count only: no heap, and no
+  // per-row statement in the generated setup().
+  void set_options(const VitoOption *options, uint16_t count) {
+    this->options_ = options;
+    this->option_count_ = count;
+  }
   // Aligned block extraction (read-only twin of the sensor's byte_offset):
   // `length` is a block read at the block BASE and the field is extract_len_
   // bytes at extract_byte_ inside it. Used by `enum` (1..4 bytes) and by the
@@ -53,7 +54,8 @@ class VitoTextSensor final : public text_sensor::TextSensor, public Component, p
   void publish_utf16_(const uint8_t *data, uint8_t len);
 
   TextSensorType type_{TextSensorType::RAW_HEX};
-  std::vector<std::pair<uint32_t, const char *>> options_;
+  const VitoOption *options_{nullptr};
+  uint16_t option_count_{0};
   int16_t extract_byte_{-1};
   uint8_t extract_len_{1};  // field width to slice at extract_byte_ (enum 1..4, ascii <=32, utf16 <=40)
 };

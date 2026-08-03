@@ -2,9 +2,6 @@
 #include "esphome/core/defines.h"
 
 #ifdef USE_CLIMATE
-#include <string>
-#include <vector>
-
 #include "esphome/components/climate/climate.h"
 #include "esphome/core/component.h"
 #include "vito_entity.h"
@@ -42,13 +39,20 @@ class VitoClimateChannel final : public VitoEntityBase {
   Kind kind_;
 };
 
-// One Betriebsart preset. The binding between the spaces is positional: this
-// row says "write_value (command space) and any of read_values (state space)
-// are the same operating mode, displayed as `mode`." `name` is a free label.
+// One Betriebsart preset, emitted as a codegen row in a `static const
+// VitoClimatePreset[]` table (.rodata). The binding between the command and
+// state spaces is positional: this row says "write_value (command space) and
+// any of read_values (state space) are the same operating mode, displayed as
+// `mode`." `name` is a free label. Deliberately a POD of pointers: the previous
+// shape held a std::string AND a std::vector<uint8_t> per preset, so every
+// preset cost two heap blocks (plus the presets_ vector's own growth) -- ~10
+// allocations for the 5-preset curated example. `name` and `read_values` point
+// at codegen literals with static storage; nothing here is owned.
 struct VitoClimatePreset {
-  std::string name;
+  const char *name;
   uint8_t write_value;
-  std::vector<uint8_t> read_values;
+  const uint8_t *read_values;
+  uint8_t read_count;
   climate::ClimateMode mode;
 };
 
@@ -75,9 +79,10 @@ class VitoClimate final : public climate::Climate, public Component {
   void configure_setpoint(VitoHomeComponent *hub, const optolink::Datapoint &dp, uint32_t poll_ms);
   void configure_mode(VitoHomeComponent *hub, const optolink::Datapoint &read_dp, bool read_back, uint32_t poll_ms);
   void set_mode_write_datapoint(const optolink::Datapoint &dp) { this->mode_.set_write_datapoint(dp); }
-  void add_preset(const std::string &name, uint8_t write_value, const std::vector<uint8_t> &read_values,
-                  climate::ClimateMode mode) {
-    this->presets_.push_back(VitoClimatePreset{name, write_value, read_values, mode});
+  // The whole preset table at once, as a static array in .rodata.
+  void set_presets(const VitoClimatePreset *presets, uint16_t count) {
+    this->presets_ = presets;
+    this->preset_count_ = count;
   }
 
   // --- Component / Climate --------------------------------------------------
@@ -96,7 +101,8 @@ class VitoClimate final : public climate::Climate, public Component {
 
   VitoClimateChannel setpoint_;
   VitoClimateChannel mode_;
-  std::vector<VitoClimatePreset> presets_;
+  const VitoClimatePreset *presets_{nullptr};
+  uint16_t preset_count_{0};
   bool has_mode_{false};
   int setpoint_min_{3};
   int setpoint_max_{37};

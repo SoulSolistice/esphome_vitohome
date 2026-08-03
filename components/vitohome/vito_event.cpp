@@ -12,14 +12,14 @@ static const char *const TAG = "vitohome.event";
 
 void VitoEvent::dump_config() {
   LOG_EVENT("  ", "VitoHome Event", this);
-  ESP_LOGCONFIG(TAG, "    Address: 0x%04X  Length: %u  Codes: %zu", this->datapoint_.address(),
-                this->datapoint_.length(), this->codes_.size());
+  ESP_LOGCONFIG(TAG, "    Address: 0x%04X  Length: %u  Codes: %u", this->datapoint_.address(),
+                this->datapoint_.length(), this->code_count_);
 }
 
 const char *VitoEvent::label_for_(uint8_t code) const {
-  for (const auto &entry : this->codes_) {
-    if (entry.first == code)
-      return entry.second;
+  for (uint16_t i = 0; i < this->code_count_; i++) {
+    if (this->codes_[i].value == code)
+      return this->codes_[i].label;
   }
   return nullptr;
 }

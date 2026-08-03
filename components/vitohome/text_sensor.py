@@ -8,11 +8,15 @@ from . import (
     CONF_BYTE_OFFSET,
     CONF_LENGTH,
     CONF_VITOHOME_ID,
+    HUB_DEVICE_ID_SENSORS,
+    HUB_RAW_RESULT_SENSORS,
     MAX_P300_READ_LENGTH,
     VitoHomeComponent,
     datapoint_expression,
+    emit_option_table,
     emit_poll_interval,
     pop_poll_interval,
+    register_hub_sensor,
     validate_fault_codes,
     validate_length_in,
     vitohome_ns,
@@ -238,13 +242,13 @@ async def to_code(config):
     if config[CONF_TYPE] == "device_id":
         # No bus reads of its own: it subscribes to the hub's one-shot
         # identification result instead of polling.
-        cg.add(parent.register_device_id_sensor(var))
+        register_hub_sensor(HUB_DEVICE_ID_SENSORS, var)
         return
 
     if config[CONF_TYPE] == "scan_result":
         # No bus reads of its own: the hub publishes the raw scan-console result
         # line to it (queue_raw_read / queue_raw_write).
-        cg.add(parent.register_raw_result_sensor(var))
+        register_hub_sensor(HUB_RAW_RESULT_SENSORS, var)
         return
 
     cg.add(var.set_datapoint(datapoint_expression(config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH])))
@@ -255,11 +259,13 @@ async def to_code(config):
         if CONF_BYTE_LENGTH in config:
             cg.add(var.set_extract_len(config[CONF_BYTE_LENGTH]))
 
-    # add_option(value, label) takes (uint32_t, const char*); ESPHome emits the
-    # label as a properly-escaped C++ string literal, so no manual escaping here.
+    # One `static const VitoOption[]` table in .rodata instead of one
+    # add_option() statement per row (see emit_option_table): no growing vector,
+    # so no boot-time realloc churn on a 94-entry fault map.
     mapping = config.get(CONF_OPTIONS) or config.get(CONF_CODES) or {}
-    for value, label in mapping.items():
-        cg.add(var.add_option(value, label))
+    table, count = emit_option_table(config, mapping, "options")
+    if count:
+        cg.add(var.set_options(table, count))
 
     emit_poll_interval(var, poll_ms)
 

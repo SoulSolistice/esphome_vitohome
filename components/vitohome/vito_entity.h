@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <cstring>
 
 #include "optolink/optolink.h"
@@ -7,6 +8,25 @@
 namespace esphome::vitohome {
 
 class VitoHomeComponent;
+
+// One {wire value -> label} row of a codegen-emitted lookup table.
+//
+// The tables (text_sensor `options:` / `codes:`, event `codes:`) are emitted as
+// `static const VitoOption name[] = {...}` via cg.static_const_array(), so they
+// live in .rodata and an entity holds only a pointer and a count. Previously
+// each row was a separate `add_option()` / `add_code()` statement doing an
+// emplace_back on a growing std::vector: a 94-entry fault map reallocated eight
+// times (capacity 1 -> 128) and freed each predecessor, interleaved with every
+// other allocation ESPHome makes during setup(). Across the complete catalog
+// that is 1883 rows and 662 boot allocations -- fatal on an ESP8266 (~40 KiB
+// heap), which is why this matters even where the ESP32 absorbs it.
+//
+// The labels are codegen string literals with static storage, so nothing here
+// is owned or freed.
+struct VitoOption {
+  uint32_t value;
+  const char *label;
+};
 
 // Common base for any entity that owns an optolink datapoint. The component
 // holds a vector<VitoEntityBase*> and dispatches read/write responses and

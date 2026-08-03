@@ -14,6 +14,7 @@ from . import (
     VitoHomeComponent,
     datapoint_expression,
     emit_poll_interval,
+    emit_uint32_table,
     emit_write_target,
     field_width,
     pop_poll_interval,
@@ -107,8 +108,10 @@ async def to_code(config):
 
     cg.add(var.set_on_value(config[CONF_ON_VALUE]))
     cg.add(var.set_off_value(config[CONF_OFF_VALUE]))
-    for value in config.get(CONF_ON_VALUES) or [config[CONF_ON_VALUE]]:
-        cg.add(var.add_on_state_value(value))
+    on_values = config.get(CONF_ON_VALUES) or [config[CONF_ON_VALUE]]
+    table, count = emit_uint32_table(config, on_values, "on_values")
+    if count:
+        cg.add(var.set_on_state_values(table, count))
 
     # CONF_ADDRESS is the command (write) address; with CONF_STATE_ADDRESS the
     # live value is read there instead -- identical to select.py.

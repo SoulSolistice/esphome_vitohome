@@ -3,6 +3,7 @@ from esphome.components import climate
 import esphome.config_validation as cv
 from esphome.const import (
     CONF_ADDRESS,
+    CONF_ID,
     CONF_MAX_TEMPERATURE,
     CONF_MIN_TEMPERATURE,
     CONF_MODE,
@@ -10,12 +11,15 @@ from esphome.const import (
     CONF_UPDATE_INTERVAL,
     CONF_VISUAL,
 )
+from esphome.core import ID
 
 from . import (
     CONF_READ_BACK,
     CONF_STATE_ADDRESS,
     CONF_VITOHOME_ID,
+    VitoClimatePreset,
     VitoHomeComponent,
+    cpp_string_literal,
     datapoint_expression,
     pop_poll_interval,
     vitohome_ns,
@@ -160,9 +164,37 @@ CONFIG_SCHEMA = cv.All(
 )
 
 
-def _read_init(values):
-    """Render a list of bytes as a C++ brace initializer for std::vector<uint8_t>."""
-    return cg.RawExpression("{" + ", ".join(f"0x{v:02X}" for v in values) + "}")
+def _emit_preset_table(config, presets):
+    """Emit the preset table as static arrays in .rodata; return (table, count).
+
+    One `static const uint8_t <id>_preset<N>_read[]` per preset, then a single
+    `static const VitoClimatePreset <id>_presets[]` referencing them. Replaces
+    the per-preset add_preset() run, which cost two heap blocks per preset (a
+    std::string name and a std::vector<uint8_t> read list) plus the presets_
+    vector's own growth.
+    """
+    if not presets:
+        return None, 0
+    rows = []
+    for n, preset in enumerate(presets):
+        reads = list(preset[CONF_READ])
+        if reads:
+            read_id = ID(f"{config[CONF_ID]}_preset{n}_read", is_declaration=True, type=cg.uint8)
+            read_arr = cg.static_const_array(read_id, cg.ArrayInitializer(*[int(v) for v in reads]))
+        else:
+            read_arr = cg.RawExpression("nullptr")
+        # cv.enum yields an EnumValue whose str() is the YAML key ("heat"), not
+        # the C++ enumerator. safe_exp() unwraps it to climate::CLIMATE_MODE_HEAT
+        # -- interpolating the EnumValue directly emits an undeclared identifier
+        # that only fails at compile time.
+        mode = cg.safe_exp(preset[CONF_MODE])
+        rows.append(
+            cg.RawExpression(
+                f"{{{cpp_string_literal(preset[CONF_NAME])}, {int(preset[CONF_WRITE])}, {read_arr}, {len(reads)}, {mode}}}"
+            )
+        )
+    table_id = ID(f"{config[CONF_ID]}_presets", is_declaration=True, type=VitoClimatePreset)
+    return cg.static_const_array(table_id, cg.ArrayInitializer(*rows, multiline=True)), len(rows)
 
 
 async def to_code(config):
@@ -196,5 +228,6 @@ async def to_code(config):
         cg.add(var.configure_mode(parent, datapoint_expression(name, read_addr, 1), om[CONF_READ_BACK], poll_ms))
         if read_addr != write_addr:
             cg.add(var.set_mode_write_datapoint(datapoint_expression(name, write_addr, 1)))
-        for p in om[CONF_PRESETS]:
-            cg.add(var.add_preset(p[CONF_NAME], p[CONF_WRITE], _read_init(p[CONF_READ]), p[CONF_MODE]))
+        preset_table, preset_count = _emit_preset_table(config, om[CONF_PRESETS])
+        if preset_count:
+            cg.add(var.set_presets(preset_table, preset_count))

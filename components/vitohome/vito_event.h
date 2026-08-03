@@ -2,9 +2,6 @@
 #include "esphome/core/defines.h"
 
 #ifdef USE_EVENT
-#include <utility>
-#include <vector>
-
 #include "esphome/components/event/event.h"
 #include "esphome/core/component.h"
 #include "vito_entity.h"
@@ -26,7 +23,13 @@ namespace esphome::vitohome {
 // logbook on every reboot.
 class VitoEvent final : public event::Event, public Component, public VitoEntityBase {
  public:
-  void add_code(uint32_t value, const char *label) { this->codes_.emplace_back(value, label); }
+  // Fault-code table as a codegen-emitted static array in .rodata (VitoOption):
+  // pointer + count, no heap. Code 0x00 is filtered out by event.py -- it fires
+  // the built-in "cleared" type and never reaches label_for_().
+  void set_codes(const VitoOption *codes, uint16_t count) {
+    this->codes_ = codes;
+    this->code_count_ = count;
+  }
 
   void dump_config() override;
   void handle_response(const ResponseView &response) override;
@@ -36,7 +39,8 @@ class VitoEvent final : public event::Event, public Component, public VitoEntity
  protected:
   const char *label_for_(uint8_t code) const;
 
-  std::vector<std::pair<uint32_t, const char *>> codes_;
+  const VitoOption *codes_{nullptr};
+  uint16_t code_count_{0};
   uint8_t last_code_{0};
   bool baseline_set_{false};
 };

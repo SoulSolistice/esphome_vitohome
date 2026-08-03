@@ -7,11 +7,13 @@ from . import (
     CONF_BYTE_OFFSET,
     CONF_LENGTH,
     CONF_VITOHOME_ID,
+    HUB_LINK_SENSORS,
     MAX_P300_READ_LENGTH,
     VitoHomeComponent,
     datapoint_expression,
     emit_poll_interval,
     pop_poll_interval,
+    register_hub_sensor,
     vitohome_ns,
 )
 
@@ -92,9 +94,12 @@ CONFIG_SCHEMA = cv.typed_schema(
 
 
 async def _connectivity_to_code(config):
-    parent = await cg.get_variable(config[CONF_VITOHOME_ID])
+    # Resolved for its ordering guarantee only (the hub must exist before this
+    # platform's codegen runs); the link table itself is emitted by the FINAL
+    # step in __init__.py, not wired through the hub variable here.
+    await cg.get_variable(config[CONF_VITOHOME_ID])
     var = await binary_sensor.new_binary_sensor(config)
-    cg.add(parent.register_link_sensor(var))
+    register_hub_sensor(HUB_LINK_SENSORS, var)
 
 
 async def to_code(config):

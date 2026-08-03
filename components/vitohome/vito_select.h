@@ -2,8 +2,6 @@
 #include "esphome/core/defines.h"
 
 #ifdef USE_SELECT
-#include <vector>
-
 #include "esphome/components/select/select.h"
 #include "esphome/core/component.h"
 #include "vito_entity.h"
@@ -17,7 +15,12 @@ namespace esphome::vitohome {
 // string-based default forwards to it).
 class VitoSelect final : public select::Select, public Component, public VitoEntityBase {
  public:
-  void add_raw_value(uint32_t value) { this->raw_values_.push_back(value); }
+  // Wire values in option-index order, as a codegen-emitted static array in
+  // .rodata: pointer + count, no heap and no per-option statement in setup().
+  void set_raw_values(const uint32_t *values, uint16_t count) {
+    this->raw_values_ = values;
+    this->raw_value_count_ = count;
+  }
   void set_read_back(bool v) { this->read_back_ = v; }
   // Aligned block extraction on the state read (mirrors VitoSensor):
   // `set_extract_byte` marks the field's start inside the block read,
@@ -36,7 +39,8 @@ class VitoSelect final : public select::Select, public Component, public VitoEnt
  protected:
   void control(size_t index) override;
 
-  std::vector<uint32_t> raw_values_;
+  const uint32_t *raw_values_{nullptr};
+  uint16_t raw_value_count_{0};
   size_t pending_index_{0};
   int16_t extract_byte_{-1};
   uint8_t extract_len_{1};  // field width to slice at extract_byte_ (1..2)

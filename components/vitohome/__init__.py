@@ -29,7 +29,7 @@ import esphome.codegen as cg
 from esphome.components import esp32, time as time_, uart
 import esphome.config_validation as cv
 from esphome.const import CONF_ID, CONF_INTERVAL, CONF_LENGTH, CONF_NAME, CONF_PROTOCOL, CONF_TIME_ID, CONF_UPDATE_INTERVAL
-from esphome.core import CORE
+from esphome.core import CORE, ID, CoroPriority, coroutine_with_priority
 import esphome.final_validate as fv
 
 _LOGGER = logging.getLogger(__name__)
@@ -130,6 +130,15 @@ CONF_BYTE_OFFSET = "byte_offset"
 CONF_BYTE_LENGTH = "byte_length"
 
 vitohome_ns = cg.esphome_ns.namespace("vitohome")
+
+# One {wire value -> label} row of a lookup table (vito_entity.h). Emitted as a
+# `static const VitoOption name[] = {...}` array; see emit_option_table.
+VitoOption = vitohome_ns.struct("VitoOption")
+
+# One Betriebsart preset row (vito_climate.h). Emitted as a
+# `static const VitoClimatePreset name[] = {...}` array; see
+# climate.py::_emit_preset_table.
+VitoClimatePreset = vitohome_ns.struct("VitoClimatePreset")
 
 VitoHomeComponent = vitohome_ns.class_("VitoHomeComponent", cg.PollingComponent, uart.UARTDevice)
 
@@ -374,6 +383,126 @@ def emit_poll_interval(var, poll_ms):
     """
     if poll_ms is not None:
         cg.add(var.set_poll_interval(poll_ms))
+
+
+# --- hub-fed sensor tables (M4) ---------------------------------------------
+#
+# The hub's connectivity binary_sensors and its device_id / scan_result
+# text_sensors are configured in their own platform blocks, so no single to_code
+# ever sees the full set. Each platform therefore *collects* its entity here and
+# a FINAL-priority step below emits one static table per kind and hands the hub
+# a pointer and a count -- replacing three std::vectors that grew by push_back.
+#
+# The collection lives in CORE.data (not a module global) because CORE.reset()
+# clears it: a module global would leak entities between configs compiled in one
+# process, which is exactly what the test suite does.
+#
+# Single-hub assumption: the store is keyed only by sensor KIND, and a single
+# _HUB_VAR records the one hub, so every collected sensor is attributed to it.
+# This holds because MULTI_CONF is False -- exactly one `vitohome:` instance is
+# permitted, hence one possible parent. If MULTI_CONF were ever set True (e.g.
+# two Optolink buses on one node), this would misattribute every sensor to the
+# last hub; the fix is to key the store by the resolved parent and emit one
+# table per (hub, kind). The platform files still resolve CONF_VITOHOME_ID, so
+# the parent handle is available to reintroduce.
+_HUB_SENSORS = "hub_sensors"
+_HUB_VAR = "hub_var"
+HUB_LINK_SENSORS = "link"
+HUB_DEVICE_ID_SENSORS = "device_id"
+HUB_RAW_RESULT_SENSORS = "raw_result"
+
+
+def register_hub_sensor(kind, var):
+    """Collect a hub-fed sensor for the FINAL table emission."""
+    store = CORE.data.setdefault("vitohome", {}).setdefault(_HUB_SENSORS, {})
+    store.setdefault(kind, []).append(var)
+
+
+def _emit_hub_sensor_table(hub, kind, sensors, cpp_type, setter):
+    """Emit one `static T *const <hub>_<kind>_sensors[]` table and hand it to the hub.
+
+    Deliberately NOT cg.static_const_array(): that renders `static const T name[]`,
+    which for a pointer element type binds the const to the POINTEE
+    (`const T *`). These sensors are published to, so the array must be
+    `T *const` -- const pointers to non-const sensors -- to match the hub's
+    `T *const *` member. Either way no heap is involved, which is the point.
+    """
+    if not sensors:
+        return
+    name = f"{hub}_{kind}_sensors"
+    items = ", ".join(str(sensor) for sensor in sensors)
+    cg.add(cg.RawStatement(f"static {cpp_type} *const {name}[] = {{{items}}};"))
+    cg.add(getattr(hub, setter)(cg.RawExpression(name), len(sensors)))
+
+
+@coroutine_with_priority(CoroPriority.FINAL)
+async def _emit_hub_sensor_tables():
+    """Emit the three hub-fed sensor tables once every platform has registered.
+
+    Runs at FINAL priority so every entity variable is already declared by the
+    time the table initializers reference them.
+    """
+    data = CORE.data.get("vitohome", {})
+    hub = data.get(_HUB_VAR)
+    store = data.get(_HUB_SENSORS, {})
+    if hub is None or not store:
+        return
+    _emit_hub_sensor_table(
+        hub, HUB_LINK_SENSORS, store.get(HUB_LINK_SENSORS), "binary_sensor::BinarySensor", "set_link_sensors"
+    )
+    _emit_hub_sensor_table(
+        hub,
+        HUB_DEVICE_ID_SENSORS,
+        store.get(HUB_DEVICE_ID_SENSORS),
+        "text_sensor::TextSensor",
+        "set_device_id_sensors",
+    )
+    _emit_hub_sensor_table(
+        hub,
+        HUB_RAW_RESULT_SENSORS,
+        store.get(HUB_RAW_RESULT_SENSORS),
+        "text_sensor::TextSensor",
+        "set_raw_result_sensors",
+    )
+
+
+def emit_option_table(config, mapping, suffix):
+    """Emit ``static const VitoOption <id>_<suffix>[] = {...}`` and return (array, count).
+
+    Replaces a run of one ``add_option()`` / ``add_code()`` statement per row.
+    Each of those did an ``emplace_back`` on a growing ``std::vector``, so a
+    94-entry fault map reallocated eight times (capacity 1 -> 128) and freed each
+    predecessor, interleaved with every other allocation ESPHome makes during
+    setup(). Over the complete catalog that is 1883 rows and 662 boot
+    allocations -- absorbed on an ESP32, disqualifying on an ESP8266 (~40 KiB
+    heap, umm_malloc, no MMU).
+
+    The table lands in .rodata and the entity keeps only a pointer and a count,
+    so the runtime cost is zero heap. Labels are escaped with
+    :func:`cpp_string_literal` exactly as ``datapoint_expression`` does.
+
+    Returns ``(None, 0)`` for an empty mapping: a zero-length array is not valid
+    C++, and the entity's null/0 defaults already mean "no table".
+    """
+    if not mapping:
+        return None, 0
+    rows = [cg.RawExpression(f"{{{int(value)}, {cpp_string_literal(label)}}}") for value, label in mapping.items()]
+    table_id = ID(f"{config[CONF_ID]}_{suffix}", is_declaration=True, type=VitoOption)
+    return cg.static_const_array(table_id, cg.ArrayInitializer(*rows, multiline=True)), len(rows)
+
+
+def emit_uint32_table(config, values, suffix):
+    """Emit ``static const uint32_t <id>_<suffix>[] = {...}`` and return (array, count).
+
+    The plain-value counterpart of :func:`emit_option_table`, for select's
+    option values and switch's on-state values. Same rationale, same empty-input
+    contract.
+    """
+    values = list(values)
+    if not values:
+        return None, 0
+    table_id = ID(f"{config[CONF_ID]}_{suffix}", is_declaration=True, type=cg.uint32)
+    return cg.static_const_array(table_id, cg.ArrayInitializer(*[int(v) for v in values])), len(values)
 
 
 def emit_write_target(var, config, read_addr, write_addr):
@@ -794,6 +923,13 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     await uart.register_uart_device(var, config)
+
+    # The hub-fed sensor tables (M4) can only be emitted once every platform has
+    # registered its entities, so record the hub and schedule the FINAL step.
+    # A single _HUB_VAR suffices because MULTI_CONF is False (one hub only); see
+    # register_hub_sensor for what would change if multiple hubs were allowed.
+    CORE.data.setdefault("vitohome", {})[_HUB_VAR] = var
+    CORE.add_job(_emit_hub_sensor_tables)
 
     # Size entities_ once, ahead of every platform's register_entity() statement.
     # The hub's to_code runs before the platforms' (they DEPENDENCIES=["vitohome"]),

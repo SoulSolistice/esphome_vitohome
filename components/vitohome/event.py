@@ -8,6 +8,7 @@ from . import (
     CONF_VITOHOME_ID,
     VitoHomeComponent,
     datapoint_expression,
+    emit_option_table,
     emit_poll_interval,
     pop_poll_interval,
     validate_fault_codes,
@@ -81,8 +82,9 @@ async def to_code(config):
     var = await event.new_event(config, event_types=event_types)
     await cg.register_component(var, config)
 
-    for code, label in fault_codes.items():
-        cg.add(var.add_code(code, label))
+    table, count = emit_option_table(config, fault_codes, "codes")
+    if count:
+        cg.add(var.set_codes(table, count))
 
     cg.add(var.set_datapoint(datapoint_expression(config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH])))
     emit_poll_interval(var, poll_ms)

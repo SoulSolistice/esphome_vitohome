@@ -14,6 +14,7 @@ from . import (
     VitoHomeComponent,
     datapoint_expression,
     emit_poll_interval,
+    emit_uint32_table,
     emit_write_target,
     field_width,
     pop_poll_interval,
@@ -85,9 +86,11 @@ async def to_code(config):
     var = await select.new_select(config, options=labels)
     await cg.register_component(var, config)
 
-    # raw_values_ is the parallel list of wire values in option-index order.
-    for value in options:
-        cg.add(var.add_raw_value(value))
+    # Wire values in option-index order, as one static array in .rodata rather
+    # than one add_raw_value() statement per option.
+    table, count = emit_uint32_table(config, options, "raw_values")
+    if count:
+        cg.add(var.set_raw_values(table, count))
 
     # CONF_ADDRESS is the command (write) address. When CONF_STATE_ADDRESS is
     # given, the live value is read there instead (a read/write address split,
