@@ -12,7 +12,7 @@ namespace esphome::vitohome {
 static const char *const TAG = "vitohome.number";
 
 void VitoNumber::dump_config() {
-  LOG_NUMBER("  ", "VitoHome Number", this);
+  LOG_NUMBER("  ", "Number", this);
   ESP_LOGCONFIG(TAG, "    Address: 0x%04X  Length: %u  scale: %g  signed: %s  read_back: %s",
                 this->datapoint_.address(), this->datapoint_.length(), this->scale_, this->signed_ ? "yes" : "no",
                 this->read_back_ ? "yes" : "no");
@@ -32,7 +32,7 @@ void VitoNumber::control(float value) {
     // Out-of-range for the wire representation. The Python schema already
     // cross-checks min/max against the encodable range, so reaching this
     // means a runtime caller bypassed the traits — refuse to transmit.
-    ESP_LOGE(TAG, "%s: value %.3f not encodable (scale %g, %s, %u bytes) — not written", this->datapoint_.name(), value,
+    ESP_LOGE(TAG, "%s: value %.3f not encodable (scale %g, %s, %u bytes) - not written", this->datapoint_.name(), value,
              this->scale_, this->signed_ ? "signed" : "unsigned", len);
     return;
   }

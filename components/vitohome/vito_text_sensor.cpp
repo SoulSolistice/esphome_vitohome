@@ -34,7 +34,7 @@ static const char *type_name(TextSensorType t) {
 }
 
 void VitoTextSensor::dump_config() {
-  LOG_TEXT_SENSOR("  ", "VitoHome Text Sensor", this);
+  LOG_TEXT_SENSOR("  ", "Text Sensor", this);
   if (this->type_ == TextSensorType::DEVICE_ID) {
     ESP_LOGCONFIG(TAG, "    Type: device_id (fed by hub identification)");
     return;

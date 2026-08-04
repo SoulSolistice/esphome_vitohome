@@ -12,7 +12,7 @@ namespace esphome::vitohome {
 static const char *const TAG = "vitohome.select";
 
 void VitoSelect::dump_config() {
-  LOG_SELECT("  ", "VitoHome Select", this);
+  LOG_SELECT("  ", "Select", this);
   ESP_LOGCONFIG(TAG, "    Address: 0x%04X  Length: %u  Options: %u", this->datapoint_.address(),
                 this->datapoint_.length(), this->raw_value_count_);
   if (this->extract_byte_ >= 0) {

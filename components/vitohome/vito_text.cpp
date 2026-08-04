@@ -14,7 +14,7 @@ static const char *const TAG = "vitohome.text";
 static constexpr uint8_t SCHALTZEITEN_LEN = 8;
 
 void VitoText::dump_config() {
-  LOG_TEXT("  ", "VitoHome Text", this);
+  LOG_TEXT("  ", "Text", this);
   ESP_LOGCONFIG(TAG, "    Type: schaltzeiten  Address: 0x%04X  Length: %u  read_back: %s", this->datapoint_.address(),
                 this->datapoint_.length(), this->read_back_ ? "yes" : "no");
 }
@@ -24,7 +24,7 @@ void VitoText::control(const std::string &value) {
   if (!encode_schaltzeiten_day(value.c_str(), buf)) {
     // Unparseable program (bad time, too many pairs, ...). Refuse to transmit
     // rather than write a partial/wrong schedule; the device keeps its value.
-    ESP_LOGE(TAG, "%s: '%s' is not a valid switching-time program — not written", this->datapoint_.name(),
+    ESP_LOGE(TAG, "%s: '%s' is not a valid switching-time program - not written", this->datapoint_.name(),
              value.c_str());
     return;
   }

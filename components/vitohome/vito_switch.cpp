@@ -12,7 +12,7 @@ namespace esphome::vitohome {
 static const char *const TAG = "vitohome.switch";
 
 void VitoSwitch::dump_config() {
-  LOG_SWITCH("  ", "VitoHome Switch", this);
+  LOG_SWITCH("  ", "Switch", this);
   ESP_LOGCONFIG(TAG, "    Address: 0x%04X  Length: %u  On: 0x%02" PRIX32 "  Off: 0x%02" PRIX32,
                 this->datapoint_.address(), this->datapoint_.length(), this->on_value_, this->off_value_);
   if (this->extract_byte_ >= 0) {

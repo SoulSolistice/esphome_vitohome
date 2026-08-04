@@ -236,7 +236,7 @@ void VitoHomeComponent::setup() {
   if (this->identify_device_)
     this->ident_start_();
 
-  ESP_LOGI(TAG, "VitoHome ready, %zu entities registered", this->entities_.size());
+  ESP_LOGI(TAG, "ready, %zu entities registered", this->entities_.size());
 }
 
 void VitoHomeComponent::validate_uart_() {
@@ -618,7 +618,7 @@ void VitoHomeComponent::schedule_due_entities_() {
   }
 
   if (skipped != 0) {
-    ESP_LOGW(TAG, "Poll cycle: %zu entities still queued from the previous cycle (bus saturated?)", skipped);
+    ESP_LOGW(TAG, "Poll cycle: %zu entities still queued from the previous cycle", skipped);
   }
 
   if (rejected != 0) {
@@ -1072,11 +1072,11 @@ void VitoHomeComponent::on_error_(optolink::OptolinkResult error, uint16_t reque
 
   switch (error) {
     case optolink::OptolinkResult::TIMEOUT:
-      ESP_LOGE(TAG, "[TIMEOUT] %s (0x%04X) — Optolink not responding", name, request_address);
+      ESP_LOGE(TAG, "[TIMEOUT] %s (0x%04X) - Optolink not responding", name, request_address);
       break;
 
     case optolink::OptolinkResult::LENGTH:
-      ESP_LOGE(TAG, "[LENGTH]  %s (0x%04X) — invalid payload length", name, request_address);
+      ESP_LOGE(TAG, "[LENGTH]  %s (0x%04X) - invalid payload length", name, request_address);
       break;
 
     case optolink::OptolinkResult::NACK:
@@ -1087,17 +1087,16 @@ void VitoHomeComponent::on_error_(optolink::OptolinkResult error, uint16_t reque
       break;
 
     case optolink::OptolinkResult::CRC:
-      ESP_LOGE(TAG, "[CRC]     %s (0x%04X) — checksum mismatch (wiring?)", name, request_address);
+      ESP_LOGE(TAG, "[CRC]     %s (0x%04X) - checksum mismatch", name, request_address);
       break;
 
     case optolink::OptolinkResult::DEVICE_ERROR:
-      ESP_LOGW(TAG, "[DEVERR]  %s (0x%04X) — device returned an error frame (unsupported address or length?)", name,
-               request_address);
+      ESP_LOGW(TAG, "[DEVERR]  %s (0x%04X) - device returned an error frame", name, request_address);
       break;
 
     case optolink::OptolinkResult::ERROR:
     default:
-      ESP_LOGE(TAG, "[ERROR]   %s (0x%04X) — protocol error", name, request_address);
+      ESP_LOGE(TAG, "[ERROR]   %s (0x%04X) - protocol error", name, request_address);
       break;
   }
 
@@ -1289,7 +1288,7 @@ void VitoHomeComponent::ident_finish_() {
   ESP_LOGI(TAG, "Device identification: %s", identification.c_str());
 
   if (this->ident_sw_ < 0 && this->ident_group_ >= 0) {
-    ESP_LOGI(TAG, "Software index (0xFB) unavailable — when picking datapoints from the "
+    ESP_LOGI(TAG, "Software index (0xFB) unavailable - when picking datapoints from the "
                   "Vitosoft data, match on the family only and verify on the wire.");
   }
 

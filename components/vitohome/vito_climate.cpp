@@ -217,7 +217,7 @@ void VitoClimate::dump_config() {
   // own call on purpose -- duplicating the header into both branches would
   // store the shared format string twice and cost MORE flash than it saves.
   ESP_LOGCONFIG(TAG,
-                "VitoHome Climate '%s'\n"
+                "Climate '%s'\n"
                 "  Setpoint address: 0x%04X  range: %d..%d degC",
                 this->get_name().c_str(), this->setpoint_.get_datapoint().address(), this->setpoint_min_,
                 this->setpoint_max_);

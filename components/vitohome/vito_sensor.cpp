@@ -11,7 +11,7 @@ namespace esphome::vitohome {
 static const char *const TAG = "vitohome.sensor";
 
 void VitoSensor::dump_config() {
-  LOG_SENSOR("  ", "VitoHome Sensor", this);
+  LOG_SENSOR("  ", "Sensor", this);
   ESP_LOGCONFIG(TAG, "    Address: 0x%04X  Length: %u  scale: %g  signed: %s", this->datapoint_.address(),
                 this->datapoint_.length(), this->scale_, this->signed_ ? "yes" : "no");
   if (this->extract_byte_ >= 0) {

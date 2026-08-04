@@ -8,7 +8,7 @@ namespace esphome::vitohome {
 
 static const char *const TAG = "vitohome.button";
 
-void VitoRefreshButton::dump_config() { LOG_BUTTON("  ", "VitoHome Refresh Button", this); }
+void VitoRefreshButton::dump_config() { LOG_BUTTON("  ", "Refresh Button", this); }
 
 void VitoRefreshButton::press_action() {
   if (this->vh_parent_ == nullptr) {

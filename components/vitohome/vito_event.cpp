@@ -11,7 +11,7 @@ namespace esphome::vitohome {
 static const char *const TAG = "vitohome.event";
 
 void VitoEvent::dump_config() {
-  LOG_EVENT("  ", "VitoHome Event", this);
+  LOG_EVENT("  ", "Event", this);
   ESP_LOGCONFIG(TAG, "    Address: 0x%04X  Length: %u  Codes: %u", this->datapoint_.address(),
                 this->datapoint_.length(), this->code_count_);
 }
