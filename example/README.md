@@ -50,6 +50,12 @@ per Viessmann unit, produced from the Vitosoft **2026** XML export by
 `scripts/gen_catalog.py --export-all`. It holds **180 device catalogs**
 (group-ordered) plus a manifest.
 
+> :warning: **Warning**
+> Do not blindly add full catalogs since ESPHome registers all data points
+> regardless if they are set to `disabled_by_default: true` or not.
+> Especially on resource-constraint devices this may lead to unwanted
+> behavior.
+
 - **`catalogs/index.csv`** — the manifest, and the place to **find your unit**.
   It has one row per device token in the export (**399** rows): **180** are
   `status: ok` (a catalog file was written), and **219** are
