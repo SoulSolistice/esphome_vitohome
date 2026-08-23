@@ -106,7 +106,7 @@ signedness rules.
 |---|---|---|
 | P300 / VS2 | `P300` (default) | **Hardware-confirmed** on a VScotHO1 (`0x20CB`). |
 | KW / VS1 | `KW` | **Hardware-confirmed** on a VScotHO1. |
-| GWG | `GWG` | Implemented, **untested** — selectable, ships labelled as needing hardware verification. |
+| GWG | `GWG` | Implemented; **first hardware evidence 2026-08-23** (single unit, one capture). Read/write path exercised on the wire; the capture also exposed the ENQ-misread defect fixed in THIRD_PARTY.md #18. Still labelled as needing broader verification — the address map for that unit is not established. |
 
 - **4800 8E2 is mandatory.** The hub hard-fails in `validate_uart_()` on any
   baud/data-bit/stop-bit/parity mismatch rather than emitting silent bus errors.
@@ -1039,9 +1039,16 @@ Two limits worth re-stating because they are recurring footguns:
 
 ## 11. Open items / forward work
 
-- **GWG hardware verification.** GWG is implemented and host-proven but never run
-  against a GWG unit; it ships labelled as such, gated on a unit or a community
-  tester. KW/VS1 and P300 are hardware-confirmed. Note the vendored engine now
+- **GWG hardware verification.** GWG is implemented and host-proven, and as of
+  2026-08-23 has one capture from a live GWG unit. That capture confirmed the
+  request framing (`01 CB <addr> <len> 04`) and the `RECV $len` completion rule
+  on the wire, and exposed the ENQ-misread defect now fixed (THIRD_PARTY.md #18,
+  `proof_gwg_enq_misread.cpp`). It did **not** establish a datapoint map: several
+  addresses returned values that are not physically consistent (a non-monotonic
+  2-byte "operating hours" counter at `0x17`, an unstable 3-byte identifier at
+  `0x0F8`, a static flow temperature at `0x29`); `example/gwg_diag_multibyte.yaml`
+  is the experiment that discriminates a framing bug from a wrong address there.
+  KW/VS1 and P300 remain the hardware-confirmed protocols. KW/VS1 and P300 are hardware-confirmed. Note the vendored engine now
   deliberately diverges from upstream here: upstream's completion check waited
   for the request-frame length (5 bytes) instead of the datapoint length, so no
   GWG read of length != 5 could ever have completed — fixed and host-proven

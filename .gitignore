@@ -60,6 +60,7 @@ tests/native/engine_proof
 tests/native/gwg_poke
 tests/native/gwg_read
 tests/native/gwg_dispatch_stall
+tests/native/gwg_enq_misread
 tests/native/vs2_guards
 tests/native/vs1_write
 tests/native/test_decode

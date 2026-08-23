@@ -129,7 +129,7 @@ uart:
 vitohome:
   id: vito
   uart_id: uart_optolink
-  protocol: P300            # also KW (VS1), confirmed; GWG selectable but untested
+  protocol: P300            # also KW (VS1), confirmed; GWG has one hardware capture
   update_interval: 60s      # base poll tick
   identify_device: true     # read 0xF8..0xFB once at boot and log the device
   # time_id: my_time       # optional: sync the device clock from a time source

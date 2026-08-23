@@ -96,6 +96,18 @@ void GWGEngine::_init() {
     if (_interface->read() == internals::ProtocolBytes.ENQ && _busy) {
       _bytesTransferred = 0;
       _setState(State::SEND);
+      // Fall through into _send() rather than waiting for the next loop()
+      // iteration (divergence from upstream). The KW-family master has to
+      // answer the device's ENQ inside a short window; deferring the write by a
+      // whole component loop spends that budget on unrelated work. On the
+      // hardware capture that motivated RESPONSE_TIMEOUT_MS the unanswered
+      // requests clustered at the start of the poll cycle, where ESPHome's 60 s
+      // entity publishes and the API state flush lengthen the loop - exactly
+      // when this extra iteration costs the most. _send() is idempotent with
+      // respect to state (it advances to RECEIVE only once the whole frame is
+      // out), so calling it here is equivalent to the deferred call, minus the
+      // latency.
+      _send();
       return;
     }
   }
@@ -142,6 +154,18 @@ void GWGEngine::_receive() {
     _bytesTransferred = 0;  // VS1 parity; _init() also resets before SEND
     _setState(State::INIT);
     _tryOnResponse(expected);
+    return;
+  }
+  // Wire-activity deadline (see GWGEngine::RESPONSE_TIMEOUT_MS). _lastMillis is
+  // set at the end of _send() and re-armed above for every byte read, so this
+  // covers both "device never answered" and "device answered short". Without
+  // it, RECEIVE stayed open for the full 3000 ms REQUEST_TIMEOUT_MS and
+  // completed the transaction on the device's next idle ENQ (0x05), publishing
+  // a sync byte as a datapoint value.
+  if (_currentMillis - _lastMillis > RESPONSE_TIMEOUT_MS) {
+    _bytesTransferred = 0;
+    _setState(State::INIT);
+    _tryOnError(OptolinkResult::TIMEOUT);
   }
 }
 

@@ -263,15 +263,49 @@ These are intentional divergences from upstream `edc059a7`:
     host-triggerable without allocation injection, so it rests on inspection plus
     the wrapper's existing `begin()` handling rather than a host proof.
 
-Items 7-12 are the only intentional changes to on-wire/runtime protocol
+18. **GWG response deadline + same-loop send (behavioral divergence,
+    hardware-motivated).** Two related changes in `GWGEngine`, both driven by a
+    2026-08-23 capture from a live GWG unit -- the first hardware evidence the
+    project has for this protocol.
+
+    *Response deadline.* Upstream's only watchdog over `RECEIVE` is
+    `REQUEST_TIMEOUT_MS` (3000 ms), and it is measured from `read()`/`write()`,
+    so it also covers the ENQ wait in `INIT`. A GWG read response carries no
+    framing at all -- it is exactly `_currentLength` raw data bytes, no start
+    byte, no type, no checksum -- while a KW-family device emits an unsolicited
+    ENQ (`0x05`) roughly once a second whenever it is idle. The consequence:
+    a request the device ignored was completed by the *next* idle ENQ, and
+    `0x05` was delivered to the caller as a successful payload. On the capture,
+    9 of 92 reads returned exactly `0x05` after 903-1476 ms (against 0-90 ms for
+    the 79 reads the device actually answered), which surfaced in Home Assistant
+    as a plausible-looking 2.5 degC on every `div2` temperature, with no warning
+    logged. The vendored engine adds `RESPONSE_TIMEOUT_MS` (250 ms) as a
+    wire-activity deadline inside `RECEIVE`, armed at the end of `_send()` and
+    re-armed on every received byte; expiry raises
+    `OptolinkResult::TIMEOUT`. Note that discarding a leading `0x05` would be
+    *wrong*: `0x05` is a legal datapoint value, and timing is the only
+    discriminator the protocol offers. 250 ms is ~2.7x the slowest observed
+    genuine response and ~3x below the shortest observed idle-ENQ gap (749 ms).
+
+    *Same-loop send.* Upstream's `_init()` sets `State::SEND` and returns, so the
+    request frame is written one `loop()` iteration later. The KW-family master
+    has to answer the device's ENQ inside a short window, and on the capture the
+    unanswered requests clustered at the start of the poll cycle -- exactly where
+    ESPHome's 60 s entity publishes and the API state flush lengthen the loop.
+    `_init()` now falls through into `_send()` in the same iteration that
+    consumed the ENQ. This is a latency reduction, not a protocol change: the
+    bytes and the state sequence are identical.
+
+Items 7-12 and 18 are the only intentional changes to on-wire/runtime protocol
 behavior; items 13-16 are structural (no behavior change from any call site
 that exists -- item 16 alters bytes only on a RESPONSE-construction path
 nothing exercises); item 17 changes only construction-failure handling
 (abort -> fail-soft), not protocol or normal-path behavior. Everything else
-preserves upstream protocol behavior. Each of items 7-12 is covered by a host
-proof that fails against the upstream code; item 17's allocation-failure path
-is not host-triggerable and rests on inspection plus the wrapper's existing
-`begin()` -> `mark_failed()` handling.
+preserves upstream protocol behavior. Each of items 7-12 and 18 is covered by a
+host proof that fails against the upstream code (item 18:
+`tests/native/proof_gwg_enq_misread.cpp`, 9 assertions failing pre-fix);
+item 17's allocation-failure path is not host-triggerable and rests on
+inspection plus the wrapper's existing `begin()` -> `mark_failed()` handling.
 
 ---
 

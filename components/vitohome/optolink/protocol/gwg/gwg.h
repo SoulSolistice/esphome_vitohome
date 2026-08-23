@@ -12,6 +12,12 @@ _responseBuffer malloc + _expandResponseBuffer + _allocatedLength replaced
 by a fixed std::array; request timeout lifted to a named constexpr member.
 Bugfix: _tryOnResponse() clears the in-flight (busy) state after the
 callback (see THIRD_PARTY.md) so GWG is no longer one-shot.
+Response deadline: RECEIVE now enforces RESPONSE_TIMEOUT_MS of wire activity
+instead of relying solely on the 3000ms request watchdog, so an unanswered
+request fails as TIMEOUT rather than being completed by the device's next idle
+ENQ (0x05) - hardware-confirmed misread, see that constant.
+Send latency: _init() falls through into _send() in the same loop() iteration
+that observed the ENQ, instead of deferring the write by one iteration.
 Sync poke: optional EOT (0x04) nudge while waiting for the device ENQ, gated by
 GWGEngine::SEND_ENQ_POKE (default off, so the default build is unchanged); see
 that flag for the vcontrold/VS1 rationale.
@@ -42,8 +48,34 @@ class GWGEngine {
   typedef std::function<void(OptolinkResult error, uint16_t address)> OnErrorCallback;
 
   // Named timeout (ms). GWG deliberately uses a 3000ms request watchdog,
-  // distinct from VS2/VS1's 4000ms - value byte-identical to upstream.
+  // distinct from VS2/VS1's 4000ms - value byte-identical to upstream. It is
+  // measured from read()/write() (i.e. it also covers the ENQ wait in INIT),
+  // which is what makes RESPONSE_TIMEOUT_MS below necessary as well.
   static constexpr uint32_t REQUEST_TIMEOUT_MS = 3000;
+
+  // Wire-activity deadline inside RECEIVE (ms), measured from the end of the
+  // request write and re-armed on every received byte.
+  //
+  // Divergence from upstream, hardware-motivated. GWG has no framing: a read
+  // response is exactly _currentLength raw data bytes with no start byte, type
+  // byte or checksum, so the engine cannot tell payload from any other byte on
+  // the wire. A KW-family device also emits an unsolicited ENQ (0x05) roughly
+  // once a second while idle. With only the 3000ms REQUEST_TIMEOUT_MS guarding
+  // RECEIVE, a request the device ignored was silently completed by the NEXT
+  // idle ENQ, and 0x05 was handed to the caller as data - i.e. 2.5 degC on any
+  // 0.5-scaled temperature datapoint, reported as success, with no warning.
+  // Hardware-confirmed on a GWG unit (2026-08-23 capture): 9 of 92 reads
+  // returned exactly 0x05 after 903-1476 ms, against 0-90 ms for the 79 reads
+  // that the device actually answered.
+  //
+  // Dropping a leading 0x05 is NOT a valid fix: 0x05 is a legal datapoint
+  // value. Timing is the only discriminator available, and it separates the two
+  // populations cleanly. 250 ms sits ~2.7x above the slowest observed genuine
+  // response and ~3x below the shortest observed idle-ENQ gap (749 ms), and is
+  // ~22x the 11.5 ms it takes to shift a 5-byte request out at 4800 8E2.
+  // Expiry raises OptolinkResult::TIMEOUT, which the ESPHome hub already treats
+  // as a link-health event and which suppresses the bogus publish.
+  static constexpr uint32_t RESPONSE_TIMEOUT_MS = 250;
 
   // Fixed response buffer: bounds the largest GWG datapoint payload. 256 is a
   // safe upper bound (datapoint length is a uint8_t).

@@ -45,6 +45,11 @@ g++ -std=c++17 -Wall -Wextra -Werror -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" 
   proof_gwg_read.cpp "${SRCS[@]}" -o gwg_read
 ./gwg_read
 
+echo "== GWG ENQ-misread guard: response deadline + same-loop send =="
+g++ -std=c++17 -Wall -Wextra -Werror -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
+  proof_gwg_enq_misread.cpp "${SRCS[@]}" -o gwg_enq_misread
+./gwg_enq_misread
+
 echo "== GWG dispatch-stall discriminator (isBusy() permanent vs transient) =="
 g++ -std=c++17 -Wall -Wextra -Werror -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
   proof_gwg_dispatch_stall.cpp "${SRCS[@]}" -o gwg_dispatch_stall
