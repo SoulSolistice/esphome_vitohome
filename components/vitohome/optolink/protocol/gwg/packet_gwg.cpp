@@ -27,7 +27,13 @@ bool PacketGWG::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, con
     optolink_log_w("GWG doesn't support addresses > 0xFF");
     return false;
   }
-  if (packetType != PacketGWGType.READ && packetType != PacketGWGType.WRITE) {
+  // Access-mode divergence from upstream (see GWGAccessMode in constants.h):
+  // upstream (and vitohome before this change) only ever emitted
+  // PacketGWGType.READ (PHYSICAL READ, 0xCB). isKnownGwgReadType() accepts
+  // that plus the other seven read-direction TYPE bytes from the openv wiki
+  // table; every WRITE-direction byte except PacketGWGType.WRITE itself is
+  // still rejected, exactly as before this change.
+  if (!isKnownGwgReadType(packetType) && packetType != PacketGWGType.WRITE) {
     optolink_log_w("Packet type error: 0x%02x", packetType);
     return false;
   }
@@ -63,7 +69,14 @@ bool PacketGWG::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, con
 uint8_t PacketGWG::length() const {
   if (_buffer[3] == 0)
     return 0;
-  if (_buffer[1] == PacketGWGType.READ)
+  // Bug fixed 2026-08-24 (caught by proof_gwg_access_mode.cpp): this compared
+  // only against PacketGWGType.READ (0xCB, PHYSICAL READ), so createPacket()
+  // would accept any other read-access-mode TYPE byte (isKnownGwgReadType())
+  // but length() then fell through to `return 0` for it -- _send() then wrote
+  // zero bytes and the engine transitioned straight to RECEIVE with nothing on
+  // the wire. Every read TYPE byte is the same 5-byte frame shape
+  // (01 TYPE ADDR LEN 04); only WRITE carries a variable-length payload.
+  if (isKnownGwgReadType(_buffer[1]))
     return 5;
   // NOTE: uint8_t arithmetic -- wraps for a payload length >= 251.
   // Unreachable today (the raw lane caps writes at 32 bytes; entity writes are

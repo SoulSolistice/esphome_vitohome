@@ -69,6 +69,15 @@ class VitoEntityBase {
 
   void set_vitohome_parent(VitoHomeComponent *parent) { this->vh_parent_ = parent; }
 
+  // GWG access mode for this entity's poll/read-back read (2026-08-24).
+  // Meaningless outside protocol: GWG -- see GWGAccessMode in constants.h --
+  // and unused (compiled but never read) unless VITOHOME_PROTOCOL_GWG is the
+  // selected build, so setting it under another protocol has no effect. The
+  // default (PHYSICAL) is the pre-existing, only-ever-emitted behaviour, so an
+  // entity that never sets this is unaffected.
+  void set_read_access(optolink::GWGAccessMode access) { this->read_access_ = access; }
+  optolink::GWGAccessMode read_access() const { return this->read_access_; }
+
   // --- scheduling -----------------------------------------------------------
   // 0 (default) = poll on every hub update cycle. Anything else is a minimum
   // period; effective granularity is the hub's own update_interval (the hub
@@ -148,6 +157,7 @@ class VitoEntityBase {
   uint8_t write_len_{0};
   bool read_back_{true};
   uint32_t poll_interval_ms_{0};
+  optolink::GWGAccessMode read_access_{optolink::GWGAccessMode::PHYSICAL};
 
  private:
   // Hub-side bookkeeping. Private, not public: only VitoHomeComponent (the

@@ -182,6 +182,19 @@ void VitoHomeComponent::setup() {
     this->on_error_(error, request_address);
   });
 
+#ifdef VITOHOME_PROTOCOL_GWG
+  // Diagnostic instrument (2026-08-24), GWG-only: per-successful-read timing,
+  // fed by RESPONSE_TIMEOUT_MS's own hardware capture (see GWGEngine::
+  // OnTimingCallback). Logged at DEBUG on the existing `vitohome` tag -- no
+  // new log tag or YAML option needed; a config that already sets
+  // `logger: logs: {vitohome: DEBUG}` (as the diagnostic example does) sees
+  // it for free, and it costs nothing when that tag is left at its default.
+  this->vito_->onTiming([this](uint32_t enq_to_send_ms, uint32_t send_to_response_ms, uint16_t address) {
+    ESP_LOGD(TAG, "GWG timing: 0x%04X enq->send %" PRIu32 " ms, send->response %" PRIu32 " ms", address, enq_to_send_ms,
+             send_to_response_ms);
+  });
+#endif
+
   if (!this->vito_->begin()) {
     ESP_LOGE(TAG, "optolink engine begin() failed");
     this->mark_failed(LOG_STR("optolink engine begin() failed"));
@@ -374,7 +387,15 @@ void VitoHomeComponent::dispatch_raw_front_() {
     if (operation.is_write) {
       dispatched = this->vito_->write(this->raw_dp_.address(), operation.bytes, operation.bytes_len);
     } else {
+#ifdef VITOHOME_PROTOCOL_GWG
+      // GWG-only: access mode selects the TYPE byte (see GWGAccessMode,
+      // constants.h). operation.access defaults to PHYSICAL, so a scan
+      // console user who never passes a third argument to queue_raw_read()
+      // gets exactly the pre-existing behaviour.
+      dispatched = this->vito_->read(this->raw_dp_.address(), this->raw_dp_.length(), operation.access);
+#else
       dispatched = this->vito_->read(this->raw_dp_.address(), this->raw_dp_.length());
+#endif
     }
 
     if (!dispatched) {
@@ -502,7 +523,15 @@ void VitoHomeComponent::dispatch_next_() {
 
     const optolink::Datapoint &datapoint = entity->get_datapoint();
 
-    if (!this->vito_->read(datapoint.address(), datapoint.length())) {
+#ifdef VITOHOME_PROTOCOL_GWG
+    // GWG-only: entity->read_access() defaults to PHYSICAL (see
+    // VitoEntityBase::read_access_), so an entity that never sets `access:`
+    // gets exactly the pre-existing behaviour.
+    const bool dispatched_ok = this->vito_->read(datapoint.address(), datapoint.length(), entity->read_access());
+#else
+    const bool dispatched_ok = this->vito_->read(datapoint.address(), datapoint.length());
+#endif
+    if (!dispatched_ok) {
       // See the write lane above: transient _busy retains, a permanent
       // createPacket() rejection (unreachable for schema-validated poll
       // addresses) is dropped so the lane cannot spin. read_queued_ is cleared
@@ -729,13 +758,13 @@ bool VitoHomeComponent::request_write(VitoEntityBase *entity) {
 // Raw scan console (debug)
 // ---------------------------------------------------------------------------
 
-void VitoHomeComponent::queue_raw_read(uint16_t address, uint8_t length) {
+void VitoHomeComponent::queue_raw_read(uint16_t address, uint8_t length, optolink::GWGAccessMode access) {
   if (length < 1 || length > RAW_READ_MAX) {
     ESP_LOGW(TAG, "queue_raw_read: length %u out of range (1..%u)", length, RAW_READ_MAX);
     return;
   }
 
-  this->enqueue_raw_(address, length, false, nullptr, 0);
+  this->enqueue_raw_(address, length, false, nullptr, 0, access);
 }
 
 void VitoHomeComponent::queue_raw_write(uint16_t address, const uint8_t *data, std::size_t len) {
@@ -758,7 +787,7 @@ void VitoHomeComponent::queue_raw_write(uint16_t address, const std::vector<uint
 }
 
 bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes,
-                                     uint8_t bytes_len) {
+                                     uint8_t bytes_len, optolink::GWGAccessMode access) {
   if (length == 0) {
     ESP_LOGW(TAG, "enqueue_raw_: zero-length operation rejected");
     return false;
@@ -785,6 +814,7 @@ bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
   operation.length = length;
   operation.is_write = is_write;
   operation.bytes_len = bytes_len;
+  operation.access = access;  // ignored by dispatch for writes / non-GWG builds
 
   if (is_write)
     std::memcpy(operation.bytes, bytes, bytes_len);

@@ -220,7 +220,13 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // someone is actively scanning.
   //
   // Results are logged and published to every scan_result text sensor.
-  void queue_raw_read(uint16_t address, uint8_t length);
+  // access is additive (default GWGAccessMode::PHYSICAL, the pre-existing and
+  // only-ever-emitted behaviour on every protocol before this parameter
+  // existed). Meaningful only under `protocol: GWG` -- see GWGAccessMode in
+  // constants.h. A non-GWG build accepts the argument (so lambdas compile
+  // unconditionally) but never reads it.
+  void queue_raw_read(uint16_t address, uint8_t length,
+                      optolink::GWGAccessMode access = optolink::GWGAccessMode::PHYSICAL);
   // Two write overloads: the pointer/length form is the no-allocation path for
   // callers holding a stack buffer; the vector form is the ergonomic one for
   // lambdas building a braced-init-list, and forwards to the pointer form.
@@ -296,7 +302,8 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // storage remains self-contained and heap-free after setup.
   //
   // Returns false for invalid arguments or queue overflow.
-  bool enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes, uint8_t bytes_len);
+  bool enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes, uint8_t bytes_len,
+                    optolink::GWGAccessMode access = optolink::GWGAccessMode::PHYSICAL);
 
   bool ident_in_flight_{false};
 
@@ -432,6 +439,22 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
     bool is_write;
     uint8_t bytes[RAW_WRITE_MAX];
     uint8_t bytes_len;
+    // GWG access mode (2026-08-24); ignored for writes and for every other
+    // protocol. See queue_raw_read().
+    //
+    // NO default member initializer here (bug fixed 2026-08-24, found on a
+    // real ESP32-C3/ESP-IDF build, not caught by the native proof suite
+    // because it never instantiates RingBuffer<RawOp> -- only the engine
+    // layer under optolink/). A default member initializer makes the
+    // implicitly-defined default constructor non-trivial, which fails
+    // RingBuffer<T>'s `is_trivially_default_constructible` static_assert
+    // (ring_buffer.h) the moment raw_queue_ (RingBuffer<RawOp>) is
+    // instantiated -- i.e. always, since it's a hub member, not something
+    // conditional on GWG being selected. GWGAccessMode::PHYSICAL == 0 (see
+    // constants.h), so `RawOp operation{};` (used at every construction
+    // site) already value-initializes this to PHYSICAL, exactly like every
+    // other field in this struct -- no initializer was ever needed.
+    optolink::GWGAccessMode access;
   };
 
   // The raw lane is explicitly bounded because a range sweep can enqueue much

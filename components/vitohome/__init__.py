@@ -128,8 +128,35 @@ CONF_READ_BACK = "read_back"
 CONF_STATE_ADDRESS = "state_address"
 CONF_BYTE_OFFSET = "byte_offset"
 CONF_BYTE_LENGTH = "byte_length"
+# GWG access mode (2026-08-24). Only meaningful under `protocol: GWG` --
+# enforced in _final_validate below, the same place the single-byte GWG
+# address constraint already lives, since both need the full config visible
+# to know the hub's protocol. Currently wired into the `sensor` platform only
+# (scope decision: that is what the diagnostic use case -- distinguishing a
+# wrong access mode from a framing bug at 0x0F8 -- needs); other entity
+# platforms could gain it the same way later.
+CONF_ACCESS = "access"
 
 vitohome_ns = cg.esphome_ns.namespace("vitohome")
+optolink_ns = vitohome_ns.namespace("optolink")
+
+# GWG access mode (2026-08-24). Mirrors optolink/constants.h::GWGAccessMode
+# exactly -- name, order and member spelling all have to match by hand since
+# this is a Python-side reference to a C++ enum class, not a generated
+# binding; a mismatch here fails at C++ compile time (unknown enumerator),
+# not at `esphome config` time. See constants.h for the evidence behind each
+# mode's TYPE byte (openv wiki, Protokoll-GWG).
+GWGAccessMode = optolink_ns.enum("GWGAccessMode", is_class=True)
+GWG_ACCESS_MODES = {
+    "physical": GWGAccessMode.PHYSICAL,
+    "virtual": GWGAccessMode.VIRTUAL,
+    "eeprom": GWGAccessMode.EEPROM,
+    "xram": GWGAccessMode.XRAM,
+    "port": GWGAccessMode.PORT,
+    "be": GWGAccessMode.BE,
+    "kmbus_ram": GWGAccessMode.KMBUS_RAM,
+    "kmbus_eeprom": GWGAccessMode.KMBUS_EEPROM,
+}
 
 # One {wire value -> label} row of a lookup table (vito_entity.h). Emitted as a
 # `static const VitoOption name[] = {...}` array; see emit_option_table.
@@ -779,6 +806,20 @@ def _final_validate(config):
                         f"uses its own 8-bit address space; the generated catalogs (16-bit Vitosoft "
                         f"addresses) do not apply to it."
                     )
+    else:
+        # access: selects a GWG TYPE byte (GWGAccessMode, constants.h) and is
+        # meaningless -- and silently a no-op at runtime, since VitoEntityBase::
+        # read_access_ is compiled but never read outside a GWG build -- under
+        # any other protocol. Reject at config time rather than let it look
+        # configurable. Scoped to `sensor` because that is the only platform
+        # currently wired to it (see CONF_ACCESS).
+        for domain, entity in _entities_for_hub(full, ("sensor",), hub_id):
+            if CONF_ACCESS in entity:
+                raise cv.Invalid(
+                    f"{domain} '{_entity_name(entity)}' sets 'access', which selects a GWG "
+                    f"TYPE byte and has no effect under protocol '{protocol}'. Remove 'access' "
+                    f"or set protocol: GWG on the vitohome hub."
+                )
 
     # There is deliberately NO P300 read-length check here. The warning that used
     # to live at this spot cited a 40-byte read at 0x7362 failing on hardware.
