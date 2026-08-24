@@ -4,6 +4,7 @@ import esphome.config_validation as cv
 from esphome.const import CONF_ADDRESS, CONF_NAME, CONF_UPDATE_INTERVAL
 
 from . import (
+    CONF_ACCESS,
     CONF_BYTE_LENGTH,
     CONF_BYTE_OFFSET,
     CONF_CONVERTER,
@@ -11,6 +12,7 @@ from . import (
     CONF_SIGNED,
     CONF_VITOHOME_ID,
     CONVERTERS,
+    GWG_ACCESS_MODES,
     MAX_P300_READ_LENGTH,
     VitoHomeComponent,
     converter_big_endian,
@@ -107,6 +109,11 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_BYTE_OFFSET): cv.int_range(min=0, max=MAX_P300_READ_LENGTH - 1),
             cv.Optional(CONF_BYTE_LENGTH): cv.int_range(min=1, max=4),
             cv.Optional(CONF_UPDATE_INTERVAL): cv.update_interval,
+            # GWG-only (rejected under any other protocol in _final_validate,
+            # __init__.py). Selects the TYPE byte per GWGAccessMode
+            # (constants.h); default omitted here (physical is the engine's own
+            # default), so a sensor that never sets this is unaffected.
+            cv.Optional(CONF_ACCESS): cv.enum(GWG_ACCESS_MODES, lower=True),
         }
     )
     .extend(cv.COMPONENT_SCHEMA),
@@ -132,6 +139,8 @@ async def to_code(config):
         cg.add(var.set_extract_byte(config[CONF_BYTE_OFFSET]))
         if CONF_BYTE_LENGTH in config:
             cg.add(var.set_extract_len(config[CONF_BYTE_LENGTH]))
+    if CONF_ACCESS in config:
+        cg.add(var.set_read_access(config[CONF_ACCESS]))
     emit_poll_interval(var, poll_ms)
 
     cg.add(parent.register_entity(var))

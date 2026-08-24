@@ -15,12 +15,13 @@ GWGEngine::~GWGEngine() { delete _interface; }
 
 void GWGEngine::onResponse(OnResponseCallback callback) { _onResponseCallback = callback; }
 void GWGEngine::onError(OnErrorCallback callback) { _onErrorCallback = callback; }
+void GWGEngine::onTiming(OnTimingCallback callback) { _onTimingCallback = callback; }
 
-bool GWGEngine::read(uint16_t address, uint8_t length) {
+bool GWGEngine::read(uint16_t address, uint8_t length, GWGAccessMode access) {
   if (_busy) {
     return false;
   }
-  if (_currentRequest.createPacket(PacketGWGType.READ, address, length)) {
+  if (_currentRequest.createPacket(gwgReadTypeByte(access), address, length)) {
     _currentAddress = address;
     _currentLength = length;
     _busy = true;
@@ -95,6 +96,7 @@ void GWGEngine::_init() {
   if (_interface->available()) {
     if (_interface->read() == internals::ProtocolBytes.ENQ && _busy) {
       _bytesTransferred = 0;
+      _enqMillis = _currentMillis;  // timing instrument (see OnTimingCallback)
       _setState(State::SEND);
       // Fall through into _send() rather than waiting for the next loop()
       // iteration (divergence from upstream). The KW-family master has to
@@ -106,7 +108,8 @@ void GWGEngine::_init() {
       // when this extra iteration costs the most. _send() is idempotent with
       // respect to state (it advances to RECEIVE only once the whole frame is
       // out), so calling it here is equivalent to the deferred call, minus the
-      // latency.
+      // latency. Cross-validated against dannerph/esphome_vitoconnect, whose
+      // _idle() does the same thing with the same rationale stated explicitly.
       _send();
       return;
     }
@@ -129,6 +132,7 @@ void GWGEngine::_send() {
   if (_bytesTransferred == _currentRequest.length()) {
     _bytesTransferred = 0;
     _lastMillis = _currentMillis;
+    _sendCompleteMillis = _currentMillis;  // timing instrument (see OnTimingCallback)
     _setState(State::RECEIVE);
   }
 }
@@ -153,6 +157,13 @@ void GWGEngine::_receive() {
   if (_bytesTransferred == expected) {
     _bytesTransferred = 0;  // VS1 parity; _init() also resets before SEND
     _setState(State::INIT);
+    // Timing instrument (2026-08-24, see OnTimingCallback): reads only.
+    // Writes are out of scope -- GWG write framing remains model-derived
+    // (THIRD_PARTY.md #8) and this instrument was motivated by, and only
+    // validated against, the read path's ENQ-misread capture.
+    if (_onTimingCallback && _currentRequest.packetType() != PacketGWGType.WRITE) {
+      _onTimingCallback(_sendCompleteMillis - _enqMillis, _currentMillis - _sendCompleteMillis, _currentAddress);
+    }
     _tryOnResponse(expected);
     return;
   }

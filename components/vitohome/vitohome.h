@@ -220,7 +220,13 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // someone is actively scanning.
   //
   // Results are logged and published to every scan_result text sensor.
-  void queue_raw_read(uint16_t address, uint8_t length);
+  // access is additive (default GWGAccessMode::PHYSICAL, the pre-existing and
+  // only-ever-emitted behaviour on every protocol before this parameter
+  // existed). Meaningful only under `protocol: GWG` -- see GWGAccessMode in
+  // constants.h. A non-GWG build accepts the argument (so lambdas compile
+  // unconditionally) but never reads it.
+  void queue_raw_read(uint16_t address, uint8_t length,
+                      optolink::GWGAccessMode access = optolink::GWGAccessMode::PHYSICAL);
   // Two write overloads: the pointer/length form is the no-allocation path for
   // callers holding a stack buffer; the vector form is the ergonomic one for
   // lambdas building a braced-init-list, and forwards to the pointer form.
@@ -296,7 +302,8 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // storage remains self-contained and heap-free after setup.
   //
   // Returns false for invalid arguments or queue overflow.
-  bool enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes, uint8_t bytes_len);
+  bool enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes, uint8_t bytes_len,
+                    optolink::GWGAccessMode access = optolink::GWGAccessMode::PHYSICAL);
 
   bool ident_in_flight_{false};
 
@@ -432,6 +439,9 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
     bool is_write;
     uint8_t bytes[RAW_WRITE_MAX];
     uint8_t bytes_len;
+    // GWG access mode (2026-08-24); ignored for writes and for every other
+    // protocol. See queue_raw_read().
+    optolink::GWGAccessMode access{optolink::GWGAccessMode::PHYSICAL};
   };
 
   // The raw lane is explicitly bounded because a range sweep can enqueue much
