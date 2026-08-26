@@ -935,10 +935,16 @@ def _make_obj_id(tech: str, used: set) -> str:
     return cand
 
 
-# Platforms whose vitohome schema accepts `access:` -- mirrors _ACCESS_DOMAINS
-# in components/vitohome/__init__.py. climate and event are deliberately absent
-# there (climate carries several addresses that could each want their own mode;
-# event is the error-history archive), and this generator emits neither for GWG.
+# Platforms this generator can emit `access:` on. A SUBSET of the component's
+# _ACCESS_DOMAINS (components/vitohome/__init__.py), which also includes
+# `climate` -- climate accepts two independent access modes, one per channel
+# (top-level for the setpoint, operating_mode.access for Betriebsart), added
+# 2026-08-26. It is absent here simply because this generator emits no climate
+# blocks at all: a climate entity is a hand-assembled composition of several
+# datapoints plus a preset table binding two value spaces, which is not
+# derivable from the per-datapoint XML rows this generator walks. `event` is
+# likewise absent (it is the error-history archive). If climate emission is
+# ever added, its access modes come from the same FCRead mapping below.
 ACCESS_PLATFORMS = ("sensor", "binary_sensor", "text_sensor", "number", "select", "switch", "text")
 
 

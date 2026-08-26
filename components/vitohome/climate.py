@@ -1,3 +1,5 @@
+import logging
+
 import esphome.codegen as cg
 from esphome.components import climate
 import esphome.config_validation as cv
@@ -14,9 +16,11 @@ from esphome.const import (
 from esphome.core import ID
 
 from . import (
+    CONF_ACCESS,
     CONF_READ_BACK,
     CONF_STATE_ADDRESS,
     CONF_VITOHOME_ID,
+    GWG_ACCESS_MODES,
     VitoClimatePreset,
     VitoHomeComponent,
     cpp_string_literal,
@@ -26,6 +30,8 @@ from . import (
 )
 
 DEPENDENCIES = ["vitohome"]
+
+_LOGGER = logging.getLogger(__name__)
 
 VitoClimate = vitohome_ns.class_("VitoClimate", climate.Climate, cg.Component)
 
@@ -54,7 +60,19 @@ _PRESET_SCHEMA = cv.Schema(
         cv.Required(CONF_NAME): cv.string_strict,
         cv.Required(CONF_WRITE): cv.hex_uint8_t,
         cv.Required(CONF_READ): cv.ensure_list(cv.hex_uint8_t),
-        cv.Optional(CONF_MODE, default="heat"): cv.enum(CLIMATE_MODES, lower=True),
+        # REQUIRED, deliberately (2026-08-26). This was `Optional(default="heat")`,
+        # which silently classified every unannotated preset -- including a
+        # Standby/Frostschutz row -- as CLIMATE_MODE_HEAT. Two things then follow
+        # from control()'s documented "first preset with that mode wins" rule: the
+        # card shows "heating" while the burner is off, and an
+        # `hvac_mode: heat` tap from Home Assistant, a voice assistant or an
+        # automation resolves to whichever such preset is listed first -- so a
+        # config that happens to list Standby first turns the heating OFF on a
+        # request to turn it on. There is no correct value to guess here (only the
+        # installer knows what each Betriebsart byte does on their unit), so the
+        # schema asks instead of assuming. Breaking for configs that omitted
+        # `mode:`; the error message says exactly what to add.
+        cv.Required(CONF_MODE): cv.enum(CLIMATE_MODES, lower=True),
     }
 )
 
@@ -79,6 +97,29 @@ def _validate_presets(value):
                     f"must map to exactly one preset"
                 )
             seen_reads[rv] = p[CONF_NAME]
+    # Several presets sharing one HVAC mode is legitimate and common (Normal,
+    # Reduziert and Heizen+Warmwasser are all "heat"), so this is a warning and
+    # not an error. But VitoClimate::control() resolves a bare mode tap through
+    # first_preset_with_mode_(), i.e. FIRST MATCH IN LIST ORDER -- which is easy
+    # to be surprised by from the Home Assistant side, where the thermostat card
+    # and voice assistants send exactly such bare mode calls. Name the winner
+    # explicitly so list order is a decision rather than an accident.
+    by_mode: dict = {}
+    for p in value:
+        by_mode.setdefault(str(p[CONF_MODE]), []).append(p[CONF_NAME])
+    for mode, names in by_mode.items():
+        if len(names) > 1:
+            _LOGGER.warning(
+                "vitohome climate: presets %s all map to hvac mode '%s'; a bare "
+                "'%s' mode call (HA thermostat card, voice assistant, automation) "
+                "writes the FIRST of them, '%s'. Reorder the presets if that is not "
+                "the one you want as the default for '%s'.",
+                ", ".join(f"'{n}'" for n in names),
+                mode,
+                mode,
+                names[0],
+                mode,
+            )
     return value
 
 
@@ -91,6 +132,12 @@ OPERATING_MODE_SCHEMA = cv.Schema(
         cv.Optional(CONF_STATE_ADDRESS): cv.hex_uint16_t,
         cv.Required(CONF_PRESETS): _validate_presets,
         cv.Optional(CONF_READ_BACK, default=True): cv.boolean,
+        # GWG-only (rejected under any other protocol in _final_validate,
+        # __init__.py), and separate from the setpoint channel's `access:` --
+        # the two channels are different registers and nothing says they share
+        # an access space. Betriebsart both reads and writes, so a read-only
+        # mode (the two KMBUS ones) is rejected there too.
+        cv.Optional(CONF_ACCESS): cv.enum(GWG_ACCESS_MODES, lower=True),
     }
 )
 
@@ -157,6 +204,10 @@ CONFIG_SCHEMA = cv.All(
             cv.Required(CONF_TARGET_ADDRESS): cv.hex_uint16_t,
             cv.Optional(CONF_OPERATING_MODE): OPERATING_MODE_SCHEMA,
             cv.Optional(CONF_UPDATE_INTERVAL): cv.update_interval,
+            # GWG access mode for the SETPOINT channel (target_address). The
+            # Betriebsart channel has its own under operating_mode. GWG-only;
+            # rejected under other protocols in _final_validate (__init__.py).
+            cv.Optional(CONF_ACCESS): cv.enum(GWG_ACCESS_MODES, lower=True),
         }
     )
     .extend(cv.COMPONENT_SCHEMA),
@@ -219,6 +270,8 @@ async def to_code(config):
 
     # Setpoint channel: read == write at target_address, one integer degC byte.
     cg.add(var.configure_setpoint(parent, datapoint_expression(name, config[CONF_TARGET_ADDRESS], 1), poll_ms))
+    if CONF_ACCESS in config:
+        cg.add(var.set_setpoint_access(config[CONF_ACCESS]))
 
     # Operating-mode channel (optional): read state_address, write address.
     if CONF_OPERATING_MODE in config:
@@ -226,6 +279,8 @@ async def to_code(config):
         write_addr = om[CONF_ADDRESS]
         read_addr = om.get(CONF_STATE_ADDRESS, write_addr)
         cg.add(var.configure_mode(parent, datapoint_expression(name, read_addr, 1), om[CONF_READ_BACK], poll_ms))
+        if CONF_ACCESS in om:
+            cg.add(var.set_mode_access(om[CONF_ACCESS]))
         if read_addr != write_addr:
             cg.add(var.set_mode_write_datapoint(datapoint_expression(name, write_addr, 1)))
         preset_table, preset_count = _emit_preset_table(config, om[CONF_PRESETS])

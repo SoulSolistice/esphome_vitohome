@@ -64,6 +64,14 @@ provides several things you would otherwise have to build by hand:
   It handles the real-device wrinkle that the **command** address written to
   set a mode differs from the **state** address read back, mapping each
   read-back value to the preset that produced it.
+  Each preset must declare `mode:` (`heat`, `off` or `auto`) — the coarse HVAC
+  mode the card shows for it. Several presets may share one (Normal and
+  Reduziert are both `heat`); a bare mode call from the HA thermostat card or a
+  voice assistant then writes the **first** preset with that mode, so list order
+  decides the default and `esphome config` warns naming the winner. Declaring a
+  Standby/Frostschutz preset as `off` rather than leaving it to default is the
+  point: it used to default to `heat`, which could turn the heating off in
+  response to a request to turn it on.
 - **DHW as a `water_heater` card.** Domestic hot water can be presented as a
   native Home Assistant water-heater entity built entirely from existing
   datapoints (tank temperature, writable setpoint, effective read-back) —
@@ -219,9 +227,29 @@ sensor:
 
 Accepted values: `physical` (default), `virtual`, `eeprom`, `xram`, `port`,
 `be`, `kmbus_ram`, `kmbus_eeprom`, on `sensor`, `binary_sensor`, `text_sensor`,
-`number`, `select`, `switch` and `text`. Setting it under any other protocol is
-a config error. The two `kmbus_*` modes are read-only — they have no write
-telegram type — and writes in them are refused.
+`number`, `select`, `switch`, `text` and `climate`. Setting it under any other
+protocol is a config error. The two `kmbus_*` modes are read-only — they have
+no write telegram type — and writes in them are refused.
+
+`climate` is the one platform with two datapoints, and they are separate
+registers, so each carries its own mode: the top-level `access:` applies to the
+setpoint channel (`target_address`), and `operating_mode.access:` to the
+Betriebsart channel. Both channels read *and* write, so a `kmbus_*` mode is
+rejected on either.
+
+```yaml
+climate:
+  - platform: vitohome
+    name: "Heizkreis 1"
+    target_address: 0x06
+    access: eeprom              # setpoint channel
+    operating_mode:
+      address: 0x23
+      access: be                # Betriebsart channel — independent of above
+      presets:
+        - {name: "Normal",  write: 0x04, read: [0x02], mode: heat}
+        - {name: "Standby", write: 0x00, read: [0x05], mode: "off"}
+```
 
 Note GWG writes remain **unconfirmed on hardware**, and one detail of the write
 frame is still undecided; see

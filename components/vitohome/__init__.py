@@ -147,14 +147,14 @@ CONF_ACCESS = "access"
 
 # Platforms whose schema accepts `access:`. Kept here so _final_validate and
 # the platform modules cannot drift apart.
-_ACCESS_DOMAINS = ("sensor", "binary_sensor", "text_sensor", "number", "select", "switch", "text")
+_ACCESS_DOMAINS = ("sensor", "binary_sensor", "text_sensor", "number", "select", "switch", "text", "climate")
 
 # The subset of those that WRITE. GWGEngine::write() permanently refuses an
 # access mode with no write telegram type, and the write lane's response to a
 # permanent refusal is to drop the item and log -- so such an entity would
 # compile, publish, accept a value from Home Assistant, and silently never
 # write it. Rejected at config time instead (see _final_validate).
-_WRITE_DOMAINS = ("number", "select", "switch", "text")
+_WRITE_DOMAINS = ("number", "select", "switch", "text", "climate")
 
 # Access modes with no write telegram type in the openv wiki's Protokoll-GWG
 # table -- mirrors gwgWriteTypeByte()/gwgModeIsWritable() in constants.h, which
@@ -747,6 +747,26 @@ def _entity_gwg_addresses(entity):
                 yield f"{_CLIMATE_OPERATING_MODE}.{key}", addr
 
 
+def _entity_gwg_access_modes(entity):
+    """Yield (key_path, access) for every access mode this entity config carries,
+    including climate's nested operating_mode block.
+
+    Mirrors _entity_gwg_addresses: climate is the one platform whose datapoints
+    are not all at the top level, and its two channels (setpoint at
+    target_address, Betriebsart at operating_mode.address) are separately
+    addressed, so they carry separate access modes. Every value yielded here
+    belongs to a channel that both reads AND writes, which is why climate is in
+    _WRITE_DOMAINS."""
+    access = entity.get(CONF_ACCESS)
+    if access is not None:
+        yield CONF_ACCESS, access
+    operating_mode = entity.get(_CLIMATE_OPERATING_MODE)
+    if isinstance(operating_mode, dict):
+        access = operating_mode.get(CONF_ACCESS)
+        if access is not None:
+            yield f"{_CLIMATE_OPERATING_MODE}.{CONF_ACCESS}", access
+
+
 def _entities_for_hub(full, domains, hub_id):
     for domain in domains:
         for entity in full.get(domain, []):
@@ -844,16 +864,17 @@ def _final_validate(config):
         # Assistant and just never reach the device. Catch it here, where the
         # message can name the option.
         for domain, entity in _entities_for_hub(full, _WRITE_DOMAINS, hub_id):
-            access = entity.get(CONF_ACCESS)
-            if access is not None and str(access) in _READ_ONLY_ACCESS_MODES:
-                raise cv.Invalid(
-                    f"{domain} '{_entity_name(entity)}' sets access: {access}, but that GWG access "
-                    f"mode is read-only -- the protocol defines no write telegram type for it, so "
-                    f"the engine would refuse every write and the entity would silently never "
-                    f"reach the device. Use a writable access mode (physical, virtual, eeprom, "
-                    f"xram, port, be), or declare this datapoint as a read-only sensor.",
-                    path=[CONF_ACCESS],
-                )
+            for key, access in _entity_gwg_access_modes(entity):
+                if str(access) in _READ_ONLY_ACCESS_MODES:
+                    raise cv.Invalid(
+                        f"{domain} '{_entity_name(entity)}' sets {key}: {access}, but that GWG "
+                        f"access mode is read-only -- the protocol defines no write telegram type "
+                        f"for it, so the engine would refuse every write and the entity would "
+                        f"silently never reach the device. Use a writable access mode (physical, "
+                        f"virtual, eeprom, xram, port, be), or declare this datapoint as a "
+                        f"read-only sensor.",
+                        path=key.split("."),
+                    )
     else:
         # access: selects a GWG TYPE byte (GWGAccessMode, constants.h) and is
         # meaningless -- and silently a no-op at runtime, since VitoEntityBase::
@@ -861,11 +882,12 @@ def _final_validate(config):
         # any other protocol. Reject at config time rather than let it look
         # configurable.
         for domain, entity in _entities_for_hub(full, _ACCESS_DOMAINS, hub_id):
-            if CONF_ACCESS in entity:
+            for key, _access in _entity_gwg_access_modes(entity):
                 raise cv.Invalid(
-                    f"{domain} '{_entity_name(entity)}' sets 'access', which selects a GWG "
-                    f"TYPE byte and has no effect under protocol '{protocol}'. Remove 'access' "
-                    f"or set protocol: GWG on the vitohome hub."
+                    f"{domain} '{_entity_name(entity)}' sets '{key}', which selects a GWG "
+                    f"TYPE byte and has no effect under protocol '{protocol}'. Remove it "
+                    f"or set protocol: GWG on the vitohome hub.",
+                    path=key.split("."),
                 )
 
     # There is deliberately NO P300 read-length check here. The warning that used

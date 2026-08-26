@@ -77,6 +77,14 @@ climate:
       address: 0x2323 # write (command, BedienteilBA)
       state_address: 0x2301 # read (actual mode the panel/schedule update)
       presets:
+        # LIST ORDER MATTERS, and `esphome config` warns about it here on
+        # purpose: three presets are `heat` and two are `off`, so a bare
+        # hvac-mode call (HA thermostat card, voice assistant, automation)
+        # writes the FIRST preset with that mode -- "Normal" for heat, "Nur
+        # Warmwasser" for off. Both are the sensible defaults for this unit,
+        # which is why they are listed first; reorder if yours differ. Picking a
+        # specific Betriebsart is done by selecting the preset by name, which is
+        # unambiguous and unaffected by order.
         - {name: "Normal", write: 0x04, read: [0x02], mode: heat}
         - {name: "Reduziert", write: 0x03, read: [0x01], mode: heat}
         - {name: "Heizen und Warmwasser", write: 0x02, read: [0x03], mode: heat}
