@@ -33,18 +33,19 @@ bool PacketGWG::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, con
   // that plus the other seven read-direction TYPE bytes from the openv wiki
   // table; every WRITE-direction byte except PacketGWGType.WRITE itself is
   // still rejected, exactly as before this change.
-  if (!isKnownGwgReadType(packetType) && packetType != PacketGWGType.WRITE) {
+  if (!isKnownGwgReadType(packetType) && !isKnownGwgWriteType(packetType)) {
     optolink_log_w("Packet type error: 0x%02x", packetType);
     return false;
   }
-  if (packetType == PacketGWGType.WRITE && !data) {
+  const bool is_write = isKnownGwgWriteType(packetType);
+  if (is_write && !data) {
     optolink_log_w("No data for write packet");
     return false;
   }
 
   // bounds check against the fixed buffer (fail-soft, no overflow)
   // write frame = ENQ_ACK + type + addr + len + data[len] + EOT
-  const std::size_t needed = (packetType == PacketGWGType.WRITE) ? static_cast<std::size_t>(len) + 5 : 5;
+  const std::size_t needed = is_write ? static_cast<std::size_t>(len) + 5 : 5;
   if (needed > _buffer.size()) {
     optolink_log_e("buffer overflow: need %u > %u", static_cast<unsigned>(needed),
                    static_cast<unsigned>(_buffer.size()));
@@ -57,7 +58,19 @@ bool PacketGWG::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, con
   _buffer[step++] = packetType;
   _buffer[step++] = addr & 0xFF;
   _buffer[step++] = len;
-  if (packetType == PacketGWGType.WRITE) {
+  if (is_write) {
+    // Payload placement relative to the EOT terminator is the one part of the
+    // GWG write frame with no evidence behind it -- see
+    // GWGEngine::WRITE_EOT_BEFORE_PAYLOAD for the two candidate layouts and
+    // why neither can be ruled out from the sources. Reads are unaffected:
+    // both layouts produce the identical 01 TYPE ADDR LEN 04.
+    if (kGwgWriteEotBeforePayload) {
+      _buffer[step++] = internals::ProtocolBytes.EOT;
+      for (uint8_t i = 0; i < len; ++i) {
+        _buffer[step++] = data[i];
+      }
+      return true;
+    }
     for (uint8_t i = 0; i < len; ++i) {
       _buffer[step++] = data[i];
     }
@@ -82,7 +95,7 @@ uint8_t PacketGWG::length() const {
   // Unreachable today (the raw lane caps writes at 32 bytes; entity writes are
   // <= 8), but a live trap if those caps are ever raised. Mirrors the same note
   // on PacketVS1::length() (whose +4 wraps at >= 252).
-  if (_buffer[1] == PacketGWGType.WRITE)
+  if (isKnownGwgWriteType(_buffer[1]))
     return _buffer[3] + 5;
   return 0;  // should not be possible
 }

@@ -1,9 +1,9 @@
 // Proves the two 2026-08-24 additions built on top of the ENQ-misread fix:
 //
-//   (1/2) GWGEngine::onTiming -- fires once per successful READ with the
-//         ENQ->send and send->response deltas, never for writes, never for
-//         failures. Motivated by the same hardware capture as
-//         RESPONSE_TIMEOUT_MS: host-batched API log timestamps could not
+//   (1/2) GWGEngine::onTiming -- fires once per successful READ with the age
+//         of the ENQ we answered and the send->response delta, never for
+//         writes, never for failures. Motivated by the same hardware capture
+//         as RESPONSE_TIMEOUT_MS: host-batched API log timestamps could not
 //         resolve these numbers, so the instrument has to be device-side.
 //
 //   (3)   GWGAccessMode -- read() takes an optional access mode that selects
@@ -29,7 +29,7 @@ namespace {
 int g_responses = 0;
 uint16_t g_last_response_addr = 0;
 int g_timing_calls = 0;
-uint32_t g_last_enq_to_send = 0;
+uint32_t g_last_enq_age = 0;
 uint32_t g_last_send_to_response = 0;
 uint16_t g_last_timing_addr = 0;
 }  // namespace
@@ -47,9 +47,9 @@ int main() {
     g_last_response_addr = address;
   });
   adapter.onError([](optolink::OptolinkResult, uint16_t) {});
-  adapter.onTiming([](uint32_t enq_to_send_ms, uint32_t send_to_response_ms, uint16_t address) {
+  adapter.onTiming([](uint32_t enq_age_ms, uint32_t send_to_response_ms, uint16_t address) {
     g_timing_calls++;
-    g_last_enq_to_send = enq_to_send_ms;
+    g_last_enq_age = enq_age_ms;
     g_last_send_to_response = send_to_response_ms;
     g_last_timing_addr = address;
   });
@@ -121,18 +121,40 @@ int main() {
   const int timing_calls_before_read = g_timing_calls;
   check(adapter.read(0x0070, 1), "timing: read accepted");
   uart.feed({0x05});
-  adapter.loop();  // ENQ observed -> _enqMillis stamped -> same-loop send
+  adapter.loop();  // ENQ observed -> loop gap captured -> same-loop send
   std::this_thread::sleep_for(std::chrono::milliseconds(30));
   uart.feed({0x5F});
   pump(adapter);
   check(g_timing_calls == timing_calls_before_read + 1, "onTiming fired exactly once for this completed read");
   check(g_last_timing_addr == 0x0070, "onTiming reports the request address");
-  // enq->send should be ~0 (same loop() iteration, no sleep between ENQ and
-  // send in this test); send->response should reflect the ~30ms sleep above.
-  // Host scheduler jitter gets a generous margin -- this is a sanity check on
-  // ordering and magnitude, not a precise timing assertion.
-  check(g_last_enq_to_send < 20, "enq->send is small (same-loop send)");
+  // enq_age is the loop() gap preceding the iteration that consumed the ENQ.
+  // Here the loops run back-to-back with no sleep in between, so it must be a
+  // couple of ms at most. send->response should reflect the ~30ms sleep above.
+  check(g_last_enq_age < 20, "enq age is small when loops run back-to-back");
   check(g_last_send_to_response >= 25 && g_last_send_to_response < 500, "send->response reflects the injected delay");
+
+  // enq_age must actually MEASURE the host stall, not report a constant. This
+  // is the assertion the instrument exists for: stall the host between two
+  // loop() calls and the reported age has to move with it. (Measuring
+  // ENQ-observed to frame-written instead would be identically 0 here -- the
+  // same-loop fall-through puts both in one iteration, and _currentMillis is
+  // sampled once per iteration.)
+  const uint32_t enq_age_no_stall = g_last_enq_age;
+  // Let the burst window lapse first (see GWGEngine::ENQ_VALIDITY_MS): with a
+  // recent sync in hand the engine would send WITHOUT waiting for an ENQ, and
+  // there would be no ENQ wait left to measure.
+  std::printf("  (letting the burst window lapse, %u ms ...)\n",
+              static_cast<unsigned>(optolink::GWGEngine::ENQ_VALIDITY_MS));
+  std::this_thread::sleep_for(std::chrono::milliseconds(optolink::GWGEngine::ENQ_VALIDITY_MS + 150));
+  check(adapter.read(0x0073, 1), "timing: read accepted (stalled host)");
+  adapter.loop();  // establish a loop timestamp with nothing to read
+  uart.feed({0x05});
+  std::this_thread::sleep_for(std::chrono::milliseconds(120));
+  adapter.loop();  // this iteration consumes the ENQ, 120 ms after the last one
+  uart.feed({0x5F});
+  pump(adapter);
+  check(g_last_enq_age >= 100, "enq age tracks a real host stall");
+  check(g_last_enq_age > enq_age_no_stall, "enq age is not a constant");
 
   // --- (1/2) timing instrument: must NOT fire for writes ---------------------
   const int timing_calls_before_write = g_timing_calls;

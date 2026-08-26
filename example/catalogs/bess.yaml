@@ -33,6 +33,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.ChargeAmpHourCounter"
     id: BatteryEnergyStorageSystem_Battery_ChargeAmpHourCounter
@@ -46,6 +47,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.DischargeAmpHourCounter"
     id: BatteryEnergyStorageSystem_Battery_DischargeAmpHourCounter
@@ -59,6 +61,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.CurrentChargeDirectionMax"
     id: BatteryEnergyStorageSystem_Battery_CurrentChargeDirectionMax
@@ -72,6 +75,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.CurrentDischargeDirectionMax"
     id: BatteryEnergyStorageSystem_Battery_CurrentDischargeDirectionMax
@@ -85,6 +89,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.CapacityRated"
     id: BatteryEnergyStorageSystem_Battery_CapacityRated
@@ -98,6 +103,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.CurrentChargingMax"
     id: BatteryEnergyStorageSystem_Battery_CurrentChargingMax
@@ -111,6 +117,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.CapacityNominal"
     id: BatteryEnergyStorageSystem_Battery_CapacityNominal
@@ -125,6 +132,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.CapacityChargeManufactureMax"
     id: BatteryEnergyStorageSystem_Battery_CapacityChargeManufactureMax
@@ -138,6 +146,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.CapacityDischargeManufactureMax"
     id: BatteryEnergyStorageSystem_Battery_CapacityDischargeManufactureMax
@@ -151,6 +160,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Parameter ---
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.StateOfChargeCurrentDemandStart"
@@ -165,6 +175,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.StateOfChargeCurrentDemandStop"
     id: BatteryEnergyStorageSystem_Battery_StateOfChargeCurrentDemandStop
@@ -178,6 +189,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.StateOfChargeLoadSheddingStart1"
     id: BatteryEnergyStorageSystem_Battery_StateOfChargeLoadSheddingStart1
@@ -191,6 +203,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.StateOfChargeLoadSheddingStop1"
     id: BatteryEnergyStorageSystem_Battery_StateOfChargeLoadSheddingStop1
@@ -204,6 +217,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.StateOfChargeLoadSheddingStart2"
     id: BatteryEnergyStorageSystem_Battery_StateOfChargeLoadSheddingStart2
@@ -217,6 +231,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.StateOfChargeLoadSheddingStop2"
     id: BatteryEnergyStorageSystem_Battery_StateOfChargeLoadSheddingStop2
@@ -230,6 +245,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.StateOfChargeDisconnectionGrid"
     id: BatteryEnergyStorageSystem_Battery_StateOfChargeDisconnectionGrid
@@ -243,6 +259,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.StateOfChargeConnectionGrid"
     id: BatteryEnergyStorageSystem_Battery_StateOfChargeConnectionGrid
@@ -256,6 +273,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Process ---
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.VoltageOfBattery"
@@ -273,6 +291,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.StorageMode"
     id: BatteryEnergyStorageSystem_StorageMode
@@ -288,6 +307,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.ActivePower"
     id: BatteryEnergyStorageSystem_ActivePower
@@ -302,6 +322,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.SelfConsumptionMode"
     id: BatteryEnergyStorageSystem_SelfConsumptionMode
@@ -318,6 +339,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.FrequencyNominal"
     id: BatteryEnergyStorageSystem_FrequencyNominal
@@ -331,6 +353,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.PowerSetpointActive"
     id: BatteryEnergyStorageSystem_PowerSetpointActive
@@ -344,6 +367,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.RemoteControl"
     id: BatteryEnergyStorageSystem_RemoteControl
@@ -359,6 +383,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.PowerSetpointReactive"
     id: BatteryEnergyStorageSystem_PowerSetpointReactive
@@ -373,6 +398,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.EnergySavingMode"
     id: BatteryEnergyStorageSystem_EnergySavingMode
@@ -388,6 +414,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.CurrentOfBattery"
     id: BatteryEnergyStorageSystem_Battery_CurrentOfBattery
@@ -402,6 +429,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.StateOfCharge"
     id: BatteryEnergyStorageSystem_Battery_StateOfCharge
@@ -415,6 +443,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.ApplicationArea"
     id: BatteryEnergyStorageSystem_Battery_ApplicationArea
@@ -430,6 +459,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.ChargePowerOfStorageMax"
     id: BatteryEnergyStorageSystem_Battery_ChargePowerOfStorageMax
@@ -443,6 +473,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.DischargePowerOfStorageMax"
     id: BatteryEnergyStorageSystem_Battery_DischargePowerOfStorageMax
@@ -456,6 +487,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.OperationStatusBattery"
     id: BatteryEnergyStorageSystem_Battery_OperationStatusBattery
@@ -471,6 +503,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Grid.VoltagePhase1"
     id: BatteryEnergyStorageSystem_Grid_VoltagePhase1
@@ -487,6 +520,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Grid.VoltagePhase2"
     id: BatteryEnergyStorageSystem_Grid_VoltagePhase2
@@ -503,6 +537,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Grid.VoltagePhase3"
     id: BatteryEnergyStorageSystem_Grid_VoltagePhase3
@@ -519,6 +554,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Grid.Frequency"
     id: BatteryEnergyStorageSystem_Grid_Frequency
@@ -532,6 +568,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Grid.PowerGridReference"
     id: BatteryEnergyStorageSystem_Grid_PowerGridReference
@@ -546,6 +583,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Grid.PowerGridConnectionPoint"
     id: BatteryEnergyStorageSystem_Grid_PowerGridConnectionPoint
@@ -560,6 +598,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Grid.OperationStatusGrid"
     id: BatteryEnergyStorageSystem_Grid_OperationStatusGrid
@@ -575,6 +614,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Master.OperationModeRelay1"
     id: BatteryEnergyStorageSystem_Master_OperationModeRelay1
@@ -590,6 +630,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Master.OperationModeRelay2"
     id: BatteryEnergyStorageSystem_Master_OperationModeRelay2
@@ -605,6 +646,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Master.OperationModeRelay3"
     id: BatteryEnergyStorageSystem_Master_OperationModeRelay3
@@ -620,6 +662,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Master.OperationModeRelay4"
     id: BatteryEnergyStorageSystem_Master_OperationModeRelay4
@@ -635,6 +678,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Master.OperationModeRelay5"
     id: BatteryEnergyStorageSystem_Master_OperationModeRelay5
@@ -650,6 +694,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Master.OperationModeRelay6"
     id: BatteryEnergyStorageSystem_Master_OperationModeRelay6
@@ -665,6 +710,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Master.OperationStatus"
     id: BatteryEnergyStorageSystem_Master_OperationStatus
@@ -680,6 +726,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Slave1.OperationModeRelay1"
     id: BatteryEnergyStorageSystem_Slave1_OperationModeRelay1
@@ -695,6 +742,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Slave1.OperationModeRelay2"
     id: BatteryEnergyStorageSystem_Slave1_OperationModeRelay2
@@ -710,6 +758,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Slave1.OperationModeRelay3"
     id: BatteryEnergyStorageSystem_Slave1_OperationModeRelay3
@@ -725,6 +774,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Slave1.OperationModeRelay4"
     id: BatteryEnergyStorageSystem_Slave1_OperationModeRelay4
@@ -740,6 +790,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Slave1.OperationModeRelay5"
     id: BatteryEnergyStorageSystem_Slave1_OperationModeRelay5
@@ -755,6 +806,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Slave1.OperationModeRelay6"
     id: BatteryEnergyStorageSystem_Slave1_OperationModeRelay6
@@ -770,6 +822,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Slave2.OperationStatus"
     id: BatteryEnergyStorageSystem_Slave2_OperationStatus
@@ -785,6 +838,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Slave2.OperationModeRelay1"
     id: BatteryEnergyStorageSystem_Slave2_OperationModeRelay1
@@ -800,6 +854,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Slave2.OperationModeRelay2"
     id: BatteryEnergyStorageSystem_Slave2_OperationModeRelay2
@@ -815,6 +870,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Slave2.OperationModeRelay3"
     id: BatteryEnergyStorageSystem_Slave2_OperationModeRelay3
@@ -830,6 +886,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Slave2.OperationModeRelay4"
     id: BatteryEnergyStorageSystem_Slave2_OperationModeRelay4
@@ -845,6 +902,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Slave2.OperationModeRelay5"
     id: BatteryEnergyStorageSystem_Slave2_OperationModeRelay5
@@ -860,6 +918,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Slave2.OperationModeRelay6"
     id: BatteryEnergyStorageSystem_Slave2_OperationModeRelay6
@@ -875,6 +934,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Notification.ErrorCode"
     id: BatteryEnergyStorageSystem_Notification_ErrorCode
@@ -890,6 +950,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.ReactivePower"
     id: BatteryEnergyStorageSystem_ReactivePower
@@ -904,6 +965,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BatteryEnergyStorageSystem.Slave1.OperationStatus"
     id: BatteryEnergyStorageSystem_Slave1_OperationStatus

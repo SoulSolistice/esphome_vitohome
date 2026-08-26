@@ -201,6 +201,43 @@ care:
 - Not every address answers on every firmware. A datapoint that validates and
   compiles may still not respond on your unit.
 
+### GWG only: `access:`
+
+Under `protocol: GWG`, an entity may set `access:` to pick the telegram TYPE
+byte. GWG's address space is per access mode, so this is not optional detail:
+in Viessmann's own tables, address `0x01` is five different datapoints across
+four modes. One mode drives both the entity's reads and its writes.
+
+```yaml
+sensor:
+  - platform: vitohome
+    name: "GWG ident"
+    address: 0xF8
+    byte_length: 2
+    access: virtual        # default: physical
+```
+
+Accepted values: `physical` (default), `virtual`, `eeprom`, `xram`, `port`,
+`be`, `kmbus_ram`, `kmbus_eeprom`, on `sensor`, `binary_sensor`, `text_sensor`,
+`number`, `select`, `switch` and `text`. Setting it under any other protocol is
+a config error. The two `kmbus_*` modes are read-only — they have no write
+telegram type — and writes in them are refused.
+
+Note GWG writes remain **unconfirmed on hardware**, and one detail of the write
+frame is still undecided; see
+[`docs/design_notes.md`](docs/design_notes.md#writes).
+
+You normally will not write these by hand: `scripts/gen_catalog.py` reads the
+access mode out of Vitosoft's own `FCRead` field and emits `access:` on every
+entity when generating for a `GWG_*` device token.
+
+Only `physical` has been seen on this project's hardware. The other bytes come
+from the openv wiki's `Protokoll-GWG` table, and all but `kmbus_ram` (`0x33`)
+are corroborated twice over — by vcontrold's GWG macros and by Vitosoft, which
+between them poll `virtual`, `eeprom`, `port`, `xram`, `be` and `kmbus_eeprom`
+on real units. Details, the full TYPE-byte table and the per-mode evidence are
+in [`docs/design_notes.md`](docs/design_notes.md#gwg-access-modes-access).
+
 ## Development
 
 - Python unit tests live in [`tests/unit/`](tests/unit/) (run with `pytest`).

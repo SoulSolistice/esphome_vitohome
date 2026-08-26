@@ -140,7 +140,7 @@ async def to_code(config):
         if CONF_BYTE_LENGTH in config:
             cg.add(var.set_extract_len(config[CONF_BYTE_LENGTH]))
     if CONF_ACCESS in config:
-        cg.add(var.set_read_access(config[CONF_ACCESS]))
+        cg.add(var.set_access(config[CONF_ACCESS]))
     emit_poll_interval(var, poll_ms)
 
     cg.add(parent.register_entity(var))

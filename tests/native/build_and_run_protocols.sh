@@ -55,10 +55,25 @@ g++ -std=c++17 -Wall -Wextra -Werror -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" 
   proof_gwg_enq_misread.cpp "${SRCS[@]}" -o gwg_enq_misread
 ./gwg_enq_misread
 
+echo "== GWG burst: reuse a valid sync instead of waiting for the next ENQ =="
+g++ -std=c++17 -Wall -Wextra -Werror -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
+  proof_gwg_burst.cpp "${SRCS[@]}" -o gwg_burst
+./gwg_burst
+
+echo "== GWG write access modes (EEPROM/BE; KMBUS refused) =="
+g++ -std=c++17 -Wall -Wextra -Werror -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
+  proof_gwg_write_access.cpp "${SRCS[@]}" -o gwg_write_access
+./gwg_write_access
+
 echo "== GWG access modes + timing instrument =="
 g++ -std=c++17 -Wall -Wextra -Werror -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
   proof_gwg_access_mode.cpp "${SRCS[@]}" -o gwg_access_mode
 ./gwg_access_mode
+
+echo "== VS1/KW chaining + the two split sync windows (#22) =="
+g++ -std=c++17 -Wall -Wextra -Werror -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" -I"$OPTO" \
+  proof_vs1_chain.cpp "${SRCS[@]}" -o vs1_chain
+./vs1_chain
 
 echo "== VS1/KW write-ack completion (THIRD_PARTY.md #11 fix) =="
 g++ -std=c++17 -Wall -Wextra -Werror -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" -I"$OPTO" \

@@ -81,7 +81,7 @@ These are intentional divergences from upstream `edc059a7`:
    `static constexpr` members, per engine (values byte-identical to
    upstream): VS2 `REQUEST_TIMEOUT_MS=4000`, `HANDSHAKE_RETRY_MS=3000`,
    `KEEPALIVE_INTERVAL_MS=3000`; VS1 `REQUEST_TIMEOUT_MS=4000`,
-   `ENQ_RESET_INTERVAL_MS=3000`, `SYNC_WINDOW_MS=50`; GWG
+   `ENQ_RESET_INTERVAL_MS=3000`, `ENQ_ACK_WINDOW_MS=50` (see item 22); GWG
    `REQUEST_TIMEOUT_MS=3000` (deliberately distinct from VS2/VS1).
 
 7. **GWG one-shot bugfix (behavioral divergence).** Upstream
@@ -287,6 +287,28 @@ These are intentional divergences from upstream `edc059a7`:
     discriminator the protocol offers. 250 ms is ~2.7x the slowest observed
     genuine response and ~3x below the shortest observed idle-ENQ gap (749 ms).
 
+    The deadline is evaluated at the *top* of `_receive()`, before it drains the
+    interface, and this ordering is load-bearing rather than incidental. The
+    drain re-arms `_lastMillis` on every byte it consumes and `_currentMillis`
+    is sampled once per `loop()`, so a deadline checked after the drain can
+    never fire in an iteration that read anything -- and the ESP32 UART RX FIFO
+    holds the idle ENQ across a long host stall, so the byte is already buffered
+    and still looks "fresh" when the stall ends. Checked after the drain the
+    guard is therefore inert under exactly the long-loop conditions the capture
+    blamed; checked first, anything still buffered past the deadline is treated
+    as stale (and flushed, so it cannot be mistaken for a fresh sync byte by the
+    next `_init()`). The cost is a discarded genuine response when the host
+    stalls beyond 250 ms, which is the right trade: the protocol offers no
+    arrival timestamps, so a buffered `0x05` and a buffered genuine datapoint of
+    value `0x05` cannot be told apart, and a lost read self-heals on the next
+    poll while a bogus one does not.
+
+    The deadline covers **both directions**. A write's single ack byte is held
+    to it too (it had 3000 ms before this constant existed). That is deliberate:
+    the ack is a bare byte with no framing either, and GWG -- unlike VS1, which
+    checks for `0x00` -- does not validate its value, so an idle ENQ can pose as
+    a write ack exactly as it did as a read payload.
+
     *Same-loop send.* Upstream's `_init()` sets `State::SEND` and returns, so the
     request frame is written one `loop()` iteration later. The KW-family master
     has to answer the device's ENQ inside a short window, and on the capture the
@@ -296,16 +318,233 @@ These are intentional divergences from upstream `edc059a7`:
     consumed the ENQ. This is a latency reduction, not a protocol change: the
     bytes and the state sequence are identical.
 
-Items 7-12 and 18 are the only intentional changes to on-wire/runtime protocol
-behavior; items 13-16 are structural (no behavior change from any call site
-that exists -- item 16 alters bytes only on a RESPONSE-construction path
+19. **GWG read access modes (behavioral divergence, spec-sourced).** Upstream
+    has no concept of an access mode: `PHYSICAL READ` (`0xCB`) is the only TYPE
+    byte it ever emits on a read. `GWGEngine::read()` now takes an optional
+    `GWGAccessMode` selecting one of the eight read-direction TYPE bytes from
+    the openv wiki's `Protokoll-GWG` "Telegramm Typen" table -- `VIRTUAL`
+    `0xC7`, `PHYSICAL` `0xCB`, `EEPROM` `0xAE`, `XRAM` `0xC5`, `PORT` `0x6E`,
+    `BE` `0x9E`, `KMBUS RAM` `0x33`, `KMBUS EEPROM` `0x43` (see
+    `GWGAccessMode` and `gwgReadTypeByte()` in `constants.h`).
+    `PacketGWG::createPacket()` accepts that set instead of the single `0xCB`,
+    and `PacketGWG::length()` reports the same 5-byte frame shape for all of
+    them -- the latter is not cosmetic: without it a non-PHYSICAL read returned
+    length 0, `_send()` wrote nothing, and the engine dropped into `RECEIVE`
+    with an empty wire.
+
+    Corroboration. The table is not single-sourced. vcontrold
+    (`openv/vcontrold`, `xml/{kw,300}/vcontrold.xml`, `<protocol name="GWG">`)
+    independently defines the same TYPE bytes as named macros, inside the same
+    frame this engine emits -- `SYNC; GET*ADDR $addr $hexlen 04; RECV $len`,
+    i.e. `01 <TYPE> <addr> <len> 04` answered by exactly `<len>` raw bytes,
+    which is also the completion rule of item 8:
+
+    | mode | TYPE | vcontrold macro | used by a shipped datapoint? |
+    |---|---|---|---|
+    | `PHYSICAL` | `0xCB` | `GETADDR` | yes (227 commands) |
+    | `VIRTUAL` | `0xC7` | `GETVADDR` | yes -- `getDevType`, `0xF8` len 4 |
+    | `EEPROM` | `0xAE` | `GETEADDR` | yes -- `getBrennerStunden1`, `0x17` len 2 |
+    | `XRAM` | `0xC5` | `GETXADDR` | yes -- `getExtBA`, `0x00` len 1 |
+    | `PORT` | `0x6E` | `GETPADDR` | yes -- `getVentilStatus`, `0x01` len 1 |
+    | `BE` | `0x9E` | `GETBADDR` | macro only |
+    | `KMBUS_EEPROM` | `0x43` | `GETKMADDR` | macro only (see below) |
+    | `KMBUS_RAM` | `0x33` | **none** | none — but see vogod below |
+
+    Two caveats fall out of that. `KMBUS_RAM` (`0x33`) has no vcontrold macro
+    and no Vitosoft datapoint uses it -- but it is not single-sourced:
+    **speters/vogod** declares the whole GWG command-type set independently
+    (`pkg/vogo/fsm.go`), `physicalKmbusRAMRead = 0x33` included, and its
+    `writeCmds` map omits both KMBUS modes, reaching the same read-only
+    conclusion `gwgModeIsWritable()` encodes. So the byte has two sources; what
+    it lacks is any datapoint that uses it. And vcontrold's
+    `getkmaddr` command invokes an undefined `GETKMDDR` macro (a typo for
+    `GETKMADDR`), so its `0x43` read path is dead code there; the macro
+    definition is still evidence for the byte, but nobody has been exercising
+    it.
+
+    **Fourth source: vogod.** `speters/vogod` lists all eight read bytes and
+    all six write bytes as `CommandType` constants, matching this table
+    exactly. It does NOT settle the write frame layout: `prepareCmd()` handles
+    only the P300 and KW send states and returns
+    `"not implemented: %v (GWG protocol?)"` for every GWG type, and the state
+    machine has no GWG states at all. Its `str2CmdType()` also never connects
+    Vitosoft's `FCRead` names to those constants -- only `Virtual_READ` and
+    `Virtual_WRITE` map to anything, everything else becomes `nop`, and
+    `commands.go` then refuses the datapoint as "not readable". So vogod has
+    the same P300-centric blind spot this project had before item 19: the table
+    is present but unwired (`// TODO: find out more CommandType mappings`).
+
+    **Third source: Viessmann's own data.** Vitosoft carries the access mode
+    per datapoint, in `ecnEventType.xml`'s `FCRead` field, and its names map 1:1
+    onto the same seven modes -- `Physical_READ`, `Virtual_READ`, `EEPROM_READ`,
+    `XRAM_READ`, `Port_READ`, `BE_READ`, `KMBUS_EEPROM_READ`. Across all 22
+    Vitosoft `GWG_*` device tokens (4143 events) those seven plus blank are the
+    only values that occur, apart from 34 `KBUS_VIRTUAL_READ` (0.8%, a genuine
+    K-bus tunnel no access mode reaches). `KMBUS_RAM` again has no counterpart:
+    **zero** Vitosoft GWG datapoints use it, so all three sources now agree it
+    is the odd one out and nothing in this project will ever emit it.
+
+    This is also what makes the modes load-bearing rather than diagnostic.
+    Vitosoft shows GWG's address space is genuinely per-mode: in `GWG_VBES_00`,
+    address `0x01` is five different datapoints across four modes (OEM ident on
+    `kmbus_eeprom`, max boiler temperature on `eeprom`, three outputs on
+    `port`). Address alone is not a datapoint identity under GWG.
+    `scripts/gen_catalog.py` therefore maps `FCRead` onto `access:` and emits it
+    on every GWG entity (`--protocol`, inferred from the Vitosoft device token).
+
+    It further resolves the three addresses this project had logged
+    implausible values for, all of which were being read on `physical`: `0x17`
+    is `GWG BEMK50Brennerlaufzeit` on `EEPROM_READ` (vcontrold agrees --
+    `getBrennerStunden1`/`geteaddr`), `0xF8..0xFB` are the four `GWG
+    SystemIdent` fields on `Virtual_READ` (vcontrold agrees --
+    `getDevType`/`getvaddr`), and `0x29` is `GWG Vorlaufmaximaltemperatur HKB
+    BEM` on `BE_READ`. The identification read is consequently issued on
+    `VIRTUAL` under GWG (`VitoHomeComponent::dispatch_next_`), not `PHYSICAL`.
+
+    Scope. The default is `PHYSICAL`, so every existing call site and every
+    config that does not set `access:` is byte-identical to before (guarded by
+    `tests/native/proof_gwg_access_mode.cpp` and
+    `tests/native/proof_gwg_write_access.cpp`).
+
+    **The write direction is now covered too** (2026-08-24), with one mode
+    driving both directions -- Vitosoft pairs every writable GWG datapoint as
+    `(EEPROM_READ, EEPROM_WRITE)` or `(BE_READ, BE_WRITE)`, never across modes,
+    so a separate write mode could only express wrong things. The write TYPE
+    bytes are `VIRTUAL 0xC4`, `PHYSICAL 0xC8`, `EEPROM 0xAD`, `XRAM 0xC3`,
+    `PORT 0x6D`, `BE 0x9D`; the wiki gives **no** write byte for either KMBUS
+    mode, so `GWGEngine::write()` refuses those outright rather than silently
+    substituting another mode (which would write to a different register file).
+    Cross-checked against dannerph/esphome_vitoconnect, which implements the
+    same six bytes.
+
+    Why this matters more than it looks: **nothing on a GWG unit is
+    PHYSICAL-writable.** Across all 22 Vitosoft GWG tokens the writable
+    datapoints are `EEPROM_WRITE` (1082) and `BE_WRITE` (280), plus 17
+    unreachable `KBUS_VIRTUAL_WRITE` -- and *zero* `PHYSICAL_WRITE`. But `0xC8`
+    was the only write byte this engine could emit before this change, and
+    dannerph's legacy path defaults to it too. That is the most economical
+    explanation for why no GWG write has ever been confirmed to work anywhere,
+    including openv issue #467.
+
+    That issue should also be re-read in light of item 18. Its capture is:
+    sent `04`, received `05` after **1230 ms**, then `20 53 01 2B` after
+    **50 ms** -- i.e. genuine answers in ~50 ms against a ~1230 ms idle-ENQ
+    cadence, the same two populations as this project's own capture. Its
+    reported "writes only ever return `0x05`" is therefore almost certainly *no
+    answer at all*, with the next idle ENQ misread as the ack. It is evidence
+    that a physical-mode write was ignored, not that GWG writes are impossible.
+
+    vcontrold contributes nothing here: its GWG `setaddr` is not merely a stub
+    but a no-op -- the entire body is `SYNC;RECV 1`, which emits the sync `EOT`
+    and reads a byte without ever transmitting an address, length, payload or
+    TYPE byte -- and the five GWG `set*` datapoints it declares
+    (`setTempRaumNorSollM1` `0x53`, `setTempRaumRedSollM1` `0x54`,
+    `setPumpeStatusZirku` `0x01`, `setUmschaltventil` `0x01`,
+    `setBrennerStunden1` `0x17`) all route into it, so none has ever worked.
+
+    **One thing remains genuinely unknown: where the `0x04` sits in a write
+    frame.** This project emits `01 TYPE ADDR LEN <data...> 04` (EOT last);
+    dannerph emits `01`, then `TYPE ADDR LEN 04 <data...>` (EOT before the
+    payload); vcontrold's KW sibling emits no terminator at all. The wiki calls
+    `0x04` the "Telegramm Ende Byte" and shows no write example. Neither GWG
+    layout has hardware evidence, so the choice sits behind
+    `kGwgWriteEotBeforePayload` (default: this project's pre-existing layout)
+    until a unit settles it. Reads are byte-identical under both, which is why
+    this never surfaced. Both settings build and pass the full proof suite.
+
+    Status. `PHYSICAL` is the only mode with a vitohome hardware capture behind
+    it. The other seven are spec-plus-second-implementation rather than
+    verified here -- which for the four vcontrold actually polls with is a good
+    deal stronger than "transcribed from a wiki", and for `0x33` is weaker.
+
+20. **GWG timing instrument (diagnostic, no protocol change).** An optional
+    `GWGEngine::onTiming()` callback fires once per successfully completed read
+    (never for writes, never for failures) reporting the `loop()` gap that
+    preceded the iteration which consumed the device's ENQ, and the
+    frame-written-to-response-received delta. Motivated by the same capture as
+    item 18: the numbers `RESPONSE_TIMEOUT_MS` was chosen against came from
+    host-batched API log timestamps that could not resolve them. It emits no
+    bytes and changes no state machine; with no callback registered (the
+    default) it costs only the `millis()` snapshots the engine already takes.
+
+    The first field is deliberately the loop gap and not "ENQ observed to frame
+    written": the same-loop send in item 18 puts both of those in one iteration
+    and `_currentMillis` is sampled once per iteration, so that delta is
+    identically 0 by construction and measures nothing. The ENQ's true arrival
+    time is not observable -- it is read out of a UART buffer -- so the gap
+    since the previous iteration is the honest upper bound on how stale the ENQ
+    was when we answered it, which is the quantity that actually decides whether
+    the KW-family sync window is being kept.
+
+21. **GWG burst (behavioral divergence, throughput).** `_init()` may now send a
+    queued request on a sync it already earned, without waiting for the device's
+    next ENQ, for up to `ENQ_VALIDITY_MS` (1500 ms). Upstream, and the openv
+    wiki, wait for a fresh `0x05` every time -- which caps the poll rate at one
+    datapoint per ENQ interval (749-2070 ms on the 2026-08-23 capture).
+
+    Sourced from the implementations that have run on hardware: vogod uses
+    exactly this 1500 ms ENQ validity on KW and re-stamps it at the end of every
+    completed transaction; dannerph has an explicit GWG burst mode; and this
+    engine's own `VS1Engine::_syncRecv()` already re-sends with no fresh ENQ
+    (see item 22), so GWG was the outlier.
+
+    The KW half is **hardware-confirmed** (2026-08-24, VScotHO1_72 `0x20CB`):
+    nine ENQ-delimited chains, median 29 telegrams per ENQ, max 49, with the
+    `0x01` prefix on the first telegram of each chain and no other. A 60 s poll
+    cycle completes in one chain, 29 datapoints in ~2.15 s. That is the sibling
+    protocol, not GWG, so it shows the family tolerates bursting rather than
+    proving the GWG device does.
+
+    Deliberately self-correcting, because it contradicts the only written spec:
+    a pending ENQ always wins (the burst path is reached only with an empty
+    interface, so nothing buffered can be read as a response); the window is
+    stamped only by an ENQ actually used to send or by a completed transaction;
+    any TIMEOUT invalidates it; and two consecutive unanswered burst sends
+    disable bursting for the session with a warning.
+    `GWGEngine::BURST_ENABLED = false` compiles it out. Host-proven by
+    `tests/native/proof_gwg_burst.cpp`, which passes in both branches.
+
+22. **VS1 sync windows split (structural + tuning).** Upstream, and this copy
+    until now, used ONE 50 ms `SYNC_WINDOW_MS` for two unrelated jobs:
+    `_syncEnq()`, how fast the master must answer the device's ENQ (a protocol
+    constraint), and `_syncRecv()`, how long a chain of telegrams may pause
+    before giving up on its sync (a throughput policy). Conflating them pinned
+    the second to the first.
+
+    Split into `ENQ_ACK_WINDOW_MS = 50` (unchanged, upstream's value) and
+    `CHAIN_WINDOW_MS = 1500`, matching vogod's figure for the same job and
+    GWG's `ENQ_VALIDITY_MS`. Motivated by measurement: on the 2026-08-24
+    VScotHO1_72 capture the answer-to-next-request gap ran 22-42 ms over 235
+    transactions (median 29, p90 35), i.e. ~8 ms under the old 50 ms ceiling.
+    Nothing breached it there, but any extra loop latency would, and the effect
+    is silent -- the chain just ends and the poll rate drops back to one
+    telegram per ENQ (~1.2-2 s each).
+
+    `_syncRecv()` also gained the guard that makes a long window safe: if any
+    byte has arrived since the last answer it returns to INIT instead of
+    chaining, because on an idle KW bus that byte is the device's next ENQ and
+    sending across it would leave it buffered for `_receive()` to read as the
+    next request's payload. The guard also bounds the window in practice -- it
+    can only be ridden while the device has not spoken since the last answer,
+    which is exactly when the old sync is still current. The same reasoning
+    applies to `GWGEngine::_init()`, whose burst path now likewise runs only on
+    a genuinely empty interface. Host-proven by
+    `tests/native/proof_vs1_chain.cpp`.
+
+Items 7-12, 18, 19, 21 and 22 are the only intentional changes to on-wire/runtime
+protocol behavior; items 13-16 are structural (no behavior change from any call
+site that exists -- item 16 alters bytes only on a RESPONSE-construction path
 nothing exercises); item 17 changes only construction-failure handling
-(abort -> fail-soft), not protocol or normal-path behavior. Everything else
-preserves upstream protocol behavior. Each of items 7-12 and 18 is covered by a
-host proof that fails against the upstream code (item 18:
-`tests/native/proof_gwg_enq_misread.cpp`, 9 assertions failing pre-fix);
-item 17's allocation-failure path is not host-triggerable and rests on
-inspection plus the wrapper's existing `begin()` -> `mark_failed()` handling.
+(abort -> fail-soft), not protocol or normal-path behavior; item 20 is a
+read-only diagnostic that emits nothing. Everything else preserves upstream
+protocol behavior. Each of items 7-12, 18 and 19 is covered by a host proof
+that fails against the upstream code (item 18:
+`tests/native/proof_gwg_enq_misread.cpp`, 9 assertions failing pre-fix, plus 4
+more for the stalled-host ordering case -- those 4 fail even against a build
+that has the deadline but evaluates it after the drain; item 19:
+`tests/native/proof_gwg_access_mode.cpp`); item 17's allocation-failure path is
+not host-triggerable and rests on inspection plus the wrapper's existing
+`begin()` -> `mark_failed()` handling.
 
 ---
 

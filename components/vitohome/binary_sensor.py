@@ -4,9 +4,11 @@ import esphome.config_validation as cv
 from esphome.const import CONF_ADDRESS, CONF_NAME, CONF_TYPE, CONF_UPDATE_INTERVAL
 
 from . import (
+    CONF_ACCESS,
     CONF_BYTE_OFFSET,
     CONF_LENGTH,
     CONF_VITOHOME_ID,
+    GWG_ACCESS_MODES,
     HUB_LINK_SENSORS,
     MAX_P300_READ_LENGTH,
     VitoHomeComponent,
@@ -77,6 +79,9 @@ _DATAPOINT_SCHEMA = cv.All(
             cv.Optional(CONF_BYTE_OFFSET, default=0): cv.int_range(min=0, max=MAX_P300_READ_LENGTH - 1),
             cv.Optional(CONF_BIT_MASK, default=0xFF): cv.hex_uint8_t,
             cv.Optional(CONF_UPDATE_INTERVAL): cv.update_interval,
+            # GWG-only; rejected under any other protocol in _final_validate
+            # (__init__.py). See CONF_ACCESS there.
+            cv.Optional(CONF_ACCESS): cv.enum(GWG_ACCESS_MODES, lower=True),
         }
     )
     .extend(cv.COMPONENT_SCHEMA),
@@ -117,6 +122,8 @@ async def to_code(config):
     cg.add(var.set_datapoint(datapoint_expression(config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH])))
     cg.add(var.set_byte_offset(config[CONF_BYTE_OFFSET]))
     cg.add(var.set_bit_mask(config[CONF_BIT_MASK]))
+    if CONF_ACCESS in config:
+        cg.add(var.set_access(config[CONF_ACCESS]))
     emit_poll_interval(var, poll_ms)
 
     cg.add(parent.register_entity(var))

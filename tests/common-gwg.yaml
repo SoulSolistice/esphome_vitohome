@@ -53,6 +53,19 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+  # access: -- the GWG access mode selects the telegram TYPE byte, and GWG's
+  # address space is PER MODE, so this is part of the datapoint's identity, not
+  # a tweak. Vitosoft has 0x17 as BEMK50Brennerlaufzeit on EEPROM_READ (0xAE);
+  # vcontrold agrees (getBrennerStunden1 / geteaddr). Reading it on the default
+  # physical mode is what produced the non-monotonic counter in design_notes.
+  - platform: vitohome
+    name: "GWG Brennerlaufzeit"
+    address: 0x17
+    access: eeprom
+    length: 1
+    converter: noconv
+    unit_of_measurement: "h"
+    state_class: total_increasing
   # getTempKist -> addr 00, len 1
   - platform: vitohome
     name: "GWG Temp Kessel"
@@ -78,11 +91,22 @@ binary_sensor:
     length: 1
     bit_mask: 0x02
     device_class: running
+  # Vitosoft has the GWG outputs at 0x01 on Port_READ (0x6E) -- the same address
+  # is a different datapoint under eeprom and kmbus_eeprom, which is exactly why
+  # access: has to travel with it.
+  - platform: vitohome
+    name: "GWG Ausgang Heizkreispumpe"
+    address: 0x01
+    access: port
+    length: 1
+    bit_mask: 0x01
+    device_class: running
 
 text_sensor:
   - platform: vitohome
     type: enum
     name: "GWG Betriebsart"
+    access: virtual
     address: 0x3F
     length: 1
     options:
@@ -91,6 +115,21 @@ text_sensor:
       0x02: "Heizen und Warmwasser"
 
 number:
+  # A WRITABLE entity carrying access: -- one mode drives both directions, so
+  # this reads with EEPROM_READ (0xAE) and writes with EEPROM_WRITE (0xAD).
+  # Vitosoft marks every writable GWG datapoint as EEPROM or BE and NONE as
+  # physical, so this is the shape a real GWG write takes. Codegen gate only:
+  # GWG writes are unverified on hardware (THIRD_PARTY.md #19).
+  - platform: vitohome
+    name: "GWG Kesselmaximaltemperatur"
+    address: 0x01
+    access: eeprom
+    length: 1
+    converter: noconv
+    min_value: 10
+    max_value: 90
+    step: 1
+    update_interval: 3600s
   - platform: vitohome
     name: "GWG WW Solltemperatur"
     address: 0x63

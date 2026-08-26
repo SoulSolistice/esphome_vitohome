@@ -69,14 +69,19 @@ class VitoEntityBase {
 
   void set_vitohome_parent(VitoHomeComponent *parent) { this->vh_parent_ = parent; }
 
-  // GWG access mode for this entity's poll/read-back read (2026-08-24).
-  // Meaningless outside protocol: GWG -- see GWGAccessMode in constants.h --
-  // and unused (compiled but never read) unless VITOHOME_PROTOCOL_GWG is the
-  // selected build, so setting it under another protocol has no effect. The
-  // default (PHYSICAL) is the pre-existing, only-ever-emitted behaviour, so an
-  // entity that never sets this is unaffected.
-  void set_read_access(optolink::GWGAccessMode access) { this->read_access_ = access; }
-  optolink::GWGAccessMode read_access() const { return this->read_access_; }
+  // GWG access mode for this entity (2026-08-24). Drives BOTH directions --
+  // its polls/read-backs and its writes -- because the mode is a property of
+  // the datapoint, not of the direction: Vitosoft pairs every writable GWG
+  // datapoint as (EEPROM_READ, EEPROM_WRITE) or (BE_READ, BE_WRITE), never
+  // across modes. See GWGAccessMode in constants.h.
+  //
+  // Meaningless outside protocol: GWG, and unused (compiled but never read)
+  // unless VITOHOME_PROTOCOL_GWG is the selected build, so setting it under
+  // another protocol has no effect. The default (PHYSICAL) is the pre-existing,
+  // only-ever-emitted behaviour, so an entity that never sets this is
+  // unaffected.
+  void set_access(optolink::GWGAccessMode access) { this->access_ = access; }
+  optolink::GWGAccessMode access() const { return this->access_; }
 
   // --- scheduling -----------------------------------------------------------
   // 0 (default) = poll on every hub update cycle. Anything else is a minimum
@@ -157,7 +162,7 @@ class VitoEntityBase {
   uint8_t write_len_{0};
   bool read_back_{true};
   uint32_t poll_interval_ms_{0};
-  optolink::GWGAccessMode read_access_{optolink::GWGAccessMode::PHYSICAL};
+  optolink::GWGAccessMode access_{optolink::GWGAccessMode::PHYSICAL};
 
  private:
   // Hub-side bookkeeping. Private, not public: only VitoHomeComponent (the

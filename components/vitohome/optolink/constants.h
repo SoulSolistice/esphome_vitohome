@@ -38,17 +38,52 @@ constexpr struct {
 } PacketGWGType;
 
 // GWG access mode (divergence from upstream -- upstream has no concept of
-// this; PHYSICAL is the only mode it ever emits). Source: openv wiki,
+// this; PHYSICAL is the only mode it ever emits). Primary source: openv wiki,
 // Protokoll-GWG (https://github.com/openv/openv/wiki/Protokoll-GWG, Dec 2017
-// revision, re-fetched 2026-08-24), "Telegramm Typen" table. Read directions
-// only -- GWG write access-mode support is deliberately out of scope (see
-// GWGEngine::write(), unchanged): the wiki gives write TYPE bytes too, but
-// nothing in this project's evidence chain (vcontrold's GWG setaddr is a
-// stub, dannerph's write layout disagrees with vitohome's and is untested,
-// openv issue #467 shows a live GWG unit only ever returning 0x05 on write)
-// makes any GWG write trustworthy enough to extend. PHYSICAL is the
-// pre-existing (and only) behaviour -- it stays the default so a config that
-// never sets `access:` is unaffected.
+// revision, re-fetched 2026-08-24), "Telegramm Typen" table.
+//
+// Corroborated against three independent implementations. vcontrold
+// (openv/vcontrold,
+// xml/{kw,300}/vcontrold.xml, <protocol name="GWG">), which defines the same
+// TYPE bytes as named macros and wraps them in the SAME frame this engine
+// emits -- `SYNC; GET*ADDR $addr $hexlen 04; RECV $len`, i.e. 01 <TYPE> <addr>
+// <len> 04 answered by exactly <len> raw bytes. Seven of the eight match
+// byte-for-byte:
+//
+//   PHYSICAL 0xCB = GETADDR    VIRTUAL 0xC7 = GETVADDR   EEPROM 0xAE = GETEADDR
+//   XRAM     0xC5 = GETXADDR   PORT    0x6E = GETPADDR   BE     0x9E = GETBADDR
+//   KMBUS_EEPROM 0x43 = GETKMADDR
+//
+// KMBUS_RAM (0x33) has no vcontrold macro and no Vitosoft datapoint uses it,
+// but it is NOT single-sourced: speters/vogod declares the full GWG
+// command-type set independently (pkg/vogo/fsm.go), physicalKmbusRAMRead =
+// 0x33 included. Two sources agree on the byte; what is missing is any
+// datapoint that uses it.
+//
+// vcontrold also ships datapoints that actually USE four of the non-physical
+// modes for the one GWG device it knows (ID 2053, GWG_VBEM) -- getDevType
+// reads 0xF8 len 4 over VIRTUAL, getBrennerStunden1 reads 0x17 len 2 over
+// EEPROM, getVentilStatus/getPumpeStatus* read 0x01 over PORT, getExtBA reads
+// 0x00 over XRAM -- so these are not merely tabulated, they are what a
+// long-lived implementation talks to real GWG units with. (0x43 is the
+// exception on that front too: its getkmaddr command references an undefined
+// `GETKMDDR` macro -- a typo in vcontrold -- so that path is dead there.)
+//
+// Read directions only -- GWG write access-mode support is deliberately out of
+// scope (see GWGEngine::write(), unchanged): the wiki gives write TYPE bytes
+// too, but no implementation anywhere has been confirmed to write to a GWG
+// unit. vogod declares the write bytes but never builds a GWG frame -- its
+// prepareCmd() handles only the P300 and KW send states and returns
+// "not implemented ... (GWG protocol?)" for every GWG type -- so it does not
+// settle the frame layout either. vcontrold's GWG `setaddr` is not merely a stub
+// but a no-op -- its whole body is `SYNC;RECV 1`, which sends the sync EOT and
+// reads a byte without ever transmitting an address, a length, a payload or a
+// TYPE byte. dannerph's write layout disagrees with vitohome's and is
+// untested; openv issue #467 shows a live GWG unit only ever returning 0x05 on
+// write.
+//
+// PHYSICAL is the pre-existing (and only) behaviour -- it stays the default so
+// a config that never sets `access:` is unaffected.
 enum class GWGAccessMode : uint8_t {
   PHYSICAL = 0,
   VIRTUAL,
@@ -86,6 +121,82 @@ constexpr uint8_t gwgReadTypeByte(GWGAccessMode mode) {
     default:
       return 0xCB;
   }
+}
+
+// The WRITE TelegrammByte for each access mode, per the same wiki table:
+//   VIRTUAL WRITE=0xC4  PHYSICAL WRITE=0xC8  EEPROM WRITE=0xAD
+//   PHYSICAL XRAM WRITE=0xC3  PHYSICAL PORT WRITE=0x6D  PHYSICAL BE WRITE=0x9D
+// The wiki lists NO write byte for either KMBUS mode, so those two are
+// read-only here and this returns kNoGwgWriteType for them; callers must check.
+// PacketGWGType.WRITE above is retained as the PHYSICAL case's value (0xC8).
+//
+// The write mode always mirrors the read mode -- Vitosoft pairs every writable
+// GWG datapoint as (EEPROM_READ, EEPROM_WRITE) or (BE_READ, BE_WRITE), never
+// across modes -- so one `access:` selects both directions.
+//
+// Which modes are writable in practice, per Vitosoft across all 22 GWG device
+// tokens: EEPROM_WRITE 1082 datapoints, BE_WRITE 280, and **zero**
+// PHYSICAL_WRITE. That matters, because 0xC8 is the only write byte this
+// engine could emit before this table existed -- and openv issue #467's "GWG
+// only ever answers 0x05 on write" is a physical-mode write against a unit
+// where nothing is physical-writable, with the next idle ENQ misread as the
+// ack (see RESPONSE_TIMEOUT_MS). Cross-checked against
+// dannerph/esphome_vitoconnect, which implements the same six write bytes, and
+// speters/vogod, whose CommandType enum lists exactly these six writes and
+// deliberately omits both KMBUS modes from its writeCmds map -- i.e. it reaches
+// the same read-only conclusion for KMBUS that gwgModeIsWritable() encodes.
+constexpr uint8_t kNoGwgWriteType = 0x00;
+
+// GWG WRITE frame layout switch. The read frame is settled -- three sources
+// agree on `01 TYPE ADDR LEN 04` -- but where the payload sits relative to the
+// EOT terminator on a WRITE is genuinely unknown, and the two existing
+// implementations disagree:
+//
+//   false (default, this project's pre-existing layout):
+//       01 TYPE ADDR LEN <data...> 04     EOT terminates the frame
+//   true (dannerph/esphome_vitoconnect):
+//       01 TYPE ADDR LEN 04 <data...>     EOT precedes the payload
+//
+// Neither has hardware evidence. The wiki calls 0x04 the "Telegramm Ende Byte"
+// and shows no write example, which argues for the default; the KW sibling
+// (vcontrold KW2 `SETADDR $addr $hexlen; SEND BYTES`) emits no terminator at
+// all, so it does not decide the question either. vcontrold has no GWG write
+// implementation to compare against -- its `setaddr` is `SYNC;RECV 1`, which
+// transmits no telegram whatsoever.
+//
+// Flip this to true to test the other layout. Reads are byte-identical under
+// both. Once a unit settles it, this switch and this comment should collapse
+// into the single correct layout.
+constexpr bool kGwgWriteEotBeforePayload = false;
+
+constexpr uint8_t gwgWriteTypeByte(GWGAccessMode mode) {
+  switch (mode) {
+    case GWGAccessMode::VIRTUAL:
+      return 0xC4;
+    case GWGAccessMode::EEPROM:
+      return 0xAD;
+    case GWGAccessMode::XRAM:
+      return 0xC3;
+    case GWGAccessMode::PORT:
+      return 0x6D;
+    case GWGAccessMode::BE:
+      return 0x9D;
+    case GWGAccessMode::KMBUS_RAM:
+    case GWGAccessMode::KMBUS_EEPROM:
+      return kNoGwgWriteType;  // no write byte exists for these
+    case GWGAccessMode::PHYSICAL:
+    default:
+      return 0xC8;
+  }
+}
+
+constexpr bool gwgModeIsWritable(GWGAccessMode mode) { return gwgWriteTypeByte(mode) != kNoGwgWriteType; }
+
+// True for any TYPE byte this project supports on the write path. Mirrors
+// isKnownGwgReadType() below; the two sets are disjoint, so a TYPE byte
+// unambiguously names its direction.
+constexpr bool isKnownGwgWriteType(uint8_t type) {
+  return type == 0xC8 || type == 0xC4 || type == 0xAD || type == 0xC3 || type == 0x6D || type == 0x9D;
 }
 
 // True for any TYPE byte this project supports on the read path -- the

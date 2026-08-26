@@ -29,6 +29,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "paraallg-gasbhkw-impuls-y"
     id: paraallg_gasbhkw_impuls_y
@@ -38,6 +39,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Allgemein / gaszaehlerges ---
   - platform: vitohome
     name: "paraallg-gasges-impuls-x"
@@ -48,6 +50,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "paraallg-gasges-impuls-y"
     id: paraallg_gasges_impuls_y
@@ -57,6 +60,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Allgemein / stromzaehler ---
   - platform: vitohome
     name: "paraallg-strom-impuls-x"
@@ -67,6 +71,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "paraallg-strom-impuls-y"
     id: paraallg_strom_impuls_y
@@ -76,6 +81,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- DiagnosisDiagnosis2 / Allgemein ---
   - platform: vitohome
     name: "protokollversion-lda"
@@ -86,6 +92,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "protokollversion-rda"
     id: protokollversion_rda
@@ -95,6 +102,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "highbyteentwversion"
     id: highbyteentwversion
@@ -104,6 +112,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "lowbyteentwversion"
     id: lowbyteentwversion
@@ -113,6 +122,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Functionscontroll / nviNodeAlarm ---
   - platform: vitohome
     name: "nviNodeAlarm object id"
@@ -124,6 +134,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nviNodeAlarm index to snvt"
     id: nviNodeAlarm_index_to_snvt
@@ -134,6 +145,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nviNodeAlarm value"
     id: nviNodeAlarm_value
@@ -144,6 +156,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nviNodeAlarm year"
     id: nviNodeAlarm_year
@@ -154,6 +167,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nviNodeAlarm month"
     id: nviNodeAlarm_month
@@ -164,6 +178,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nviNodeAlarm day"
     id: nviNodeAlarm_day
@@ -174,6 +189,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nviNodeAlarm hour"
     id: nviNodeAlarm_hour
@@ -184,6 +200,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nviNodeAlarm minute"
     id: nviNodeAlarm_minute
@@ -194,6 +211,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nviNodeAlarm second"
     id: nviNodeAlarm_second
@@ -204,6 +222,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nviNodeAlarm milisecond"
     id: nviNodeAlarm_milisecond
@@ -214,6 +233,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nviNodeAlarm alarm limit"
     id: nviNodeAlarm_alarm_limit
@@ -224,6 +244,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nviNodeTimeSet year"
     id: nviNodeTimeSet_year
@@ -233,6 +254,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nviNodeTimeSet month"
     id: nviNodeTimeSet_month
@@ -242,6 +264,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nviNodeTimeSet day"
     id: nviNodeTimeSet_day
@@ -251,6 +274,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nviNodeTimeSet hour"
     id: nviNodeTimeSet_hour
@@ -260,6 +284,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nviNodeTimeSet minute"
     id: nviNodeTimeSet_minute
@@ -269,6 +294,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nviNodeTimeSet second"
     id: nviNodeTimeSet_second
@@ -278,6 +304,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nviNodeOATemp"
     id: nviNodeOATemp
@@ -290,6 +317,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Functionscontroll / nvoNodeAlarm ---
   - platform: vitohome
     name: "nvoNodeAlarm object id"
@@ -301,6 +329,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoNodeAlarm index to snvt"
     id: nvoNodeAlarm_index_to_snvt
@@ -311,6 +340,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoNodeAlarm value"
     id: nvoNodeAlarm_value
@@ -321,6 +351,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoNodeAlarm year"
     id: nvoNodeAlarm_year
@@ -331,6 +362,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoNodeAlarm month"
     id: nvoNodeAlarm_month
@@ -341,6 +373,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoNodeAlarm day"
     id: nvoNodeAlarm_day
@@ -351,6 +384,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoNodeAlarm hour"
     id: nvoNodeAlarm_hour
@@ -361,6 +395,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoNodeAlarm minute"
     id: nvoNodeAlarm_minute
@@ -371,6 +406,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoNodeAlarm second"
     id: nvoNodeAlarm_second
@@ -381,6 +417,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoNodeAlarm milisecond"
     id: nvoNodeAlarm_milisecond
@@ -391,6 +428,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoNodeAlarm alarm limit"
     id: nvoNodeAlarm_alarm_limit
@@ -401,6 +439,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoNodeTimeSet year"
     id: nvoNodeTimeSet_year
@@ -410,6 +449,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoNodeTimeSet month"
     id: nvoNodeTimeSet_month
@@ -419,6 +459,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoNodeTimeSet day"
     id: nvoNodeTimeSet_day
@@ -428,6 +469,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoNodeTimeSet hour"
     id: nvoNodeTimeSet_hour
@@ -437,6 +479,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoNodeTimeSet minute"
     id: nvoNodeTimeSet_minute
@@ -446,6 +489,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoNodeTimeSet second"
     id: nvoNodeTimeSet_second
@@ -455,6 +499,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoNodeOATemp"
     id: nvoNodeOATemp
@@ -467,6 +512,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Overview / Allgemein ---
   - platform: vitohome
     name: "Speicher1"
@@ -479,6 +525,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Speicher2"
     id: Speicher2
@@ -490,6 +537,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Speicher3"
     id: Speicher3
@@ -501,6 +549,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Speicher4"
     id: Speicher4
@@ -512,6 +561,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Speicher5"
     id: Speicher5
@@ -523,6 +573,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Speicher6"
     id: Speicher6
@@ -534,6 +585,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Kesselvorlauf"
     id: Kesselvorlauf
@@ -545,6 +597,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "SollwertKesselpumpe"
     id: SollwertKesselpumpe
@@ -555,6 +608,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Kesselsollwert"
     id: Kesselsollwert
@@ -566,6 +620,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Aussenfuehler"
     id: Aussenfuehler
@@ -577,6 +632,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "SollwertPumpeBHKW"
     id: SollwertPumpeBHKW
@@ -586,6 +642,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Raumfuehler"
     id: Raumfuehler
@@ -597,6 +654,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "StromzaehlerBHKW"
     id: StromzaehlerBHKW
@@ -608,6 +666,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GaszaehlerBHKW"
     id: GaszaehlerBHKW
@@ -618,6 +677,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GaszaehlerGesamt"
     id: GaszaehlerBHKW_2
@@ -628,6 +688,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Overview / MBusZaehler1 ---
   - platform: vitohome
     name: "Zaehler1Waermemenge"
@@ -639,6 +700,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Zaehler1Waermemenge2"
     id: Zaehler1Waermemenge2
@@ -649,6 +711,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
     # NOTE: converter 'div10' unsupported at 4 bytes -> noconv + multiply filter (0.1)
   - platform: vitohome
     name: "Zaehler1Wassermenge"
@@ -663,6 +726,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Zaehler1Waermeleistung"
     id: Zaehler1Waermeleistung
@@ -673,6 +737,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Zaehler1Durchfluss"
     id: Zaehler1Durchfluss
@@ -683,6 +748,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Zaehler1Vorlauftemperatur"
     id: Zaehler1Vorlauftemperatur
@@ -694,6 +760,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Zaehler1Ruecklauftemperatur"
     id: Zaehler1Ruecklauftemperatur
@@ -705,6 +772,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Overview / MBusZaehler2 ---
   - platform: vitohome
     name: "Zaehler2Waermemenge"
@@ -716,6 +784,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Zaehler2Waermemenge2"
     id: Zaehler2Waermemenge2
@@ -726,6 +795,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
     # NOTE: converter 'div10' unsupported at 4 bytes -> noconv + multiply filter (0.1)
   - platform: vitohome
     name: "Zaehler2Wassermenge"
@@ -740,6 +810,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Zaehler2Waermeleistung"
     id: Zaehler2Waermeleistung
@@ -750,6 +821,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Zaehler2Durchfluss"
     id: Zaehler2Durchfluss
@@ -760,6 +832,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Zaehler2Vorlauftemperatur"
     id: Zaehler2Vorlauftemperatur
@@ -771,6 +844,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Zaehler2Ruecklauftemperatur"
     id: Zaehler2Ruecklauftemperatur
@@ -782,6 +856,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Zaehler2Differenztemperatur"
     id: Zaehler2Differenztemperatur
@@ -792,6 +867,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Overview / MBusZaehler3 ---
   - platform: vitohome
     name: "Zaehler3Waermemenge"
@@ -803,6 +879,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Zaehler3Waermemenge2"
     id: Zaehler3Waermemenge2
@@ -813,6 +890,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
     # NOTE: converter 'div10' unsupported at 4 bytes -> noconv + multiply filter (0.1)
   - platform: vitohome
     name: "Zaehler3Wassermenge"
@@ -827,6 +905,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Zaehler3Waermeleistung"
     id: Zaehler3Waermeleistung
@@ -837,6 +916,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Zaehler3Durchfluss"
     id: Zaehler3Durchfluss
@@ -847,6 +927,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Zaehler3Ruecklauftemperatur"
     id: Zaehler3Ruecklauftemperatur
@@ -858,6 +939,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Zaehler3Differenztemperatur"
     id: Zaehler3Differenztemperatur
@@ -888,6 +970,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "paraallg-verzoeg-sommer-aus"
     id: paraallg_verzoeg_sommer_aus
@@ -905,6 +988,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Allgemein / Sommerbetrieb-ein ---
   - platform: vitohome
     name: "paraallg-gw-sommer-ein"
@@ -923,6 +1007,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "paraallg-verzoeg-sommer-ein"
     id: paraallg_verzoeg_sommer_ein
@@ -940,6 +1025,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Coding2 / Allgemein ---
   - platform: vitohome
     name: "anlagennummer"
@@ -956,6 +1042,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "teilnehmernummer"
     id: id_0xE001
@@ -971,6 +1058,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "uhrzeit-lon-senden"
     id: uhrzeit_lon_senden
@@ -986,6 +1074,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "uhrzeit-lon-empfangen"
     id: uhrzeit_lon_empfangen
@@ -1001,6 +1090,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "atemp-lon-senden"
     id: atemp_lon_senden
@@ -1016,6 +1106,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "atemp-lon-empfangen"
     id: atemp_lon_empfangen
@@ -1031,6 +1122,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "ausfallueberwachungvitocom"
     id: ausfallueberwachungvitocom
@@ -1046,6 +1138,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Functionscontroll / nciNetConfig ---
   - platform: vitohome
     name: "receive-heartbeat"
@@ -1059,6 +1152,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "nci-snd-heartbeat"
     id: nci_snd_heartbeat
@@ -1071,6 +1165,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Sommerbetrieb / AnwahlDrosselklappeauf ---
   - platform: vitohome
     name: "parasommer-gw-dk-auf"
@@ -1089,6 +1184,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parasommer-verzoeg-dk-auf"
     id: parasommer_verzoeg_dk_auf
@@ -1106,6 +1202,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Sommerbetrieb / AnwahlDrosselklappezu ---
   - platform: vitohome
     name: "parasommer-gw-dk-zu"
@@ -1124,6 +1221,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parasommer-verzoeg-dk-zu"
     id: parasommer_verzoeg_dk_zu
@@ -1141,6 +1239,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Sommerbetrieb / BHKWNotabwahlaus ---
   - platform: vitohome
     name: "parasommer-gw-bhkwnotab-aus"
@@ -1159,6 +1258,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parasommer-verzoeg-bhkwnotab-aus"
     id: parasommer_verzoeg_bhkwnotab_aus
@@ -1176,6 +1276,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Sommerbetrieb / BHKWNotabwahlein ---
   - platform: vitohome
     name: "parasommer-gw-bhkwnotab-ein"
@@ -1194,6 +1295,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parasommer-verzoeg-bhkwnotab-ein"
     id: parasommer_verzoeg_bhkwnotab_ein
@@ -1211,6 +1313,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Sommerbetrieb / BHKWPumpe ---
   - platform: vitohome
     name: "parasommer-bhkwpumpe-sollwert"
@@ -1228,6 +1331,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parasommer-bhkwpumpe-minimum"
     id: parasommer_bhkwpumpe_minimum
@@ -1244,6 +1348,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parasommer-bhkwpumpe-nachlaufzeit"
     id: parasommer_bhkwpumpe_nachlaufzeit
@@ -1261,6 +1366,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Sommerbetrieb / Kesselanwahlaus ---
   - platform: vitohome
     name: "parasommer-gw-kesselanw-aus"
@@ -1279,6 +1385,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parasommer-verzoeg-kesselanw-aus"
     id: parasommer_verzoeg_kesselanw_aus
@@ -1296,6 +1403,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Sommerbetrieb / Kesselanwahlein ---
   - platform: vitohome
     name: "parasommer-gw-kesselanw-ein"
@@ -1314,6 +1422,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parasommer-verzoeg-kesselanw-ein"
     id: parasommer_verzoeg_kesselanw_ein
@@ -1331,6 +1440,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Sommerbetrieb / Kesselpumpeneinstellungen ---
   - platform: vitohome
     name: "parasommer-kesselpumpenreg-sollwert"
@@ -1348,6 +1458,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parasommer-kesselpumpenreg-sollwert-t1"
     id: parasommer_kesselpumpenreg_sollwert_t1
@@ -1364,6 +1475,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parasommer-kesselpumpenreg-sollwert-t2"
     id: parasommer_kesselpumpenreg_sollwert_t2
@@ -1380,6 +1492,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parasommer-kesselpumpenreg-messintervall"
     id: parasommer_kesselpumpenreg_messintervall
@@ -1397,6 +1510,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parasommer-kesselpumpenreg-y-delta"
     id: parasommer_kesselpumpenreg_y_delta
@@ -1413,6 +1527,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parasommer-kesselpumpenreg-y-min"
     id: parasommer_kesselpumpenreg_y_min
@@ -1429,6 +1544,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parasommer-kesselpumpenreg-y-max"
     id: parasommer_kesselpumpenreg_y_max
@@ -1445,6 +1561,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parasommer-kesselpumpenreg-y-start"
     id: parasommer_kesselpumpenreg_y_start
@@ -1461,6 +1578,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Sommerbetrieb / RegBHKWKuehlwassertempaus ---
   - platform: vitohome
     name: "parasommer-gw-bhkwkuehlwas-aus"
@@ -1479,6 +1597,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parasommer-verzoeg-bhkwkuehlwas-aus"
     id: parasommer_verzoeg_bhkwkuehlwas_aus
@@ -1496,6 +1615,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Sommerbetrieb / RegBHKWKuehlwassertempein ---
   - platform: vitohome
     name: "parasommer-gw-bhkwkuehlwas-ein"
@@ -1514,6 +1634,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parasommer-verzoeg-bhkwkuehlwas-ein"
     id: parasommer_verzoeg_bhkwkuehlwas_ein
@@ -1531,6 +1652,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Sommerbetrieb / Waermeanwahlaus ---
   - platform: vitohome
     name: "parasommer-gw-mod-aus"
@@ -1549,6 +1671,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parasommer-verzoeg-mod-aus"
     id: parasommer_verzoeg_mod_aus
@@ -1566,6 +1689,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Sommerbetrieb / Waermeanwahlein ---
   - platform: vitohome
     name: "parasommer-gw-mod-ein"
@@ -1584,6 +1708,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parasommer-verzoeg-mod-ein"
     id: verzoeg_mod_ein
@@ -1601,6 +1726,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Winterbetrieb / AnwahlDrosselklappeauf ---
   - platform: vitohome
     name: "parawinter-gw-dk-auf"
@@ -1619,6 +1745,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parawinter-verzoeg-dk-auf"
     id: parawinter_verzoeg_dk_auf
@@ -1636,6 +1763,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Winterbetrieb / AnwahlDrosselklappezu ---
   - platform: vitohome
     name: "parawinter-gw-dk-zu"
@@ -1654,6 +1782,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parawinter-verzoeg-dk-zu"
     id: parawinter_verzoeg_dk_zu
@@ -1671,6 +1800,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Winterbetrieb / BHKWNotabwahlaus ---
   - platform: vitohome
     name: "parawinter-gw-bhkwnotab-aus"
@@ -1689,6 +1819,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parawinter-verzoeg-bhkwnotab-aus"
     id: parawinter_verzoeg_bhkwnotab_aus
@@ -1706,6 +1837,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Winterbetrieb / BHKWNotabwahlein ---
   - platform: vitohome
     name: "parawinter-gw-bhkwnotab-ein"
@@ -1724,6 +1856,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parawinter-verzoeg-bhkwnotab-ein"
     id: parawinter_verzoeg_bhkwnotab_ein
@@ -1741,6 +1874,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Winterbetrieb / BHKWPumpe ---
   - platform: vitohome
     name: "parawinter-bhkwpumpe-sollwert"
@@ -1758,6 +1892,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parawinter-bhkwpumpe-minimum"
     id: parawinter_bhkwpumpe_minimum
@@ -1774,6 +1909,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parawinter-kesselpumpe-nachlaufzeit"
     id: parawinter_kesselpumpe_nachlaufzeit
@@ -1791,6 +1927,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Winterbetrieb / Kesselanwahlaus ---
   - platform: vitohome
     name: "parawinter-gw-kesselanw-aus"
@@ -1809,6 +1946,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parawinter-verzoeg-kesselanw-aus"
     id: parawinter_verzoeg_kesselanw_aus
@@ -1826,6 +1964,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Winterbetrieb / Kesselanwahlein ---
   - platform: vitohome
     name: "parawinter-gw-kesselanw-ein"
@@ -1844,6 +1983,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parawinter-verzoeg-kesselanw-ein"
     id: parawinter_verzoeg_kesselanw_ein
@@ -1861,6 +2001,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Winterbetrieb / Kesselpumpeneinstellungen ---
   - platform: vitohome
     name: "parawinter-kesselpumpenreg-sollwert"
@@ -1878,6 +2019,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parawinter-kesselpumpenreg-sollwert-t1"
     id: parawinter_kesselpumpenreg_sollwert_t1
@@ -1894,6 +2036,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parawinter-kesselpumpenreg-sollwert-t2"
     id: parawinter_kesselpumpenreg_sollwert_t2
@@ -1910,6 +2053,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parawinter-kesselpumpenreg-messintervall"
     id: parawinter_kesselpumpenreg_messintervall
@@ -1927,6 +2071,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parawinter-kesselpumpenreg-y-delta"
     id: parawinter_kesselpumpenreg_y_delta
@@ -1943,6 +2088,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parawinter-kesselpumpenreg-y-min"
     id: parawinter_kesselpumpenreg_y_min
@@ -1959,6 +2105,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parawinter-kesselpumpenreg-y-max"
     id: parawinter_kesselpumpenreg_y_max
@@ -1975,6 +2122,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parawinter-kesselpumpenreg-y-start"
     id: parawinter_kesselpumpenreg_y_start
@@ -1991,6 +2139,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Winterbetrieb / RegBHKWKuehlwassertempaus ---
   - platform: vitohome
     name: "parawinter-gw-bhkwkuehlwas-aus"
@@ -2009,6 +2158,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parawinter-verzoeg-bhkwkuehlwas-aus"
     id: parawinter_verzoeg_bhkwkuehlwas_aus
@@ -2026,6 +2176,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Winterbetrieb / RegBHKWKuehlwassertempein ---
   - platform: vitohome
     name: "parawinter-gw-bhkwkuehlwas-ein"
@@ -2044,6 +2195,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parawinter-verzoeg-bhkwkuehlwas-ein"
     id: parawinter_verzoeg_bhkwkuehlwas_ein
@@ -2061,6 +2213,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Winterbetrieb / Waermeanwahlaus ---
   - platform: vitohome
     name: "parawinter-gw-mod-aus"
@@ -2079,6 +2232,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parawinter-verzoeg-mod-aus"
     id: parawinter_verzoeg_mod_aus
@@ -2096,6 +2250,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Winterbetrieb / Waermeanwahlein ---
   - platform: vitohome
     name: "parawinter-gw-mod-ein"
@@ -2114,6 +2269,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parawinter-verzoeg-mod-ein"
     id: parawinter_verzoeg_mod_ein
@@ -2131,6 +2287,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- (ohne Gruppenzuordnung) ---
   - platform: vitohome
     name: "geraetekennung-mt"
@@ -2147,6 +2304,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parasommer-kesselpumpe-nachlaufzeit"
     id: parasommer_kesselpumpe_nachlaufzeit
@@ -2164,6 +2322,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parasommer-kesselsollwert2"
     id: parasommer_kesselsollwert2
@@ -2181,6 +2340,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parawinter-kesselsollwert2"
     id: parawinter_kesselsollwert2
@@ -2198,6 +2358,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "parawinter-bhkwpumpe-nachlaufzeit"
     id: parawinter_bhkwpumpe_nachlaufzeit
@@ -2215,6 +2376,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "servicedaten1"
     id: servicedaten1
@@ -2230,6 +2392,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "servicedaten2"
     id: servicedaten2
@@ -2245,6 +2408,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "servicedaten3"
     id: servicedaten3
@@ -2260,6 +2424,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "servicedaten4"
     id: servicedaten4
@@ -2275,6 +2440,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "servicedaten5"
     id: servicedaten5
@@ -2290,6 +2456,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "servicedaten6"
     id: servicedaten6
@@ -2305,6 +2472,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "servicedaten7"
     id: servicedaten7
@@ -2320,6 +2488,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "servicedaten8"
     id: servicedaten8
@@ -2356,6 +2525,7 @@ text_sensor:
     id: device_type
     icon: "mdi:identifier"
     entity_category: diagnostic
+
   # --- Allgemein / Sommerbetrieb-aus ---
   - platform: vitohome
     type: enum
@@ -2375,6 +2545,7 @@ text_sensor:
       0x06: "6: Kesselvorlauf"
       0x07: "7: Außenfühler"
       0x0C: "12: BHKW Kühlwasser"
+
   # --- Allgemein / Sommerbetrieb-ein ---
   - platform: vitohome
     type: enum
@@ -2394,6 +2565,7 @@ text_sensor:
       0x06: "6: Kesselvorlauf"
       0x07: "7: Außenfühler"
       0x0C: "12: BHKW Kühlwasser"
+
   # --- Functionscontroll / nviNodeAlarm ---
     # NOTE: 10 negative enum option value(s) from the export omitted (raw bytes compare unsigned; a negative option can never match)
   - platform: vitohome
@@ -2421,6 +2593,7 @@ text_sensor:
       0x0D: "AL_FIR_ALM: Fire alarm condition"
       0x0E: "AL_FIR_PRE_ALM: Fire pre-alarm condition"
       0x0F: "AL_FIR_TRBL: Fire-related trouble (fault) condition"
+
     # NOTE: 1 negative enum option value(s) from the export omitted (raw bytes compare unsigned; a negative option can never match)
   - platform: vitohome
     type: enum
@@ -2443,6 +2616,7 @@ text_sensor:
       0x09: "PR_8: HVAC Alarms (BACnet Priority 8)"
       0x0A: "PR_10: HVAC Critical Equipment RTN, Fire RTN (Display) (BACnet Priority 10)"
       0x0B: "PR_16: HVAC RTN (lowest priority) (BACnet Priority 16)"
+
   # --- Functionscontroll / nvoNodeAlarm ---
     # NOTE: 10 negative enum option value(s) from the export omitted (raw bytes compare unsigned; a negative option can never match)
   - platform: vitohome
@@ -2470,6 +2644,7 @@ text_sensor:
       0x0D: "AL_FIR_ALM: Fire alarm condition"
       0x0E: "AL_FIR_PRE_ALM: Fire pre-alarm condition"
       0x0F: "AL_FIR_TRBL: Fire-related trouble (fault) condition"
+
     # NOTE: 1 negative enum option value(s) from the export omitted (raw bytes compare unsigned; a negative option can never match)
   - platform: vitohome
     type: enum
@@ -2492,6 +2667,7 @@ text_sensor:
       0x09: "PR_8: HVAC Alarms (BACnet Priority 8)"
       0x0A: "PR_10: HVAC Critical Equipment RTN, Fire RTN (Display) (BACnet Priority 10)"
       0x0B: "PR_16: HVAC RTN (lowest priority) (BACnet Priority 16)"
+
   # --- Overview / Allgemein ---
   - platform: vitohome
     type: enum
@@ -2504,6 +2680,7 @@ text_sensor:
     options:
       0x00: "Nicht angewählt"
       0x01: "Angewählt"
+
   - platform: vitohome
     type: enum
     name: "AnwahlKessel"
@@ -2515,6 +2692,7 @@ text_sensor:
     options:
       0x00: "Nicht angewählt"
       0x01: "Angewählt"
+
   - platform: vitohome
     type: enum
     name: "AnwahlDrosselklappe"
@@ -2526,6 +2704,7 @@ text_sensor:
     options:
       0x00: "Vorlaufanhebung"
       0x01: "Offen"
+
   - platform: vitohome
     type: enum
     name: "AnwahlKesselpumpe"
@@ -2537,6 +2716,7 @@ text_sensor:
     options:
       0x00: "Nicht angewählt"
       0x01: "Angewählt"
+
   - platform: vitohome
     type: enum
     name: "AnwahlBHKWPumpe"
@@ -2548,6 +2728,7 @@ text_sensor:
     options:
       0x00: "Nicht angewählt"
       0x01: "Angewählt"
+
   - platform: vitohome
     type: enum
     name: "Betriebsart"
@@ -2559,6 +2740,7 @@ text_sensor:
     options:
       0x01: "viessmann-ess.eventvaluetype.name.Betriebsart~1"
       0x00: "viessmann-ess.eventvaluetype.name.Betriebsart~0"
+
   # --- Overview / MBusZaehler1 ---
   - platform: vitohome
     type: enum
@@ -2571,6 +2753,7 @@ text_sensor:
     options:
       0x00: "Nicht vorhanden"
       0x01: "Vorhanden"
+
   - platform: vitohome
     type: enum
     name: "Zaehler1Detailfehlernummer"
@@ -2588,6 +2771,7 @@ text_sensor:
       0x68: "error_in_head_data"
       0x69: "usiAdress_over_250"
       0x6A: "send_error"
+
   # --- Overview / MBusZaehler2 ---
   - platform: vitohome
     type: enum
@@ -2600,6 +2784,7 @@ text_sensor:
     options:
       0x00: "Nicht vorhanden"
       0x01: "Vorhanden"
+
   - platform: vitohome
     type: enum
     name: "Zaehler2Detailfehlernummer"
@@ -2617,6 +2802,7 @@ text_sensor:
       0x68: "error_in_head_data"
       0x69: "usiAdress_over_250"
       0x6A: "send_error"
+
   # --- Overview / MBusZaehler3 ---
   - platform: vitohome
     type: enum
@@ -2629,6 +2815,7 @@ text_sensor:
     options:
       0x00: "Nicht vorhanden"
       0x01: "Vorhanden"
+
   - platform: vitohome
     type: enum
     name: "Zaehler3Detailfehlernummer"
@@ -2646,6 +2833,7 @@ text_sensor:
       0x68: "error_in_head_data"
       0x69: "usiAdress_over_250"
       0x6A: "send_error"
+
   # --- Sommerbetrieb / AnwahlDrosselklappezu ---
   - platform: vitohome
     type: enum
@@ -2665,6 +2853,7 @@ text_sensor:
       0x06: "6: Kesselvorlauf"
       0x07: "7: Außenfühler"
       0x0C: "12: BHKW Kühlwasser"
+
   # --- Sommerbetrieb / BHKWNotabwahlaus ---
   - platform: vitohome
     type: enum
@@ -2684,6 +2873,7 @@ text_sensor:
       0x06: "6: Kesselvorlauf"
       0x07: "7: Außenfühler"
       0x0C: "12: BHKW Kühlwasser"
+
   # --- Sommerbetrieb / BHKWNotabwahlein ---
   - platform: vitohome
     type: enum
@@ -2703,6 +2893,7 @@ text_sensor:
       0x06: "6: Kesselvorlauf"
       0x07: "7: Außenfühler"
       0x0C: "12: BHKW Kühlwasser"
+
   # --- Sommerbetrieb / Kesselallgemein ---
   - platform: vitohome
     type: enum
@@ -2722,6 +2913,7 @@ text_sensor:
       0x06: "6: Kesselvorlauf"
       0x07: "7: Außenfühler"
       0x0C: "12: BHKW Kühlwasser"
+
   # --- Sommerbetrieb / Kesselanwahlaus ---
   - platform: vitohome
     type: enum
@@ -2741,6 +2933,7 @@ text_sensor:
       0x06: "6: Kesselvorlauf"
       0x07: "7: Außenfühler"
       0x0C: "12: BHKW Kühlwasser"
+
   # --- Sommerbetrieb / Kesselanwahlein ---
   - platform: vitohome
     type: enum
@@ -2760,6 +2953,7 @@ text_sensor:
       0x06: "6: Kesselvorlauf"
       0x07: "7: Außenfühler"
       0x0C: "12: BHKW Kühlwasser"
+
   # --- Sommerbetrieb / RegBHKWKuehlwassertempaus ---
   - platform: vitohome
     type: enum
@@ -2779,6 +2973,7 @@ text_sensor:
       0x06: "6: Kesselvorlauf"
       0x07: "7: Außenfühler"
       0x0C: "12: BHKW Kühlwasser"
+
   # --- Sommerbetrieb / RegBHKWKuehlwassertempein ---
   - platform: vitohome
     type: enum
@@ -2798,6 +2993,7 @@ text_sensor:
       0x06: "6: Kesselvorlauf"
       0x07: "7: Außenfühler"
       0x0C: "12: BHKW Kühlwasser"
+
   # --- Sommerbetrieb / Waermeanwahlaus ---
   - platform: vitohome
     type: enum
@@ -2817,6 +3013,7 @@ text_sensor:
       0x06: "6: Kesselvorlauf"
       0x07: "7: Außenfühler"
       0x0C: "12: BHKW Kühlwasser"
+
   # --- Sommerbetrieb / Waermeanwahlein ---
   - platform: vitohome
     type: enum
@@ -2836,6 +3033,7 @@ text_sensor:
       0x06: "6: Kesselvorlauf"
       0x07: "7: Außenfühler"
       0x0C: "12: BHKW Kühlwasser"
+
   # --- Winterbetrieb / AnwahlDrosselklappeauf ---
   - platform: vitohome
     type: enum
@@ -2854,6 +3052,7 @@ text_sensor:
       0x05: "5: Speicher 2 Fühler unten"
       0x06: "6: Kesselvorlauf"
       0x0C: "12: BHKW Kühlwasser"
+
   # --- Winterbetrieb / AnwahlDrosselklappezu ---
   - platform: vitohome
     type: enum
@@ -2873,6 +3072,7 @@ text_sensor:
       0x06: "6: Kesselvorlauf"
       0x07: "7: Außenfühler"
       0x0C: "12: BHKW Kühlwasser"
+
   # --- Winterbetrieb / BHKWNotabwahlaus ---
   - platform: vitohome
     type: enum
@@ -2892,6 +3092,7 @@ text_sensor:
       0x06: "6: Kesselvorlauf"
       0x07: "7: Außenfühler"
       0x0C: "12: BHKW Kühlwasser"
+
   # --- Winterbetrieb / BHKWNotabwahlein ---
   - platform: vitohome
     type: enum
@@ -2911,6 +3112,7 @@ text_sensor:
       0x06: "6: Kesselvorlauf"
       0x07: "7: Außenfühler"
       0x0C: "12: BHKW Kühlwasser"
+
   # --- Winterbetrieb / Kesselallgemein ---
   - platform: vitohome
     type: enum
@@ -2930,6 +3132,7 @@ text_sensor:
       0x06: "6: Kesselvorlauf"
       0x07: "7: Außenfühler"
       0x0C: "12: BHKW Kühlwasser"
+
   # --- Winterbetrieb / Kesselanwahlaus ---
   - platform: vitohome
     type: enum
@@ -2949,6 +3152,7 @@ text_sensor:
       0x06: "6: Kesselvorlauf"
       0x07: "7: Außenfühler"
       0x0C: "12: BHKW Kühlwasser"
+
   # --- Winterbetrieb / Kesselanwahlein ---
   - platform: vitohome
     type: enum
@@ -2968,6 +3172,7 @@ text_sensor:
       0x06: "6: Kesselvorlauf"
       0x07: "7: Außenfühler"
       0x0C: "12: BHKW Kühlwasser"
+
   # --- Winterbetrieb / RegBHKWKuehlwassertempaus ---
   - platform: vitohome
     type: enum
@@ -2987,6 +3192,7 @@ text_sensor:
       0x06: "6: Kesselvorlauf"
       0x07: "7: Außenfühler"
       0x0C: "12: BHKW Kühlwasser"
+
   # --- Winterbetrieb / Waermeanwahlaus ---
   - platform: vitohome
     type: enum
@@ -3006,6 +3212,7 @@ text_sensor:
       0x06: "6: Kesselvorlauf"
       0x07: "7: Außenfühler"
       0x0C: "12: BHKW Kühlwasser"
+
   # --- Winterbetrieb / Waermeanwahlein ---
   - platform: vitohome
     type: enum
@@ -3025,6 +3232,7 @@ text_sensor:
       0x06: "6: Kesselvorlauf"
       0x07: "7: Außenfühler"
       0x0C: "12: BHKW Kühlwasser"
+
   # --- (ohne Gruppenzuordnung) ---
   - platform: vitohome
     type: enum

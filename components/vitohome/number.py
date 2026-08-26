@@ -4,6 +4,7 @@ import esphome.config_validation as cv
 from esphome.const import CONF_ADDRESS, CONF_MAX_VALUE, CONF_MIN_VALUE, CONF_NAME, CONF_STEP, CONF_UPDATE_INTERVAL
 
 from . import (
+    CONF_ACCESS,
     CONF_BYTE_LENGTH,
     CONF_BYTE_OFFSET,
     CONF_CONVERTER,
@@ -13,6 +14,7 @@ from . import (
     CONF_STATE_ADDRESS,
     CONF_VITOHOME_ID,
     CONVERTERS,
+    GWG_ACCESS_MODES,
     MAX_P300_READ_LENGTH,
     VitoHomeComponent,
     converter_scale,
@@ -93,6 +95,9 @@ CONFIG_SCHEMA = cv.All(
         {
             cv.GenerateID(CONF_VITOHOME_ID): cv.use_id(VitoHomeComponent),
             cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
+            # GWG-only; rejected under any other protocol in _final_validate
+            # (__init__.py). One mode drives this entity's reads AND writes.
+            cv.Optional(CONF_ACCESS): cv.enum(GWG_ACCESS_MODES, lower=True),
             cv.Optional(CONF_STATE_ADDRESS): cv.hex_uint16_t,
             cv.Optional(CONF_LENGTH, default=1): cv.positive_int,
             cv.Optional(CONF_BYTE_OFFSET): cv.int_range(min=0, max=MAX_P300_READ_LENGTH - 1),
@@ -135,5 +140,8 @@ async def to_code(config):
     cg.add(var.set_signed(resolve_signed(config)))
     cg.add(var.set_read_back(config[CONF_READ_BACK]))
     emit_poll_interval(var, poll_ms)
+
+    if CONF_ACCESS in config:
+        cg.add(var.set_access(config[CONF_ACCESS]))
 
     cg.add(parent.register_entity(var))

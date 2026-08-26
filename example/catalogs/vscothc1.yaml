@@ -31,6 +31,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Kesselsoll eff"
     id: Kesselsoll_eff
@@ -42,6 +43,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "InternePumpeDrehzahl"
     id: InternePumpeDrehzahl
@@ -53,6 +55,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "BetriebsstundenBrennerBedienungGWG"
     id: BetriebsstundenBrennerBedienungGWG
@@ -65,6 +68,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "Temperatur Hydraulische Weiche"
     id: Temperatur_Hydraulische_Weiche
@@ -76,6 +80,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Information / Heizkreis A1 ---
   - platform: vitohome
     name: "HKP A1Drehzahl"
@@ -88,6 +93,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Information / Warmwasser ---
   - platform: vitohome
     name: "TiefpassTemperaturwertWW1"
@@ -100,6 +106,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Information / Solar ---
   - platform: vitohome
     name: "Solarkollektortemperatur"
@@ -112,6 +119,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "SolarSpeichertemperatur"
     id: SolarSpeichertemperatur
@@ -123,6 +131,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "SolarStunden"
     id: SolarStunden
@@ -134,6 +143,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "SolarWaerme"
     id: SolarWaerme
@@ -145,6 +155,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Diagnose 1 / Kessel ---
   - platform: vitohome
     name: "nvoBoilerState BLR value"
@@ -156,6 +167,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "TiefpassTemperaturwert AGTS"
     id: TiefpassTemperaturwert_AGTS
@@ -167,6 +179,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Diagnose 1 / Wartung ---
   - platform: vitohome
     name: "K23 KonfiZeitintervall Wartung"
@@ -179,6 +192,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Diagnose 1 / Heizkreis A1 ---
   - platform: vitohome
     name: "VT SolltemperaturA1M1"
@@ -191,6 +205,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Diagnose 1 / Warmwasser ---
   - platform: vitohome
     name: "WW SolltemperaturAktuell"
@@ -203,6 +218,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Diagnose 1 / Erweiterung ---
   - platform: vitohome
     name: "AE Eingang0 10"
@@ -215,6 +231,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Diagnose 2 / Regelung ---
   - platform: vitohome
     name: "Bedienteil SW Index"
@@ -225,6 +242,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "KS Karte GWG Kennung"
     id: KS_Karte_GWG_Kennung
@@ -235,6 +253,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "KS Karte GWG Rev F"
     id: KS_Karte_GWG_Rev_F
@@ -245,6 +264,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "KS Karte GWG Rev R"
     id: KS_Karte_GWG_Rev_R
@@ -255,6 +275,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "KS Karte GWG Typ"
     id: KS_Karte_GWG_Typ
@@ -264,6 +285,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GFA Kennung"
     id: GFA_Kennung
@@ -273,6 +295,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Diagnose 2 / KM Bus ---
   - platform: vitohome
     name: "SWIndex Solar"
@@ -284,6 +307,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "SWIndex IntPumpe"
     id: SWIndex_IntPumpe
@@ -294,6 +318,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "SWIndex Vitocom"
     id: SWIndex_Vitocom
@@ -304,6 +329,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "SWIndex extAE"
     id: SWIndex_extAE
@@ -314,6 +340,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Diagnose 2 / Kommunikation ---
   - platform: vitohome
     name: "K98 KonfiVI Anlagennummer D"
@@ -324,6 +351,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Node Node"
     id: Node_Node
@@ -334,6 +362,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Node Subnet"
     id: Node_Subnet
@@ -344,6 +373,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Codierungen / Kessel ---
   - platform: vitohome
     name: "K08 KonfiBrennermaximalleistung1KWGWG"
@@ -354,6 +384,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Funktionskontrolle / Codierstecker1 ---
   - platform: vitohome
     name: "GWG Codierstecker Geraetetyp"
@@ -364,6 +395,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker BereichKTSollMax"
     id: GWG_Codierstecker_BereichKTSollMax
@@ -376,6 +408,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker BereichKTSollMin"
     id: GWG_Codierstecker_BereichKTSollMin
@@ -388,6 +421,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker BereichWWSollMax"
     id: GWG_Codierstecker_BereichWWSollMax
@@ -400,6 +434,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker BereichWWSollMin"
     id: GWG_Codierstecker_BereichWWSollMin
@@ -412,6 +447,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker Jahr"
     id: GWG_Codierstecker_Jahr
@@ -422,6 +458,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker Monat"
     id: GWG_Codierstecker_Monat
@@ -432,6 +469,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker Tag"
     id: GWG_Codierstecker_Tag
@@ -442,6 +480,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker Kennziffer"
     id: GWG_Codierstecker_Kennziffer
@@ -451,6 +490,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Funktionskontrolle / Codierstecker2 ---
   - platform: vitohome
     name: "GWG Codierstecker KT Regler"
@@ -463,6 +503,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker BRMin"
     id: GWG_Codierstecker_BRMin
@@ -474,6 +515,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker maxWW Leistung"
     id: GWG_Codierstecker_maxWW_Leistung
@@ -484,6 +526,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker WWmaxLeistung"
     id: GWG_Codierstecker_WWmaxLeistung
@@ -495,6 +538,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker AusDiff"
     id: GWG_Codierstecker_AusDiff
@@ -506,6 +550,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker AusMax"
     id: GWG_Codierstecker_AusMax
@@ -517,6 +562,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker BROpt"
     id: GWG_Codierstecker_BROpt
@@ -529,6 +575,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker BROffset"
     id: GWG_Codierstecker_BROffset
@@ -540,6 +587,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker EinDiff"
     id: GWG_Codierstecker_EinDiff
@@ -550,6 +598,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker N KT Regler"
     id: GWG_Codierstecker_N_KT_Regler
@@ -562,6 +611,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker KTMin"
     id: GWG_Codierstecker_KTMin
@@ -573,6 +623,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker Pause"
     id: GWG_Codierstecker_Pause
@@ -585,6 +636,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker HZmaxLeistung"
     id: GWG_Codierstecker_HZmaxLeistung
@@ -596,6 +648,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker DrehzMin"
     id: GWG_Codierstecker_DrehzMin
@@ -607,6 +660,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker PSollSP"
     id: GWG_Codierstecker_PSollSP
@@ -618,6 +672,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker Pause Abbruch"
     id: GWG_Codierstecker_Pause_Abbruch
@@ -629,6 +684,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker maxHZ Leistung"
     id: GWG_Codierstecker_maxHZ_Leistung
@@ -640,6 +696,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker Pause AbbruchT"
     id: GWG_Codierstecker_Pause_AbbruchT
@@ -652,6 +709,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker Nach"
     id: GWG_Codierstecker_Nach
@@ -664,6 +722,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Funktionskontrolle / Codierstecker3 ---
   - platform: vitohome
     name: "GWG Codierstecker GWG91"
@@ -676,6 +735,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWG92"
     id: GWG_Codierstecker_GWG92
@@ -687,6 +747,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWG93"
     id: GWG_Codierstecker_GWG93
@@ -698,6 +759,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWG94"
     id: GWG_Codierstecker_GWG94
@@ -709,6 +771,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWG95"
     id: GWG_Codierstecker_GWG95
@@ -720,6 +783,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWG96"
     id: GWG_Codierstecker_GWG96
@@ -731,6 +795,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWG97"
     id: GWG_Codierstecker_GWG97
@@ -742,6 +807,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWG98"
     id: GWG_Codierstecker_GWG98
@@ -753,6 +819,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWG99"
     id: GWG_Codierstecker_GWG99
@@ -764,6 +831,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWG9A"
     id: GWG_Codierstecker_GWG9A
@@ -775,6 +843,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Funktionskontrolle / Codierstecker4 ---
   - platform: vitohome
     name: "GWG Codierstecker GWG80"
@@ -786,6 +855,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWG81"
     id: GWG_Codierstecker_GWG81
@@ -797,6 +867,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWG82"
     id: GWG_Codierstecker_GWG82
@@ -809,6 +880,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWG83"
     id: GWG_Codierstecker_GWG83
@@ -821,6 +893,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWG84"
     id: GWG_Codierstecker_GWG84
@@ -832,6 +905,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWG85"
     id: GWG_Codierstecker_GWG85
@@ -844,6 +918,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWG86"
     id: GWG_Codierstecker_GWG86
@@ -856,6 +931,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWG87"
     id: GWG_Codierstecker_GWG87
@@ -867,6 +943,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Funktionskontrolle / Codierstecker5 ---
   - platform: vitohome
     name: "GWG Codierstecker GWGA0"
@@ -877,6 +954,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGA1"
     id: GWG_Codierstecker_GWGA1
@@ -887,6 +965,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGA2"
     id: GWG_Codierstecker_GWGA2
@@ -897,6 +976,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGA3"
     id: GWG_Codierstecker_GWGA3
@@ -907,6 +987,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGA4"
     id: GWG_Codierstecker_GWGA4
@@ -917,6 +998,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGA5"
     id: GWG_Codierstecker_GWGA5
@@ -927,6 +1009,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGA6"
     id: GWG_Codierstecker_GWGA6
@@ -937,6 +1020,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGA7"
     id: GWG_Codierstecker_GWGA7
@@ -947,6 +1031,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGA8"
     id: GWG_Codierstecker_GWGA8
@@ -957,6 +1042,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGA9"
     id: GWG_Codierstecker_GWGA9
@@ -967,6 +1053,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGAA"
     id: GWG_Codierstecker_GWGAA
@@ -977,6 +1064,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Funktionskontrolle / Codierstecker6 ---
   - platform: vitohome
     name: "GWG Codierstecker GWGB0"
@@ -987,6 +1075,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGB1"
     id: GWG_Codierstecker_GWGB1
@@ -997,6 +1086,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGB2"
     id: GWG_Codierstecker_GWGB2
@@ -1007,6 +1097,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGB3"
     id: GWG_Codierstecker_GWGB3
@@ -1017,6 +1108,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGB4"
     id: GWG_Codierstecker_GWGB4
@@ -1027,6 +1119,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGB5"
     id: GWG_Codierstecker_GWGB5
@@ -1037,6 +1130,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGB6"
     id: GWG_Codierstecker_GWGB6
@@ -1047,6 +1141,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGB7"
     id: GWG_Codierstecker_GWGB7
@@ -1057,6 +1152,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGB8"
     id: GWG_Codierstecker_GWGB8
@@ -1067,6 +1163,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGB9"
     id: GWG_Codierstecker_GWGB9
@@ -1077,6 +1174,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGBA"
     id: GWG_Codierstecker_GWGBA
@@ -1087,6 +1185,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Funktionskontrolle / Codierstecker7 ---
   - platform: vitohome
     name: "GWG Codierstecker GWGC0"
@@ -1097,6 +1196,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGC1"
     id: GWG_Codierstecker_GWGC1
@@ -1107,6 +1207,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGC2"
     id: GWG_Codierstecker_GWGC2
@@ -1117,6 +1218,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGC3"
     id: GWG_Codierstecker_GWGC3
@@ -1127,6 +1229,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGC4"
     id: GWG_Codierstecker_GWGC4
@@ -1137,6 +1240,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGC5"
     id: GWG_Codierstecker_GWGC5
@@ -1147,6 +1251,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGC6"
     id: GWG_Codierstecker_GWGC6
@@ -1157,6 +1262,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGC7"
     id: GWG_Codierstecker_GWGC7
@@ -1167,6 +1273,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGC8"
     id: GWG_Codierstecker_GWGC8
@@ -1177,6 +1284,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGC9"
     id: GWG_Codierstecker_GWGC9
@@ -1187,6 +1295,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Codierstecker GWGCA"
     id: GWG_Codierstecker_GWGCA
@@ -1197,6 +1306,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Funktionskontrolle / Zusatzinfo ---
   - platform: vitohome
     name: "KM Error PumpeM2"
@@ -1207,6 +1317,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "KM Error Mischer"
     id: KM_Error_Mischer
@@ -1216,6 +1327,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "KM Error AE"
     id: KM_Error_AE
@@ -1225,6 +1337,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "KM Error PumpeA1"
     id: KM_Error_PumpeA1
@@ -1234,6 +1347,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "K8E I2C FehlerEEPROM GWG"
     id: K8E_I2C_FehlerEEPROM_GWG
@@ -1244,6 +1358,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "KM Error Vitocom"
     id: KM_Error_Vitocom
@@ -1253,6 +1368,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "KM Error PumpeIntern"
     id: KM_Error_PumpeIntern
@@ -1262,6 +1378,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "KM Error Vitosolic"
     id: KM_Error_Vitosolic
@@ -1271,6 +1388,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- LON Objekte / Node Objekt ---
   - platform: vitohome
     name: "nvoTimeSet Minute"
@@ -1282,6 +1400,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoAlarm Sekunde"
     id: nvoAlarm_Sekunde
@@ -1293,6 +1412,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoTimeSet Jahr"
     id: nvoTimeSet_Jahr
@@ -1302,6 +1422,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoAlarm Nr gestoerterTeilnehmer"
     id: nvoAlarm_Nr_gestoerterTeilnehmer
@@ -1313,6 +1434,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoAlarm Stunde"
     id: nvoAlarm_Stunde
@@ -1324,6 +1446,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoTimeSet Sekunde"
     id: nvoTimeSet_Sekunde
@@ -1334,6 +1457,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoAlarm Teilnehmernummer"
     id: nvoAlarm_Teilnehmernummer
@@ -1345,6 +1469,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoAlarm Monat"
     id: nvoAlarm_Monat
@@ -1356,6 +1481,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoAlarm Tag"
     id: nvoAlarm_Tag
@@ -1367,6 +1493,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoTimeSet Stunde"
     id: nvoTimeSet_Stunde
@@ -1377,6 +1504,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoAlarm Fehlercode"
     id: nvoAlarm_Fehlercode
@@ -1388,6 +1516,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoOATemp"
     id: nvoOATemp
@@ -1398,6 +1527,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoTimeSet Tag"
     id: nvoTimeSet_Tag
@@ -1408,6 +1538,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoTimeSet Monat"
     id: nvoTimeSet_Monat
@@ -1418,6 +1549,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoAlarm Minute"
     id: nvoAlarm_Minute
@@ -1429,6 +1561,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoAlarm Jahr"
     id: nvoAlarm_Jahr
@@ -1441,6 +1574,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- LON Objekte / CFDMObjekt ---
   - platform: vitohome
     name: "nvoPWRState CFDM value"
@@ -1452,6 +1586,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoEffectSetpt CFDM"
     id: nvoEffectSetpt_CFDM
@@ -1463,6 +1598,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoSupplyTemp CFDM"
     id: nvoSupplyTemp_CFDM
@@ -1474,6 +1610,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- LON Objekte / DHWCObjekt ---
   - platform: vitohome
     name: "nvoDHWC ActTemp"
@@ -1486,6 +1623,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoDHWC EffSetpt"
     id: nvoDHWC_EffSetpt
@@ -1497,6 +1635,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- (ohne Gruppenzuordnung) ---
   - platform: vitohome
     name: "TiefpassTemperaturwert STS2"
@@ -1509,6 +1648,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "BetriebsstundenBrennerGWG"
     id: BetriebsstundenBrennerGWG
@@ -1521,6 +1661,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "SWIndex Mischer"
     id: SWIndex_Mischer
@@ -1531,6 +1672,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "SWIndex Pumpe1"
     id: SWIndex_Pumpe1
@@ -1541,6 +1683,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "SWIndex Pumpe2"
     id: SWIndex_Pumpe2
@@ -1551,6 +1694,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "SWIndex FB1"
     id: SWIndex_FB1
@@ -1561,6 +1705,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "SWIndex FB2"
     id: SWIndex_FB2
@@ -1571,6 +1716,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "RKR GWG VSDatenKTSoll"
     id: RKR_GWG_VSDatenKTSoll
@@ -1584,6 +1730,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "K38 KonfiFehlerByteGFA D"
     id: K38_KonfiFehlerByteGFA_D
@@ -1594,6 +1741,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "SolarSWIndex"
     id: SolarSWIndex
@@ -1603,6 +1751,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG AbsolutBegrMaxWWLeistung"
     id: GWG_AbsolutBegrMaxWWLeistung
@@ -1613,6 +1762,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoAlarm Kennung"
     id: nvoAlarm_Kennung
@@ -1625,6 +1775,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoEffectSetpt BLR GWG"
     id: nvoEffectSetpt_BLR_GWG
@@ -1636,6 +1787,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoHCC1 EffRoomSetpt"
     id: nvoHCC1_EffRoomSetpt
@@ -1647,6 +1799,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoHCC2 EffRoomSetpt"
     id: nvoHCC2_EffRoomSetpt
@@ -1670,6 +1823,7 @@ binary_sensor:
     bit_mask: 0x20
     disabled_by_default: true
     update_interval: 60s
+
   # --- Diagnose 1 / Feuerungsautomat ---
   - platform: vitohome
     name: "GWG Flamme1"
@@ -1679,6 +1833,7 @@ binary_sensor:
     bit_mask: 0x20
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "GWG Verriegelung"
     id: GWG_Verriegelung
@@ -1688,6 +1843,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   # --- LON Objekte / Node RelayState ---
   - platform: vitohome
     name: "nvoRelayState Sammelstoerung"
@@ -1698,6 +1854,7 @@ binary_sensor:
     bit_mask: 0x01
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoRelayState UV Heizen"
     id: nvoRelayState_UV_Heizen
@@ -1706,6 +1863,7 @@ binary_sensor:
     bit_mask: 0x10
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoRelayState UV Warmwasser"
     id: nvoRelayState_UV_Warmwasser
@@ -1714,6 +1872,7 @@ binary_sensor:
     bit_mask: 0x04
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoRelayState Brenner"
     id: nvoRelayState_Brenner
@@ -1722,6 +1881,7 @@ binary_sensor:
     bit_mask: 0x02
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoRelayState HKP1 Nachtkontakt"
     id: nvoRelayState_HKP1_Nachtkontakt
@@ -1731,6 +1891,7 @@ binary_sensor:
     bit_mask: 0x04
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoRelayState Interne Pumpe"
     id: nvoRelayState_Interne_Pumpe
@@ -1739,6 +1900,7 @@ binary_sensor:
     bit_mask: 0x20
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoRelayState Abgas WTPumpeGWG"
     id: nvoRelayState_Abgas_WTPumpeGWG
@@ -1747,6 +1909,7 @@ binary_sensor:
     bit_mask: 0x08
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoRelayState Pumpe Ladesystem"
     id: nvoRelayState_Pumpe_Ladesystem
@@ -1755,6 +1918,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoRelayState HKP3 GWG"
     id: nvoRelayState_HKP3_GWG
@@ -1764,6 +1928,7 @@ binary_sensor:
     bit_mask: 0x08
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoRelayState HKP3 Nachtkontakt GWG"
     id: nvoRelayState_HKP3_Nachtkontakt_GWG
@@ -1773,6 +1938,7 @@ binary_sensor:
     bit_mask: 0x01
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoRelayState SLP"
     id: nvoRelayState_SLP
@@ -1782,6 +1948,7 @@ binary_sensor:
     bit_mask: 0x80
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoRelayState Zubringerpumpe"
     id: nvoRelayState_Zubringerpumpe
@@ -1790,6 +1957,7 @@ binary_sensor:
     bit_mask: 0x80
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoRelayState HKP1"
     id: nvoRelayState_HKP1
@@ -1799,6 +1967,7 @@ binary_sensor:
     bit_mask: 0x20
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoRelayState HKP2 Nachtkontakt"
     id: nvoRelayState_HKP2_Nachtkontakt
@@ -1808,6 +1977,7 @@ binary_sensor:
     bit_mask: 0x02
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoRelayState HKP2"
     id: nvoRelayState_HKP2
@@ -1817,6 +1987,7 @@ binary_sensor:
     bit_mask: 0x10
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoRelayState ZP"
     id: nvoRelayState_ZP
@@ -1826,6 +1997,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   # --- LON Objekte / Node Objekt ---
   - platform: vitohome
     name: "nvoAlarm Fehlermanager"
@@ -1837,6 +2009,7 @@ binary_sensor:
     bit_mask: 0x20
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoAlarm Anlagennummer"
     id: nvoAlarm_Anlagennummer
@@ -1847,6 +2020,7 @@ binary_sensor:
     bit_mask: 0x08
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoAlarm Veraenderung"
     id: nvoAlarm_Veraenderung
@@ -1857,6 +2031,7 @@ binary_sensor:
     bit_mask: 0x10
     disabled_by_default: true
     update_interval: 60s
+
   # --- LON Objekte / CFDMObjekt ---
   - platform: vitohome
     name: "nvoProdCState Speicher CFDM"
@@ -1867,6 +2042,7 @@ binary_sensor:
     bit_mask: 0x02
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoProdCState SP CFDM"
     id: nvoProdCState_SP_CFDM
@@ -1876,6 +2052,7 @@ binary_sensor:
     bit_mask: 0x08
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoProdCState HarteSperre CFDM"
     id: nvoProdCState_HarteSperre_CFDM
@@ -1885,6 +2062,7 @@ binary_sensor:
     bit_mask: 0x01
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "nvoProdCState Fehler CFDM"
     id: nvoProdCState_Fehler_CFDM
@@ -1895,6 +2073,7 @@ binary_sensor:
     bit_mask: 0x04
     disabled_by_default: true
     update_interval: 60s
+
   # --- (ohne Gruppenzuordnung) ---
   - platform: vitohome
     name: "HK FerienbetriebM2"
@@ -1921,6 +2100,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "BedienKTSolltemperaturGWG"
     id: BedienKTSolltemperaturGWG
@@ -1935,6 +2115,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Information / Kessel ---
   - platform: vitohome
     name: "BrennerstartsGWG"
@@ -1948,6 +2129,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Diagnose 2 / Kommunikation ---
   - platform: vitohome
     name: "K07 KonfiKesselnummerV100GC1 D"
@@ -1961,6 +2143,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Codierungen / Alle ---
   - platform: vitohome
     name: "K06 KonfiKTMaxGWG"
@@ -1976,6 +2159,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K21 KonfiBetriebsstdBrennerWart100"
     id: K21_KonfiBetriebsstdBrennerWart100
@@ -1990,6 +2174,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K31 DrehzahlIntPumpe"
     id: K31_DrehzahlIntPumpe
@@ -2002,6 +2187,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K32 KonfiExtSperre"
     id: K32_KonfiExtSperre
@@ -2014,6 +2200,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K34 KonfiExtAnf"
     id: K34_KonfiExtAnf
@@ -2026,6 +2213,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K58 KonfiWW Solltemperatur2"
     id: K58_KonfiWW_Solltemperatur2
@@ -2040,6 +2228,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K60 KonfiWW GWG KesselOffset"
     id: K60_KonfiWW_GWG_KesselOffset
@@ -2053,6 +2242,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K62 KonfiLpumpeNachlauf GWG"
     id: K62_KonfiLpumpeNachlauf_GWG
@@ -2067,6 +2257,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K67 KonfiWW Soll3"
     id: K67_KonfiWW_Soll3
@@ -2079,6 +2270,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K6C KonfiDrehzahlWW"
     id: K6C_KonfiDrehzahlWW
@@ -2092,6 +2284,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K6D KonfiAnzapffunktion"
     id: K6D_KonfiAnzapffunktion
@@ -2104,6 +2297,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K6F KonfiBegrenzungWW"
     id: K6F_KonfiBegrenzungWW
@@ -2117,6 +2311,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K77 KonfiVI TeilnehmernummerV100 V300"
     id: K77_KonfiVI_TeilnehmernummerV100_V300
@@ -2129,6 +2324,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K80 KonfiFehlerDelay"
     id: K80_KonfiFehlerDelay
@@ -2143,6 +2339,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K9B KonfiVT SolltemperaturExternV100 V333"
     id: K9B_KonfiVT_SolltemperaturExternV100_V333
@@ -2157,6 +2354,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Codierungen / HeizkreisA1 ---
   - platform: vitohome
     name: "KA3 KonfiFrostgrenzeA1M1 GWG"
@@ -2173,6 +2371,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "KF5 KonfiPumpeNachlauf"
     id: KF5_KonfiPumpeNachlauf
@@ -2187,6 +2386,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "KF6 KonfiPumpeSommerbetrieb"
     id: KF6_KonfiPumpeSommerbetrieb
@@ -2199,6 +2399,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "KF7 KonfiPumpeAbschaltbetrieb"
     id: KF7_KonfiPumpeAbschaltbetrieb
@@ -2211,6 +2412,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Funktionskontrolle / Zusatzinfo ---
   - platform: vitohome
     name: "K8B KonfiEEPROM Status"
@@ -2224,6 +2426,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K8C KonfiSW StandNR msb"
     id: K8C_KonfiSW_StandNR_msb
@@ -2236,6 +2439,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K8D KonfiSW StandNR lsb"
     id: K8D_KonfiSW_StandNR_lsb
@@ -2248,6 +2452,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- LON Objekte / CFDMObjekt ---
   - platform: vitohome
     name: "nviSetpoint CFDM"
@@ -2266,6 +2471,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "nviProdCmd CFDM value"
     id: nviProdCmd_CFDM_value
@@ -2282,6 +2488,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- LON Objekte / DHWCObjekt ---
   - platform: vitohome
     name: "nviDHWC Setpt"
@@ -2297,6 +2504,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Trending / HK1 ---
   - platform: vitohome
     name: "ExternRTSolltemperaturA1M1"
@@ -2312,6 +2520,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- (ohne Gruppenzuordnung) ---
   - platform: vitohome
     name: "LetzteIntervallWartung reset"
@@ -2329,6 +2538,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "LetzteBrennerWartung reset"
     id: LetzteBrennerWartung_reset
@@ -2346,6 +2556,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "nviBoilerCmd BLR value"
     id: nviBoilerCmd_BLR_value
@@ -2362,6 +2573,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "nviSetpoint BLR"
     id: nviSetpoint_BLR
@@ -2376,6 +2588,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "nviConsumerDmd Temp CFDM"
     id: nviConsumerDmd_Temp_CFDM
@@ -2393,6 +2606,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "nviHCC1 SpaceSetpt"
     id: nviHCC1_SpaceSetpt
@@ -2407,6 +2621,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "nviHCC1 FlowSetpt"
     id: nviHCC1_FlowSetpt
@@ -2421,6 +2636,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "nviHCC2 SpaceSetpt"
     id: nviHCC2_SpaceSetpt
@@ -2435,6 +2651,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "nviHCC2 FlowSetpt"
     id: nviHCC2_FlowSetpt
@@ -2473,6 +2690,7 @@ select:
       0x00: "Abschalt"
       0x01: "Nur WW"
       0x02: "Heizen + WW"
+
   # --- Diagnose 2 / Kommunikation ---
   - platform: vitohome
     name: "K01 KonfiAnlagentyp D"
@@ -2485,6 +2703,7 @@ select:
       0x01: "Einkessel"
       0x02: "Mehrkessel-LON"
       0x03: "Kontaktsteuerung"
+
   # --- Diagnose 2 / Relaistest ---
   - platform: vitohome
     name: "RelaistestGWG200x Konstant"
@@ -2507,6 +2726,7 @@ select:
       0x0D: "AE EXTERN SLP"
       0x0E: "AE EXTERN ZP"
       0x0F: "AE EXTERN SAMMELSTÖRUNG"
+
   # --- Codierungen / Alle ---
   - platform: vitohome
     name: "K00 KonfiAnlagenschemaGWG Konstant"
@@ -2519,6 +2739,7 @@ select:
       0x00: "0 Mehrkessel"
       0x01: "1 Kessel ohne WW"
       0x02: "2 Kessel mit WW"
+
   - platform: vitohome
     name: "K24 KonfiStatusWartung"
     id: K24_KonfiStatusWartung
@@ -2529,6 +2750,7 @@ select:
     options:
       0x00: "0 Grundzustand"
       0x01: "1 Wartung"
+
   - platform: vitohome
     name: "K2E KonfiKennungAnschluss"
     id: K2E_KonfiKennungAnschluss
@@ -2539,6 +2761,7 @@ select:
     options:
       0x00: "0 ohne"
       0x01: "1 vorhanden"
+
   - platform: vitohome
     name: "K2F KonfiEntlueftung"
     id: K2F_KonfiEntlueftung
@@ -2550,6 +2773,7 @@ select:
       0x00: "0 inaktiv"
       0x01: "1 Entlüftung"
       0x02: "2 Befüllung"
+
   - platform: vitohome
     name: "K30 KennungIntPumpe"
     id: K30_KennungIntPumpe
@@ -2561,6 +2785,7 @@ select:
       0x00: "0 stufig"
       0x01: "1 drehzahlgeregelt"
       0x02: "2 - Interne Pumpe drehzahlgeregelt mit Volumenstrom"
+
   - platform: vitohome
     name: "K53 Rangierung"
     id: K53_Rangierung
@@ -2573,6 +2798,7 @@ select:
       0x01: "1 Zirkulationspumpe"
       0x02: "2 ext. Heizkreispumpe"
       0x03: "3 Speicherladepumpe"
+
   - platform: vitohome
     name: "K54 Solar"
     id: K54_Solar
@@ -2584,6 +2810,7 @@ select:
       0x00: "0 ohne"
       0x01: "1 Vitosolic 100"
       0x02: "2 Vitosolic 200"
+
   - platform: vitohome
     name: "K56 KonfiWW SolltempBereichGWG"
     id: K56_KonfiWW_SolltempBereichGWG
@@ -2594,6 +2821,7 @@ select:
     options:
       0x00: "0 Bereich 10-60°C"
       0x01: "1Bereich 10-Maximum"
+
   - platform: vitohome
     name: "K59 KonfiWW EinschaltOffset"
     id: K59_KonfiWW_EinschaltOffset
@@ -2613,6 +2841,7 @@ select:
       0x08: "8 K unter Soll"
       0x09: "9 K unter Soll"
       0x0A: "10 K unter Soll"
+
   - platform: vitohome
     name: "K5B KonfiAnbindungSpeicher"
     id: K5B_KonfiAnbindungSpeicher
@@ -2623,6 +2852,7 @@ select:
     options:
       0x00: "0 vor Weiche"
       0x01: "1 hinter Weiche"
+
   - platform: vitohome
     name: "K65 KonfibauartUmschaltventil"
     id: K65_KonfibauartUmschaltventil
@@ -2635,6 +2865,7 @@ select:
       0x01: "1 Viessmann Ventil"
       0x02: "2 Wilo Ventil"
       0x03: "3 Grundfos Ventil"
+
   - platform: vitohome
     name: "K76 Kommunikationsmodul GWG"
     id: K76_Kommunikationsmodul_GWG
@@ -2647,6 +2878,7 @@ select:
       0x01: "1 LON-Modul"
       0x02: "2 Kaskaden-Modul"
       0x03: "3 LAN Modul"
+
   - platform: vitohome
     name: "K81 KonfiFunktionUhr"
     id: K81_KonfiFunktionUhr
@@ -2659,6 +2891,7 @@ select:
       0x01: "1 Uhr mit Sommerzeit"
       0x02: "2 Funkuhr"
       0x03: "3 Uhrzeit vom LON"
+
   - platform: vitohome
     name: "K88 KonfiCelsiusFahrenheit"
     id: K88_KonfiCelsiusFahrenheit
@@ -2669,6 +2902,7 @@ select:
     options:
       0x00: "0 Celsius"
       0x01: "1 Fahrenheit"
+
   - platform: vitohome
     name: "K9C KonfiReceiveHeartBeat"
     id: K9C_KonfiReceiveHeartBeat
@@ -2738,6 +2972,7 @@ select:
       0x02: "K9C_KonfiReceiveHeartBeat~2"
       0x03: "K9C_KonfiReceiveHeartBeat~3"
       0x04: "K9C_KonfiReceiveHeartBeat~4"
+
   - platform: vitohome
     name: "KA2 KonfiSpeichervorrangA1M1"
     id: KA2_KonfiSpeichervorrangA1M1
@@ -2762,6 +2997,7 @@ select:
       0x0D: "13 gleitender Vorrang"
       0x0E: "14 gleitender Vorrang"
       0x0F: "15 gleitender Vorrang"
+
   # --- Codierungen / Allgemein ---
   - platform: vitohome
     name: "K7E KonfiAbgaskaskade"
@@ -2773,6 +3009,7 @@ select:
     options:
       0x00: "0 ohne Abgaskaskade"
       0x01: "1 mit Abgaskaskade"
+
   # --- Codierungen / Warmwasser ---
   - platform: vitohome
     name: "K63 KonfiWWAL Haeufigkeit"
@@ -2798,6 +3035,7 @@ select:
       0x0D: "alle 13 Tage"
       0x0E: "alle 14 Tage"
       0x0F: "2 mal taeglich"
+
   # --- LON Objekte / CFDMObjekt ---
   - platform: vitohome
     name: "nviApplicMode CFDM"
@@ -2824,6 +3062,7 @@ select:
       0x70: "HVAC_HIGH_FIRE"
       0x64: "HVAC_FLOW_TEMP"
       0xFF: "HVAC_NUL"
+
   # --- LON Objekte / DHWCObjekt ---
   - platform: vitohome
     name: "nviDHWC ApplicMode"
@@ -2846,6 +3085,7 @@ select:
       0x0A: "HVAC_FREE_COOL"
       0x0B: "HVAC_ICE"
       0xFF: "HVAC_NUL"
+
   # --- (ohne Gruppenzuordnung) ---
   - platform: vitohome
     name: "KA0 KennungFernbedienungA1M1"
@@ -2858,6 +3098,7 @@ select:
       0x00: "nicht vorhanden"
       0x01: "Vitotrol 200"
       0x02: "Vitotrol 300"
+
   - platform: vitohome
     name: "KonfiVerwendungAussentemperatur"
     id: KonfiVerwendungAussentemperatur
@@ -2869,6 +3110,7 @@ select:
       0x00: "0 vom Sensor"
       0x01: "1 vom LON uebernehmen"
       0x02: "2 auf LON senden"
+
   - platform: vitohome
     name: "nviApplicMode BLR"
     id: nviApplicMode_BLR
@@ -2905,6 +3147,7 @@ switch:
     # on 0x01 = EIN; off 0x00 = AUS
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Information / Solar ---
   - platform: vitohome
     name: "SolarNachlade"
@@ -2914,6 +3157,7 @@ switch:
     # on 0x01 = aktiv; off 0x00 = inaktiv
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Diagnose 2 / KM Bus ---
   - platform: vitohome
     name: "K95 KennungVitocom100"
@@ -2923,6 +3167,7 @@ switch:
     # on 0x01 = vorhanden; off 0x00 = nicht vorhanden
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Codierungen / Alle ---
   - platform: vitohome
     name: "K28 KonfiIntervallzuendung"
@@ -2932,6 +3177,7 @@ switch:
     # on 0x01 = 1 aktiv; off 0x00 = 0 inaktiv
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K52 KonfiWeiche"
     id: K52_KonfiWeiche
@@ -2940,6 +3186,7 @@ switch:
     # on 0x01 = 1 vorhanden; off 0x00 = 0 nicht vorhanden
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K78 KonfiNVKommunikationLONV100GC1"
     id: K78_KonfiNVKommunikationLONV100GC1
@@ -2948,6 +3195,7 @@ switch:
     # on 0x01 = 1 freigegeben; off 0x00 = 0 gesperrt
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Codierungen / Allgemein ---
   - platform: vitohome
     name: "K25 ATS Konstant"
@@ -2957,6 +3205,7 @@ switch:
     # on 0x01 = vorhanden; off 0x00 = nicht vorhanden
     disabled_by_default: true
     update_interval: 3600s
+
   # --- (ohne Gruppenzuordnung) ---
   - platform: vitohome
     name: "KE5 KonfiKennung D PumpeA1M1 KM"
@@ -2966,6 +3215,7 @@ switch:
     # on 0x01 = vorhanden; off 0x00 = nicht vorhanden
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "Nachheizunterdrueckung"
     id: Nachheizunterdrueckung
@@ -2974,6 +3224,7 @@ switch:
     # on 0x01 = aktiv; off 0x00 = inaktiv
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K8A KonfiAnzeigebedingungenAktiv"
     id: K8A_KonfiAnzeigebedingungenAktiv
@@ -2991,6 +3242,7 @@ text_sensor:
     id: device_type
     icon: "mdi:identifier"
     entity_category: diagnostic
+
   # --- Identifikation ---
   - platform: vitohome
     type: enum
@@ -3006,6 +3258,7 @@ text_sensor:
       0x02: "Kombiwasserheizer mit Komfortsensor"
       0x03: "Kompaktgerät 80l"
       0x04: "Kompaktgerät 260l"
+
   # --- Information / Kessel ---
   - platform: vitohome
     type: enum
@@ -3020,6 +3273,7 @@ text_sensor:
       0x01: "EIN"
       0x02: "AUS (0x02)"
       0x03: "EIN (0x03)"
+
   # --- Information / Heizkreis A1 ---
   - platform: vitohome
     type: enum
@@ -3035,6 +3289,7 @@ text_sensor:
       0x01: "Reduzierter Betrieb"
       0x02: "Normalbetrieb"
       0x03: "Normalbetrieb (0x03)"
+
   - platform: vitohome
     type: enum
     name: "Ausgang HKP A1"
@@ -3048,6 +3303,7 @@ text_sensor:
       0x01: "EIN"
       0x02: "AUS (0x02)"
       0x03: "EIN (0x03)"
+
   # --- Information / Warmwasser ---
   - platform: vitohome
     type: enum
@@ -3062,6 +3318,7 @@ text_sensor:
       0x00: "Ladung inaktiv"
       0x01: "in Ladung"
       0x02: "im Nachlauf"
+
   - platform: vitohome
     type: enum
     name: "Speicherladepumpe"
@@ -3073,6 +3330,7 @@ text_sensor:
     options:
       0x00: "AUS"
       0x01: "EIN"
+
   - platform: vitohome
     type: enum
     name: "Umschaltventil"
@@ -3086,6 +3344,7 @@ text_sensor:
       0x01: "Richtung Heizen"
       0x02: "Mittelstellung"
       0x03: "Richtung Warmwasser"
+
   - platform: vitohome
     type: enum
     name: "FlowSwitch"
@@ -3097,6 +3356,7 @@ text_sensor:
     options:
       0x00: "AUS"
       0x01: "EIN"
+
   # --- Information / Solar ---
   - platform: vitohome
     type: enum
@@ -3109,6 +3369,7 @@ text_sensor:
     options:
       0x00: "AUS"
       0x01: "EIN"
+
   # --- Diagnose 1 / Kessel ---
   - platform: vitohome
     type: enum
@@ -3122,6 +3383,7 @@ text_sensor:
       0x00: "einstufiger Brenner"
       0x01: "zweistufiger Brenner"
       0x02: "modulierender Brenner"
+
   # --- Diagnose 1 / Heizkreis A1 ---
   - platform: vitohome
     type: enum
@@ -3138,6 +3400,7 @@ text_sensor:
       0x03: "Raumregelung"
       0x04: "Estrichprogramm aktiv"
       0x05: "Heizkreis nicht vorhanden"
+
   # --- Diagnose 1 / Erweiterung ---
   - platform: vitohome
     type: enum
@@ -3150,6 +3413,7 @@ text_sensor:
     options:
       0x00: "AUS"
       0x01: "EIN"
+
   - platform: vitohome
     type: enum
     name: "AE Eingang2"
@@ -3161,6 +3425,7 @@ text_sensor:
     options:
       0x00: "AUS"
       0x01: "EIN"
+
   - platform: vitohome
     type: enum
     name: "ExtAE Sammel"
@@ -3173,6 +3438,7 @@ text_sensor:
     options:
       0x00: "AUS"
       0x01: "EIN"
+
   - platform: vitohome
     type: enum
     name: "Zirkulationspumpe"
@@ -3184,6 +3450,7 @@ text_sensor:
     options:
       0x00: "AUS"
       0x01: "EIN"
+
   - platform: vitohome
     type: enum
     name: "RelaisK12"
@@ -3195,6 +3462,7 @@ text_sensor:
     options:
       0x00: "AUS"
       0x01: "EIN"
+
   # --- Diagnose 2 / Regelung ---
   - platform: vitohome
     type: ascii
@@ -3203,6 +3471,7 @@ text_sensor:
     address: 0x1010
     length: 7
     entity_category: diagnostic
+
   # --- Diagnose 2 / Kommunikation ---
   - platform: vitohome
     type: enum
@@ -3216,6 +3485,7 @@ text_sensor:
     options:
       0x00: "kein Manager"
       0x01: "Fehlermanager"
+
   - platform: vitohome
     type: enum
     name: "nciNetConfig"
@@ -3228,6 +3498,7 @@ text_sensor:
       0x00: "Selfbinding"
       0x01: "Toolbinding"
       0xFF: "default"
+
   # --- Funktionskontrolle / Codierstecker1 ---
   - platform: vitohome
     type: enum
@@ -3243,6 +3514,7 @@ text_sensor:
       0x01: "Viessmann Umschaltventil"
       0x02: "Wilo Umschaltventil"
       0x03: "Grundfos Umschaltventil"
+
   - platform: vitohome
     type: enum
     name: "GWG Codierstecker BauartWW"
@@ -3258,6 +3530,7 @@ text_sensor:
       0x02: "Kombiwasserheizer mit Komfortfunktion"
       0x03: "Kompaktgerät (Ladespeicher 80l)"
       0x04: "Kompaktgerät mit Solar (Ladespeicher 260l)"
+
   - platform: vitohome
     type: enum
     name: "GWG Codierstecker Brennertyp"
@@ -3271,6 +3544,7 @@ text_sensor:
       0x00: "einstufiger Brenner"
       0x01: "zweistufiger Brenner"
       0x02: "modulierender Brenner"
+
   # --- Funktionskontrolle / Codierstecker4 ---
   - platform: vitohome
     type: enum
@@ -3285,6 +3559,7 @@ text_sensor:
       0x00: "Regelfunktion"
       0x01: "AUS"
       0x02: "EIN"
+
   # --- Funktionskontrolle / Zusatzinfo ---
   - platform: vitohome
     type: enum
@@ -3299,6 +3574,7 @@ text_sensor:
       0x01: "Konstant"
       0x02: "Konstant mit Uhr"
       0x03: "Witterungsgeführt"
+
   # --- Funktionskontrolle / FA Fehler ---
   # GFA history slot 1 (a burner/subsystem fault archive
   # DISTINCT from the Vitotronic system history). Its lockout codes are
@@ -3318,6 +3594,7 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
+
   # GFA history slot 2 (a burner/subsystem fault archive
   # DISTINCT from the Vitotronic system history). Its lockout codes are
   # a different code space from the F-codes, so no codes map is attached
@@ -3336,6 +3613,7 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
+
   # GFA history slot 3 (a burner/subsystem fault archive
   # DISTINCT from the Vitotronic system history). Its lockout codes are
   # a different code space from the F-codes, so no codes map is attached
@@ -3354,6 +3632,7 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
+
   # GFA history slot 4 (a burner/subsystem fault archive
   # DISTINCT from the Vitotronic system history). Its lockout codes are
   # a different code space from the F-codes, so no codes map is attached
@@ -3372,6 +3651,7 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
+
   # GFA history slot 5 (a burner/subsystem fault archive
   # DISTINCT from the Vitotronic system history). Its lockout codes are
   # a different code space from the F-codes, so no codes map is attached
@@ -3390,6 +3670,7 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
+
   # GFA history slot 6 (a burner/subsystem fault archive
   # DISTINCT from the Vitotronic system history). Its lockout codes are
   # a different code space from the F-codes, so no codes map is attached
@@ -3408,6 +3689,7 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
+
   # GFA history slot 7 (a burner/subsystem fault archive
   # DISTINCT from the Vitotronic system history). Its lockout codes are
   # a different code space from the F-codes, so no codes map is attached
@@ -3426,6 +3708,7 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
+
   # GFA history slot 8 (a burner/subsystem fault archive
   # DISTINCT from the Vitotronic system history). Its lockout codes are
   # a different code space from the F-codes, so no codes map is attached
@@ -3444,6 +3727,7 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
+
   # GFA history slot 9 (a burner/subsystem fault archive
   # DISTINCT from the Vitotronic system history). Its lockout codes are
   # a different code space from the F-codes, so no codes map is attached
@@ -3462,6 +3746,7 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
+
   # GFA history slot 10 (a burner/subsystem fault archive
   # DISTINCT from the Vitotronic system history). Its lockout codes are
   # a different code space from the F-codes, so no codes map is attached
@@ -3480,6 +3765,7 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
+
   # GFA history slot 11 (a burner/subsystem fault archive
   # DISTINCT from the Vitotronic system history). Its lockout codes are
   # a different code space from the F-codes, so no codes map is attached
@@ -3498,6 +3784,7 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
+
   # GFA history slot 12 (a burner/subsystem fault archive
   # DISTINCT from the Vitotronic system history). Its lockout codes are
   # a different code space from the F-codes, so no codes map is attached
@@ -3516,6 +3803,7 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
+
   # GFA history slot 13 (a burner/subsystem fault archive
   # DISTINCT from the Vitotronic system history). Its lockout codes are
   # a different code space from the F-codes, so no codes map is attached
@@ -3534,6 +3822,7 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
+
   # GFA history slot 14 (a burner/subsystem fault archive
   # DISTINCT from the Vitotronic system history). Its lockout codes are
   # a different code space from the F-codes, so no codes map is attached
@@ -3552,6 +3841,7 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
+
   # GFA history slot 15 (a burner/subsystem fault archive
   # DISTINCT from the Vitotronic system history). Its lockout codes are
   # a different code space from the F-codes, so no codes map is attached
@@ -3570,6 +3860,7 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
+
   # GFA history slot 16 (a burner/subsystem fault archive
   # DISTINCT from the Vitotronic system history). Its lockout codes are
   # a different code space from the F-codes, so no codes map is attached
@@ -3588,6 +3879,7 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
+
   # GFA history slot 17 (a burner/subsystem fault archive
   # DISTINCT from the Vitotronic system history). Its lockout codes are
   # a different code space from the F-codes, so no codes map is attached
@@ -3606,6 +3898,7 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
+
   # GFA history slot 18 (a burner/subsystem fault archive
   # DISTINCT from the Vitotronic system history). Its lockout codes are
   # a different code space from the F-codes, so no codes map is attached
@@ -3624,6 +3917,7 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
+
   # GFA history slot 19 (a burner/subsystem fault archive
   # DISTINCT from the Vitotronic system history). Its lockout codes are
   # a different code space from the F-codes, so no codes map is attached
@@ -3642,6 +3936,7 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
+
   # GFA history slot 20 (a burner/subsystem fault archive
   # DISTINCT from the Vitotronic system history). Its lockout codes are
   # a different code space from the F-codes, so no codes map is attached
@@ -3660,6 +3955,7 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
+
   # --- LON Objekte / Node Objekt ---
   - platform: vitohome
     type: ascii
@@ -3668,6 +3964,7 @@ text_sensor:
     address: 0xA011
     length: 7
     entity_category: diagnostic
+
   - platform: vitohome
     type: ascii
     name: "Sachnummer 87c652"
@@ -3675,6 +3972,7 @@ text_sensor:
     address: 0xA03D
     length: 7
     entity_category: diagnostic
+
   # --- LON Objekte / CFDMObjekt ---
   - platform: vitohome
     type: enum
@@ -3688,6 +3986,7 @@ text_sensor:
     options:
       0x00: "AUS"
       0x01: "EIN"
+
     # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
   - platform: vitohome
     type: enum
@@ -3702,6 +4001,7 @@ text_sensor:
       0x00: "AUS"
       0x01: "EIN"
       0xFF: "AUTO"
+
   # --- VScotHC1 / Lasterror ---
   # System fault history slot 1 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 0*9; vcontrold getError0).
@@ -3716,102 +4016,8 @@ text_sensor:
     icon: "mdi:alert-circle"
     entity_category: diagnostic
     update_interval: 300s
-    # Fault-code map ('vd300' set) - DEFAULT, verify for this unit (see fault_codes.CONFLICTS):
-    codes:
-      0x00: "Regelbetrieb (kein Fehler)"
-      0x10: "Kurzschluss Außentemperatursensor"
-      0x18: "Unterbrechung Außentemperatursensor"
-      0x19: "Unterbrechung Kommunikation Außentemperatursensor RF"
-      0x1D: "Keine Kommunikation mit Sensor"
-      0x1E: "Strömungssensor defekt"
-      0x1F: "Strömungssensor defekt"
-      0x20: "Kurzschluss Vorlauftemperatursensor Anlage"
-      0x28: "Unterbrechung Vorlauftemperatursensor Anlage"
-      0x30: "Kurzschluss Kesseltemperatursensor"
-      0x38: "Unterbrechung Kesseltemperatursensor"
-      0x40: "Kurzschluss Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x44: "Kurzschluss Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x48: "Unterbrechung Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x49: "Codierung Erweiterung Mischer Heizkreis 2 falsch eingestellt"
-      0x4C: "Unterbrechung Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x4D: "Codierung Erweiterung Mischer Heizkreis 3 falsch eingestellt"
-      0x50: "Kurzschluss Speichertemperatursensor"
-      0x58: "Unterbrechung Speichertemperatursensor"
-      0x90: "Kurzschluss Temperatursensor"
-      0x91: "Kurzschluss Temperatursensor"
-      0x92: "Kurzschluss Kollektortemperatursensor"
-      0x93: "Kurzschluss Speichertemperatursensor"
-      0x94: "Kurzschluss Speichertemperatursensor"
-      0x98: "Unterbrechung Temperatursensor"
-      0x99: "Unterbrechung Temperatursensor"
-      0x9A: "Unterbrechung Kollektortemperatursensor"
-      0x9B: "Unterbrechung Speichertemperatursensor"
-      0x9C: "Unterbrechung Speichertemperatursensor"
-      0x9E: "Zu geringer oder kein Volumenstrom im Solarkreis oder Temperaturwächter hat ausgelöst"
-      0x9F: "Fehler Solarregelungsmodul oder Vitosolic"
-      0xA2: "Anlagendruck zu niedrig"
-      0xA3: "Abgastemperatursensor nicht richtig positioniert"
-      0xA4: "Max. Anlagendruck überschritten"
-      0xA7: "Bedienteil defekt"
-      0xA8: "Luft in der internen Umwälzpumpe oder Mindest-Volumenstrom nicht erreicht"
-      0xA9: "Interne Umwälzpumpe blockiert"
-      0xB0: "Kurzschluss Abgastemperatursensor"
-      0xB1: "Kommunikationsfehler Bedieneinheit"
-      0xB5: "Interner Fehler"
-      0xB7: "Fehler KesselCodierstecker"
-      0xB8: "Unterbrechung Abgastemperatursensor"
-      0xBA: "Kommunikationsfehler Erweiterungssatz für Heizkreis 2 (mit Mischer)"
-      0xBB: "Kommunikationsfehler Erweiterungssatz für Heizkreis 3 (mit Mischer)"
-      0xBC: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 1 (ohne Mischer)"
-      0xBD: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 2 (mit Mischer)"
-      0xBE: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 3 (mit Mischer)"
-      0xBF: "Falsches Kommunikationsmodul LON"
-      0xC1: "Kommunikationsfehler Erweiterung EA1"
-      0xC2: "Kommunikationsfehler Solarregelungsmodul oder Vitosolic"
-      0xC3: "Kommunikationsfehler Erweiterung AM1"
-      0xC4: "Kommunikationsfehler Erweiterung Open Therm"
-      0xC5: "Kommunikationsfehler drehzahlgeregelte interne Pumpe"
-      0xC6: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 2 (mit Mischer)"
-      0xC7: "Kommunikationsfehler drehzahlgeregelte externe Heizkreispumpe Heizkreis 1 (ohne Mischer)"
-      0xC8: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 3 (mit Mischer)"
-      0xCD: "Kommunikationsfehler Vitocom 100 (KM-BUS)"
-      0xCF: "Kommunikationsfehler Kommunikationsmodul LON"
-      0xD6: "Eingang DE1 an Erweiterung EA1 meldet Störung"
-      0xD7: "Eingang DE2 an Erweiterung EA1 meldet Störung"
-      0xD8: "Störung Eingang DE3 an Erweiterung EA1"
-      0xDA: "Kurzschluss Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDB: "Kurzschluss Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDC: "Kurzschluss Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xDD: "Unterbrechung Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDE: "Unterbrechung Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDF: "Unterbrechung Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xE0: "Fehler externer LON-Teilnehmer"
-      0xE1: "Ionisationsstrom während der Kalibrierung zu hoch"
-      0xE2: "Keine Kalibrierung wegen zu geringen Volumenstrom"
-      0xE3: "Zu geringe Wärmeabnahme während der Kalibrierung Temperaturwächter hat ausgeschaltet."
-      0xE4: "Fehler Versorgungsspannung 24 V"
-      0xE5: "Fehler Flammenverstärker"
-      0xE6: "Anlagendruck zu niedrig"
-      0xE7: "Ionisationsstrom während der Kalibrierung zu gering"
-      0xE8: "Ionisationsstrom nicht im gültigen Bereich"
-      0xEA: "Ionisationsstrom während der Kalibrierung nicht im gültigen Bereich (zu große Abweichung gegenüber dem Vorgängerwert)"
-      0xEB: "Wiederholter Flammenverlust während der Kalibrierung"
-      0xEC: "Parameterfehler während der Kalibrierung"
-      0xED: "Interner Fehler"
-      0xEE: "Flammensignal ist bei Brennerstart nicht vorhanden oder zu gering."
-      0xEF: "Flammenverlust direkt nach Flammenbildung (während der Sicherheitszeit)."
-      0xF0: "Interner Fehler"
-      0xF1: "Abgastemperaturbegrenzer hat ausgelöst."
-      0xF2: "Temperaturbegrenzer hat ausgelöst."
-      0xF3: "Flammensignal ist beim Brennerstart bereits vorhanden."
-      0xF7: "Kurzschluss oder Unterbrechung Wasserdrucksensor"
-      0xF8: "Brennstoffventil schließt verspätet."
-      0xF9: "Gebläsedrehzahl beim Brennerstart zu niedrig"
-      0xFA: "Gebläsestillstand nicht erreicht"
-      0xFC: "Gaskombiregler defekt oder fehlerhafte Ansteuerung Modulationsventil oder Abgasweg versperrt"
-      0xFD: "Kessel-Codierstecker fehlt / Fehler Feuerungsautomat"
-      0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
-      0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
+    # codes: { 0x00: "kein Fehler", ... }  # add a code->text map
+
   # System fault history slot 2 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 1*9; vcontrold getError1).
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
@@ -3825,102 +4031,8 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
-    # Fault-code map ('vd300' set) - DEFAULT, verify for this unit (see fault_codes.CONFLICTS):
-    codes:
-      0x00: "Regelbetrieb (kein Fehler)"
-      0x10: "Kurzschluss Außentemperatursensor"
-      0x18: "Unterbrechung Außentemperatursensor"
-      0x19: "Unterbrechung Kommunikation Außentemperatursensor RF"
-      0x1D: "Keine Kommunikation mit Sensor"
-      0x1E: "Strömungssensor defekt"
-      0x1F: "Strömungssensor defekt"
-      0x20: "Kurzschluss Vorlauftemperatursensor Anlage"
-      0x28: "Unterbrechung Vorlauftemperatursensor Anlage"
-      0x30: "Kurzschluss Kesseltemperatursensor"
-      0x38: "Unterbrechung Kesseltemperatursensor"
-      0x40: "Kurzschluss Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x44: "Kurzschluss Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x48: "Unterbrechung Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x49: "Codierung Erweiterung Mischer Heizkreis 2 falsch eingestellt"
-      0x4C: "Unterbrechung Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x4D: "Codierung Erweiterung Mischer Heizkreis 3 falsch eingestellt"
-      0x50: "Kurzschluss Speichertemperatursensor"
-      0x58: "Unterbrechung Speichertemperatursensor"
-      0x90: "Kurzschluss Temperatursensor"
-      0x91: "Kurzschluss Temperatursensor"
-      0x92: "Kurzschluss Kollektortemperatursensor"
-      0x93: "Kurzschluss Speichertemperatursensor"
-      0x94: "Kurzschluss Speichertemperatursensor"
-      0x98: "Unterbrechung Temperatursensor"
-      0x99: "Unterbrechung Temperatursensor"
-      0x9A: "Unterbrechung Kollektortemperatursensor"
-      0x9B: "Unterbrechung Speichertemperatursensor"
-      0x9C: "Unterbrechung Speichertemperatursensor"
-      0x9E: "Zu geringer oder kein Volumenstrom im Solarkreis oder Temperaturwächter hat ausgelöst"
-      0x9F: "Fehler Solarregelungsmodul oder Vitosolic"
-      0xA2: "Anlagendruck zu niedrig"
-      0xA3: "Abgastemperatursensor nicht richtig positioniert"
-      0xA4: "Max. Anlagendruck überschritten"
-      0xA7: "Bedienteil defekt"
-      0xA8: "Luft in der internen Umwälzpumpe oder Mindest-Volumenstrom nicht erreicht"
-      0xA9: "Interne Umwälzpumpe blockiert"
-      0xB0: "Kurzschluss Abgastemperatursensor"
-      0xB1: "Kommunikationsfehler Bedieneinheit"
-      0xB5: "Interner Fehler"
-      0xB7: "Fehler KesselCodierstecker"
-      0xB8: "Unterbrechung Abgastemperatursensor"
-      0xBA: "Kommunikationsfehler Erweiterungssatz für Heizkreis 2 (mit Mischer)"
-      0xBB: "Kommunikationsfehler Erweiterungssatz für Heizkreis 3 (mit Mischer)"
-      0xBC: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 1 (ohne Mischer)"
-      0xBD: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 2 (mit Mischer)"
-      0xBE: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 3 (mit Mischer)"
-      0xBF: "Falsches Kommunikationsmodul LON"
-      0xC1: "Kommunikationsfehler Erweiterung EA1"
-      0xC2: "Kommunikationsfehler Solarregelungsmodul oder Vitosolic"
-      0xC3: "Kommunikationsfehler Erweiterung AM1"
-      0xC4: "Kommunikationsfehler Erweiterung Open Therm"
-      0xC5: "Kommunikationsfehler drehzahlgeregelte interne Pumpe"
-      0xC6: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 2 (mit Mischer)"
-      0xC7: "Kommunikationsfehler drehzahlgeregelte externe Heizkreispumpe Heizkreis 1 (ohne Mischer)"
-      0xC8: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 3 (mit Mischer)"
-      0xCD: "Kommunikationsfehler Vitocom 100 (KM-BUS)"
-      0xCF: "Kommunikationsfehler Kommunikationsmodul LON"
-      0xD6: "Eingang DE1 an Erweiterung EA1 meldet Störung"
-      0xD7: "Eingang DE2 an Erweiterung EA1 meldet Störung"
-      0xD8: "Störung Eingang DE3 an Erweiterung EA1"
-      0xDA: "Kurzschluss Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDB: "Kurzschluss Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDC: "Kurzschluss Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xDD: "Unterbrechung Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDE: "Unterbrechung Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDF: "Unterbrechung Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xE0: "Fehler externer LON-Teilnehmer"
-      0xE1: "Ionisationsstrom während der Kalibrierung zu hoch"
-      0xE2: "Keine Kalibrierung wegen zu geringen Volumenstrom"
-      0xE3: "Zu geringe Wärmeabnahme während der Kalibrierung Temperaturwächter hat ausgeschaltet."
-      0xE4: "Fehler Versorgungsspannung 24 V"
-      0xE5: "Fehler Flammenverstärker"
-      0xE6: "Anlagendruck zu niedrig"
-      0xE7: "Ionisationsstrom während der Kalibrierung zu gering"
-      0xE8: "Ionisationsstrom nicht im gültigen Bereich"
-      0xEA: "Ionisationsstrom während der Kalibrierung nicht im gültigen Bereich (zu große Abweichung gegenüber dem Vorgängerwert)"
-      0xEB: "Wiederholter Flammenverlust während der Kalibrierung"
-      0xEC: "Parameterfehler während der Kalibrierung"
-      0xED: "Interner Fehler"
-      0xEE: "Flammensignal ist bei Brennerstart nicht vorhanden oder zu gering."
-      0xEF: "Flammenverlust direkt nach Flammenbildung (während der Sicherheitszeit)."
-      0xF0: "Interner Fehler"
-      0xF1: "Abgastemperaturbegrenzer hat ausgelöst."
-      0xF2: "Temperaturbegrenzer hat ausgelöst."
-      0xF3: "Flammensignal ist beim Brennerstart bereits vorhanden."
-      0xF7: "Kurzschluss oder Unterbrechung Wasserdrucksensor"
-      0xF8: "Brennstoffventil schließt verspätet."
-      0xF9: "Gebläsedrehzahl beim Brennerstart zu niedrig"
-      0xFA: "Gebläsestillstand nicht erreicht"
-      0xFC: "Gaskombiregler defekt oder fehlerhafte Ansteuerung Modulationsventil oder Abgasweg versperrt"
-      0xFD: "Kessel-Codierstecker fehlt / Fehler Feuerungsautomat"
-      0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
-      0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
+    # codes: { 0x00: "kein Fehler", ... }  # add a code->text map
+
   # System fault history slot 3 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 2*9; vcontrold getError2).
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
@@ -3934,102 +4046,8 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
-    # Fault-code map ('vd300' set) - DEFAULT, verify for this unit (see fault_codes.CONFLICTS):
-    codes:
-      0x00: "Regelbetrieb (kein Fehler)"
-      0x10: "Kurzschluss Außentemperatursensor"
-      0x18: "Unterbrechung Außentemperatursensor"
-      0x19: "Unterbrechung Kommunikation Außentemperatursensor RF"
-      0x1D: "Keine Kommunikation mit Sensor"
-      0x1E: "Strömungssensor defekt"
-      0x1F: "Strömungssensor defekt"
-      0x20: "Kurzschluss Vorlauftemperatursensor Anlage"
-      0x28: "Unterbrechung Vorlauftemperatursensor Anlage"
-      0x30: "Kurzschluss Kesseltemperatursensor"
-      0x38: "Unterbrechung Kesseltemperatursensor"
-      0x40: "Kurzschluss Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x44: "Kurzschluss Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x48: "Unterbrechung Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x49: "Codierung Erweiterung Mischer Heizkreis 2 falsch eingestellt"
-      0x4C: "Unterbrechung Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x4D: "Codierung Erweiterung Mischer Heizkreis 3 falsch eingestellt"
-      0x50: "Kurzschluss Speichertemperatursensor"
-      0x58: "Unterbrechung Speichertemperatursensor"
-      0x90: "Kurzschluss Temperatursensor"
-      0x91: "Kurzschluss Temperatursensor"
-      0x92: "Kurzschluss Kollektortemperatursensor"
-      0x93: "Kurzschluss Speichertemperatursensor"
-      0x94: "Kurzschluss Speichertemperatursensor"
-      0x98: "Unterbrechung Temperatursensor"
-      0x99: "Unterbrechung Temperatursensor"
-      0x9A: "Unterbrechung Kollektortemperatursensor"
-      0x9B: "Unterbrechung Speichertemperatursensor"
-      0x9C: "Unterbrechung Speichertemperatursensor"
-      0x9E: "Zu geringer oder kein Volumenstrom im Solarkreis oder Temperaturwächter hat ausgelöst"
-      0x9F: "Fehler Solarregelungsmodul oder Vitosolic"
-      0xA2: "Anlagendruck zu niedrig"
-      0xA3: "Abgastemperatursensor nicht richtig positioniert"
-      0xA4: "Max. Anlagendruck überschritten"
-      0xA7: "Bedienteil defekt"
-      0xA8: "Luft in der internen Umwälzpumpe oder Mindest-Volumenstrom nicht erreicht"
-      0xA9: "Interne Umwälzpumpe blockiert"
-      0xB0: "Kurzschluss Abgastemperatursensor"
-      0xB1: "Kommunikationsfehler Bedieneinheit"
-      0xB5: "Interner Fehler"
-      0xB7: "Fehler KesselCodierstecker"
-      0xB8: "Unterbrechung Abgastemperatursensor"
-      0xBA: "Kommunikationsfehler Erweiterungssatz für Heizkreis 2 (mit Mischer)"
-      0xBB: "Kommunikationsfehler Erweiterungssatz für Heizkreis 3 (mit Mischer)"
-      0xBC: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 1 (ohne Mischer)"
-      0xBD: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 2 (mit Mischer)"
-      0xBE: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 3 (mit Mischer)"
-      0xBF: "Falsches Kommunikationsmodul LON"
-      0xC1: "Kommunikationsfehler Erweiterung EA1"
-      0xC2: "Kommunikationsfehler Solarregelungsmodul oder Vitosolic"
-      0xC3: "Kommunikationsfehler Erweiterung AM1"
-      0xC4: "Kommunikationsfehler Erweiterung Open Therm"
-      0xC5: "Kommunikationsfehler drehzahlgeregelte interne Pumpe"
-      0xC6: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 2 (mit Mischer)"
-      0xC7: "Kommunikationsfehler drehzahlgeregelte externe Heizkreispumpe Heizkreis 1 (ohne Mischer)"
-      0xC8: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 3 (mit Mischer)"
-      0xCD: "Kommunikationsfehler Vitocom 100 (KM-BUS)"
-      0xCF: "Kommunikationsfehler Kommunikationsmodul LON"
-      0xD6: "Eingang DE1 an Erweiterung EA1 meldet Störung"
-      0xD7: "Eingang DE2 an Erweiterung EA1 meldet Störung"
-      0xD8: "Störung Eingang DE3 an Erweiterung EA1"
-      0xDA: "Kurzschluss Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDB: "Kurzschluss Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDC: "Kurzschluss Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xDD: "Unterbrechung Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDE: "Unterbrechung Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDF: "Unterbrechung Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xE0: "Fehler externer LON-Teilnehmer"
-      0xE1: "Ionisationsstrom während der Kalibrierung zu hoch"
-      0xE2: "Keine Kalibrierung wegen zu geringen Volumenstrom"
-      0xE3: "Zu geringe Wärmeabnahme während der Kalibrierung Temperaturwächter hat ausgeschaltet."
-      0xE4: "Fehler Versorgungsspannung 24 V"
-      0xE5: "Fehler Flammenverstärker"
-      0xE6: "Anlagendruck zu niedrig"
-      0xE7: "Ionisationsstrom während der Kalibrierung zu gering"
-      0xE8: "Ionisationsstrom nicht im gültigen Bereich"
-      0xEA: "Ionisationsstrom während der Kalibrierung nicht im gültigen Bereich (zu große Abweichung gegenüber dem Vorgängerwert)"
-      0xEB: "Wiederholter Flammenverlust während der Kalibrierung"
-      0xEC: "Parameterfehler während der Kalibrierung"
-      0xED: "Interner Fehler"
-      0xEE: "Flammensignal ist bei Brennerstart nicht vorhanden oder zu gering."
-      0xEF: "Flammenverlust direkt nach Flammenbildung (während der Sicherheitszeit)."
-      0xF0: "Interner Fehler"
-      0xF1: "Abgastemperaturbegrenzer hat ausgelöst."
-      0xF2: "Temperaturbegrenzer hat ausgelöst."
-      0xF3: "Flammensignal ist beim Brennerstart bereits vorhanden."
-      0xF7: "Kurzschluss oder Unterbrechung Wasserdrucksensor"
-      0xF8: "Brennstoffventil schließt verspätet."
-      0xF9: "Gebläsedrehzahl beim Brennerstart zu niedrig"
-      0xFA: "Gebläsestillstand nicht erreicht"
-      0xFC: "Gaskombiregler defekt oder fehlerhafte Ansteuerung Modulationsventil oder Abgasweg versperrt"
-      0xFD: "Kessel-Codierstecker fehlt / Fehler Feuerungsautomat"
-      0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
-      0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
+    # codes: { 0x00: "kein Fehler", ... }  # add a code->text map
+
   # System fault history slot 4 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 3*9; vcontrold getError3).
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
@@ -4043,102 +4061,8 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
-    # Fault-code map ('vd300' set) - DEFAULT, verify for this unit (see fault_codes.CONFLICTS):
-    codes:
-      0x00: "Regelbetrieb (kein Fehler)"
-      0x10: "Kurzschluss Außentemperatursensor"
-      0x18: "Unterbrechung Außentemperatursensor"
-      0x19: "Unterbrechung Kommunikation Außentemperatursensor RF"
-      0x1D: "Keine Kommunikation mit Sensor"
-      0x1E: "Strömungssensor defekt"
-      0x1F: "Strömungssensor defekt"
-      0x20: "Kurzschluss Vorlauftemperatursensor Anlage"
-      0x28: "Unterbrechung Vorlauftemperatursensor Anlage"
-      0x30: "Kurzschluss Kesseltemperatursensor"
-      0x38: "Unterbrechung Kesseltemperatursensor"
-      0x40: "Kurzschluss Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x44: "Kurzschluss Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x48: "Unterbrechung Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x49: "Codierung Erweiterung Mischer Heizkreis 2 falsch eingestellt"
-      0x4C: "Unterbrechung Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x4D: "Codierung Erweiterung Mischer Heizkreis 3 falsch eingestellt"
-      0x50: "Kurzschluss Speichertemperatursensor"
-      0x58: "Unterbrechung Speichertemperatursensor"
-      0x90: "Kurzschluss Temperatursensor"
-      0x91: "Kurzschluss Temperatursensor"
-      0x92: "Kurzschluss Kollektortemperatursensor"
-      0x93: "Kurzschluss Speichertemperatursensor"
-      0x94: "Kurzschluss Speichertemperatursensor"
-      0x98: "Unterbrechung Temperatursensor"
-      0x99: "Unterbrechung Temperatursensor"
-      0x9A: "Unterbrechung Kollektortemperatursensor"
-      0x9B: "Unterbrechung Speichertemperatursensor"
-      0x9C: "Unterbrechung Speichertemperatursensor"
-      0x9E: "Zu geringer oder kein Volumenstrom im Solarkreis oder Temperaturwächter hat ausgelöst"
-      0x9F: "Fehler Solarregelungsmodul oder Vitosolic"
-      0xA2: "Anlagendruck zu niedrig"
-      0xA3: "Abgastemperatursensor nicht richtig positioniert"
-      0xA4: "Max. Anlagendruck überschritten"
-      0xA7: "Bedienteil defekt"
-      0xA8: "Luft in der internen Umwälzpumpe oder Mindest-Volumenstrom nicht erreicht"
-      0xA9: "Interne Umwälzpumpe blockiert"
-      0xB0: "Kurzschluss Abgastemperatursensor"
-      0xB1: "Kommunikationsfehler Bedieneinheit"
-      0xB5: "Interner Fehler"
-      0xB7: "Fehler KesselCodierstecker"
-      0xB8: "Unterbrechung Abgastemperatursensor"
-      0xBA: "Kommunikationsfehler Erweiterungssatz für Heizkreis 2 (mit Mischer)"
-      0xBB: "Kommunikationsfehler Erweiterungssatz für Heizkreis 3 (mit Mischer)"
-      0xBC: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 1 (ohne Mischer)"
-      0xBD: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 2 (mit Mischer)"
-      0xBE: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 3 (mit Mischer)"
-      0xBF: "Falsches Kommunikationsmodul LON"
-      0xC1: "Kommunikationsfehler Erweiterung EA1"
-      0xC2: "Kommunikationsfehler Solarregelungsmodul oder Vitosolic"
-      0xC3: "Kommunikationsfehler Erweiterung AM1"
-      0xC4: "Kommunikationsfehler Erweiterung Open Therm"
-      0xC5: "Kommunikationsfehler drehzahlgeregelte interne Pumpe"
-      0xC6: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 2 (mit Mischer)"
-      0xC7: "Kommunikationsfehler drehzahlgeregelte externe Heizkreispumpe Heizkreis 1 (ohne Mischer)"
-      0xC8: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 3 (mit Mischer)"
-      0xCD: "Kommunikationsfehler Vitocom 100 (KM-BUS)"
-      0xCF: "Kommunikationsfehler Kommunikationsmodul LON"
-      0xD6: "Eingang DE1 an Erweiterung EA1 meldet Störung"
-      0xD7: "Eingang DE2 an Erweiterung EA1 meldet Störung"
-      0xD8: "Störung Eingang DE3 an Erweiterung EA1"
-      0xDA: "Kurzschluss Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDB: "Kurzschluss Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDC: "Kurzschluss Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xDD: "Unterbrechung Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDE: "Unterbrechung Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDF: "Unterbrechung Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xE0: "Fehler externer LON-Teilnehmer"
-      0xE1: "Ionisationsstrom während der Kalibrierung zu hoch"
-      0xE2: "Keine Kalibrierung wegen zu geringen Volumenstrom"
-      0xE3: "Zu geringe Wärmeabnahme während der Kalibrierung Temperaturwächter hat ausgeschaltet."
-      0xE4: "Fehler Versorgungsspannung 24 V"
-      0xE5: "Fehler Flammenverstärker"
-      0xE6: "Anlagendruck zu niedrig"
-      0xE7: "Ionisationsstrom während der Kalibrierung zu gering"
-      0xE8: "Ionisationsstrom nicht im gültigen Bereich"
-      0xEA: "Ionisationsstrom während der Kalibrierung nicht im gültigen Bereich (zu große Abweichung gegenüber dem Vorgängerwert)"
-      0xEB: "Wiederholter Flammenverlust während der Kalibrierung"
-      0xEC: "Parameterfehler während der Kalibrierung"
-      0xED: "Interner Fehler"
-      0xEE: "Flammensignal ist bei Brennerstart nicht vorhanden oder zu gering."
-      0xEF: "Flammenverlust direkt nach Flammenbildung (während der Sicherheitszeit)."
-      0xF0: "Interner Fehler"
-      0xF1: "Abgastemperaturbegrenzer hat ausgelöst."
-      0xF2: "Temperaturbegrenzer hat ausgelöst."
-      0xF3: "Flammensignal ist beim Brennerstart bereits vorhanden."
-      0xF7: "Kurzschluss oder Unterbrechung Wasserdrucksensor"
-      0xF8: "Brennstoffventil schließt verspätet."
-      0xF9: "Gebläsedrehzahl beim Brennerstart zu niedrig"
-      0xFA: "Gebläsestillstand nicht erreicht"
-      0xFC: "Gaskombiregler defekt oder fehlerhafte Ansteuerung Modulationsventil oder Abgasweg versperrt"
-      0xFD: "Kessel-Codierstecker fehlt / Fehler Feuerungsautomat"
-      0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
-      0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
+    # codes: { 0x00: "kein Fehler", ... }  # add a code->text map
+
   # System fault history slot 5 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 4*9; vcontrold getError4).
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
@@ -4152,102 +4076,8 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
-    # Fault-code map ('vd300' set) - DEFAULT, verify for this unit (see fault_codes.CONFLICTS):
-    codes:
-      0x00: "Regelbetrieb (kein Fehler)"
-      0x10: "Kurzschluss Außentemperatursensor"
-      0x18: "Unterbrechung Außentemperatursensor"
-      0x19: "Unterbrechung Kommunikation Außentemperatursensor RF"
-      0x1D: "Keine Kommunikation mit Sensor"
-      0x1E: "Strömungssensor defekt"
-      0x1F: "Strömungssensor defekt"
-      0x20: "Kurzschluss Vorlauftemperatursensor Anlage"
-      0x28: "Unterbrechung Vorlauftemperatursensor Anlage"
-      0x30: "Kurzschluss Kesseltemperatursensor"
-      0x38: "Unterbrechung Kesseltemperatursensor"
-      0x40: "Kurzschluss Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x44: "Kurzschluss Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x48: "Unterbrechung Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x49: "Codierung Erweiterung Mischer Heizkreis 2 falsch eingestellt"
-      0x4C: "Unterbrechung Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x4D: "Codierung Erweiterung Mischer Heizkreis 3 falsch eingestellt"
-      0x50: "Kurzschluss Speichertemperatursensor"
-      0x58: "Unterbrechung Speichertemperatursensor"
-      0x90: "Kurzschluss Temperatursensor"
-      0x91: "Kurzschluss Temperatursensor"
-      0x92: "Kurzschluss Kollektortemperatursensor"
-      0x93: "Kurzschluss Speichertemperatursensor"
-      0x94: "Kurzschluss Speichertemperatursensor"
-      0x98: "Unterbrechung Temperatursensor"
-      0x99: "Unterbrechung Temperatursensor"
-      0x9A: "Unterbrechung Kollektortemperatursensor"
-      0x9B: "Unterbrechung Speichertemperatursensor"
-      0x9C: "Unterbrechung Speichertemperatursensor"
-      0x9E: "Zu geringer oder kein Volumenstrom im Solarkreis oder Temperaturwächter hat ausgelöst"
-      0x9F: "Fehler Solarregelungsmodul oder Vitosolic"
-      0xA2: "Anlagendruck zu niedrig"
-      0xA3: "Abgastemperatursensor nicht richtig positioniert"
-      0xA4: "Max. Anlagendruck überschritten"
-      0xA7: "Bedienteil defekt"
-      0xA8: "Luft in der internen Umwälzpumpe oder Mindest-Volumenstrom nicht erreicht"
-      0xA9: "Interne Umwälzpumpe blockiert"
-      0xB0: "Kurzschluss Abgastemperatursensor"
-      0xB1: "Kommunikationsfehler Bedieneinheit"
-      0xB5: "Interner Fehler"
-      0xB7: "Fehler KesselCodierstecker"
-      0xB8: "Unterbrechung Abgastemperatursensor"
-      0xBA: "Kommunikationsfehler Erweiterungssatz für Heizkreis 2 (mit Mischer)"
-      0xBB: "Kommunikationsfehler Erweiterungssatz für Heizkreis 3 (mit Mischer)"
-      0xBC: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 1 (ohne Mischer)"
-      0xBD: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 2 (mit Mischer)"
-      0xBE: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 3 (mit Mischer)"
-      0xBF: "Falsches Kommunikationsmodul LON"
-      0xC1: "Kommunikationsfehler Erweiterung EA1"
-      0xC2: "Kommunikationsfehler Solarregelungsmodul oder Vitosolic"
-      0xC3: "Kommunikationsfehler Erweiterung AM1"
-      0xC4: "Kommunikationsfehler Erweiterung Open Therm"
-      0xC5: "Kommunikationsfehler drehzahlgeregelte interne Pumpe"
-      0xC6: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 2 (mit Mischer)"
-      0xC7: "Kommunikationsfehler drehzahlgeregelte externe Heizkreispumpe Heizkreis 1 (ohne Mischer)"
-      0xC8: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 3 (mit Mischer)"
-      0xCD: "Kommunikationsfehler Vitocom 100 (KM-BUS)"
-      0xCF: "Kommunikationsfehler Kommunikationsmodul LON"
-      0xD6: "Eingang DE1 an Erweiterung EA1 meldet Störung"
-      0xD7: "Eingang DE2 an Erweiterung EA1 meldet Störung"
-      0xD8: "Störung Eingang DE3 an Erweiterung EA1"
-      0xDA: "Kurzschluss Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDB: "Kurzschluss Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDC: "Kurzschluss Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xDD: "Unterbrechung Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDE: "Unterbrechung Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDF: "Unterbrechung Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xE0: "Fehler externer LON-Teilnehmer"
-      0xE1: "Ionisationsstrom während der Kalibrierung zu hoch"
-      0xE2: "Keine Kalibrierung wegen zu geringen Volumenstrom"
-      0xE3: "Zu geringe Wärmeabnahme während der Kalibrierung Temperaturwächter hat ausgeschaltet."
-      0xE4: "Fehler Versorgungsspannung 24 V"
-      0xE5: "Fehler Flammenverstärker"
-      0xE6: "Anlagendruck zu niedrig"
-      0xE7: "Ionisationsstrom während der Kalibrierung zu gering"
-      0xE8: "Ionisationsstrom nicht im gültigen Bereich"
-      0xEA: "Ionisationsstrom während der Kalibrierung nicht im gültigen Bereich (zu große Abweichung gegenüber dem Vorgängerwert)"
-      0xEB: "Wiederholter Flammenverlust während der Kalibrierung"
-      0xEC: "Parameterfehler während der Kalibrierung"
-      0xED: "Interner Fehler"
-      0xEE: "Flammensignal ist bei Brennerstart nicht vorhanden oder zu gering."
-      0xEF: "Flammenverlust direkt nach Flammenbildung (während der Sicherheitszeit)."
-      0xF0: "Interner Fehler"
-      0xF1: "Abgastemperaturbegrenzer hat ausgelöst."
-      0xF2: "Temperaturbegrenzer hat ausgelöst."
-      0xF3: "Flammensignal ist beim Brennerstart bereits vorhanden."
-      0xF7: "Kurzschluss oder Unterbrechung Wasserdrucksensor"
-      0xF8: "Brennstoffventil schließt verspätet."
-      0xF9: "Gebläsedrehzahl beim Brennerstart zu niedrig"
-      0xFA: "Gebläsestillstand nicht erreicht"
-      0xFC: "Gaskombiregler defekt oder fehlerhafte Ansteuerung Modulationsventil oder Abgasweg versperrt"
-      0xFD: "Kessel-Codierstecker fehlt / Fehler Feuerungsautomat"
-      0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
-      0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
+    # codes: { 0x00: "kein Fehler", ... }  # add a code->text map
+
   # System fault history slot 6 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 5*9; vcontrold getError5).
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
@@ -4261,102 +4091,8 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
-    # Fault-code map ('vd300' set) - DEFAULT, verify for this unit (see fault_codes.CONFLICTS):
-    codes:
-      0x00: "Regelbetrieb (kein Fehler)"
-      0x10: "Kurzschluss Außentemperatursensor"
-      0x18: "Unterbrechung Außentemperatursensor"
-      0x19: "Unterbrechung Kommunikation Außentemperatursensor RF"
-      0x1D: "Keine Kommunikation mit Sensor"
-      0x1E: "Strömungssensor defekt"
-      0x1F: "Strömungssensor defekt"
-      0x20: "Kurzschluss Vorlauftemperatursensor Anlage"
-      0x28: "Unterbrechung Vorlauftemperatursensor Anlage"
-      0x30: "Kurzschluss Kesseltemperatursensor"
-      0x38: "Unterbrechung Kesseltemperatursensor"
-      0x40: "Kurzschluss Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x44: "Kurzschluss Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x48: "Unterbrechung Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x49: "Codierung Erweiterung Mischer Heizkreis 2 falsch eingestellt"
-      0x4C: "Unterbrechung Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x4D: "Codierung Erweiterung Mischer Heizkreis 3 falsch eingestellt"
-      0x50: "Kurzschluss Speichertemperatursensor"
-      0x58: "Unterbrechung Speichertemperatursensor"
-      0x90: "Kurzschluss Temperatursensor"
-      0x91: "Kurzschluss Temperatursensor"
-      0x92: "Kurzschluss Kollektortemperatursensor"
-      0x93: "Kurzschluss Speichertemperatursensor"
-      0x94: "Kurzschluss Speichertemperatursensor"
-      0x98: "Unterbrechung Temperatursensor"
-      0x99: "Unterbrechung Temperatursensor"
-      0x9A: "Unterbrechung Kollektortemperatursensor"
-      0x9B: "Unterbrechung Speichertemperatursensor"
-      0x9C: "Unterbrechung Speichertemperatursensor"
-      0x9E: "Zu geringer oder kein Volumenstrom im Solarkreis oder Temperaturwächter hat ausgelöst"
-      0x9F: "Fehler Solarregelungsmodul oder Vitosolic"
-      0xA2: "Anlagendruck zu niedrig"
-      0xA3: "Abgastemperatursensor nicht richtig positioniert"
-      0xA4: "Max. Anlagendruck überschritten"
-      0xA7: "Bedienteil defekt"
-      0xA8: "Luft in der internen Umwälzpumpe oder Mindest-Volumenstrom nicht erreicht"
-      0xA9: "Interne Umwälzpumpe blockiert"
-      0xB0: "Kurzschluss Abgastemperatursensor"
-      0xB1: "Kommunikationsfehler Bedieneinheit"
-      0xB5: "Interner Fehler"
-      0xB7: "Fehler KesselCodierstecker"
-      0xB8: "Unterbrechung Abgastemperatursensor"
-      0xBA: "Kommunikationsfehler Erweiterungssatz für Heizkreis 2 (mit Mischer)"
-      0xBB: "Kommunikationsfehler Erweiterungssatz für Heizkreis 3 (mit Mischer)"
-      0xBC: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 1 (ohne Mischer)"
-      0xBD: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 2 (mit Mischer)"
-      0xBE: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 3 (mit Mischer)"
-      0xBF: "Falsches Kommunikationsmodul LON"
-      0xC1: "Kommunikationsfehler Erweiterung EA1"
-      0xC2: "Kommunikationsfehler Solarregelungsmodul oder Vitosolic"
-      0xC3: "Kommunikationsfehler Erweiterung AM1"
-      0xC4: "Kommunikationsfehler Erweiterung Open Therm"
-      0xC5: "Kommunikationsfehler drehzahlgeregelte interne Pumpe"
-      0xC6: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 2 (mit Mischer)"
-      0xC7: "Kommunikationsfehler drehzahlgeregelte externe Heizkreispumpe Heizkreis 1 (ohne Mischer)"
-      0xC8: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 3 (mit Mischer)"
-      0xCD: "Kommunikationsfehler Vitocom 100 (KM-BUS)"
-      0xCF: "Kommunikationsfehler Kommunikationsmodul LON"
-      0xD6: "Eingang DE1 an Erweiterung EA1 meldet Störung"
-      0xD7: "Eingang DE2 an Erweiterung EA1 meldet Störung"
-      0xD8: "Störung Eingang DE3 an Erweiterung EA1"
-      0xDA: "Kurzschluss Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDB: "Kurzschluss Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDC: "Kurzschluss Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xDD: "Unterbrechung Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDE: "Unterbrechung Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDF: "Unterbrechung Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xE0: "Fehler externer LON-Teilnehmer"
-      0xE1: "Ionisationsstrom während der Kalibrierung zu hoch"
-      0xE2: "Keine Kalibrierung wegen zu geringen Volumenstrom"
-      0xE3: "Zu geringe Wärmeabnahme während der Kalibrierung Temperaturwächter hat ausgeschaltet."
-      0xE4: "Fehler Versorgungsspannung 24 V"
-      0xE5: "Fehler Flammenverstärker"
-      0xE6: "Anlagendruck zu niedrig"
-      0xE7: "Ionisationsstrom während der Kalibrierung zu gering"
-      0xE8: "Ionisationsstrom nicht im gültigen Bereich"
-      0xEA: "Ionisationsstrom während der Kalibrierung nicht im gültigen Bereich (zu große Abweichung gegenüber dem Vorgängerwert)"
-      0xEB: "Wiederholter Flammenverlust während der Kalibrierung"
-      0xEC: "Parameterfehler während der Kalibrierung"
-      0xED: "Interner Fehler"
-      0xEE: "Flammensignal ist bei Brennerstart nicht vorhanden oder zu gering."
-      0xEF: "Flammenverlust direkt nach Flammenbildung (während der Sicherheitszeit)."
-      0xF0: "Interner Fehler"
-      0xF1: "Abgastemperaturbegrenzer hat ausgelöst."
-      0xF2: "Temperaturbegrenzer hat ausgelöst."
-      0xF3: "Flammensignal ist beim Brennerstart bereits vorhanden."
-      0xF7: "Kurzschluss oder Unterbrechung Wasserdrucksensor"
-      0xF8: "Brennstoffventil schließt verspätet."
-      0xF9: "Gebläsedrehzahl beim Brennerstart zu niedrig"
-      0xFA: "Gebläsestillstand nicht erreicht"
-      0xFC: "Gaskombiregler defekt oder fehlerhafte Ansteuerung Modulationsventil oder Abgasweg versperrt"
-      0xFD: "Kessel-Codierstecker fehlt / Fehler Feuerungsautomat"
-      0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
-      0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
+    # codes: { 0x00: "kein Fehler", ... }  # add a code->text map
+
   # System fault history slot 7 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 6*9; vcontrold getError6).
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
@@ -4370,102 +4106,8 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
-    # Fault-code map ('vd300' set) - DEFAULT, verify for this unit (see fault_codes.CONFLICTS):
-    codes:
-      0x00: "Regelbetrieb (kein Fehler)"
-      0x10: "Kurzschluss Außentemperatursensor"
-      0x18: "Unterbrechung Außentemperatursensor"
-      0x19: "Unterbrechung Kommunikation Außentemperatursensor RF"
-      0x1D: "Keine Kommunikation mit Sensor"
-      0x1E: "Strömungssensor defekt"
-      0x1F: "Strömungssensor defekt"
-      0x20: "Kurzschluss Vorlauftemperatursensor Anlage"
-      0x28: "Unterbrechung Vorlauftemperatursensor Anlage"
-      0x30: "Kurzschluss Kesseltemperatursensor"
-      0x38: "Unterbrechung Kesseltemperatursensor"
-      0x40: "Kurzschluss Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x44: "Kurzschluss Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x48: "Unterbrechung Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x49: "Codierung Erweiterung Mischer Heizkreis 2 falsch eingestellt"
-      0x4C: "Unterbrechung Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x4D: "Codierung Erweiterung Mischer Heizkreis 3 falsch eingestellt"
-      0x50: "Kurzschluss Speichertemperatursensor"
-      0x58: "Unterbrechung Speichertemperatursensor"
-      0x90: "Kurzschluss Temperatursensor"
-      0x91: "Kurzschluss Temperatursensor"
-      0x92: "Kurzschluss Kollektortemperatursensor"
-      0x93: "Kurzschluss Speichertemperatursensor"
-      0x94: "Kurzschluss Speichertemperatursensor"
-      0x98: "Unterbrechung Temperatursensor"
-      0x99: "Unterbrechung Temperatursensor"
-      0x9A: "Unterbrechung Kollektortemperatursensor"
-      0x9B: "Unterbrechung Speichertemperatursensor"
-      0x9C: "Unterbrechung Speichertemperatursensor"
-      0x9E: "Zu geringer oder kein Volumenstrom im Solarkreis oder Temperaturwächter hat ausgelöst"
-      0x9F: "Fehler Solarregelungsmodul oder Vitosolic"
-      0xA2: "Anlagendruck zu niedrig"
-      0xA3: "Abgastemperatursensor nicht richtig positioniert"
-      0xA4: "Max. Anlagendruck überschritten"
-      0xA7: "Bedienteil defekt"
-      0xA8: "Luft in der internen Umwälzpumpe oder Mindest-Volumenstrom nicht erreicht"
-      0xA9: "Interne Umwälzpumpe blockiert"
-      0xB0: "Kurzschluss Abgastemperatursensor"
-      0xB1: "Kommunikationsfehler Bedieneinheit"
-      0xB5: "Interner Fehler"
-      0xB7: "Fehler KesselCodierstecker"
-      0xB8: "Unterbrechung Abgastemperatursensor"
-      0xBA: "Kommunikationsfehler Erweiterungssatz für Heizkreis 2 (mit Mischer)"
-      0xBB: "Kommunikationsfehler Erweiterungssatz für Heizkreis 3 (mit Mischer)"
-      0xBC: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 1 (ohne Mischer)"
-      0xBD: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 2 (mit Mischer)"
-      0xBE: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 3 (mit Mischer)"
-      0xBF: "Falsches Kommunikationsmodul LON"
-      0xC1: "Kommunikationsfehler Erweiterung EA1"
-      0xC2: "Kommunikationsfehler Solarregelungsmodul oder Vitosolic"
-      0xC3: "Kommunikationsfehler Erweiterung AM1"
-      0xC4: "Kommunikationsfehler Erweiterung Open Therm"
-      0xC5: "Kommunikationsfehler drehzahlgeregelte interne Pumpe"
-      0xC6: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 2 (mit Mischer)"
-      0xC7: "Kommunikationsfehler drehzahlgeregelte externe Heizkreispumpe Heizkreis 1 (ohne Mischer)"
-      0xC8: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 3 (mit Mischer)"
-      0xCD: "Kommunikationsfehler Vitocom 100 (KM-BUS)"
-      0xCF: "Kommunikationsfehler Kommunikationsmodul LON"
-      0xD6: "Eingang DE1 an Erweiterung EA1 meldet Störung"
-      0xD7: "Eingang DE2 an Erweiterung EA1 meldet Störung"
-      0xD8: "Störung Eingang DE3 an Erweiterung EA1"
-      0xDA: "Kurzschluss Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDB: "Kurzschluss Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDC: "Kurzschluss Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xDD: "Unterbrechung Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDE: "Unterbrechung Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDF: "Unterbrechung Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xE0: "Fehler externer LON-Teilnehmer"
-      0xE1: "Ionisationsstrom während der Kalibrierung zu hoch"
-      0xE2: "Keine Kalibrierung wegen zu geringen Volumenstrom"
-      0xE3: "Zu geringe Wärmeabnahme während der Kalibrierung Temperaturwächter hat ausgeschaltet."
-      0xE4: "Fehler Versorgungsspannung 24 V"
-      0xE5: "Fehler Flammenverstärker"
-      0xE6: "Anlagendruck zu niedrig"
-      0xE7: "Ionisationsstrom während der Kalibrierung zu gering"
-      0xE8: "Ionisationsstrom nicht im gültigen Bereich"
-      0xEA: "Ionisationsstrom während der Kalibrierung nicht im gültigen Bereich (zu große Abweichung gegenüber dem Vorgängerwert)"
-      0xEB: "Wiederholter Flammenverlust während der Kalibrierung"
-      0xEC: "Parameterfehler während der Kalibrierung"
-      0xED: "Interner Fehler"
-      0xEE: "Flammensignal ist bei Brennerstart nicht vorhanden oder zu gering."
-      0xEF: "Flammenverlust direkt nach Flammenbildung (während der Sicherheitszeit)."
-      0xF0: "Interner Fehler"
-      0xF1: "Abgastemperaturbegrenzer hat ausgelöst."
-      0xF2: "Temperaturbegrenzer hat ausgelöst."
-      0xF3: "Flammensignal ist beim Brennerstart bereits vorhanden."
-      0xF7: "Kurzschluss oder Unterbrechung Wasserdrucksensor"
-      0xF8: "Brennstoffventil schließt verspätet."
-      0xF9: "Gebläsedrehzahl beim Brennerstart zu niedrig"
-      0xFA: "Gebläsestillstand nicht erreicht"
-      0xFC: "Gaskombiregler defekt oder fehlerhafte Ansteuerung Modulationsventil oder Abgasweg versperrt"
-      0xFD: "Kessel-Codierstecker fehlt / Fehler Feuerungsautomat"
-      0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
-      0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
+    # codes: { 0x00: "kein Fehler", ... }  # add a code->text map
+
   # System fault history slot 8 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 7*9; vcontrold getError7).
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
@@ -4479,102 +4121,8 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
-    # Fault-code map ('vd300' set) - DEFAULT, verify for this unit (see fault_codes.CONFLICTS):
-    codes:
-      0x00: "Regelbetrieb (kein Fehler)"
-      0x10: "Kurzschluss Außentemperatursensor"
-      0x18: "Unterbrechung Außentemperatursensor"
-      0x19: "Unterbrechung Kommunikation Außentemperatursensor RF"
-      0x1D: "Keine Kommunikation mit Sensor"
-      0x1E: "Strömungssensor defekt"
-      0x1F: "Strömungssensor defekt"
-      0x20: "Kurzschluss Vorlauftemperatursensor Anlage"
-      0x28: "Unterbrechung Vorlauftemperatursensor Anlage"
-      0x30: "Kurzschluss Kesseltemperatursensor"
-      0x38: "Unterbrechung Kesseltemperatursensor"
-      0x40: "Kurzschluss Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x44: "Kurzschluss Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x48: "Unterbrechung Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x49: "Codierung Erweiterung Mischer Heizkreis 2 falsch eingestellt"
-      0x4C: "Unterbrechung Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x4D: "Codierung Erweiterung Mischer Heizkreis 3 falsch eingestellt"
-      0x50: "Kurzschluss Speichertemperatursensor"
-      0x58: "Unterbrechung Speichertemperatursensor"
-      0x90: "Kurzschluss Temperatursensor"
-      0x91: "Kurzschluss Temperatursensor"
-      0x92: "Kurzschluss Kollektortemperatursensor"
-      0x93: "Kurzschluss Speichertemperatursensor"
-      0x94: "Kurzschluss Speichertemperatursensor"
-      0x98: "Unterbrechung Temperatursensor"
-      0x99: "Unterbrechung Temperatursensor"
-      0x9A: "Unterbrechung Kollektortemperatursensor"
-      0x9B: "Unterbrechung Speichertemperatursensor"
-      0x9C: "Unterbrechung Speichertemperatursensor"
-      0x9E: "Zu geringer oder kein Volumenstrom im Solarkreis oder Temperaturwächter hat ausgelöst"
-      0x9F: "Fehler Solarregelungsmodul oder Vitosolic"
-      0xA2: "Anlagendruck zu niedrig"
-      0xA3: "Abgastemperatursensor nicht richtig positioniert"
-      0xA4: "Max. Anlagendruck überschritten"
-      0xA7: "Bedienteil defekt"
-      0xA8: "Luft in der internen Umwälzpumpe oder Mindest-Volumenstrom nicht erreicht"
-      0xA9: "Interne Umwälzpumpe blockiert"
-      0xB0: "Kurzschluss Abgastemperatursensor"
-      0xB1: "Kommunikationsfehler Bedieneinheit"
-      0xB5: "Interner Fehler"
-      0xB7: "Fehler KesselCodierstecker"
-      0xB8: "Unterbrechung Abgastemperatursensor"
-      0xBA: "Kommunikationsfehler Erweiterungssatz für Heizkreis 2 (mit Mischer)"
-      0xBB: "Kommunikationsfehler Erweiterungssatz für Heizkreis 3 (mit Mischer)"
-      0xBC: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 1 (ohne Mischer)"
-      0xBD: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 2 (mit Mischer)"
-      0xBE: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 3 (mit Mischer)"
-      0xBF: "Falsches Kommunikationsmodul LON"
-      0xC1: "Kommunikationsfehler Erweiterung EA1"
-      0xC2: "Kommunikationsfehler Solarregelungsmodul oder Vitosolic"
-      0xC3: "Kommunikationsfehler Erweiterung AM1"
-      0xC4: "Kommunikationsfehler Erweiterung Open Therm"
-      0xC5: "Kommunikationsfehler drehzahlgeregelte interne Pumpe"
-      0xC6: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 2 (mit Mischer)"
-      0xC7: "Kommunikationsfehler drehzahlgeregelte externe Heizkreispumpe Heizkreis 1 (ohne Mischer)"
-      0xC8: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 3 (mit Mischer)"
-      0xCD: "Kommunikationsfehler Vitocom 100 (KM-BUS)"
-      0xCF: "Kommunikationsfehler Kommunikationsmodul LON"
-      0xD6: "Eingang DE1 an Erweiterung EA1 meldet Störung"
-      0xD7: "Eingang DE2 an Erweiterung EA1 meldet Störung"
-      0xD8: "Störung Eingang DE3 an Erweiterung EA1"
-      0xDA: "Kurzschluss Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDB: "Kurzschluss Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDC: "Kurzschluss Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xDD: "Unterbrechung Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDE: "Unterbrechung Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDF: "Unterbrechung Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xE0: "Fehler externer LON-Teilnehmer"
-      0xE1: "Ionisationsstrom während der Kalibrierung zu hoch"
-      0xE2: "Keine Kalibrierung wegen zu geringen Volumenstrom"
-      0xE3: "Zu geringe Wärmeabnahme während der Kalibrierung Temperaturwächter hat ausgeschaltet."
-      0xE4: "Fehler Versorgungsspannung 24 V"
-      0xE5: "Fehler Flammenverstärker"
-      0xE6: "Anlagendruck zu niedrig"
-      0xE7: "Ionisationsstrom während der Kalibrierung zu gering"
-      0xE8: "Ionisationsstrom nicht im gültigen Bereich"
-      0xEA: "Ionisationsstrom während der Kalibrierung nicht im gültigen Bereich (zu große Abweichung gegenüber dem Vorgängerwert)"
-      0xEB: "Wiederholter Flammenverlust während der Kalibrierung"
-      0xEC: "Parameterfehler während der Kalibrierung"
-      0xED: "Interner Fehler"
-      0xEE: "Flammensignal ist bei Brennerstart nicht vorhanden oder zu gering."
-      0xEF: "Flammenverlust direkt nach Flammenbildung (während der Sicherheitszeit)."
-      0xF0: "Interner Fehler"
-      0xF1: "Abgastemperaturbegrenzer hat ausgelöst."
-      0xF2: "Temperaturbegrenzer hat ausgelöst."
-      0xF3: "Flammensignal ist beim Brennerstart bereits vorhanden."
-      0xF7: "Kurzschluss oder Unterbrechung Wasserdrucksensor"
-      0xF8: "Brennstoffventil schließt verspätet."
-      0xF9: "Gebläsedrehzahl beim Brennerstart zu niedrig"
-      0xFA: "Gebläsestillstand nicht erreicht"
-      0xFC: "Gaskombiregler defekt oder fehlerhafte Ansteuerung Modulationsventil oder Abgasweg versperrt"
-      0xFD: "Kessel-Codierstecker fehlt / Fehler Feuerungsautomat"
-      0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
-      0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
+    # codes: { 0x00: "kein Fehler", ... }  # add a code->text map
+
   # System fault history slot 9 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 8*9; vcontrold getError8).
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
@@ -4588,102 +4136,8 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
-    # Fault-code map ('vd300' set) - DEFAULT, verify for this unit (see fault_codes.CONFLICTS):
-    codes:
-      0x00: "Regelbetrieb (kein Fehler)"
-      0x10: "Kurzschluss Außentemperatursensor"
-      0x18: "Unterbrechung Außentemperatursensor"
-      0x19: "Unterbrechung Kommunikation Außentemperatursensor RF"
-      0x1D: "Keine Kommunikation mit Sensor"
-      0x1E: "Strömungssensor defekt"
-      0x1F: "Strömungssensor defekt"
-      0x20: "Kurzschluss Vorlauftemperatursensor Anlage"
-      0x28: "Unterbrechung Vorlauftemperatursensor Anlage"
-      0x30: "Kurzschluss Kesseltemperatursensor"
-      0x38: "Unterbrechung Kesseltemperatursensor"
-      0x40: "Kurzschluss Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x44: "Kurzschluss Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x48: "Unterbrechung Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x49: "Codierung Erweiterung Mischer Heizkreis 2 falsch eingestellt"
-      0x4C: "Unterbrechung Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x4D: "Codierung Erweiterung Mischer Heizkreis 3 falsch eingestellt"
-      0x50: "Kurzschluss Speichertemperatursensor"
-      0x58: "Unterbrechung Speichertemperatursensor"
-      0x90: "Kurzschluss Temperatursensor"
-      0x91: "Kurzschluss Temperatursensor"
-      0x92: "Kurzschluss Kollektortemperatursensor"
-      0x93: "Kurzschluss Speichertemperatursensor"
-      0x94: "Kurzschluss Speichertemperatursensor"
-      0x98: "Unterbrechung Temperatursensor"
-      0x99: "Unterbrechung Temperatursensor"
-      0x9A: "Unterbrechung Kollektortemperatursensor"
-      0x9B: "Unterbrechung Speichertemperatursensor"
-      0x9C: "Unterbrechung Speichertemperatursensor"
-      0x9E: "Zu geringer oder kein Volumenstrom im Solarkreis oder Temperaturwächter hat ausgelöst"
-      0x9F: "Fehler Solarregelungsmodul oder Vitosolic"
-      0xA2: "Anlagendruck zu niedrig"
-      0xA3: "Abgastemperatursensor nicht richtig positioniert"
-      0xA4: "Max. Anlagendruck überschritten"
-      0xA7: "Bedienteil defekt"
-      0xA8: "Luft in der internen Umwälzpumpe oder Mindest-Volumenstrom nicht erreicht"
-      0xA9: "Interne Umwälzpumpe blockiert"
-      0xB0: "Kurzschluss Abgastemperatursensor"
-      0xB1: "Kommunikationsfehler Bedieneinheit"
-      0xB5: "Interner Fehler"
-      0xB7: "Fehler KesselCodierstecker"
-      0xB8: "Unterbrechung Abgastemperatursensor"
-      0xBA: "Kommunikationsfehler Erweiterungssatz für Heizkreis 2 (mit Mischer)"
-      0xBB: "Kommunikationsfehler Erweiterungssatz für Heizkreis 3 (mit Mischer)"
-      0xBC: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 1 (ohne Mischer)"
-      0xBD: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 2 (mit Mischer)"
-      0xBE: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 3 (mit Mischer)"
-      0xBF: "Falsches Kommunikationsmodul LON"
-      0xC1: "Kommunikationsfehler Erweiterung EA1"
-      0xC2: "Kommunikationsfehler Solarregelungsmodul oder Vitosolic"
-      0xC3: "Kommunikationsfehler Erweiterung AM1"
-      0xC4: "Kommunikationsfehler Erweiterung Open Therm"
-      0xC5: "Kommunikationsfehler drehzahlgeregelte interne Pumpe"
-      0xC6: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 2 (mit Mischer)"
-      0xC7: "Kommunikationsfehler drehzahlgeregelte externe Heizkreispumpe Heizkreis 1 (ohne Mischer)"
-      0xC8: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 3 (mit Mischer)"
-      0xCD: "Kommunikationsfehler Vitocom 100 (KM-BUS)"
-      0xCF: "Kommunikationsfehler Kommunikationsmodul LON"
-      0xD6: "Eingang DE1 an Erweiterung EA1 meldet Störung"
-      0xD7: "Eingang DE2 an Erweiterung EA1 meldet Störung"
-      0xD8: "Störung Eingang DE3 an Erweiterung EA1"
-      0xDA: "Kurzschluss Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDB: "Kurzschluss Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDC: "Kurzschluss Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xDD: "Unterbrechung Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDE: "Unterbrechung Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDF: "Unterbrechung Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xE0: "Fehler externer LON-Teilnehmer"
-      0xE1: "Ionisationsstrom während der Kalibrierung zu hoch"
-      0xE2: "Keine Kalibrierung wegen zu geringen Volumenstrom"
-      0xE3: "Zu geringe Wärmeabnahme während der Kalibrierung Temperaturwächter hat ausgeschaltet."
-      0xE4: "Fehler Versorgungsspannung 24 V"
-      0xE5: "Fehler Flammenverstärker"
-      0xE6: "Anlagendruck zu niedrig"
-      0xE7: "Ionisationsstrom während der Kalibrierung zu gering"
-      0xE8: "Ionisationsstrom nicht im gültigen Bereich"
-      0xEA: "Ionisationsstrom während der Kalibrierung nicht im gültigen Bereich (zu große Abweichung gegenüber dem Vorgängerwert)"
-      0xEB: "Wiederholter Flammenverlust während der Kalibrierung"
-      0xEC: "Parameterfehler während der Kalibrierung"
-      0xED: "Interner Fehler"
-      0xEE: "Flammensignal ist bei Brennerstart nicht vorhanden oder zu gering."
-      0xEF: "Flammenverlust direkt nach Flammenbildung (während der Sicherheitszeit)."
-      0xF0: "Interner Fehler"
-      0xF1: "Abgastemperaturbegrenzer hat ausgelöst."
-      0xF2: "Temperaturbegrenzer hat ausgelöst."
-      0xF3: "Flammensignal ist beim Brennerstart bereits vorhanden."
-      0xF7: "Kurzschluss oder Unterbrechung Wasserdrucksensor"
-      0xF8: "Brennstoffventil schließt verspätet."
-      0xF9: "Gebläsedrehzahl beim Brennerstart zu niedrig"
-      0xFA: "Gebläsestillstand nicht erreicht"
-      0xFC: "Gaskombiregler defekt oder fehlerhafte Ansteuerung Modulationsventil oder Abgasweg versperrt"
-      0xFD: "Kessel-Codierstecker fehlt / Fehler Feuerungsautomat"
-      0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
-      0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
+    # codes: { 0x00: "kein Fehler", ... }  # add a code->text map
+
   # System fault history slot 10 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 9*9; vcontrold getError9).
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
@@ -4697,102 +4151,8 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
-    # Fault-code map ('vd300' set) - DEFAULT, verify for this unit (see fault_codes.CONFLICTS):
-    codes:
-      0x00: "Regelbetrieb (kein Fehler)"
-      0x10: "Kurzschluss Außentemperatursensor"
-      0x18: "Unterbrechung Außentemperatursensor"
-      0x19: "Unterbrechung Kommunikation Außentemperatursensor RF"
-      0x1D: "Keine Kommunikation mit Sensor"
-      0x1E: "Strömungssensor defekt"
-      0x1F: "Strömungssensor defekt"
-      0x20: "Kurzschluss Vorlauftemperatursensor Anlage"
-      0x28: "Unterbrechung Vorlauftemperatursensor Anlage"
-      0x30: "Kurzschluss Kesseltemperatursensor"
-      0x38: "Unterbrechung Kesseltemperatursensor"
-      0x40: "Kurzschluss Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x44: "Kurzschluss Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x48: "Unterbrechung Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x49: "Codierung Erweiterung Mischer Heizkreis 2 falsch eingestellt"
-      0x4C: "Unterbrechung Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x4D: "Codierung Erweiterung Mischer Heizkreis 3 falsch eingestellt"
-      0x50: "Kurzschluss Speichertemperatursensor"
-      0x58: "Unterbrechung Speichertemperatursensor"
-      0x90: "Kurzschluss Temperatursensor"
-      0x91: "Kurzschluss Temperatursensor"
-      0x92: "Kurzschluss Kollektortemperatursensor"
-      0x93: "Kurzschluss Speichertemperatursensor"
-      0x94: "Kurzschluss Speichertemperatursensor"
-      0x98: "Unterbrechung Temperatursensor"
-      0x99: "Unterbrechung Temperatursensor"
-      0x9A: "Unterbrechung Kollektortemperatursensor"
-      0x9B: "Unterbrechung Speichertemperatursensor"
-      0x9C: "Unterbrechung Speichertemperatursensor"
-      0x9E: "Zu geringer oder kein Volumenstrom im Solarkreis oder Temperaturwächter hat ausgelöst"
-      0x9F: "Fehler Solarregelungsmodul oder Vitosolic"
-      0xA2: "Anlagendruck zu niedrig"
-      0xA3: "Abgastemperatursensor nicht richtig positioniert"
-      0xA4: "Max. Anlagendruck überschritten"
-      0xA7: "Bedienteil defekt"
-      0xA8: "Luft in der internen Umwälzpumpe oder Mindest-Volumenstrom nicht erreicht"
-      0xA9: "Interne Umwälzpumpe blockiert"
-      0xB0: "Kurzschluss Abgastemperatursensor"
-      0xB1: "Kommunikationsfehler Bedieneinheit"
-      0xB5: "Interner Fehler"
-      0xB7: "Fehler KesselCodierstecker"
-      0xB8: "Unterbrechung Abgastemperatursensor"
-      0xBA: "Kommunikationsfehler Erweiterungssatz für Heizkreis 2 (mit Mischer)"
-      0xBB: "Kommunikationsfehler Erweiterungssatz für Heizkreis 3 (mit Mischer)"
-      0xBC: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 1 (ohne Mischer)"
-      0xBD: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 2 (mit Mischer)"
-      0xBE: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 3 (mit Mischer)"
-      0xBF: "Falsches Kommunikationsmodul LON"
-      0xC1: "Kommunikationsfehler Erweiterung EA1"
-      0xC2: "Kommunikationsfehler Solarregelungsmodul oder Vitosolic"
-      0xC3: "Kommunikationsfehler Erweiterung AM1"
-      0xC4: "Kommunikationsfehler Erweiterung Open Therm"
-      0xC5: "Kommunikationsfehler drehzahlgeregelte interne Pumpe"
-      0xC6: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 2 (mit Mischer)"
-      0xC7: "Kommunikationsfehler drehzahlgeregelte externe Heizkreispumpe Heizkreis 1 (ohne Mischer)"
-      0xC8: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 3 (mit Mischer)"
-      0xCD: "Kommunikationsfehler Vitocom 100 (KM-BUS)"
-      0xCF: "Kommunikationsfehler Kommunikationsmodul LON"
-      0xD6: "Eingang DE1 an Erweiterung EA1 meldet Störung"
-      0xD7: "Eingang DE2 an Erweiterung EA1 meldet Störung"
-      0xD8: "Störung Eingang DE3 an Erweiterung EA1"
-      0xDA: "Kurzschluss Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDB: "Kurzschluss Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDC: "Kurzschluss Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xDD: "Unterbrechung Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDE: "Unterbrechung Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDF: "Unterbrechung Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xE0: "Fehler externer LON-Teilnehmer"
-      0xE1: "Ionisationsstrom während der Kalibrierung zu hoch"
-      0xE2: "Keine Kalibrierung wegen zu geringen Volumenstrom"
-      0xE3: "Zu geringe Wärmeabnahme während der Kalibrierung Temperaturwächter hat ausgeschaltet."
-      0xE4: "Fehler Versorgungsspannung 24 V"
-      0xE5: "Fehler Flammenverstärker"
-      0xE6: "Anlagendruck zu niedrig"
-      0xE7: "Ionisationsstrom während der Kalibrierung zu gering"
-      0xE8: "Ionisationsstrom nicht im gültigen Bereich"
-      0xEA: "Ionisationsstrom während der Kalibrierung nicht im gültigen Bereich (zu große Abweichung gegenüber dem Vorgängerwert)"
-      0xEB: "Wiederholter Flammenverlust während der Kalibrierung"
-      0xEC: "Parameterfehler während der Kalibrierung"
-      0xED: "Interner Fehler"
-      0xEE: "Flammensignal ist bei Brennerstart nicht vorhanden oder zu gering."
-      0xEF: "Flammenverlust direkt nach Flammenbildung (während der Sicherheitszeit)."
-      0xF0: "Interner Fehler"
-      0xF1: "Abgastemperaturbegrenzer hat ausgelöst."
-      0xF2: "Temperaturbegrenzer hat ausgelöst."
-      0xF3: "Flammensignal ist beim Brennerstart bereits vorhanden."
-      0xF7: "Kurzschluss oder Unterbrechung Wasserdrucksensor"
-      0xF8: "Brennstoffventil schließt verspätet."
-      0xF9: "Gebläsedrehzahl beim Brennerstart zu niedrig"
-      0xFA: "Gebläsestillstand nicht erreicht"
-      0xFC: "Gaskombiregler defekt oder fehlerhafte Ansteuerung Modulationsventil oder Abgasweg versperrt"
-      0xFD: "Kessel-Codierstecker fehlt / Fehler Feuerungsautomat"
-      0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
-      0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
+    # codes: { 0x00: "kein Fehler", ... }  # add a code->text map
+
   # --- (ohne Gruppenzuordnung) ---
   - platform: vitohome
     type: ascii
@@ -4801,6 +4161,7 @@ text_sensor:
     address: 0x08C0
     length: 7
     entity_category: diagnostic
+
     # NOTE: field at BytePosition 1 has no declared write address -> demoted to read-only
   - platform: vitohome
     type: enum
@@ -4815,6 +4176,7 @@ text_sensor:
       0x00: "AUS"
       0x01: "EIN"
       0xFF: "AUTO"
+
   - platform: vitohome
     type: enum
     name: "nviHCC1 ApplicMode"
@@ -4842,6 +4204,7 @@ text_sensor:
       0x6F: "HVAC_LOW_FIRE"
       0x70: "HVAC_HIGH_FIRE"
       0x71: "HVAC_HEAT_DHW"
+
   - platform: vitohome
     type: enum
     name: "nvoHCC1 UnitState"
@@ -4864,6 +4227,7 @@ text_sensor:
       0x0A: "HVAC_FREE_COOL"
       0x0B: "HVAC_ICE"
       0xFF: "HVAC_NUL"
+
   - platform: vitohome
     type: enum
     name: "nviHCC2 ApplicMode"

@@ -31,6 +31,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "SR13 TiefpassTemperaturwert S2"
     id: SR13_TiefpassTemperaturwert_S2
@@ -42,6 +43,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "SR13 EA2 Ausgang1"
     id: SR13_EA2_Ausgang1
@@ -52,6 +54,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "SR13 EA2 Ausgang2"
     id: SR13_EA2_Ausgang2
@@ -79,6 +82,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "SR13 K22 Reglerverzoegerung"
     id: SR13_K22_Reglerverzoegerung
@@ -93,6 +97,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K40 KonfiLaufzeitDKRLStellantrieb"
     id: K40_KonfiLaufzeitDKRLStellantrieb
@@ -107,6 +112,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K4F KonfiPumpenNachlauf"
     id: K4F_KonfiPumpenNachlauf
@@ -121,6 +127,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K77 KonfiVI TeilnehmernummerV100 V300"
     id: K77_KonfiVI_TeilnehmernummerV100_V300
@@ -133,6 +140,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K80 KonfiFehlerDelay"
     id: K80_KonfiFehlerDelay
@@ -147,6 +155,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K98 KonfiVI Anlagennummer"
     id: K98_KonfiVI_Anlagennummer
@@ -159,6 +168,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K9D KonfiZugriffParameterKR"
     id: K9D_KonfiZugriffParameterKR
@@ -174,6 +184,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K9F KonfiDTKMischerkreise"
     id: K9F_KonfiDTKMischerkreise
@@ -187,6 +198,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Codierungen / Kessel ---
   - platform: vitohome
     name: "K05 KonfiBrennerkennlinie"
@@ -201,6 +213,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K06 KonfiKTMax"
     id: K06_KonfiKTMax
@@ -215,6 +228,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K07 KonfiKesselnummerV100GC1"
     id: K07_KonfiKesselnummerV100GC1
@@ -227,6 +241,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K08 KonfiBrennermaximalleistung1KW"
     id: K08_KonfiBrennermaximalleistung1KW
@@ -239,6 +254,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K09 KonfiBrennermaximalleistung100KW"
     id: K09_KonfiBrennermaximalleistung100KW
@@ -251,6 +267,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K0A KonfiBrennerminimalleistung"
     id: K0A_KonfiBrennerminimalleistung
@@ -264,6 +281,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K0B KonfiKesselschutzNachlauf"
     id: K0B_KonfiKesselschutzNachlauf
@@ -278,6 +296,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K13 KonfiAusschaltdifferenz NRx"
     id: K13_KonfiAusschaltdifferenz_NRx
@@ -291,6 +310,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K14 KonfiBrennermindestlaufzeit"
     id: K14_KonfiBrennermindestlaufzeit
@@ -305,6 +325,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K15 KonfiLaufzeitStellantriebBrenner"
     id: K15_KonfiLaufzeitStellantriebBrenner
@@ -319,6 +340,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K16 KonfiOffsetModBrenner"
     id: K16_KonfiOffsetModBrenner
@@ -332,6 +354,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K1A KonfiAnfoptModBrenner"
     id: K1A_KonfiAnfoptModBrenner
@@ -346,6 +369,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K1B KonfiReglerverzoegerung"
     id: K1B_KonfiReglerverzoegerung
@@ -360,6 +384,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K1C KonfiStartverzoegerungBrenner"
     id: K1C_KonfiStartverzoegerungBrenner
@@ -374,6 +399,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K21 KonfiBetriebsstdBrennerWart100"
     id: K21_KonfiBetriebsstdBrennerWart100
@@ -388,6 +414,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K23 KonfiZeitintervallWartung"
     id: K23_KonfiZeitintervallWartung
@@ -401,6 +428,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K2B KonfiVorwaermzeit DK"
     id: K2B_KonfiVorwaermzeit_DK
@@ -415,6 +443,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K2C KonfiNachlaufzeit DK"
     id: K2C_KonfiNachlaufzeit_DK
@@ -429,6 +458,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "SR13 EA2 ZieltempRegelung Einsetzen"
     id: SR13_EA2_ZieltempRegelung_Einsetzen
@@ -443,6 +473,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "SR13 EA2 LeistungMinDrehzahl"
     id: SR13_EA2_LeistungMinDrehzahl
@@ -456,6 +487,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "SR13 EA2 LeistungMinDrehzahl100"
     id: SR13_EA2_LeistungMinDrehzahl100
@@ -469,6 +501,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "SR13 EA2 LeistungMaxDrehzahl"
     id: SR13_EA2_LeistungMaxDrehzahl
@@ -482,6 +515,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "SR13 EA2 LeistungMaxDrehzahl100"
     id: SR13_EA2_LeistungMaxDrehzahl100
@@ -495,6 +529,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "SR13 EA2 DeltaTWeiche"
     id: SR13_EA2_DeltaTWeiche
@@ -507,6 +542,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "SR13 EA2 Max RL Temp"
     id: SR13_EA2_Max_RL_Temp
@@ -519,6 +555,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "SR13 EA2 Mindestsperrzeit"
     id: SR13_EA2_Mindestsperrzeit
@@ -533,6 +570,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "SR13 EA2 Min RL Temp"
     id: SR13_EA2_Min_RL_Temp
@@ -559,6 +597,7 @@ select:
       0x01: "1 Einkessel"
       0x02: "2 Mehrkessel-LON"
       0x03: "3 Kontaktsteuerung"
+
   - platform: vitohome
     name: "K4C KonfiVerwendungAusgang20V300"
     id: K4C_KonfiVerwendungAusgang20V300
@@ -571,6 +610,7 @@ select:
       0x01: "1 Primaer-P WTSet"
       0x02: "2 Schaltkontakt TSA"
       0x03: "3 AbgasWT-Pumpe"
+
   - platform: vitohome
     name: "K4D KonfiVerwendungAusgang29"
     id: K4D_KonfiVerwendungAusgang29
@@ -582,6 +622,7 @@ select:
       0x01: "1 Beimischpumpe"
       0x02: "2 Kesselkreispumpe"
       0x03: "3 Kesselkreispumpe DK"
+
   - platform: vitohome
     name: "K4E NRx KonfiVerwendungAusgang52"
     id: K4E_NRx_KonfiVerwendungAusgang52
@@ -594,6 +635,7 @@ select:
       0x01: "1 Rücklaufregelung (ALZ bei 300M und Kaskade)"
       0x02: "2 Primärkreismischer für Regelung Wärmetauscherset (300M, Kaskade, HK3; ALZ bei 333 MW2)"
       0x03: "Mischer für 1. Mischerheizkreis (nur bei HK1 und HK3, dabei  ALZ )"
+
   - platform: vitohome
     name: "NRx K53 KonfiHydrWeicheKKPumpe"
     id: NRx_K53_KonfiHydrWeicheKKPumpe
@@ -605,6 +647,7 @@ select:
       0x00: "NRx_KonfiHydrWeicheKKPumpe~0"
       0x01: "NRx_KonfiHydrWeicheKKPumpe~1"
       0x02: "NRx_KonfiHydrWeicheKKPumpe~2"
+
   - platform: vitohome
     name: "K76 KonfiKommunikationsmodul mitHV"
     id: K76_KonfiKommunikationsmodul_mitHV
@@ -616,6 +659,7 @@ select:
       0x00: "0 ohne"
       0x01: "1 LON-Modul"
       0x02: "2 HV-Bus-Modul"
+
   - platform: vitohome
     name: "K79 KonfiFehlerManagerV100 V050"
     id: K79_KonfiFehlerManagerV100_V050
@@ -626,6 +670,7 @@ select:
     options:
       0x00: "0 kein Manager"
       0x01: "1 Fehlermanager"
+
   - platform: vitohome
     name: "NRx K8B KennungKMFeuerungsautomat"
     id: K8B_KennungKMFeuerungsautomat
@@ -636,6 +681,7 @@ select:
     options:
       0x01: "K8B_NRx_KonfiKennungKMFeuerungsautomat~1"
       0x00: "K8B_NRx_KonfiKennungKMFeuerungsautomat~0"
+
   - platform: vitohome
     name: "K97 Konfi Aussentemperatur"
     id: K97_Konfi_Aussentemperatur
@@ -647,6 +693,7 @@ select:
       0x00: "vom Sensor"
       0x01: "vom LON uebernehmen"
       0x02: "auf LON senden"
+
   - platform: vitohome
     name: "K9C KonfiReceiveHeartBeat"
     id: K9C_KonfiReceiveHeartBeat
@@ -716,6 +763,7 @@ select:
       0x02: "K9C_KonfiReceiveHeartBeat~2"
       0x03: "K9C_KonfiReceiveHeartBeat~3"
       0x04: "K9C_KonfiReceiveHeartBeat~4"
+
   # --- Codierungen / Kessel ---
   - platform: vitohome
     name: "K02 KonfiBrennertyp G"
@@ -728,6 +776,7 @@ select:
       0x00: "0 einstufig"
       0x01: "1 zweistufig"
       0x02: "2 modulierend"
+
   - platform: vitohome
     name: "K03 KonfiOelGasBetrieb"
     id: K03_KonfiOelGasBetrieb
@@ -739,6 +788,7 @@ select:
       0x00: "0 Gasbetrieb"
       0x01: "1 Oelbetrieb"
       0x02: "nicht definiert"
+
   - platform: vitohome
     name: "K04 KonfiKesselSchalthysterese"
     id: K04_KonfiKesselSchalthysterese
@@ -750,6 +800,7 @@ select:
       0x00: "0 Standard"
       0x01: "1 ERB 50"
       0x02: "2 ERB 80"
+
   - platform: vitohome
     name: "K0C KonfiDKRLFunktionV100GC1"
     id: K0C_KonfiDKRLFunktionV100GC1
@@ -764,6 +815,7 @@ select:
       0x03: "3 DK schaltend"
       0x04: "4 DK stetig KT"
       0x05: "5 DK stetig"
+
   - platform: vitohome
     name: "K0D KonfiTSA FunktionV100GC1"
     id: K0D_KonfiTSA_FunktionV100GC1
@@ -775,6 +827,7 @@ select:
       0x00: "0 ohne ThermControl"
       0x01: "1 Wirkung auf MK"
       0x02: "2 Wirkung auf DK"
+
   - platform: vitohome
     name: "K24 KonfiStatusWartung"
     id: K24_KonfiStatusWartung
@@ -785,6 +838,7 @@ select:
     options:
       0x00: "0 Grundzustand"
       0x01: "1 Wartung"
+
   - platform: vitohome
     name: "K2D KonfiBeimischpumpeFunktion"
     id: K2D_KonfiBeimischpumpeFunktion
@@ -795,6 +849,7 @@ select:
     options:
       0x00: "0 bei Anforderung"
       0x01: "1 dauernd"
+
   - platform: vitohome
     name: "SR13 EA2 ZieltempRegelung"
     id: SR13_EA2_ZieltempRegelung
@@ -805,6 +860,7 @@ select:
     options:
       0x00: "SR13_ZieltempRegelung~0"
       0x01: "SR13_ZieltempRegelung~1"
+
   - platform: vitohome
     name: "SR13 EA2 EETyp GC1"
     id: SR13_EA2_EETyp_GC1
@@ -820,6 +876,7 @@ select:
       0x04: "SR13_EETyp~4"
       0x05: "SR13_EETyp~5"
       0x06: "SR13_EETyp~6"
+
   - platform: vitohome
     name: "SR13 EA2 EEStellung"
     id: SR13_EA2_EEStellung
@@ -831,6 +888,7 @@ select:
       0x00: "SR13_EEStellung~0"
       0x01: "SR13_EEStellung~1"
       0x02: "SR13_EEStellung~2"
+
   - platform: vitohome
     name: "SR13 EA2 FktDrehzahlPumpe"
     id: SR13_EA2_FktDrehzahlPumpe
@@ -843,6 +901,7 @@ select:
       0x01: "SR13_FktDrehzahlPumpe~1"
       0x02: "SR13_FktDrehzahlPumpe~2"
       0x03: "SR13_FktDrehzahlPumpe~3"
+
   # --- (ohne Gruppenzuordnung) ---
   - platform: vitohome
     name: "K7C KonfiResetAktiv"
@@ -866,6 +925,7 @@ switch:
     # on 0x01 = 1: Ja; off 0x00 = 0: Nein
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "SR13 K4B KonfiKennungSensoreingang2"
     id: SR13_K4B_KonfiKennungSensoreingang2
@@ -874,6 +934,7 @@ switch:
     # on 0x01 = 1: Ja; off 0x00 = 0: Nein
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K78 KonfiNVKommunikationLONV100GC1"
     id: K78_KonfiNVKommunikationLONV100GC1
@@ -882,6 +943,7 @@ switch:
     # on 0x01 = 1 freigegeben; off 0x00 = 0 gesperrt
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K7B KonfiFunktionUhrSenden"
     id: K7B_KonfiFunktionUhrSenden
@@ -890,6 +952,7 @@ switch:
     # on 0x01 = 1 senden; off 0x00 = 0 nicht senden
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Codierungen / Kessel ---
   - platform: vitohome
     name: "K1D KonfiPumpenbeiBrennerein"
@@ -899,6 +962,7 @@ switch:
     # on 0x01 = aktiv; off 0x00 = inaktiv
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "K28 KonfiIntervallzuendung"
     id: K28_KonfiIntervallzuendung
@@ -907,6 +971,7 @@ switch:
     # on 0x01 = 1 aktiv; off 0x00 = 0 inaktiv
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "SR13 EA2 VolumenstromAnpassung"
     id: SR13_EA2_VolumenstromAnpassung
@@ -915,6 +980,7 @@ switch:
     # on 0x01 = Ein; off 0x00 = Aus
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "SR13 EA2 BrennwertOptHydrWeiche"
     id: SR13_EA2_BrennwertOptHydrWeiche
@@ -923,6 +989,7 @@ switch:
     # on 0x01 = Ein; off 0x00 = Aus
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Diagnosis / Erweiterung EA2 ---
   - platform: vitohome
     name: "SR13 DA1"
@@ -932,6 +999,7 @@ switch:
     # on 0x01 = Ein; off 0x00 = Aus
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "SR13 DA2"
     id: SR13_DA2
@@ -948,6 +1016,7 @@ text_sensor:
     id: device_type
     icon: "mdi:identifier"
     entity_category: diagnostic
+
   # --- Diagnosis / Erweiterung EA2 ---
   - platform: vitohome
     type: enum
@@ -960,6 +1029,7 @@ text_sensor:
     options:
       0x00: "Allgemein_Zustand_Ein_Aus~0"
       0x01: "Allgemein_Zustand_Ein_Aus~1"
+
   # --- EA2 / Lasterror ---
   # System fault history slot 1 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 0*9; vcontrold getError0).
@@ -974,102 +1044,8 @@ text_sensor:
     icon: "mdi:alert-circle"
     entity_category: diagnostic
     update_interval: 300s
-    # Fault-code map ('vd300' set) - DEFAULT, verify for this unit (see fault_codes.CONFLICTS):
-    codes:
-      0x00: "Regelbetrieb (kein Fehler)"
-      0x10: "Kurzschluss Außentemperatursensor"
-      0x18: "Unterbrechung Außentemperatursensor"
-      0x19: "Unterbrechung Kommunikation Außentemperatursensor RF"
-      0x1D: "Keine Kommunikation mit Sensor"
-      0x1E: "Strömungssensor defekt"
-      0x1F: "Strömungssensor defekt"
-      0x20: "Kurzschluss Vorlauftemperatursensor Anlage"
-      0x28: "Unterbrechung Vorlauftemperatursensor Anlage"
-      0x30: "Kurzschluss Kesseltemperatursensor"
-      0x38: "Unterbrechung Kesseltemperatursensor"
-      0x40: "Kurzschluss Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x44: "Kurzschluss Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x48: "Unterbrechung Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x49: "Codierung Erweiterung Mischer Heizkreis 2 falsch eingestellt"
-      0x4C: "Unterbrechung Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x4D: "Codierung Erweiterung Mischer Heizkreis 3 falsch eingestellt"
-      0x50: "Kurzschluss Speichertemperatursensor"
-      0x58: "Unterbrechung Speichertemperatursensor"
-      0x90: "Kurzschluss Temperatursensor"
-      0x91: "Kurzschluss Temperatursensor"
-      0x92: "Kurzschluss Kollektortemperatursensor"
-      0x93: "Kurzschluss Speichertemperatursensor"
-      0x94: "Kurzschluss Speichertemperatursensor"
-      0x98: "Unterbrechung Temperatursensor"
-      0x99: "Unterbrechung Temperatursensor"
-      0x9A: "Unterbrechung Kollektortemperatursensor"
-      0x9B: "Unterbrechung Speichertemperatursensor"
-      0x9C: "Unterbrechung Speichertemperatursensor"
-      0x9E: "Zu geringer oder kein Volumenstrom im Solarkreis oder Temperaturwächter hat ausgelöst"
-      0x9F: "Fehler Solarregelungsmodul oder Vitosolic"
-      0xA2: "Anlagendruck zu niedrig"
-      0xA3: "Abgastemperatursensor nicht richtig positioniert"
-      0xA4: "Max. Anlagendruck überschritten"
-      0xA7: "Bedienteil defekt"
-      0xA8: "Luft in der internen Umwälzpumpe oder Mindest-Volumenstrom nicht erreicht"
-      0xA9: "Interne Umwälzpumpe blockiert"
-      0xB0: "Kurzschluss Abgastemperatursensor"
-      0xB1: "Kommunikationsfehler Bedieneinheit"
-      0xB5: "Interner Fehler"
-      0xB7: "Fehler KesselCodierstecker"
-      0xB8: "Unterbrechung Abgastemperatursensor"
-      0xBA: "Kommunikationsfehler Erweiterungssatz für Heizkreis 2 (mit Mischer)"
-      0xBB: "Kommunikationsfehler Erweiterungssatz für Heizkreis 3 (mit Mischer)"
-      0xBC: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 1 (ohne Mischer)"
-      0xBD: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 2 (mit Mischer)"
-      0xBE: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 3 (mit Mischer)"
-      0xBF: "Falsches Kommunikationsmodul LON"
-      0xC1: "Kommunikationsfehler Erweiterung EA1"
-      0xC2: "Kommunikationsfehler Solarregelungsmodul oder Vitosolic"
-      0xC3: "Kommunikationsfehler Erweiterung AM1"
-      0xC4: "Kommunikationsfehler Erweiterung Open Therm"
-      0xC5: "Kommunikationsfehler drehzahlgeregelte interne Pumpe"
-      0xC6: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 2 (mit Mischer)"
-      0xC7: "Kommunikationsfehler drehzahlgeregelte externe Heizkreispumpe Heizkreis 1 (ohne Mischer)"
-      0xC8: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 3 (mit Mischer)"
-      0xCD: "Kommunikationsfehler Vitocom 100 (KM-BUS)"
-      0xCF: "Kommunikationsfehler Kommunikationsmodul LON"
-      0xD6: "Eingang DE1 an Erweiterung EA1 meldet Störung"
-      0xD7: "Eingang DE2 an Erweiterung EA1 meldet Störung"
-      0xD8: "Störung Eingang DE3 an Erweiterung EA1"
-      0xDA: "Kurzschluss Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDB: "Kurzschluss Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDC: "Kurzschluss Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xDD: "Unterbrechung Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDE: "Unterbrechung Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDF: "Unterbrechung Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xE0: "Fehler externer LON-Teilnehmer"
-      0xE1: "Ionisationsstrom während der Kalibrierung zu hoch"
-      0xE2: "Keine Kalibrierung wegen zu geringen Volumenstrom"
-      0xE3: "Zu geringe Wärmeabnahme während der Kalibrierung Temperaturwächter hat ausgeschaltet."
-      0xE4: "Fehler Versorgungsspannung 24 V"
-      0xE5: "Fehler Flammenverstärker"
-      0xE6: "Anlagendruck zu niedrig"
-      0xE7: "Ionisationsstrom während der Kalibrierung zu gering"
-      0xE8: "Ionisationsstrom nicht im gültigen Bereich"
-      0xEA: "Ionisationsstrom während der Kalibrierung nicht im gültigen Bereich (zu große Abweichung gegenüber dem Vorgängerwert)"
-      0xEB: "Wiederholter Flammenverlust während der Kalibrierung"
-      0xEC: "Parameterfehler während der Kalibrierung"
-      0xED: "Interner Fehler"
-      0xEE: "Flammensignal ist bei Brennerstart nicht vorhanden oder zu gering."
-      0xEF: "Flammenverlust direkt nach Flammenbildung (während der Sicherheitszeit)."
-      0xF0: "Interner Fehler"
-      0xF1: "Abgastemperaturbegrenzer hat ausgelöst."
-      0xF2: "Temperaturbegrenzer hat ausgelöst."
-      0xF3: "Flammensignal ist beim Brennerstart bereits vorhanden."
-      0xF7: "Kurzschluss oder Unterbrechung Wasserdrucksensor"
-      0xF8: "Brennstoffventil schließt verspätet."
-      0xF9: "Gebläsedrehzahl beim Brennerstart zu niedrig"
-      0xFA: "Gebläsestillstand nicht erreicht"
-      0xFC: "Gaskombiregler defekt oder fehlerhafte Ansteuerung Modulationsventil oder Abgasweg versperrt"
-      0xFD: "Kessel-Codierstecker fehlt / Fehler Feuerungsautomat"
-      0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
-      0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
+    # codes: { 0x00: "kein Fehler", ... }  # add a code->text map
+
   # System fault history slot 2 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 1*9; vcontrold getError1).
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
@@ -1083,102 +1059,8 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
-    # Fault-code map ('vd300' set) - DEFAULT, verify for this unit (see fault_codes.CONFLICTS):
-    codes:
-      0x00: "Regelbetrieb (kein Fehler)"
-      0x10: "Kurzschluss Außentemperatursensor"
-      0x18: "Unterbrechung Außentemperatursensor"
-      0x19: "Unterbrechung Kommunikation Außentemperatursensor RF"
-      0x1D: "Keine Kommunikation mit Sensor"
-      0x1E: "Strömungssensor defekt"
-      0x1F: "Strömungssensor defekt"
-      0x20: "Kurzschluss Vorlauftemperatursensor Anlage"
-      0x28: "Unterbrechung Vorlauftemperatursensor Anlage"
-      0x30: "Kurzschluss Kesseltemperatursensor"
-      0x38: "Unterbrechung Kesseltemperatursensor"
-      0x40: "Kurzschluss Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x44: "Kurzschluss Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x48: "Unterbrechung Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x49: "Codierung Erweiterung Mischer Heizkreis 2 falsch eingestellt"
-      0x4C: "Unterbrechung Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x4D: "Codierung Erweiterung Mischer Heizkreis 3 falsch eingestellt"
-      0x50: "Kurzschluss Speichertemperatursensor"
-      0x58: "Unterbrechung Speichertemperatursensor"
-      0x90: "Kurzschluss Temperatursensor"
-      0x91: "Kurzschluss Temperatursensor"
-      0x92: "Kurzschluss Kollektortemperatursensor"
-      0x93: "Kurzschluss Speichertemperatursensor"
-      0x94: "Kurzschluss Speichertemperatursensor"
-      0x98: "Unterbrechung Temperatursensor"
-      0x99: "Unterbrechung Temperatursensor"
-      0x9A: "Unterbrechung Kollektortemperatursensor"
-      0x9B: "Unterbrechung Speichertemperatursensor"
-      0x9C: "Unterbrechung Speichertemperatursensor"
-      0x9E: "Zu geringer oder kein Volumenstrom im Solarkreis oder Temperaturwächter hat ausgelöst"
-      0x9F: "Fehler Solarregelungsmodul oder Vitosolic"
-      0xA2: "Anlagendruck zu niedrig"
-      0xA3: "Abgastemperatursensor nicht richtig positioniert"
-      0xA4: "Max. Anlagendruck überschritten"
-      0xA7: "Bedienteil defekt"
-      0xA8: "Luft in der internen Umwälzpumpe oder Mindest-Volumenstrom nicht erreicht"
-      0xA9: "Interne Umwälzpumpe blockiert"
-      0xB0: "Kurzschluss Abgastemperatursensor"
-      0xB1: "Kommunikationsfehler Bedieneinheit"
-      0xB5: "Interner Fehler"
-      0xB7: "Fehler KesselCodierstecker"
-      0xB8: "Unterbrechung Abgastemperatursensor"
-      0xBA: "Kommunikationsfehler Erweiterungssatz für Heizkreis 2 (mit Mischer)"
-      0xBB: "Kommunikationsfehler Erweiterungssatz für Heizkreis 3 (mit Mischer)"
-      0xBC: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 1 (ohne Mischer)"
-      0xBD: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 2 (mit Mischer)"
-      0xBE: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 3 (mit Mischer)"
-      0xBF: "Falsches Kommunikationsmodul LON"
-      0xC1: "Kommunikationsfehler Erweiterung EA1"
-      0xC2: "Kommunikationsfehler Solarregelungsmodul oder Vitosolic"
-      0xC3: "Kommunikationsfehler Erweiterung AM1"
-      0xC4: "Kommunikationsfehler Erweiterung Open Therm"
-      0xC5: "Kommunikationsfehler drehzahlgeregelte interne Pumpe"
-      0xC6: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 2 (mit Mischer)"
-      0xC7: "Kommunikationsfehler drehzahlgeregelte externe Heizkreispumpe Heizkreis 1 (ohne Mischer)"
-      0xC8: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 3 (mit Mischer)"
-      0xCD: "Kommunikationsfehler Vitocom 100 (KM-BUS)"
-      0xCF: "Kommunikationsfehler Kommunikationsmodul LON"
-      0xD6: "Eingang DE1 an Erweiterung EA1 meldet Störung"
-      0xD7: "Eingang DE2 an Erweiterung EA1 meldet Störung"
-      0xD8: "Störung Eingang DE3 an Erweiterung EA1"
-      0xDA: "Kurzschluss Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDB: "Kurzschluss Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDC: "Kurzschluss Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xDD: "Unterbrechung Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDE: "Unterbrechung Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDF: "Unterbrechung Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xE0: "Fehler externer LON-Teilnehmer"
-      0xE1: "Ionisationsstrom während der Kalibrierung zu hoch"
-      0xE2: "Keine Kalibrierung wegen zu geringen Volumenstrom"
-      0xE3: "Zu geringe Wärmeabnahme während der Kalibrierung Temperaturwächter hat ausgeschaltet."
-      0xE4: "Fehler Versorgungsspannung 24 V"
-      0xE5: "Fehler Flammenverstärker"
-      0xE6: "Anlagendruck zu niedrig"
-      0xE7: "Ionisationsstrom während der Kalibrierung zu gering"
-      0xE8: "Ionisationsstrom nicht im gültigen Bereich"
-      0xEA: "Ionisationsstrom während der Kalibrierung nicht im gültigen Bereich (zu große Abweichung gegenüber dem Vorgängerwert)"
-      0xEB: "Wiederholter Flammenverlust während der Kalibrierung"
-      0xEC: "Parameterfehler während der Kalibrierung"
-      0xED: "Interner Fehler"
-      0xEE: "Flammensignal ist bei Brennerstart nicht vorhanden oder zu gering."
-      0xEF: "Flammenverlust direkt nach Flammenbildung (während der Sicherheitszeit)."
-      0xF0: "Interner Fehler"
-      0xF1: "Abgastemperaturbegrenzer hat ausgelöst."
-      0xF2: "Temperaturbegrenzer hat ausgelöst."
-      0xF3: "Flammensignal ist beim Brennerstart bereits vorhanden."
-      0xF7: "Kurzschluss oder Unterbrechung Wasserdrucksensor"
-      0xF8: "Brennstoffventil schließt verspätet."
-      0xF9: "Gebläsedrehzahl beim Brennerstart zu niedrig"
-      0xFA: "Gebläsestillstand nicht erreicht"
-      0xFC: "Gaskombiregler defekt oder fehlerhafte Ansteuerung Modulationsventil oder Abgasweg versperrt"
-      0xFD: "Kessel-Codierstecker fehlt / Fehler Feuerungsautomat"
-      0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
-      0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
+    # codes: { 0x00: "kein Fehler", ... }  # add a code->text map
+
   # System fault history slot 3 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 2*9; vcontrold getError2).
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
@@ -1192,102 +1074,8 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
-    # Fault-code map ('vd300' set) - DEFAULT, verify for this unit (see fault_codes.CONFLICTS):
-    codes:
-      0x00: "Regelbetrieb (kein Fehler)"
-      0x10: "Kurzschluss Außentemperatursensor"
-      0x18: "Unterbrechung Außentemperatursensor"
-      0x19: "Unterbrechung Kommunikation Außentemperatursensor RF"
-      0x1D: "Keine Kommunikation mit Sensor"
-      0x1E: "Strömungssensor defekt"
-      0x1F: "Strömungssensor defekt"
-      0x20: "Kurzschluss Vorlauftemperatursensor Anlage"
-      0x28: "Unterbrechung Vorlauftemperatursensor Anlage"
-      0x30: "Kurzschluss Kesseltemperatursensor"
-      0x38: "Unterbrechung Kesseltemperatursensor"
-      0x40: "Kurzschluss Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x44: "Kurzschluss Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x48: "Unterbrechung Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x49: "Codierung Erweiterung Mischer Heizkreis 2 falsch eingestellt"
-      0x4C: "Unterbrechung Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x4D: "Codierung Erweiterung Mischer Heizkreis 3 falsch eingestellt"
-      0x50: "Kurzschluss Speichertemperatursensor"
-      0x58: "Unterbrechung Speichertemperatursensor"
-      0x90: "Kurzschluss Temperatursensor"
-      0x91: "Kurzschluss Temperatursensor"
-      0x92: "Kurzschluss Kollektortemperatursensor"
-      0x93: "Kurzschluss Speichertemperatursensor"
-      0x94: "Kurzschluss Speichertemperatursensor"
-      0x98: "Unterbrechung Temperatursensor"
-      0x99: "Unterbrechung Temperatursensor"
-      0x9A: "Unterbrechung Kollektortemperatursensor"
-      0x9B: "Unterbrechung Speichertemperatursensor"
-      0x9C: "Unterbrechung Speichertemperatursensor"
-      0x9E: "Zu geringer oder kein Volumenstrom im Solarkreis oder Temperaturwächter hat ausgelöst"
-      0x9F: "Fehler Solarregelungsmodul oder Vitosolic"
-      0xA2: "Anlagendruck zu niedrig"
-      0xA3: "Abgastemperatursensor nicht richtig positioniert"
-      0xA4: "Max. Anlagendruck überschritten"
-      0xA7: "Bedienteil defekt"
-      0xA8: "Luft in der internen Umwälzpumpe oder Mindest-Volumenstrom nicht erreicht"
-      0xA9: "Interne Umwälzpumpe blockiert"
-      0xB0: "Kurzschluss Abgastemperatursensor"
-      0xB1: "Kommunikationsfehler Bedieneinheit"
-      0xB5: "Interner Fehler"
-      0xB7: "Fehler KesselCodierstecker"
-      0xB8: "Unterbrechung Abgastemperatursensor"
-      0xBA: "Kommunikationsfehler Erweiterungssatz für Heizkreis 2 (mit Mischer)"
-      0xBB: "Kommunikationsfehler Erweiterungssatz für Heizkreis 3 (mit Mischer)"
-      0xBC: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 1 (ohne Mischer)"
-      0xBD: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 2 (mit Mischer)"
-      0xBE: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 3 (mit Mischer)"
-      0xBF: "Falsches Kommunikationsmodul LON"
-      0xC1: "Kommunikationsfehler Erweiterung EA1"
-      0xC2: "Kommunikationsfehler Solarregelungsmodul oder Vitosolic"
-      0xC3: "Kommunikationsfehler Erweiterung AM1"
-      0xC4: "Kommunikationsfehler Erweiterung Open Therm"
-      0xC5: "Kommunikationsfehler drehzahlgeregelte interne Pumpe"
-      0xC6: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 2 (mit Mischer)"
-      0xC7: "Kommunikationsfehler drehzahlgeregelte externe Heizkreispumpe Heizkreis 1 (ohne Mischer)"
-      0xC8: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 3 (mit Mischer)"
-      0xCD: "Kommunikationsfehler Vitocom 100 (KM-BUS)"
-      0xCF: "Kommunikationsfehler Kommunikationsmodul LON"
-      0xD6: "Eingang DE1 an Erweiterung EA1 meldet Störung"
-      0xD7: "Eingang DE2 an Erweiterung EA1 meldet Störung"
-      0xD8: "Störung Eingang DE3 an Erweiterung EA1"
-      0xDA: "Kurzschluss Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDB: "Kurzschluss Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDC: "Kurzschluss Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xDD: "Unterbrechung Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDE: "Unterbrechung Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDF: "Unterbrechung Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xE0: "Fehler externer LON-Teilnehmer"
-      0xE1: "Ionisationsstrom während der Kalibrierung zu hoch"
-      0xE2: "Keine Kalibrierung wegen zu geringen Volumenstrom"
-      0xE3: "Zu geringe Wärmeabnahme während der Kalibrierung Temperaturwächter hat ausgeschaltet."
-      0xE4: "Fehler Versorgungsspannung 24 V"
-      0xE5: "Fehler Flammenverstärker"
-      0xE6: "Anlagendruck zu niedrig"
-      0xE7: "Ionisationsstrom während der Kalibrierung zu gering"
-      0xE8: "Ionisationsstrom nicht im gültigen Bereich"
-      0xEA: "Ionisationsstrom während der Kalibrierung nicht im gültigen Bereich (zu große Abweichung gegenüber dem Vorgängerwert)"
-      0xEB: "Wiederholter Flammenverlust während der Kalibrierung"
-      0xEC: "Parameterfehler während der Kalibrierung"
-      0xED: "Interner Fehler"
-      0xEE: "Flammensignal ist bei Brennerstart nicht vorhanden oder zu gering."
-      0xEF: "Flammenverlust direkt nach Flammenbildung (während der Sicherheitszeit)."
-      0xF0: "Interner Fehler"
-      0xF1: "Abgastemperaturbegrenzer hat ausgelöst."
-      0xF2: "Temperaturbegrenzer hat ausgelöst."
-      0xF3: "Flammensignal ist beim Brennerstart bereits vorhanden."
-      0xF7: "Kurzschluss oder Unterbrechung Wasserdrucksensor"
-      0xF8: "Brennstoffventil schließt verspätet."
-      0xF9: "Gebläsedrehzahl beim Brennerstart zu niedrig"
-      0xFA: "Gebläsestillstand nicht erreicht"
-      0xFC: "Gaskombiregler defekt oder fehlerhafte Ansteuerung Modulationsventil oder Abgasweg versperrt"
-      0xFD: "Kessel-Codierstecker fehlt / Fehler Feuerungsautomat"
-      0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
-      0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
+    # codes: { 0x00: "kein Fehler", ... }  # add a code->text map
+
   # System fault history slot 4 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 3*9; vcontrold getError3).
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
@@ -1301,102 +1089,8 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
-    # Fault-code map ('vd300' set) - DEFAULT, verify for this unit (see fault_codes.CONFLICTS):
-    codes:
-      0x00: "Regelbetrieb (kein Fehler)"
-      0x10: "Kurzschluss Außentemperatursensor"
-      0x18: "Unterbrechung Außentemperatursensor"
-      0x19: "Unterbrechung Kommunikation Außentemperatursensor RF"
-      0x1D: "Keine Kommunikation mit Sensor"
-      0x1E: "Strömungssensor defekt"
-      0x1F: "Strömungssensor defekt"
-      0x20: "Kurzschluss Vorlauftemperatursensor Anlage"
-      0x28: "Unterbrechung Vorlauftemperatursensor Anlage"
-      0x30: "Kurzschluss Kesseltemperatursensor"
-      0x38: "Unterbrechung Kesseltemperatursensor"
-      0x40: "Kurzschluss Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x44: "Kurzschluss Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x48: "Unterbrechung Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x49: "Codierung Erweiterung Mischer Heizkreis 2 falsch eingestellt"
-      0x4C: "Unterbrechung Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x4D: "Codierung Erweiterung Mischer Heizkreis 3 falsch eingestellt"
-      0x50: "Kurzschluss Speichertemperatursensor"
-      0x58: "Unterbrechung Speichertemperatursensor"
-      0x90: "Kurzschluss Temperatursensor"
-      0x91: "Kurzschluss Temperatursensor"
-      0x92: "Kurzschluss Kollektortemperatursensor"
-      0x93: "Kurzschluss Speichertemperatursensor"
-      0x94: "Kurzschluss Speichertemperatursensor"
-      0x98: "Unterbrechung Temperatursensor"
-      0x99: "Unterbrechung Temperatursensor"
-      0x9A: "Unterbrechung Kollektortemperatursensor"
-      0x9B: "Unterbrechung Speichertemperatursensor"
-      0x9C: "Unterbrechung Speichertemperatursensor"
-      0x9E: "Zu geringer oder kein Volumenstrom im Solarkreis oder Temperaturwächter hat ausgelöst"
-      0x9F: "Fehler Solarregelungsmodul oder Vitosolic"
-      0xA2: "Anlagendruck zu niedrig"
-      0xA3: "Abgastemperatursensor nicht richtig positioniert"
-      0xA4: "Max. Anlagendruck überschritten"
-      0xA7: "Bedienteil defekt"
-      0xA8: "Luft in der internen Umwälzpumpe oder Mindest-Volumenstrom nicht erreicht"
-      0xA9: "Interne Umwälzpumpe blockiert"
-      0xB0: "Kurzschluss Abgastemperatursensor"
-      0xB1: "Kommunikationsfehler Bedieneinheit"
-      0xB5: "Interner Fehler"
-      0xB7: "Fehler KesselCodierstecker"
-      0xB8: "Unterbrechung Abgastemperatursensor"
-      0xBA: "Kommunikationsfehler Erweiterungssatz für Heizkreis 2 (mit Mischer)"
-      0xBB: "Kommunikationsfehler Erweiterungssatz für Heizkreis 3 (mit Mischer)"
-      0xBC: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 1 (ohne Mischer)"
-      0xBD: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 2 (mit Mischer)"
-      0xBE: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 3 (mit Mischer)"
-      0xBF: "Falsches Kommunikationsmodul LON"
-      0xC1: "Kommunikationsfehler Erweiterung EA1"
-      0xC2: "Kommunikationsfehler Solarregelungsmodul oder Vitosolic"
-      0xC3: "Kommunikationsfehler Erweiterung AM1"
-      0xC4: "Kommunikationsfehler Erweiterung Open Therm"
-      0xC5: "Kommunikationsfehler drehzahlgeregelte interne Pumpe"
-      0xC6: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 2 (mit Mischer)"
-      0xC7: "Kommunikationsfehler drehzahlgeregelte externe Heizkreispumpe Heizkreis 1 (ohne Mischer)"
-      0xC8: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 3 (mit Mischer)"
-      0xCD: "Kommunikationsfehler Vitocom 100 (KM-BUS)"
-      0xCF: "Kommunikationsfehler Kommunikationsmodul LON"
-      0xD6: "Eingang DE1 an Erweiterung EA1 meldet Störung"
-      0xD7: "Eingang DE2 an Erweiterung EA1 meldet Störung"
-      0xD8: "Störung Eingang DE3 an Erweiterung EA1"
-      0xDA: "Kurzschluss Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDB: "Kurzschluss Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDC: "Kurzschluss Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xDD: "Unterbrechung Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDE: "Unterbrechung Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDF: "Unterbrechung Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xE0: "Fehler externer LON-Teilnehmer"
-      0xE1: "Ionisationsstrom während der Kalibrierung zu hoch"
-      0xE2: "Keine Kalibrierung wegen zu geringen Volumenstrom"
-      0xE3: "Zu geringe Wärmeabnahme während der Kalibrierung Temperaturwächter hat ausgeschaltet."
-      0xE4: "Fehler Versorgungsspannung 24 V"
-      0xE5: "Fehler Flammenverstärker"
-      0xE6: "Anlagendruck zu niedrig"
-      0xE7: "Ionisationsstrom während der Kalibrierung zu gering"
-      0xE8: "Ionisationsstrom nicht im gültigen Bereich"
-      0xEA: "Ionisationsstrom während der Kalibrierung nicht im gültigen Bereich (zu große Abweichung gegenüber dem Vorgängerwert)"
-      0xEB: "Wiederholter Flammenverlust während der Kalibrierung"
-      0xEC: "Parameterfehler während der Kalibrierung"
-      0xED: "Interner Fehler"
-      0xEE: "Flammensignal ist bei Brennerstart nicht vorhanden oder zu gering."
-      0xEF: "Flammenverlust direkt nach Flammenbildung (während der Sicherheitszeit)."
-      0xF0: "Interner Fehler"
-      0xF1: "Abgastemperaturbegrenzer hat ausgelöst."
-      0xF2: "Temperaturbegrenzer hat ausgelöst."
-      0xF3: "Flammensignal ist beim Brennerstart bereits vorhanden."
-      0xF7: "Kurzschluss oder Unterbrechung Wasserdrucksensor"
-      0xF8: "Brennstoffventil schließt verspätet."
-      0xF9: "Gebläsedrehzahl beim Brennerstart zu niedrig"
-      0xFA: "Gebläsestillstand nicht erreicht"
-      0xFC: "Gaskombiregler defekt oder fehlerhafte Ansteuerung Modulationsventil oder Abgasweg versperrt"
-      0xFD: "Kessel-Codierstecker fehlt / Fehler Feuerungsautomat"
-      0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
-      0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
+    # codes: { 0x00: "kein Fehler", ... }  # add a code->text map
+
   # System fault history slot 5 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 4*9; vcontrold getError4).
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
@@ -1410,102 +1104,8 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
-    # Fault-code map ('vd300' set) - DEFAULT, verify for this unit (see fault_codes.CONFLICTS):
-    codes:
-      0x00: "Regelbetrieb (kein Fehler)"
-      0x10: "Kurzschluss Außentemperatursensor"
-      0x18: "Unterbrechung Außentemperatursensor"
-      0x19: "Unterbrechung Kommunikation Außentemperatursensor RF"
-      0x1D: "Keine Kommunikation mit Sensor"
-      0x1E: "Strömungssensor defekt"
-      0x1F: "Strömungssensor defekt"
-      0x20: "Kurzschluss Vorlauftemperatursensor Anlage"
-      0x28: "Unterbrechung Vorlauftemperatursensor Anlage"
-      0x30: "Kurzschluss Kesseltemperatursensor"
-      0x38: "Unterbrechung Kesseltemperatursensor"
-      0x40: "Kurzschluss Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x44: "Kurzschluss Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x48: "Unterbrechung Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x49: "Codierung Erweiterung Mischer Heizkreis 2 falsch eingestellt"
-      0x4C: "Unterbrechung Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x4D: "Codierung Erweiterung Mischer Heizkreis 3 falsch eingestellt"
-      0x50: "Kurzschluss Speichertemperatursensor"
-      0x58: "Unterbrechung Speichertemperatursensor"
-      0x90: "Kurzschluss Temperatursensor"
-      0x91: "Kurzschluss Temperatursensor"
-      0x92: "Kurzschluss Kollektortemperatursensor"
-      0x93: "Kurzschluss Speichertemperatursensor"
-      0x94: "Kurzschluss Speichertemperatursensor"
-      0x98: "Unterbrechung Temperatursensor"
-      0x99: "Unterbrechung Temperatursensor"
-      0x9A: "Unterbrechung Kollektortemperatursensor"
-      0x9B: "Unterbrechung Speichertemperatursensor"
-      0x9C: "Unterbrechung Speichertemperatursensor"
-      0x9E: "Zu geringer oder kein Volumenstrom im Solarkreis oder Temperaturwächter hat ausgelöst"
-      0x9F: "Fehler Solarregelungsmodul oder Vitosolic"
-      0xA2: "Anlagendruck zu niedrig"
-      0xA3: "Abgastemperatursensor nicht richtig positioniert"
-      0xA4: "Max. Anlagendruck überschritten"
-      0xA7: "Bedienteil defekt"
-      0xA8: "Luft in der internen Umwälzpumpe oder Mindest-Volumenstrom nicht erreicht"
-      0xA9: "Interne Umwälzpumpe blockiert"
-      0xB0: "Kurzschluss Abgastemperatursensor"
-      0xB1: "Kommunikationsfehler Bedieneinheit"
-      0xB5: "Interner Fehler"
-      0xB7: "Fehler KesselCodierstecker"
-      0xB8: "Unterbrechung Abgastemperatursensor"
-      0xBA: "Kommunikationsfehler Erweiterungssatz für Heizkreis 2 (mit Mischer)"
-      0xBB: "Kommunikationsfehler Erweiterungssatz für Heizkreis 3 (mit Mischer)"
-      0xBC: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 1 (ohne Mischer)"
-      0xBD: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 2 (mit Mischer)"
-      0xBE: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 3 (mit Mischer)"
-      0xBF: "Falsches Kommunikationsmodul LON"
-      0xC1: "Kommunikationsfehler Erweiterung EA1"
-      0xC2: "Kommunikationsfehler Solarregelungsmodul oder Vitosolic"
-      0xC3: "Kommunikationsfehler Erweiterung AM1"
-      0xC4: "Kommunikationsfehler Erweiterung Open Therm"
-      0xC5: "Kommunikationsfehler drehzahlgeregelte interne Pumpe"
-      0xC6: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 2 (mit Mischer)"
-      0xC7: "Kommunikationsfehler drehzahlgeregelte externe Heizkreispumpe Heizkreis 1 (ohne Mischer)"
-      0xC8: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 3 (mit Mischer)"
-      0xCD: "Kommunikationsfehler Vitocom 100 (KM-BUS)"
-      0xCF: "Kommunikationsfehler Kommunikationsmodul LON"
-      0xD6: "Eingang DE1 an Erweiterung EA1 meldet Störung"
-      0xD7: "Eingang DE2 an Erweiterung EA1 meldet Störung"
-      0xD8: "Störung Eingang DE3 an Erweiterung EA1"
-      0xDA: "Kurzschluss Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDB: "Kurzschluss Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDC: "Kurzschluss Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xDD: "Unterbrechung Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDE: "Unterbrechung Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDF: "Unterbrechung Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xE0: "Fehler externer LON-Teilnehmer"
-      0xE1: "Ionisationsstrom während der Kalibrierung zu hoch"
-      0xE2: "Keine Kalibrierung wegen zu geringen Volumenstrom"
-      0xE3: "Zu geringe Wärmeabnahme während der Kalibrierung Temperaturwächter hat ausgeschaltet."
-      0xE4: "Fehler Versorgungsspannung 24 V"
-      0xE5: "Fehler Flammenverstärker"
-      0xE6: "Anlagendruck zu niedrig"
-      0xE7: "Ionisationsstrom während der Kalibrierung zu gering"
-      0xE8: "Ionisationsstrom nicht im gültigen Bereich"
-      0xEA: "Ionisationsstrom während der Kalibrierung nicht im gültigen Bereich (zu große Abweichung gegenüber dem Vorgängerwert)"
-      0xEB: "Wiederholter Flammenverlust während der Kalibrierung"
-      0xEC: "Parameterfehler während der Kalibrierung"
-      0xED: "Interner Fehler"
-      0xEE: "Flammensignal ist bei Brennerstart nicht vorhanden oder zu gering."
-      0xEF: "Flammenverlust direkt nach Flammenbildung (während der Sicherheitszeit)."
-      0xF0: "Interner Fehler"
-      0xF1: "Abgastemperaturbegrenzer hat ausgelöst."
-      0xF2: "Temperaturbegrenzer hat ausgelöst."
-      0xF3: "Flammensignal ist beim Brennerstart bereits vorhanden."
-      0xF7: "Kurzschluss oder Unterbrechung Wasserdrucksensor"
-      0xF8: "Brennstoffventil schließt verspätet."
-      0xF9: "Gebläsedrehzahl beim Brennerstart zu niedrig"
-      0xFA: "Gebläsestillstand nicht erreicht"
-      0xFC: "Gaskombiregler defekt oder fehlerhafte Ansteuerung Modulationsventil oder Abgasweg versperrt"
-      0xFD: "Kessel-Codierstecker fehlt / Fehler Feuerungsautomat"
-      0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
-      0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
+    # codes: { 0x00: "kein Fehler", ... }  # add a code->text map
+
   # System fault history slot 6 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 5*9; vcontrold getError5).
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
@@ -1519,102 +1119,8 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
-    # Fault-code map ('vd300' set) - DEFAULT, verify for this unit (see fault_codes.CONFLICTS):
-    codes:
-      0x00: "Regelbetrieb (kein Fehler)"
-      0x10: "Kurzschluss Außentemperatursensor"
-      0x18: "Unterbrechung Außentemperatursensor"
-      0x19: "Unterbrechung Kommunikation Außentemperatursensor RF"
-      0x1D: "Keine Kommunikation mit Sensor"
-      0x1E: "Strömungssensor defekt"
-      0x1F: "Strömungssensor defekt"
-      0x20: "Kurzschluss Vorlauftemperatursensor Anlage"
-      0x28: "Unterbrechung Vorlauftemperatursensor Anlage"
-      0x30: "Kurzschluss Kesseltemperatursensor"
-      0x38: "Unterbrechung Kesseltemperatursensor"
-      0x40: "Kurzschluss Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x44: "Kurzschluss Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x48: "Unterbrechung Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x49: "Codierung Erweiterung Mischer Heizkreis 2 falsch eingestellt"
-      0x4C: "Unterbrechung Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x4D: "Codierung Erweiterung Mischer Heizkreis 3 falsch eingestellt"
-      0x50: "Kurzschluss Speichertemperatursensor"
-      0x58: "Unterbrechung Speichertemperatursensor"
-      0x90: "Kurzschluss Temperatursensor"
-      0x91: "Kurzschluss Temperatursensor"
-      0x92: "Kurzschluss Kollektortemperatursensor"
-      0x93: "Kurzschluss Speichertemperatursensor"
-      0x94: "Kurzschluss Speichertemperatursensor"
-      0x98: "Unterbrechung Temperatursensor"
-      0x99: "Unterbrechung Temperatursensor"
-      0x9A: "Unterbrechung Kollektortemperatursensor"
-      0x9B: "Unterbrechung Speichertemperatursensor"
-      0x9C: "Unterbrechung Speichertemperatursensor"
-      0x9E: "Zu geringer oder kein Volumenstrom im Solarkreis oder Temperaturwächter hat ausgelöst"
-      0x9F: "Fehler Solarregelungsmodul oder Vitosolic"
-      0xA2: "Anlagendruck zu niedrig"
-      0xA3: "Abgastemperatursensor nicht richtig positioniert"
-      0xA4: "Max. Anlagendruck überschritten"
-      0xA7: "Bedienteil defekt"
-      0xA8: "Luft in der internen Umwälzpumpe oder Mindest-Volumenstrom nicht erreicht"
-      0xA9: "Interne Umwälzpumpe blockiert"
-      0xB0: "Kurzschluss Abgastemperatursensor"
-      0xB1: "Kommunikationsfehler Bedieneinheit"
-      0xB5: "Interner Fehler"
-      0xB7: "Fehler KesselCodierstecker"
-      0xB8: "Unterbrechung Abgastemperatursensor"
-      0xBA: "Kommunikationsfehler Erweiterungssatz für Heizkreis 2 (mit Mischer)"
-      0xBB: "Kommunikationsfehler Erweiterungssatz für Heizkreis 3 (mit Mischer)"
-      0xBC: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 1 (ohne Mischer)"
-      0xBD: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 2 (mit Mischer)"
-      0xBE: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 3 (mit Mischer)"
-      0xBF: "Falsches Kommunikationsmodul LON"
-      0xC1: "Kommunikationsfehler Erweiterung EA1"
-      0xC2: "Kommunikationsfehler Solarregelungsmodul oder Vitosolic"
-      0xC3: "Kommunikationsfehler Erweiterung AM1"
-      0xC4: "Kommunikationsfehler Erweiterung Open Therm"
-      0xC5: "Kommunikationsfehler drehzahlgeregelte interne Pumpe"
-      0xC6: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 2 (mit Mischer)"
-      0xC7: "Kommunikationsfehler drehzahlgeregelte externe Heizkreispumpe Heizkreis 1 (ohne Mischer)"
-      0xC8: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 3 (mit Mischer)"
-      0xCD: "Kommunikationsfehler Vitocom 100 (KM-BUS)"
-      0xCF: "Kommunikationsfehler Kommunikationsmodul LON"
-      0xD6: "Eingang DE1 an Erweiterung EA1 meldet Störung"
-      0xD7: "Eingang DE2 an Erweiterung EA1 meldet Störung"
-      0xD8: "Störung Eingang DE3 an Erweiterung EA1"
-      0xDA: "Kurzschluss Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDB: "Kurzschluss Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDC: "Kurzschluss Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xDD: "Unterbrechung Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDE: "Unterbrechung Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDF: "Unterbrechung Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xE0: "Fehler externer LON-Teilnehmer"
-      0xE1: "Ionisationsstrom während der Kalibrierung zu hoch"
-      0xE2: "Keine Kalibrierung wegen zu geringen Volumenstrom"
-      0xE3: "Zu geringe Wärmeabnahme während der Kalibrierung Temperaturwächter hat ausgeschaltet."
-      0xE4: "Fehler Versorgungsspannung 24 V"
-      0xE5: "Fehler Flammenverstärker"
-      0xE6: "Anlagendruck zu niedrig"
-      0xE7: "Ionisationsstrom während der Kalibrierung zu gering"
-      0xE8: "Ionisationsstrom nicht im gültigen Bereich"
-      0xEA: "Ionisationsstrom während der Kalibrierung nicht im gültigen Bereich (zu große Abweichung gegenüber dem Vorgängerwert)"
-      0xEB: "Wiederholter Flammenverlust während der Kalibrierung"
-      0xEC: "Parameterfehler während der Kalibrierung"
-      0xED: "Interner Fehler"
-      0xEE: "Flammensignal ist bei Brennerstart nicht vorhanden oder zu gering."
-      0xEF: "Flammenverlust direkt nach Flammenbildung (während der Sicherheitszeit)."
-      0xF0: "Interner Fehler"
-      0xF1: "Abgastemperaturbegrenzer hat ausgelöst."
-      0xF2: "Temperaturbegrenzer hat ausgelöst."
-      0xF3: "Flammensignal ist beim Brennerstart bereits vorhanden."
-      0xF7: "Kurzschluss oder Unterbrechung Wasserdrucksensor"
-      0xF8: "Brennstoffventil schließt verspätet."
-      0xF9: "Gebläsedrehzahl beim Brennerstart zu niedrig"
-      0xFA: "Gebläsestillstand nicht erreicht"
-      0xFC: "Gaskombiregler defekt oder fehlerhafte Ansteuerung Modulationsventil oder Abgasweg versperrt"
-      0xFD: "Kessel-Codierstecker fehlt / Fehler Feuerungsautomat"
-      0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
-      0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
+    # codes: { 0x00: "kein Fehler", ... }  # add a code->text map
+
   # System fault history slot 7 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 6*9; vcontrold getError6).
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
@@ -1628,102 +1134,8 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
-    # Fault-code map ('vd300' set) - DEFAULT, verify for this unit (see fault_codes.CONFLICTS):
-    codes:
-      0x00: "Regelbetrieb (kein Fehler)"
-      0x10: "Kurzschluss Außentemperatursensor"
-      0x18: "Unterbrechung Außentemperatursensor"
-      0x19: "Unterbrechung Kommunikation Außentemperatursensor RF"
-      0x1D: "Keine Kommunikation mit Sensor"
-      0x1E: "Strömungssensor defekt"
-      0x1F: "Strömungssensor defekt"
-      0x20: "Kurzschluss Vorlauftemperatursensor Anlage"
-      0x28: "Unterbrechung Vorlauftemperatursensor Anlage"
-      0x30: "Kurzschluss Kesseltemperatursensor"
-      0x38: "Unterbrechung Kesseltemperatursensor"
-      0x40: "Kurzschluss Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x44: "Kurzschluss Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x48: "Unterbrechung Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x49: "Codierung Erweiterung Mischer Heizkreis 2 falsch eingestellt"
-      0x4C: "Unterbrechung Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x4D: "Codierung Erweiterung Mischer Heizkreis 3 falsch eingestellt"
-      0x50: "Kurzschluss Speichertemperatursensor"
-      0x58: "Unterbrechung Speichertemperatursensor"
-      0x90: "Kurzschluss Temperatursensor"
-      0x91: "Kurzschluss Temperatursensor"
-      0x92: "Kurzschluss Kollektortemperatursensor"
-      0x93: "Kurzschluss Speichertemperatursensor"
-      0x94: "Kurzschluss Speichertemperatursensor"
-      0x98: "Unterbrechung Temperatursensor"
-      0x99: "Unterbrechung Temperatursensor"
-      0x9A: "Unterbrechung Kollektortemperatursensor"
-      0x9B: "Unterbrechung Speichertemperatursensor"
-      0x9C: "Unterbrechung Speichertemperatursensor"
-      0x9E: "Zu geringer oder kein Volumenstrom im Solarkreis oder Temperaturwächter hat ausgelöst"
-      0x9F: "Fehler Solarregelungsmodul oder Vitosolic"
-      0xA2: "Anlagendruck zu niedrig"
-      0xA3: "Abgastemperatursensor nicht richtig positioniert"
-      0xA4: "Max. Anlagendruck überschritten"
-      0xA7: "Bedienteil defekt"
-      0xA8: "Luft in der internen Umwälzpumpe oder Mindest-Volumenstrom nicht erreicht"
-      0xA9: "Interne Umwälzpumpe blockiert"
-      0xB0: "Kurzschluss Abgastemperatursensor"
-      0xB1: "Kommunikationsfehler Bedieneinheit"
-      0xB5: "Interner Fehler"
-      0xB7: "Fehler KesselCodierstecker"
-      0xB8: "Unterbrechung Abgastemperatursensor"
-      0xBA: "Kommunikationsfehler Erweiterungssatz für Heizkreis 2 (mit Mischer)"
-      0xBB: "Kommunikationsfehler Erweiterungssatz für Heizkreis 3 (mit Mischer)"
-      0xBC: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 1 (ohne Mischer)"
-      0xBD: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 2 (mit Mischer)"
-      0xBE: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 3 (mit Mischer)"
-      0xBF: "Falsches Kommunikationsmodul LON"
-      0xC1: "Kommunikationsfehler Erweiterung EA1"
-      0xC2: "Kommunikationsfehler Solarregelungsmodul oder Vitosolic"
-      0xC3: "Kommunikationsfehler Erweiterung AM1"
-      0xC4: "Kommunikationsfehler Erweiterung Open Therm"
-      0xC5: "Kommunikationsfehler drehzahlgeregelte interne Pumpe"
-      0xC6: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 2 (mit Mischer)"
-      0xC7: "Kommunikationsfehler drehzahlgeregelte externe Heizkreispumpe Heizkreis 1 (ohne Mischer)"
-      0xC8: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 3 (mit Mischer)"
-      0xCD: "Kommunikationsfehler Vitocom 100 (KM-BUS)"
-      0xCF: "Kommunikationsfehler Kommunikationsmodul LON"
-      0xD6: "Eingang DE1 an Erweiterung EA1 meldet Störung"
-      0xD7: "Eingang DE2 an Erweiterung EA1 meldet Störung"
-      0xD8: "Störung Eingang DE3 an Erweiterung EA1"
-      0xDA: "Kurzschluss Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDB: "Kurzschluss Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDC: "Kurzschluss Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xDD: "Unterbrechung Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDE: "Unterbrechung Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDF: "Unterbrechung Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xE0: "Fehler externer LON-Teilnehmer"
-      0xE1: "Ionisationsstrom während der Kalibrierung zu hoch"
-      0xE2: "Keine Kalibrierung wegen zu geringen Volumenstrom"
-      0xE3: "Zu geringe Wärmeabnahme während der Kalibrierung Temperaturwächter hat ausgeschaltet."
-      0xE4: "Fehler Versorgungsspannung 24 V"
-      0xE5: "Fehler Flammenverstärker"
-      0xE6: "Anlagendruck zu niedrig"
-      0xE7: "Ionisationsstrom während der Kalibrierung zu gering"
-      0xE8: "Ionisationsstrom nicht im gültigen Bereich"
-      0xEA: "Ionisationsstrom während der Kalibrierung nicht im gültigen Bereich (zu große Abweichung gegenüber dem Vorgängerwert)"
-      0xEB: "Wiederholter Flammenverlust während der Kalibrierung"
-      0xEC: "Parameterfehler während der Kalibrierung"
-      0xED: "Interner Fehler"
-      0xEE: "Flammensignal ist bei Brennerstart nicht vorhanden oder zu gering."
-      0xEF: "Flammenverlust direkt nach Flammenbildung (während der Sicherheitszeit)."
-      0xF0: "Interner Fehler"
-      0xF1: "Abgastemperaturbegrenzer hat ausgelöst."
-      0xF2: "Temperaturbegrenzer hat ausgelöst."
-      0xF3: "Flammensignal ist beim Brennerstart bereits vorhanden."
-      0xF7: "Kurzschluss oder Unterbrechung Wasserdrucksensor"
-      0xF8: "Brennstoffventil schließt verspätet."
-      0xF9: "Gebläsedrehzahl beim Brennerstart zu niedrig"
-      0xFA: "Gebläsestillstand nicht erreicht"
-      0xFC: "Gaskombiregler defekt oder fehlerhafte Ansteuerung Modulationsventil oder Abgasweg versperrt"
-      0xFD: "Kessel-Codierstecker fehlt / Fehler Feuerungsautomat"
-      0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
-      0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
+    # codes: { 0x00: "kein Fehler", ... }  # add a code->text map
+
   # System fault history slot 8 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 7*9; vcontrold getError7).
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
@@ -1737,102 +1149,8 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
-    # Fault-code map ('vd300' set) - DEFAULT, verify for this unit (see fault_codes.CONFLICTS):
-    codes:
-      0x00: "Regelbetrieb (kein Fehler)"
-      0x10: "Kurzschluss Außentemperatursensor"
-      0x18: "Unterbrechung Außentemperatursensor"
-      0x19: "Unterbrechung Kommunikation Außentemperatursensor RF"
-      0x1D: "Keine Kommunikation mit Sensor"
-      0x1E: "Strömungssensor defekt"
-      0x1F: "Strömungssensor defekt"
-      0x20: "Kurzschluss Vorlauftemperatursensor Anlage"
-      0x28: "Unterbrechung Vorlauftemperatursensor Anlage"
-      0x30: "Kurzschluss Kesseltemperatursensor"
-      0x38: "Unterbrechung Kesseltemperatursensor"
-      0x40: "Kurzschluss Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x44: "Kurzschluss Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x48: "Unterbrechung Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x49: "Codierung Erweiterung Mischer Heizkreis 2 falsch eingestellt"
-      0x4C: "Unterbrechung Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x4D: "Codierung Erweiterung Mischer Heizkreis 3 falsch eingestellt"
-      0x50: "Kurzschluss Speichertemperatursensor"
-      0x58: "Unterbrechung Speichertemperatursensor"
-      0x90: "Kurzschluss Temperatursensor"
-      0x91: "Kurzschluss Temperatursensor"
-      0x92: "Kurzschluss Kollektortemperatursensor"
-      0x93: "Kurzschluss Speichertemperatursensor"
-      0x94: "Kurzschluss Speichertemperatursensor"
-      0x98: "Unterbrechung Temperatursensor"
-      0x99: "Unterbrechung Temperatursensor"
-      0x9A: "Unterbrechung Kollektortemperatursensor"
-      0x9B: "Unterbrechung Speichertemperatursensor"
-      0x9C: "Unterbrechung Speichertemperatursensor"
-      0x9E: "Zu geringer oder kein Volumenstrom im Solarkreis oder Temperaturwächter hat ausgelöst"
-      0x9F: "Fehler Solarregelungsmodul oder Vitosolic"
-      0xA2: "Anlagendruck zu niedrig"
-      0xA3: "Abgastemperatursensor nicht richtig positioniert"
-      0xA4: "Max. Anlagendruck überschritten"
-      0xA7: "Bedienteil defekt"
-      0xA8: "Luft in der internen Umwälzpumpe oder Mindest-Volumenstrom nicht erreicht"
-      0xA9: "Interne Umwälzpumpe blockiert"
-      0xB0: "Kurzschluss Abgastemperatursensor"
-      0xB1: "Kommunikationsfehler Bedieneinheit"
-      0xB5: "Interner Fehler"
-      0xB7: "Fehler KesselCodierstecker"
-      0xB8: "Unterbrechung Abgastemperatursensor"
-      0xBA: "Kommunikationsfehler Erweiterungssatz für Heizkreis 2 (mit Mischer)"
-      0xBB: "Kommunikationsfehler Erweiterungssatz für Heizkreis 3 (mit Mischer)"
-      0xBC: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 1 (ohne Mischer)"
-      0xBD: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 2 (mit Mischer)"
-      0xBE: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 3 (mit Mischer)"
-      0xBF: "Falsches Kommunikationsmodul LON"
-      0xC1: "Kommunikationsfehler Erweiterung EA1"
-      0xC2: "Kommunikationsfehler Solarregelungsmodul oder Vitosolic"
-      0xC3: "Kommunikationsfehler Erweiterung AM1"
-      0xC4: "Kommunikationsfehler Erweiterung Open Therm"
-      0xC5: "Kommunikationsfehler drehzahlgeregelte interne Pumpe"
-      0xC6: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 2 (mit Mischer)"
-      0xC7: "Kommunikationsfehler drehzahlgeregelte externe Heizkreispumpe Heizkreis 1 (ohne Mischer)"
-      0xC8: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 3 (mit Mischer)"
-      0xCD: "Kommunikationsfehler Vitocom 100 (KM-BUS)"
-      0xCF: "Kommunikationsfehler Kommunikationsmodul LON"
-      0xD6: "Eingang DE1 an Erweiterung EA1 meldet Störung"
-      0xD7: "Eingang DE2 an Erweiterung EA1 meldet Störung"
-      0xD8: "Störung Eingang DE3 an Erweiterung EA1"
-      0xDA: "Kurzschluss Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDB: "Kurzschluss Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDC: "Kurzschluss Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xDD: "Unterbrechung Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDE: "Unterbrechung Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDF: "Unterbrechung Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xE0: "Fehler externer LON-Teilnehmer"
-      0xE1: "Ionisationsstrom während der Kalibrierung zu hoch"
-      0xE2: "Keine Kalibrierung wegen zu geringen Volumenstrom"
-      0xE3: "Zu geringe Wärmeabnahme während der Kalibrierung Temperaturwächter hat ausgeschaltet."
-      0xE4: "Fehler Versorgungsspannung 24 V"
-      0xE5: "Fehler Flammenverstärker"
-      0xE6: "Anlagendruck zu niedrig"
-      0xE7: "Ionisationsstrom während der Kalibrierung zu gering"
-      0xE8: "Ionisationsstrom nicht im gültigen Bereich"
-      0xEA: "Ionisationsstrom während der Kalibrierung nicht im gültigen Bereich (zu große Abweichung gegenüber dem Vorgängerwert)"
-      0xEB: "Wiederholter Flammenverlust während der Kalibrierung"
-      0xEC: "Parameterfehler während der Kalibrierung"
-      0xED: "Interner Fehler"
-      0xEE: "Flammensignal ist bei Brennerstart nicht vorhanden oder zu gering."
-      0xEF: "Flammenverlust direkt nach Flammenbildung (während der Sicherheitszeit)."
-      0xF0: "Interner Fehler"
-      0xF1: "Abgastemperaturbegrenzer hat ausgelöst."
-      0xF2: "Temperaturbegrenzer hat ausgelöst."
-      0xF3: "Flammensignal ist beim Brennerstart bereits vorhanden."
-      0xF7: "Kurzschluss oder Unterbrechung Wasserdrucksensor"
-      0xF8: "Brennstoffventil schließt verspätet."
-      0xF9: "Gebläsedrehzahl beim Brennerstart zu niedrig"
-      0xFA: "Gebläsestillstand nicht erreicht"
-      0xFC: "Gaskombiregler defekt oder fehlerhafte Ansteuerung Modulationsventil oder Abgasweg versperrt"
-      0xFD: "Kessel-Codierstecker fehlt / Fehler Feuerungsautomat"
-      0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
-      0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
+    # codes: { 0x00: "kein Fehler", ... }  # add a code->text map
+
   # System fault history slot 9 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 8*9; vcontrold getError8).
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
@@ -1846,102 +1164,8 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
-    # Fault-code map ('vd300' set) - DEFAULT, verify for this unit (see fault_codes.CONFLICTS):
-    codes:
-      0x00: "Regelbetrieb (kein Fehler)"
-      0x10: "Kurzschluss Außentemperatursensor"
-      0x18: "Unterbrechung Außentemperatursensor"
-      0x19: "Unterbrechung Kommunikation Außentemperatursensor RF"
-      0x1D: "Keine Kommunikation mit Sensor"
-      0x1E: "Strömungssensor defekt"
-      0x1F: "Strömungssensor defekt"
-      0x20: "Kurzschluss Vorlauftemperatursensor Anlage"
-      0x28: "Unterbrechung Vorlauftemperatursensor Anlage"
-      0x30: "Kurzschluss Kesseltemperatursensor"
-      0x38: "Unterbrechung Kesseltemperatursensor"
-      0x40: "Kurzschluss Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x44: "Kurzschluss Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x48: "Unterbrechung Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x49: "Codierung Erweiterung Mischer Heizkreis 2 falsch eingestellt"
-      0x4C: "Unterbrechung Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x4D: "Codierung Erweiterung Mischer Heizkreis 3 falsch eingestellt"
-      0x50: "Kurzschluss Speichertemperatursensor"
-      0x58: "Unterbrechung Speichertemperatursensor"
-      0x90: "Kurzschluss Temperatursensor"
-      0x91: "Kurzschluss Temperatursensor"
-      0x92: "Kurzschluss Kollektortemperatursensor"
-      0x93: "Kurzschluss Speichertemperatursensor"
-      0x94: "Kurzschluss Speichertemperatursensor"
-      0x98: "Unterbrechung Temperatursensor"
-      0x99: "Unterbrechung Temperatursensor"
-      0x9A: "Unterbrechung Kollektortemperatursensor"
-      0x9B: "Unterbrechung Speichertemperatursensor"
-      0x9C: "Unterbrechung Speichertemperatursensor"
-      0x9E: "Zu geringer oder kein Volumenstrom im Solarkreis oder Temperaturwächter hat ausgelöst"
-      0x9F: "Fehler Solarregelungsmodul oder Vitosolic"
-      0xA2: "Anlagendruck zu niedrig"
-      0xA3: "Abgastemperatursensor nicht richtig positioniert"
-      0xA4: "Max. Anlagendruck überschritten"
-      0xA7: "Bedienteil defekt"
-      0xA8: "Luft in der internen Umwälzpumpe oder Mindest-Volumenstrom nicht erreicht"
-      0xA9: "Interne Umwälzpumpe blockiert"
-      0xB0: "Kurzschluss Abgastemperatursensor"
-      0xB1: "Kommunikationsfehler Bedieneinheit"
-      0xB5: "Interner Fehler"
-      0xB7: "Fehler KesselCodierstecker"
-      0xB8: "Unterbrechung Abgastemperatursensor"
-      0xBA: "Kommunikationsfehler Erweiterungssatz für Heizkreis 2 (mit Mischer)"
-      0xBB: "Kommunikationsfehler Erweiterungssatz für Heizkreis 3 (mit Mischer)"
-      0xBC: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 1 (ohne Mischer)"
-      0xBD: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 2 (mit Mischer)"
-      0xBE: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 3 (mit Mischer)"
-      0xBF: "Falsches Kommunikationsmodul LON"
-      0xC1: "Kommunikationsfehler Erweiterung EA1"
-      0xC2: "Kommunikationsfehler Solarregelungsmodul oder Vitosolic"
-      0xC3: "Kommunikationsfehler Erweiterung AM1"
-      0xC4: "Kommunikationsfehler Erweiterung Open Therm"
-      0xC5: "Kommunikationsfehler drehzahlgeregelte interne Pumpe"
-      0xC6: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 2 (mit Mischer)"
-      0xC7: "Kommunikationsfehler drehzahlgeregelte externe Heizkreispumpe Heizkreis 1 (ohne Mischer)"
-      0xC8: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 3 (mit Mischer)"
-      0xCD: "Kommunikationsfehler Vitocom 100 (KM-BUS)"
-      0xCF: "Kommunikationsfehler Kommunikationsmodul LON"
-      0xD6: "Eingang DE1 an Erweiterung EA1 meldet Störung"
-      0xD7: "Eingang DE2 an Erweiterung EA1 meldet Störung"
-      0xD8: "Störung Eingang DE3 an Erweiterung EA1"
-      0xDA: "Kurzschluss Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDB: "Kurzschluss Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDC: "Kurzschluss Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xDD: "Unterbrechung Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDE: "Unterbrechung Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDF: "Unterbrechung Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xE0: "Fehler externer LON-Teilnehmer"
-      0xE1: "Ionisationsstrom während der Kalibrierung zu hoch"
-      0xE2: "Keine Kalibrierung wegen zu geringen Volumenstrom"
-      0xE3: "Zu geringe Wärmeabnahme während der Kalibrierung Temperaturwächter hat ausgeschaltet."
-      0xE4: "Fehler Versorgungsspannung 24 V"
-      0xE5: "Fehler Flammenverstärker"
-      0xE6: "Anlagendruck zu niedrig"
-      0xE7: "Ionisationsstrom während der Kalibrierung zu gering"
-      0xE8: "Ionisationsstrom nicht im gültigen Bereich"
-      0xEA: "Ionisationsstrom während der Kalibrierung nicht im gültigen Bereich (zu große Abweichung gegenüber dem Vorgängerwert)"
-      0xEB: "Wiederholter Flammenverlust während der Kalibrierung"
-      0xEC: "Parameterfehler während der Kalibrierung"
-      0xED: "Interner Fehler"
-      0xEE: "Flammensignal ist bei Brennerstart nicht vorhanden oder zu gering."
-      0xEF: "Flammenverlust direkt nach Flammenbildung (während der Sicherheitszeit)."
-      0xF0: "Interner Fehler"
-      0xF1: "Abgastemperaturbegrenzer hat ausgelöst."
-      0xF2: "Temperaturbegrenzer hat ausgelöst."
-      0xF3: "Flammensignal ist beim Brennerstart bereits vorhanden."
-      0xF7: "Kurzschluss oder Unterbrechung Wasserdrucksensor"
-      0xF8: "Brennstoffventil schließt verspätet."
-      0xF9: "Gebläsedrehzahl beim Brennerstart zu niedrig"
-      0xFA: "Gebläsestillstand nicht erreicht"
-      0xFC: "Gaskombiregler defekt oder fehlerhafte Ansteuerung Modulationsventil oder Abgasweg versperrt"
-      0xFD: "Kessel-Codierstecker fehlt / Fehler Feuerungsautomat"
-      0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
-      0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
+    # codes: { 0x00: "kein Fehler", ... }  # add a code->text map
+
   # System fault history slot 10 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 9*9; vcontrold getError9).
   # If the device NAKs the 9-byte block read, drop length to 1 (code only).
@@ -1955,102 +1179,7 @@ text_sensor:
     entity_category: diagnostic
     disabled_by_default: true
     update_interval: 300s
-    # Fault-code map ('vd300' set) - DEFAULT, verify for this unit (see fault_codes.CONFLICTS):
-    codes:
-      0x00: "Regelbetrieb (kein Fehler)"
-      0x10: "Kurzschluss Außentemperatursensor"
-      0x18: "Unterbrechung Außentemperatursensor"
-      0x19: "Unterbrechung Kommunikation Außentemperatursensor RF"
-      0x1D: "Keine Kommunikation mit Sensor"
-      0x1E: "Strömungssensor defekt"
-      0x1F: "Strömungssensor defekt"
-      0x20: "Kurzschluss Vorlauftemperatursensor Anlage"
-      0x28: "Unterbrechung Vorlauftemperatursensor Anlage"
-      0x30: "Kurzschluss Kesseltemperatursensor"
-      0x38: "Unterbrechung Kesseltemperatursensor"
-      0x40: "Kurzschluss Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x44: "Kurzschluss Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x48: "Unterbrechung Vorlauftemperatursensor Heizkreis 2 (mit Mischer)"
-      0x49: "Codierung Erweiterung Mischer Heizkreis 2 falsch eingestellt"
-      0x4C: "Unterbrechung Vorlauftemperatursensor Heizkreis 3 (mit Mischer)"
-      0x4D: "Codierung Erweiterung Mischer Heizkreis 3 falsch eingestellt"
-      0x50: "Kurzschluss Speichertemperatursensor"
-      0x58: "Unterbrechung Speichertemperatursensor"
-      0x90: "Kurzschluss Temperatursensor"
-      0x91: "Kurzschluss Temperatursensor"
-      0x92: "Kurzschluss Kollektortemperatursensor"
-      0x93: "Kurzschluss Speichertemperatursensor"
-      0x94: "Kurzschluss Speichertemperatursensor"
-      0x98: "Unterbrechung Temperatursensor"
-      0x99: "Unterbrechung Temperatursensor"
-      0x9A: "Unterbrechung Kollektortemperatursensor"
-      0x9B: "Unterbrechung Speichertemperatursensor"
-      0x9C: "Unterbrechung Speichertemperatursensor"
-      0x9E: "Zu geringer oder kein Volumenstrom im Solarkreis oder Temperaturwächter hat ausgelöst"
-      0x9F: "Fehler Solarregelungsmodul oder Vitosolic"
-      0xA2: "Anlagendruck zu niedrig"
-      0xA3: "Abgastemperatursensor nicht richtig positioniert"
-      0xA4: "Max. Anlagendruck überschritten"
-      0xA7: "Bedienteil defekt"
-      0xA8: "Luft in der internen Umwälzpumpe oder Mindest-Volumenstrom nicht erreicht"
-      0xA9: "Interne Umwälzpumpe blockiert"
-      0xB0: "Kurzschluss Abgastemperatursensor"
-      0xB1: "Kommunikationsfehler Bedieneinheit"
-      0xB5: "Interner Fehler"
-      0xB7: "Fehler KesselCodierstecker"
-      0xB8: "Unterbrechung Abgastemperatursensor"
-      0xBA: "Kommunikationsfehler Erweiterungssatz für Heizkreis 2 (mit Mischer)"
-      0xBB: "Kommunikationsfehler Erweiterungssatz für Heizkreis 3 (mit Mischer)"
-      0xBC: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 1 (ohne Mischer)"
-      0xBD: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 2 (mit Mischer)"
-      0xBE: "Kommunikationsfehler Fernbedienung Vitotrol Heizkreis 3 (mit Mischer)"
-      0xBF: "Falsches Kommunikationsmodul LON"
-      0xC1: "Kommunikationsfehler Erweiterung EA1"
-      0xC2: "Kommunikationsfehler Solarregelungsmodul oder Vitosolic"
-      0xC3: "Kommunikationsfehler Erweiterung AM1"
-      0xC4: "Kommunikationsfehler Erweiterung Open Therm"
-      0xC5: "Kommunikationsfehler drehzahlgeregelte interne Pumpe"
-      0xC6: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 2 (mit Mischer)"
-      0xC7: "Kommunikationsfehler drehzahlgeregelte externe Heizkreispumpe Heizkreis 1 (ohne Mischer)"
-      0xC8: "Kommunikationsfehler drehzahlgeregelte, externe Heizkreispumpe Heizkreis 3 (mit Mischer)"
-      0xCD: "Kommunikationsfehler Vitocom 100 (KM-BUS)"
-      0xCF: "Kommunikationsfehler Kommunikationsmodul LON"
-      0xD6: "Eingang DE1 an Erweiterung EA1 meldet Störung"
-      0xD7: "Eingang DE2 an Erweiterung EA1 meldet Störung"
-      0xD8: "Störung Eingang DE3 an Erweiterung EA1"
-      0xDA: "Kurzschluss Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDB: "Kurzschluss Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDC: "Kurzschluss Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xDD: "Unterbrechung Raumtemperatursensor Heizkreis 1 (ohne Mischer)"
-      0xDE: "Unterbrechung Raumtemperatursensor Heizkreis 2 (mit Mischer)"
-      0xDF: "Unterbrechung Raumtemperatursensor Heizkreis 3 (mit Mischer)"
-      0xE0: "Fehler externer LON-Teilnehmer"
-      0xE1: "Ionisationsstrom während der Kalibrierung zu hoch"
-      0xE2: "Keine Kalibrierung wegen zu geringen Volumenstrom"
-      0xE3: "Zu geringe Wärmeabnahme während der Kalibrierung Temperaturwächter hat ausgeschaltet."
-      0xE4: "Fehler Versorgungsspannung 24 V"
-      0xE5: "Fehler Flammenverstärker"
-      0xE6: "Anlagendruck zu niedrig"
-      0xE7: "Ionisationsstrom während der Kalibrierung zu gering"
-      0xE8: "Ionisationsstrom nicht im gültigen Bereich"
-      0xEA: "Ionisationsstrom während der Kalibrierung nicht im gültigen Bereich (zu große Abweichung gegenüber dem Vorgängerwert)"
-      0xEB: "Wiederholter Flammenverlust während der Kalibrierung"
-      0xEC: "Parameterfehler während der Kalibrierung"
-      0xED: "Interner Fehler"
-      0xEE: "Flammensignal ist bei Brennerstart nicht vorhanden oder zu gering."
-      0xEF: "Flammenverlust direkt nach Flammenbildung (während der Sicherheitszeit)."
-      0xF0: "Interner Fehler"
-      0xF1: "Abgastemperaturbegrenzer hat ausgelöst."
-      0xF2: "Temperaturbegrenzer hat ausgelöst."
-      0xF3: "Flammensignal ist beim Brennerstart bereits vorhanden."
-      0xF7: "Kurzschluss oder Unterbrechung Wasserdrucksensor"
-      0xF8: "Brennstoffventil schließt verspätet."
-      0xF9: "Gebläsedrehzahl beim Brennerstart zu niedrig"
-      0xFA: "Gebläsestillstand nicht erreicht"
-      0xFC: "Gaskombiregler defekt oder fehlerhafte Ansteuerung Modulationsventil oder Abgasweg versperrt"
-      0xFD: "Kessel-Codierstecker fehlt / Fehler Feuerungsautomat"
-      0xFE: "Kessel-Codierstecker oder Grundleiterplatte defekt oder falscher Kessel-Codierstecker"
-      0xFF: "Interner Fehler oder Entriegelungstaste R blockiert"
+    # codes: { 0x00: "kein Fehler", ... }  # add a code->text map
 
 # --- datapoints needing custom decode (not auto-emitted) ---
 # ecnsysEventType~ErrorIndex @ 0x7561: NoConversion length 10 > 4 bytes -> custom decode

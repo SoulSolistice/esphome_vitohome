@@ -35,6 +35,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "vcLanTeilnehmernummer"
     id: vcLanTeilnehmernummer
@@ -58,6 +59,7 @@ text_sensor:
     id: device_type
     icon: "mdi:identifier"
     entity_category: diagnostic
+
   # --- Versionen ---
   - platform: vitohome
     type: enum

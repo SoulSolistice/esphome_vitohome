@@ -115,6 +115,48 @@ int main() {
   check(g_errors == 2 && g_last_error == optolink::OptolinkResult::TIMEOUT, "short answer -> TIMEOUT");
   check(g_responses == 1, "no partial payload delivered");
 
+  // --- (a) the hostile ordering: ENQ ALREADY BUFFERED when the loop resumes --
+  // The cases above all feed the late ENQ *after* the deadline has been
+  // observed, which is the benign ordering. Real hardware does the opposite:
+  // the ESP32 UART RX FIFO holds the idle ENQ while the host is busy (60 s
+  // entity publishes, API state flush -- the very stall the capture blamed),
+  // so by the time _receive() runs again the byte is already sitting there.
+  //
+  // If the deadline is checked AFTER the drain, this is still a misread: the
+  // drain consumes 0x05, re-arms _lastMillis (so the deadline cannot fire in
+  // that iteration), _bytesTransferred hits 1 == expected, and the read
+  // completes with a sync byte as its payload. Checking the deadline BEFORE
+  // the drain is what makes this case behave.
+  const int responses_before = g_responses;
+  const int errors_before = g_errors;
+  check(adapter.read(0x0071, 1), "read 0x71 accepted");
+  uart.feed({0x05});  // ENQ -> sync + same-loop send
+  adapter.loop();
+  uart.clear_written();
+  std::printf("  (host stalled; idle ENQ arrives INTO THE BUFFER during the stall ...)\n");
+  uart.feed({0x05});  // device's next idle ENQ, buffered while we are not looking
+  std::this_thread::sleep_for(std::chrono::milliseconds(400));
+  pump(adapter);  // first loop() after the stall: byte is already buffered
+  check(g_responses == responses_before, "buffered idle ENQ is NOT delivered as data");
+  check(g_errors == errors_before + 1 && g_last_error == optolink::OptolinkResult::TIMEOUT,
+        "stalled-host misread -> TIMEOUT");
+  check(g_last_error_addr == 0x0071, "TIMEOUT reports the request address");
+  check(!adapter.isBusy(), "engine idle again after the stalled-host TIMEOUT");
+
+  // The stale byte must not survive into the next transaction either: left in
+  // the buffer it would be picked up by _init() as a fresh sync byte and burn
+  // the next request on a window that has already closed.
+  check(adapter.read(0x0072, 1), "read 0x72 accepted");
+  pump(adapter);
+  check(uart.written().empty(), "no request sent off the flushed stale ENQ");
+  uart.feed({0x05});  // a genuinely fresh ENQ
+  adapter.loop();
+  const std::vector<uint8_t> want72 = {0x01, 0xCB, 0x72, 0x01, 0x04};
+  check(uart.written() == want72, "next request waits for a fresh ENQ");
+  uart.feed({0x21});
+  pump(adapter);
+  check(g_responses == responses_before + 1, "engine recovers and completes the next read");
+
   std::printf("gwg ENQ-misread guard: %d failure(s)\n", failures);
   return failures == 0 ? 0 : 1;
 }

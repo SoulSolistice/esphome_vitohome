@@ -41,7 +41,32 @@ class VS1Engine {
   // literals; kept per-engine (do not unify across protocols).
   static constexpr uint32_t REQUEST_TIMEOUT_MS = 4000;     // per-request response watchdog
   static constexpr uint32_t ENQ_RESET_INTERVAL_MS = 3000;  // reset/EOT when no ENQ (Vitotronic on VS2)
-  static constexpr uint32_t SYNC_WINDOW_MS = 50;           // ENQ-ACK / re-send sync window
+  // Two windows, deliberately separate. They used to be one 50 ms
+  // SYNC_WINDOW_MS serving both, which conflated a protocol requirement with a
+  // throughput policy and pinned the second to the first.
+  //
+  // ENQ_ACK_WINDOW_MS: how long after the device's ENQ we may still answer it
+  // with ENQ_ACK and start a telegram (_syncEnq). This one IS a protocol
+  // constraint -- the KW-family master has to answer inside the device's sync
+  // window -- and keeps upstream's value.
+  static constexpr uint32_t ENQ_ACK_WINDOW_MS = 50;
+  // CHAIN_WINDOW_MS: how long a chain of telegrams may pause between an answer
+  // and the next request before the engine gives up and waits for a fresh ENQ
+  // (_syncRecv). This is a throughput policy, not a protocol constraint, and
+  // the two have very different natural sizes.
+  //
+  // Hardware-measured (2026-08-24 capture, VScotHO1_72 0x20CB, ESP32-C3, 56
+  // entities): the answer-to-next-request gap ran 22-42 ms over 235
+  // transactions (median 29, p90 35). Against the old 50 ms that is ~8 ms of
+  // headroom -- fine on that config, but any extra loop latency pushes a gap
+  // past it and silently ends the chain, dropping the poll rate back to one
+  // telegram per ENQ (~1.2-2 s each). vogod uses 1500 ms for exactly this job,
+  // and GWGEngine::ENQ_VALIDITY_MS is 1500 ms; this matches them.
+  //
+  // Exceeding it is a SOFT failure: the chain simply ends and the next
+  // telegram waits for an ENQ. So the cost of being too tight is throughput,
+  // and the cost of being too loose is bounded by the guard in _syncRecv().
+  static constexpr uint32_t CHAIN_WINDOW_MS = 1500;
 
   // Fixed response buffer: bounds the largest VS1 datapoint payload. 256 is a
   // safe upper bound (datapoint length is a uint8_t).

@@ -11,6 +11,12 @@ fixed std::array<uint8_t, kMaxFrame>. A GWG write stores its payload after a
 4-byte header (ENQ_ACK, type, addr, len) and is terminated by an EOT byte,
 with a uint8_t length, so kMaxFrame = 260 covers every valid frame with
 margin. Deleted copy operations restored.
+
+Access modes (2026-08-24, see GWGAccessMode in constants.h): createPacket()
+accepts any of the eight read-direction TYPE bytes rather than only the
+PHYSICAL READ 0xCB it took before, and length() reports the same 5-byte frame
+shape for all of them. Every other TYPE byte -- including every
+write-direction byte except PacketGWGType.WRITE -- is still rejected.
 */
 
 #pragma once

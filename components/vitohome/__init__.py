@@ -131,11 +131,35 @@ CONF_BYTE_LENGTH = "byte_length"
 # GWG access mode (2026-08-24). Only meaningful under `protocol: GWG` --
 # enforced in _final_validate below, the same place the single-byte GWG
 # address constraint already lives, since both need the full config visible
-# to know the hub's protocol. Currently wired into the `sensor` platform only
-# (scope decision: that is what the diagnostic use case -- distinguishing a
-# wrong access mode from a framing bug at 0x0F8 -- needs); other entity
-# platforms could gain it the same way later.
+# to know the hub's protocol.
+#
+# Wired into every addressed platform (_ACCESS_DOMAINS). A GWG datapoint's
+# access mode selects the TYPE byte, and GWG addresses are per-mode, so
+# `address:` alone is ambiguous -- Vitosoft's own GWG tables have five
+# different datapoints at address 0x01 across four modes.
+#
+# ONE mode drives both directions. Vitosoft pairs every writable GWG datapoint
+# as (EEPROM_READ, EEPROM_WRITE) or (BE_READ, BE_WRITE), never across modes, so
+# a separate write_access would be a way to express only wrong things. The two
+# KMBUS modes have no write TYPE byte at all; the engine refuses a write in
+# those rather than silently substituting another mode.
 CONF_ACCESS = "access"
+
+# Platforms whose schema accepts `access:`. Kept here so _final_validate and
+# the platform modules cannot drift apart.
+_ACCESS_DOMAINS = ("sensor", "binary_sensor", "text_sensor", "number", "select", "switch", "text")
+
+# The subset of those that WRITE. GWGEngine::write() permanently refuses an
+# access mode with no write telegram type, and the write lane's response to a
+# permanent refusal is to drop the item and log -- so such an entity would
+# compile, publish, accept a value from Home Assistant, and silently never
+# write it. Rejected at config time instead (see _final_validate).
+_WRITE_DOMAINS = ("number", "select", "switch", "text")
+
+# Access modes with no write telegram type in the openv wiki's Protokoll-GWG
+# table -- mirrors gwgWriteTypeByte()/gwgModeIsWritable() in constants.h, which
+# return kNoGwgWriteType for exactly these two.
+_READ_ONLY_ACCESS_MODES = ("kmbus_ram", "kmbus_eeprom")
 
 vitohome_ns = cg.esphome_ns.namespace("vitohome")
 optolink_ns = vitohome_ns.namespace("optolink")
@@ -690,10 +714,13 @@ _ADDRESS_DOMAINS = ("sensor", "binary_sensor", "text_sensor", "number", "select"
 # vcontrold, whose GWG device (ID 2053, "V200WB2 ID=2053 Protokoll:GWG_VBEM")
 # overrides every command onto single-byte addresses (0x63, 0xF8, 0x22, 0x01,
 # 0x17) rather than the 16-bit ones used on KW/P300.
-# Consequence: the generated catalogs, which carry 16-bit Vitosoft addresses,
-# are meaningless under `protocol: GWG` -- and at runtime a rejected packet
-# never leaves the hub's dispatch lane, so ONE such entity at the front of the
-# read or write queue stalls that lane (and everything behind it) permanently.
+# Consequence: a catalog generated for a P300/KW device -- 16-bit Vitosoft
+# addresses -- is meaningless under `protocol: GWG`. (A catalog generated for a
+# Vitosoft GWG_* device token is NOT: those tables are already 8-bit, 4066 of
+# 4143 events across all 22 GWG tokens, and gen_catalog.py drops the rest. See
+# its --protocol flag.) At runtime a rejected packet never leaves the hub's
+# dispatch lane, so ONE such entity at the front of the read or write queue
+# stalls that lane (and everything behind it) permanently.
 # That failure mode is exactly why this must be a hard `esphome config` error.
 # The check spans every platform that carries a 16-bit address: the flat
 # address/state_address keys, climate's target_address, and climate's nested
@@ -803,17 +830,37 @@ def _final_validate(config):
                         f"{domain} '{_entity_name(entity)}' uses {key} 0x{addr:04X}, but the GWG "
                         f"protocol addresses a single byte (0x00..0xFF) -- the engine rejects the "
                         f"request, which would permanently stall its dispatch lane at runtime. GWG "
-                        f"uses its own 8-bit address space; the generated catalogs (16-bit Vitosoft "
-                        f"addresses) do not apply to it."
+                        f"uses its own 8-bit address space, so a catalog generated for a P300/KW "
+                        f"device does not apply to it. Generate from a Vitosoft GWG_* device token "
+                        f"instead (scripts/gen_catalog.py picks the GWG rules up from the token, or "
+                        f"pass --protocol GWG)."
                     )
+
+        # A writable entity in an access mode that has no write telegram type
+        # is a config error, not a runtime one. GWG's KMBUS modes are read-only
+        # (the wiki gives no write TYPE byte for either), so GWGEngine::write()
+        # refuses them permanently; the write lane drops a permanent refusal and
+        # logs, which means the entity would look completely normal in Home
+        # Assistant and just never reach the device. Catch it here, where the
+        # message can name the option.
+        for domain, entity in _entities_for_hub(full, _WRITE_DOMAINS, hub_id):
+            access = entity.get(CONF_ACCESS)
+            if access is not None and str(access) in _READ_ONLY_ACCESS_MODES:
+                raise cv.Invalid(
+                    f"{domain} '{_entity_name(entity)}' sets access: {access}, but that GWG access "
+                    f"mode is read-only -- the protocol defines no write telegram type for it, so "
+                    f"the engine would refuse every write and the entity would silently never "
+                    f"reach the device. Use a writable access mode (physical, virtual, eeprom, "
+                    f"xram, port, be), or declare this datapoint as a read-only sensor.",
+                    path=[CONF_ACCESS],
+                )
     else:
         # access: selects a GWG TYPE byte (GWGAccessMode, constants.h) and is
         # meaningless -- and silently a no-op at runtime, since VitoEntityBase::
-        # read_access_ is compiled but never read outside a GWG build -- under
+        # access_ is compiled but never read outside a GWG build -- under
         # any other protocol. Reject at config time rather than let it look
-        # configurable. Scoped to `sensor` because that is the only platform
-        # currently wired to it (see CONF_ACCESS).
-        for domain, entity in _entities_for_hub(full, ("sensor",), hub_id):
+        # configurable.
+        for domain, entity in _entities_for_hub(full, _ACCESS_DOMAINS, hub_id):
             if CONF_ACCESS in entity:
                 raise cv.Invalid(
                     f"{domain} '{_entity_name(entity)}' sets 'access', which selects a GWG "

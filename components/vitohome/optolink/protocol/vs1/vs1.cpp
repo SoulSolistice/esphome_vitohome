@@ -119,10 +119,10 @@ void VS1Engine::_init() {
   }
 }
 
-// if we want to send something within SYNC_WINDOW_MS of receiving the ENQ, send ENQ_ACK and move to SEND
-// if longer, return to INIT
+// if we want to send something within ENQ_ACK_WINDOW_MS of receiving the ENQ,
+// send ENQ_ACK and move to SEND; if longer, return to INIT
 void VS1Engine::_syncEnq() {
-  if (_currentMillis - _lastMillis < SYNC_WINDOW_MS) {
+  if (_currentMillis - _lastMillis < ENQ_ACK_WINDOW_MS) {
     if (_busy && _interface->write(&internals::ProtocolBytes.ENQ_ACK, 1) == 1) {
       _setState(State::SEND);
       _send();  // speed up things
@@ -132,10 +132,25 @@ void VS1Engine::_syncEnq() {
   }
 }
 
-// if we want to send something within SYNC_WINDOW_MS of previous SEND, send again
-// if longer, return to INIT
+// Chain the next telegram onto the sync we already have, if one is queued
+// within CHAIN_WINDOW_MS of the last answer; otherwise go back to waiting for
+// an ENQ. Hardware-confirmed: a VScotHO1_72 answers a median of 29 telegrams
+// (max 49) off a single ENQ, a whole 60 s poll cycle in ~2.15 s.
 void VS1Engine::_syncRecv() {
-  if (_currentMillis - _lastMillis < SYNC_WINDOW_MS) {
+  // A byte has arrived since the last answer -- on an idle KW bus that is the
+  // device's next ENQ. Never chain across it: with the request going out while
+  // that byte still sat in the buffer, _receive() would read it as the new
+  // request's payload. Hand control to INIT, which consumes it as the sync it
+  // actually is.
+  //
+  // This guard is also what makes a long CHAIN_WINDOW_MS safe: the window can
+  // only ever be ridden while the device has NOT spoken since the last answer,
+  // which is exactly the condition under which the old sync is still current.
+  if (_interface->available()) {
+    _setState(State::INIT);
+    return;
+  }
+  if (_currentMillis - _lastMillis < CHAIN_WINDOW_MS) {
     if (_busy) {
       _setState(State::SEND);
     }

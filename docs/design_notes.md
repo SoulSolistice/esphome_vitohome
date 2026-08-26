@@ -135,6 +135,263 @@ signedness rules.
   fast if the configured protocol never establishes one — so a wrong `protocol:`
   surfaces at start-up, not as silent dead air.
 
+### GWG access modes (`access:`)
+
+GWG reads carry an access mode in the telegram's TYPE byte. Every other
+protocol here has exactly one read TYPE byte; GWG has eight, and the address
+space is *per mode* — address `0xF8` under `physical` and under `virtual` are
+two unrelated registers. A wrong access mode is therefore indistinguishable
+from a wrong address from the outside, which is why it is exposed rather than
+hard-coded.
+
+`sensor` entities take an optional `access:` under `protocol: GWG`:
+
+```yaml
+sensor:
+  - platform: vitohome
+    name: "GWG ident"
+    address: 0xF8
+    byte_length: 2
+    access: virtual        # default: physical
+```
+
+| `access:` | TYPE | vcontrold macro | Vitosoft `FCRead` |
+|---|---|---|---|
+| `physical` (default) | `0xCB` | `GETADDR` | `Physical_READ` |
+| `virtual` | `0xC7` | `GETVADDR` | `Virtual_READ` |
+| `eeprom` | `0xAE` | `GETEADDR` | `EEPROM_READ` |
+| `xram` | `0xC5` | `GETXADDR` | `XRAM_READ` |
+| `port` | `0x6E` | `GETPADDR` | `Port_READ` |
+| `be` | `0x9E` | `GETBADDR` | `BE_READ` |
+| `kmbus_eeprom` | `0x43` | `GETKMADDR` | `KMBUS_EEPROM_READ` |
+| `kmbus_ram` | `0x33` | **none** | **none** (but vogod has it) |
+
+Three independent sources agree on seven of the eight bytes: the openv wiki's
+`Protokoll-GWG` "Telegramm Typen" table; vcontrold's `<protocol name="GWG">`
+macros (`xml/{kw,300}/vcontrold.xml`), which wrap the same bytes in the same
+frame this engine emits — `SYNC; GET*ADDR $addr $hexlen 04; RECV $len`; and
+Viessmann's own Vitosoft data, which carries the mode per datapoint in
+`ecnEventType.xml`'s `FCRead`.
+
+**`kmbus_ram` (`0x33`) has no vcontrold macro and no Vitosoft datapoint** — zero
+of the 4143 across Vitosoft's 22 `GWG_*` tokens use it. It is not unsourced,
+though: `speters/vogod` declares the full GWG command-type set independently and
+includes `physicalKmbusRAMRead = 0x33`. So the byte is corroborated; what is
+missing is any datapoint that needs it. Nothing in this project emits it.
+
+### The address is not the identity
+
+Under GWG the address space is *per mode*, and Vitosoft shows how sharply. In
+`GWG_VBES_00`, address `0x01` is **five different datapoints across four
+modes**: OEM ident (`kmbus_eeprom`), maximum boiler temperature (`eeprom`), and
+three separate outputs (`port`). So `access:` is not a diagnostic nicety here —
+omit it and the entity silently reads a different register.
+
+That is also why `physical` being the default is a footgun on GWG rather than a
+convenience: it is a mere 26% of a GWG device's datapoints (51 of 195 on
+`GWG_VBES_00`), behind both `kmbus_eeprom` and `eeprom`.
+
+### Bursting: several telegrams per ENQ
+
+The openv wiki says "before transmitting additional telegrams one must wait for
+the next 0x05", and vcontrold agrees — its GWG `getaddr` runs `SYNC` (send
+`EOT`, wait `ENQ`) before every command. Taken literally that caps the poll rate
+at **one datapoint per ENQ interval**, measured at 749–2070 ms (median 1229) on
+the 2026-08-23 capture; the observed rate matched, 92 requests in about two
+minutes. A 180-entity catalog would be a multi-minute sweep.
+
+Every implementation that has actually run on hardware does something looser:
+
+- **vogod** treats an ENQ as valid for **1500 ms** and, with a command pending
+  inside that window, sends without re-syncing — re-stamping the window at the
+  end of every completed transaction, so a queue runs back-to-back.
+- **dannerph** has an explicit burst mode: it ACKs the `0x05` once, then sends
+  further requests in the burst without a new sync.
+- **This engine's own VS1** already does it: `VS1Engine::_syncRecv()` re-sends
+  within `CHAIN_WINDOW_MS` with no fresh ENQ. GWG was the odd one out.
+
+**KW bursting is hardware-confirmed** (2026-08-24 capture, VScotHO1_72 `0x20CB`
+HW 03 SW 51, ESP32-C3, 56 entities). The device answers a long chain off a
+single sync: nine ENQ-delimited chains, **median 29 telegrams per ENQ, max 49**,
+and the `0x01` (ENQ-ACK) prefix appears on the first telegram of a chain and on
+no other — `_syncEnq()` emits it, `_syncRecv()` does not, exactly as intended.
+In steady state a whole 60 s poll cycle completes inside one chain: 29
+datapoints in 2.1–2.2 s, about 74 ms per datapoint. Strict
+one-telegram-per-ENQ would have needed 29 × ~1.2 s ≈ 35 s for the same cycle.
+
+That capture also measures the window the chain actually needs. The gap from a
+completed answer to the next request ran **22–42 ms (median 29, p90 35)** across
+235 transactions, against what was then a 50 ms budget — no breach, but only
+~8 ms of headroom. That measurement is what prompted the split below.
+
+GWG now bursts too, on vogod's 1500 ms window (`GWGEngine::ENQ_VALIDITY_MS`),
+kept deliberately rather than tuned since it is the only figure anyone ships.
+
+Because this contradicts the only written specification, it is **self-correcting
+rather than assumed**:
+
+- a real ENQ always wins — the burst path is reached only when the interface has
+  no bytes pending, so no buffered byte can be mistaken for a response and no
+  drain is needed;
+- the window is stamped only where the device demonstrably let us talk (an ENQ
+  we actually used, and a completed transaction), never by an ENQ we discarded
+  while idle;
+- any TIMEOUT invalidates it, so the next request re-syncs instead of riding a
+  window we no longer trust;
+- and `BURST_FAILURES_BEFORE_FALLBACK` (2) consecutive burst-sent requests going
+  unanswered disables bursting for the session, with a warning. A unit for which
+  the wiki is simply right therefore costs two transactions and then behaves
+  exactly as before.
+
+`GWGEngine::BURST_ENABLED = false` compiles it out entirely; both branches build
+and pass the proof suite (`tests/native/proof_gwg_burst.cpp` asserts the strict
+one-telegram-per-ENQ property instead when it is off).
+
+Still worth confirming on a GWG unit specifically: that the second telegram of a
+burst is answered there too. If `GWG burst disabled` shows up in the log, it is
+not. The KW confirmation above makes that likely but not certain — GWG is a
+different protocol on the same family.
+
+#### The two windows, separated
+
+`VS1Engine` used one 50 ms `SYNC_WINDOW_MS` for two unrelated jobs. They are now
+distinct constants:
+
+| constant | used by | kind | value |
+|---|---|---|---|
+| `ENQ_ACK_WINDOW_MS` | `_syncEnq()` | protocol constraint — how fast we must answer the device's ENQ | 50 ms (unchanged) |
+| `CHAIN_WINDOW_MS` | `_syncRecv()` | throughput policy — how long a chain may pause | 1500 ms |
+
+1500 ms is vogod's figure for the same job and matches GWG's
+`ENQ_VALIDITY_MS`. The 22–42 ms measurement above is what the second window has
+to cover, and it was sitting ~8 ms under the old ceiling.
+
+Widening it needed one guard, because a long window and an empty queue would
+otherwise park `_syncRecv()` without reading the interface: **if any byte has
+arrived since the last answer, return to INIT instead of chaining.** On an idle
+KW bus that byte is the device's next ENQ, and sending across it would leave it
+buffered for `_receive()` to read as the next request's payload — the misread
+this engine exists to prevent.
+
+That guard also bounds the window in practice, which is the neat part: the
+window can only ever be ridden while the device has *not* spoken since the last
+answer, which is exactly the condition under which the old sync is still the
+current one. `GWGEngine::_init()`'s burst path runs on the same rule.
+
+Exceeding the window remains a **soft** failure — the chain ends and the next
+telegram waits for an ENQ — so the cost of being too tight is throughput, not
+correctness.
+
+### Identification under GWG
+
+GWG uses **the same identification scheme as P300/KW** — four bytes at `0xF8`
+meaning group, ident, hardware index, software index, in that order. The only
+differences are that it lives in the `virtual` access space, and that Vitosoft
+models it as one 4-byte block at `0xF8` (`block_length=4`, four 1-byte fields at
+byte positions 0–3, named `SystemIdent GG / GK / HX / SW`) rather than four
+addresses. vcontrold reads it the same way: `getDevType`, `0xF8`, len 4, on
+`GETVADDR`.
+
+The hub's existing state machine already fits: it reads the 4-byte block at
+`0x00F8` first and falls back to four 1-byte reads at `0xF8..0xFB`. Only the
+access mode was wrong — under GWG that read now goes out on `virtual`.
+
+One GWG-specific wrinkle: **the ident alone does not name the family.** `0x2053`
+covers four distinct unit families, discriminated by the *hardware index*:
+
+| ident | HW | family |
+|---|---|---|
+| `0x2053` | `0x01` | `GWG_VBEM` |
+| `0x2053` | `0x02` | `GWG_VBES` |
+| `0x2053` | `0x08` | `GWG_VWMS` |
+| `0x2053` | `0x10` | `GWG_VBT2` |
+| `0x2054` | `0x00` | `GWG_BT2` |
+
+(In Vitosoft terms: `Identification` is `0x2053` for all of them and
+`IdentificationExtension`'s high byte separates them, the low byte being the
+software index — `0x00`, `0x03`, `0x21`, `0x35`, `0x36`.) `ident_family_name()`
+takes the hardware index for this reason; reporting a bare `GWG_VBEM` for
+`0x2053`, as this component did and as vcontrold's enum comment still does, is
+wrong for three families out of four.
+
+`scripts/gen_catalog.py --identify` needs no GWG special case — the hardware and
+software indices it already takes are exactly the discriminators, so
+`--identify 0x2053 --hw 0x02 --sw 0x00` resolves `GWG_VBES_00`.
+
+### Catalog generation
+
+`scripts/gen_catalog.py` handles all of this. It infers the protocol from the
+Vitosoft device token (`GWG_*`, `HV_GWG`; `--protocol` overrides), and under
+GWG it maps `FCRead` onto `access:` on every entity, inverts the reachability
+rule, emits everything read-only, and drops addresses above `0xFF`.
+
+The reachability inversion is the substantive part. On P300 the only readable
+function code is `Virtual_READ`; on GWG that is 3% of the data (6 of 195) and
+the rest is reachable on its own mode. Applying the P300 rule to a GWG device
+kept 8 of 195 datapoints *and mislabelled all 8* — they are `Virtual_READ`, but
+with no `access:` emitted the engine reads them as physical. With the GWG rules
+the same device yields 187 entities, each carrying its mode.
+
+Only `physical` has a vitohome hardware capture behind it. The rest are
+spec-plus-two-implementations rather than verified here, so `esphome config`,
+`compile` and a look at the values remain the last step.
+
+`access:` is accepted on `sensor`, `binary_sensor`, `text_sensor`, `number`,
+`select`, `switch` and `text`. `climate` and `event` do not take it — climate
+carries several addresses that could each want their own mode, and event is the
+error-history archive. `_final_validate` rejects `access:` under any non-GWG
+protocol rather than letting a silently-ignored option look configurable.
+
+### Writes
+
+**One mode drives both directions.** Vitosoft pairs every writable GWG
+datapoint as `(EEPROM_READ, EEPROM_WRITE)` or `(BE_READ, BE_WRITE)`, never
+across modes, so a separate `write_access` could only express wrong things.
+
+| mode | read | write |
+|---|---|---|
+| `physical` | `0xCB` | `0xC8` |
+| `virtual` | `0xC7` | `0xC4` |
+| `eeprom` | `0xAE` | `0xAD` |
+| `xram` | `0xC5` | `0xC3` |
+| `port` | `0x6E` | `0x6D` |
+| `be` | `0x9E` | `0x9D` |
+| `kmbus_eeprom` | `0x43` | — |
+| `kmbus_ram` | `0x33` | — |
+
+The KMBUS modes have no write TYPE byte at all, so `GWGEngine::write()` refuses
+them outright rather than substituting another mode — which would write to a
+different register file.
+
+**Nothing on a GWG unit is `physical`-writable.** Across all 22 Vitosoft GWG
+tokens the writable datapoints are `EEPROM_WRITE` (1082) and `BE_WRITE` (280),
+plus 17 unreachable `KBUS_VIRTUAL_WRITE` — and *zero* `PHYSICAL_WRITE`. Yet
+`0xC8` was the only write byte this engine could emit before the mode table,
+and dannerph's legacy path defaults to it too. That is the most economical
+explanation for why no GWG write has ever been confirmed to work anywhere,
+openv issue #467 included. (Re-read #467 alongside §the response deadline: its
+capture shows genuine answers at ~50 ms against a ~1230 ms idle-ENQ cadence, so
+its "writes only ever return `0x05`" is almost certainly *no answer at all*,
+with the next idle ENQ misread as the ack.)
+
+**One thing is still unknown: where the `0x04` sits in a write frame.**
+
+```
+this project   01 TYPE ADDR LEN <data...> 04      EOT last
+dannerph       01 | TYPE ADDR LEN 04 <data...>    EOT before the payload
+KW sibling     01 F4  ADDR LEN <data...>          no terminator at all
+```
+
+The wiki calls `0x04` the "Telegramm Ende Byte" and shows no write example.
+Neither GWG layout has hardware evidence, so the choice sits behind
+`kGwgWriteEotBeforePayload` in `constants.h` (default: this project's
+pre-existing layout) until a unit settles it. **Reads are byte-identical under
+both**, which is why this never surfaced. Both settings build and pass the full
+proof suite, so flipping it is a one-line change and a reflash.
+
+**The identify read is always `virtual`** (see §Identification under GWG), not
+affected by any entity's `access:`.
+
 ---
 
 ## 3. The vendored engine (`optolink/`)
@@ -1046,9 +1303,27 @@ Two limits worth re-stating because they are recurring footguns:
   `proof_gwg_enq_misread.cpp`). It did **not** establish a datapoint map: several
   addresses returned values that are not physically consistent (a non-monotonic
   2-byte "operating hours" counter at `0x17`, an unstable 3-byte identifier at
-  `0x0F8`, a static flow temperature at `0x29`); `example/gwg_diag_multibyte.yaml`
-  is the experiment that discriminates a framing bug from a wrong address there.
-  KW/VS1 and P300 remain the hardware-confirmed protocols. KW/VS1 and P300 are hardware-confirmed. Note the vendored engine now
+  `0x0F8`, a static flow temperature at `0x29`). Discriminating a framing bug
+  from a wrong address there is the open experiment; the `access:` option (see
+  §GWG access modes) is the tool for it — a wrong *access mode* looks exactly
+  like a wrong address from the outside.
+
+  **All three are explained by the access mode** (checked 2026-08-24 against
+  vcontrold and Vitosoft, which agree). None of them is a physical-mode
+  datapoint, and this project was reading all three on physical:
+
+  | addr | actual mode | Vitosoft name | vcontrold |
+  |---|---|---|---|
+  | `0x17` | `eeprom` | `GWG BEMK50Brennerlaufzeit` | `getBrennerStunden1`/`geteaddr` |
+  | `0x0F8` | `virtual` | `GWG SystemIdent GG/HX/SW/GK` | `getDevType`/`getvaddr` |
+  | `0x29` | `be` | `GWG Vorlaufmaximaltemperatur HKB BEM` | — |
+
+  `0x0F8..0x0FB` is the range `identify_device:` reads, so the boot ident was
+  affected too; that read now goes out on `virtual` under GWG. The remaining
+  work is confirmation on the unit, not investigation: generate the catalog for
+  the matching `GWG_*` token and compare.
+  KW/VS1 and P300 remain the hardware-confirmed protocols. Note the vendored
+  engine now
   deliberately diverges from upstream here: upstream's completion check waited
   for the request-frame length (5 bytes) instead of the datapoint length, so no
   GWG read of length != 5 could ever have completed — fixed and host-proven

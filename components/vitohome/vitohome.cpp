@@ -22,7 +22,9 @@ static const char *const TAG = "vitohome";
 // it covers the units this project has seen on the wire; everything else is
 // reported as raw hex, and the catalogue tooling (scripts/gen_catalog.py)
 // does the authoritative matching against the Vitosoft data.
-static const char *ident_family_name(uint16_t ident) {
+// `hw` is the hardware index (0xFA), or a negative value when it has not been
+// read yet. It only matters for GWG: see below.
+static const char *ident_family_name(uint16_t ident, int hw = -1) {
   switch (ident) {
     case 0x20CB:
       return "VScotHO1";
@@ -31,7 +33,29 @@ static const char *ident_family_name(uint16_t ident) {
     case 0x2094:
       return "V200KW1";
     case 0x2053:
-      return "GWG_VBEM";
+      // GWG identification is NOT one family per ident. 0x2053 covers four
+      // distinct GWG unit families, discriminated by the hardware index --
+      // source-confirmed against the Vitosoft ecnDataPointType identification
+      // rows, where Identification is 0x2053 for all of them and
+      // IdentificationExtension's high byte separates them (0x01xx VBEM,
+      // 0x02xx VBES, 0x08xx VWMS, 0x10xx VBT2; the low byte is the software
+      // index). Reporting a bare "GWG_VBEM" here -- as this did, and as
+      // vcontrold's enum comment still does -- is wrong for three families out
+      // of four.
+      switch (hw) {
+        case 0x01:
+          return "GWG_VBEM";
+        case 0x02:
+          return "GWG_VBES";
+        case 0x08:
+          return "GWG_VWMS";
+        case 0x10:
+          return "GWG_VBT2";
+        default:
+          return "GWG";
+      }
+    case 0x2054:
+      return "GWG_BT2";
     default:
       return nullptr;
   }
@@ -189,8 +213,8 @@ void VitoHomeComponent::setup() {
   // new log tag or YAML option needed; a config that already sets
   // `logger: logs: {vitohome: DEBUG}` (as the diagnostic example does) sees
   // it for free, and it costs nothing when that tag is left at its default.
-  this->vito_->onTiming([this](uint32_t enq_to_send_ms, uint32_t send_to_response_ms, uint16_t address) {
-    ESP_LOGD(TAG, "GWG timing: 0x%04X enq->send %" PRIu32 " ms, send->response %" PRIu32 " ms", address, enq_to_send_ms,
+  this->vito_->onTiming([this](uint32_t enq_age_ms, uint32_t send_to_response_ms, uint16_t address) {
+    ESP_LOGD(TAG, "GWG timing: 0x%04X enq age <=%" PRIu32 " ms, send->response %" PRIu32 " ms", address, enq_age_ms,
              send_to_response_ms);
   });
 #endif
@@ -385,7 +409,14 @@ void VitoHomeComponent::dispatch_raw_front_() {
 
     bool dispatched;
     if (operation.is_write) {
+#ifdef VITOHOME_PROTOCOL_GWG
+      // GWG-only: the scan console can now pick the write access mode too, so a
+      // tester can exercise EEPROM (0xAD) / BE (0x9D) -- the only modes Vitosoft
+      // marks writable -- rather than only PHYSICAL (0xC8).
+      dispatched = this->vito_->write(this->raw_dp_.address(), operation.bytes, operation.bytes_len, operation.access);
+#else
       dispatched = this->vito_->write(this->raw_dp_.address(), operation.bytes, operation.bytes_len);
+#endif
     } else {
 #ifdef VITOHOME_PROTOCOL_GWG
       // GWG-only: access mode selects the TYPE byte (see GWGAccessMode,
@@ -436,7 +467,21 @@ void VitoHomeComponent::dispatch_next_() {
   // Identification runs before regular traffic so the user sees the device
   // tuple in the first seconds of the log.
   if (this->ident_state_ != IdentState::IDLE && this->ident_state_ != IdentState::DONE) {
-    if (this->vito_->read(this->ident_dp_.address(), this->ident_dp_.length())) {
+#ifdef VITOHOME_PROTOCOL_GWG
+    // GWG identification lives in the VIRTUAL access space, not the physical
+    // one (2026-08-24). Vitosoft's own GWG tables put the four `SystemIdent`
+    // fields at 0xF8..0xFB under FCRead=Virtual_READ, and vcontrold agrees --
+    // its getDevType reads 0xF8 len 4 with GETVADDR (0xC7). Reading them on
+    // the physical mode returns whatever the physical register file holds at
+    // those offsets, which is what produced the unstable identifier this
+    // project logged on its GWG capture. Every other protocol has exactly one
+    // read space and is unaffected.
+    const bool ident_dispatched =
+        this->vito_->read(this->ident_dp_.address(), this->ident_dp_.length(), optolink::GWGAccessMode::VIRTUAL);
+#else
+    const bool ident_dispatched = this->vito_->read(this->ident_dp_.address(), this->ident_dp_.length());
+#endif
+    if (ident_dispatched) {
       this->ident_in_flight_ = true;
       this->in_flight_started_ms_ = App.get_loop_component_start_time();
 
@@ -479,7 +524,19 @@ void VitoHomeComponent::dispatch_next_() {
       return true;
     }
 
-    if (!this->vito_->write(entity->get_write_datapoint().address(), entity->write_data(), entity->write_length())) {
+#ifdef VITOHOME_PROTOCOL_GWG
+    // GWG-only: one access mode drives both directions (see
+    // VitoEntityBase::access_), so a writable entity writes in the same mode it
+    // polls in -- which is what Vitosoft's (EEPROM_READ, EEPROM_WRITE) /
+    // (BE_READ, BE_WRITE) pairing says. Defaults to PHYSICAL, i.e. the single
+    // 0xC8 this lane emitted before.
+    const bool write_ok = this->vito_->write(entity->get_write_datapoint().address(), entity->write_data(),
+                                             entity->write_length(), entity->access());
+#else
+    const bool write_ok =
+        this->vito_->write(entity->get_write_datapoint().address(), entity->write_data(), entity->write_length());
+#endif
+    if (!write_ok) {
       // Transient (_busy) versus a permanent createPacket() rejection. Config-
       // declared write addresses/payloads are schema-validated, so the
       // permanent case is unreachable today; this mirrors the raw-lane guard so
@@ -524,10 +581,10 @@ void VitoHomeComponent::dispatch_next_() {
     const optolink::Datapoint &datapoint = entity->get_datapoint();
 
 #ifdef VITOHOME_PROTOCOL_GWG
-    // GWG-only: entity->read_access() defaults to PHYSICAL (see
-    // VitoEntityBase::read_access_), so an entity that never sets `access:`
-    // gets exactly the pre-existing behaviour.
-    const bool dispatched_ok = this->vito_->read(datapoint.address(), datapoint.length(), entity->read_access());
+    // GWG-only: entity->access() defaults to PHYSICAL (see
+    // VitoEntityBase::access_), so an entity that never sets `access:` gets
+    // exactly the pre-existing behaviour.
+    const bool dispatched_ok = this->vito_->read(datapoint.address(), datapoint.length(), entity->access());
 #else
     const bool dispatched_ok = this->vito_->read(datapoint.address(), datapoint.length());
 #endif
@@ -767,7 +824,8 @@ void VitoHomeComponent::queue_raw_read(uint16_t address, uint8_t length, optolin
   this->enqueue_raw_(address, length, false, nullptr, 0, access);
 }
 
-void VitoHomeComponent::queue_raw_write(uint16_t address, const uint8_t *data, std::size_t len) {
+void VitoHomeComponent::queue_raw_write(uint16_t address, const uint8_t *data, std::size_t len,
+                                        optolink::GWGAccessMode access) {
   // The 32-byte cap also keeps packet-length arithmetic safe: the VS2 length
   // byte is 0x05 + len and the VS1 frame length is payload + 4. See the packet
   // implementations before raising this cap.
@@ -776,14 +834,15 @@ void VitoHomeComponent::queue_raw_write(uint16_t address, const uint8_t *data, s
     return;
   }
 
-  this->enqueue_raw_(address, static_cast<uint8_t>(len), true, data, static_cast<uint8_t>(len));
+  this->enqueue_raw_(address, static_cast<uint8_t>(len), true, data, static_cast<uint8_t>(len), access);
 }
 
-void VitoHomeComponent::queue_raw_write(uint16_t address, const std::vector<uint8_t> &bytes) {
+void VitoHomeComponent::queue_raw_write(uint16_t address, const std::vector<uint8_t> &bytes,
+                                        optolink::GWGAccessMode access) {
   // Ergonomic overload for callers that already hold a vector (e.g. a lambda's
   // braced-init-list). Forwards to the pointer/length form so both share one
   // validation-and-enqueue path.
-  this->queue_raw_write(address, bytes.data(), bytes.size());
+  this->queue_raw_write(address, bytes.data(), bytes.size(), access);
 }
 
 bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes,
@@ -1295,7 +1354,7 @@ std::string VitoHomeComponent::ident_string_() const {
   if (this->ident_group_ >= 0 && this->ident_controller_ >= 0) {
     const uint16_t ident = static_cast<uint16_t>((this->ident_group_ << 8) | this->ident_controller_);
 
-    const char *family = ident_family_name(ident);
+    const char *family = ident_family_name(ident, this->ident_hw_);
 
     const int offset = snprintf(buffer, sizeof(buffer), "0x%04X%s%s%s", ident, family != nullptr ? " (" : "",
                                 family != nullptr ? family : "", family != nullptr ? ")" : "");

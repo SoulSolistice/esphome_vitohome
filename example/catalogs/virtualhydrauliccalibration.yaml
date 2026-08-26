@@ -33,6 +33,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Installation / HK / Parameter HK A2M2 ---
   - platform: vitohome
     name: "HK RaumsolltemperaturaktuellM2"
@@ -47,6 +48,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Installation / HK / Parameter HK A3M3 ---
   - platform: vitohome
     name: "HK RaumsolltemperaturaktuellM3"

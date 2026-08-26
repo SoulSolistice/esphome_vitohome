@@ -4,10 +4,12 @@ import esphome.config_validation as cv
 from esphome.const import CONF_ADDRESS, CONF_NAME, CONF_OPTIONS, CONF_TYPE, CONF_UPDATE_INTERVAL
 
 from . import (
+    CONF_ACCESS,
     CONF_BYTE_LENGTH,
     CONF_BYTE_OFFSET,
     CONF_LENGTH,
     CONF_VITOHOME_ID,
+    GWG_ACCESS_MODES,
     HUB_DEVICE_ID_SENSORS,
     HUB_RAW_RESULT_SENSORS,
     MAX_P300_READ_LENGTH,
@@ -153,6 +155,9 @@ def _addressed(extra: dict) -> cv.Schema:
             {
                 cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
                 cv.Optional(CONF_UPDATE_INTERVAL): cv.update_interval,
+                # GWG-only; rejected under any other protocol in
+                # _final_validate (__init__.py). See CONF_ACCESS there.
+                cv.Optional(CONF_ACCESS): cv.enum(GWG_ACCESS_MODES, lower=True),
             }
         )
         .extend(extra)
@@ -266,6 +271,9 @@ async def to_code(config):
     table, count = emit_option_table(config, mapping, "options")
     if count:
         cg.add(var.set_options(table, count))
+
+    if CONF_ACCESS in config:
+        cg.add(var.set_access(config[CONF_ACCESS]))
 
     emit_poll_interval(var, poll_ms)
 

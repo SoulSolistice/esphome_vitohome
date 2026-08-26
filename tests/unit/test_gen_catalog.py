@@ -1002,3 +1002,61 @@ def test_generate_emits_schaltzeiten_in_text_section():
     assert "Schaltzeit Test Montag" in text
     assert text.count("Schaltzeit Test ") == 7  # seven weekday entities
     assert "custom decode" not in text.split("\ntext:\n")[1].split("\ntext_sensor:")[0]
+
+
+# --- readability + per-mode defaults ---------------------------------------
+
+
+def _fixture_catalog():
+    return gc.load_catalog(_FIXTURE_DIR)
+
+
+def test_entities_are_separated_by_a_blank_line():
+    # These catalogs run to thousands of lines and are read by a human picking
+    # entities to enable, so consecutive entities must not butt up against each
+    # other. The blank line goes BETWEEN entities only -- never directly after
+    # a `sensor:` section key, which would be the one place it looks like a
+    # missing value.
+    text = gc.generate(_fixture_catalog(), "VTestHO1_99", "full", None, None)
+    lines = text.split("\n")
+    starts = [i for i, ln in enumerate(lines) if ln.strip() == "- platform: vitohome"]
+    assert starts, "fixture emitted no entities"
+    for i in starts:
+        prev = lines[i - 1]
+        # Either the first entity of a section (preceded by the section key,
+        # a group header, or the entity's own leading NOTE comment) or
+        # separated from the one above by a blank line.
+        assert prev == "" or prev.endswith(":") or prev.lstrip().startswith("#"), (
+            f"entity at line {i} follows {prev!r} with no separating blank line"
+        )
+    for i, ln in enumerate(lines):
+        if ln.endswith(":") and not ln.startswith(" ") and ln[:-1] in gc.ACCESS_PLATFORMS:
+            assert lines[i + 1].strip() == "- platform: vitohome", "blank line directly after a section key"
+
+
+def test_blank_lines_do_not_change_the_entity_set():
+    # The separator is cosmetic: strip the blank lines and the document is the
+    # one the generator produced before this change.
+    text = gc.generate(_fixture_catalog(), "VTestHO1_99", "full", None, None)
+    assert text.count("- platform: vitohome") == len([ln for ln in text.split("\n") if ln.strip() == "- platform: vitohome"])
+
+
+def test_order_defaults_to_group_for_bulk_and_address_otherwise(tmp_path):
+    # The shipped example/catalogs are group-ordered. Defaulting --export-all
+    # to 'address' meant a routine bulk re-export reordered every file, so the
+    # real changes drowned in a whole-file diff. Single-device output keeps its
+    # historical 'address' default.
+    out_dir = tmp_path / "bulk"
+    assert gc.main(["--data", _FIXTURE_DIR, "--export-all", "--out", str(out_dir)]) == 0
+    bulk = next(out_dir.glob("vtestho1_99*.yaml")).read_text(encoding="utf-8")
+    assert "  # --- " in bulk, "bulk export should default to --order group"
+
+    single = tmp_path / "one.yaml"
+    assert gc.main(["--data", _FIXTURE_DIR, "--device", "VTestHO1_99", "--out", str(single)]) == 0
+    assert "  # --- " not in single.read_text(encoding="utf-8")
+
+
+def test_explicit_order_still_wins_over_the_bulk_default(tmp_path):
+    out_dir = tmp_path / "bulk_addr"
+    assert gc.main(["--data", _FIXTURE_DIR, "--export-all", "--order", "address", "--out", str(out_dir)]) == 0
+    assert "  # --- " not in next(out_dir.glob("vtestho1_99*.yaml")).read_text(encoding="utf-8")

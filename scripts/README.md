@@ -61,7 +61,7 @@ reads up to four files from it:
 | `--profile {minimal,standard,full}` | How many datapoints to emit (default: `standard`) |
 | `--include <regex>` / `--exclude <regex>` | Keep / drop events whose name matches |
 | `--[no-]reachable-only` | Emit only datapoints VitoWiFi can read over Optolink; drop `GFA_READ`/`RPC`/`PROZESS`/`KBUS`/`OT` (default: on). `--no-reachable-only` adds them back — they need custom decode |
-| `--order {address,group}` | Entity order: `address` (default) or `group` (by the Vitosoft navigation tree, with a section comment per group) |
+| `--order {address,group}` | Entity order: `address` (sorted by Optolink address) or `group` (by the Vitosoft navigation tree, with a section comment per group). Default: `group` with `--export-all`, `address` otherwise |
 | `--culture {de,en,fr,it,ru,nl,pl,da,hu,es,tr,lt,cs}` | Language for names/labels (default: `de`). Currently a near-no-op — see the label-source note above |
 | `--[no-]device-id` | Emit a `device_id` diagnostic `text_sensor` and suppress the raw `0xF8`–`0xFB` reads (default: on) |
 | `--[no-]error-history` | Emit `error_history` entities for the `FehlerHis*` slots (default: on) |
@@ -122,6 +122,11 @@ python3 scripts/gen_catalog.py --data <export-dir> \
 `hw_index`, software-index and F0 ranges), the linked-event and emitted-entity
 counts, and a `status` (`ok` / `skipped: …` / `error: …`). Use it to find the
 file for a given unit by its `ident` or `token`.
+
+Bulk mode orders entities by group (`--order group`) unless you say otherwise,
+which is how the catalogs in [`example/catalogs/`](../example/catalogs/) were
+produced — so a re-export diffs against them entity by entity instead of
+reordering every file. Pass `--order address` for the address-sorted layout.
 
 Because fault-code semantics are device-variant-specific, `--export-all`
 attaches the *same* default map (`vd300`) to every unit — pass `--no-error-codes`

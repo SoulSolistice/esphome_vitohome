@@ -230,8 +230,10 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // Two write overloads: the pointer/length form is the no-allocation path for
   // callers holding a stack buffer; the vector form is the ergonomic one for
   // lambdas building a braced-init-list, and forwards to the pointer form.
-  void queue_raw_write(uint16_t address, const uint8_t *data, std::size_t len);
-  void queue_raw_write(uint16_t address, const std::vector<uint8_t> &bytes);
+  void queue_raw_write(uint16_t address, const uint8_t *data, std::size_t len,
+                       optolink::GWGAccessMode access = optolink::GWGAccessMode::PHYSICAL);
+  void queue_raw_write(uint16_t address, const std::vector<uint8_t> &bytes,
+                       optolink::GWGAccessMode access = optolink::GWGAccessMode::PHYSICAL);
 
  protected:
   enum class OpType : uint8_t {

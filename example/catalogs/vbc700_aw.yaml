@@ -29,6 +29,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- DiagnosisDiagnosis1 / Allgemein ---
   - platform: vitohome
     name: "WPR Anforderung Schwimmbad"
@@ -39,6 +40,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR GueltSollleistung ZentrAnforderung"
     id: WPR_GueltSollleistung_ZentrAnforderung
@@ -49,6 +51,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR GueltSolltemp ZentrAnforderung"
     id: WPR_GueltSolltemp_ZentrAnforderung
@@ -60,6 +63,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- DiagnosisDiagnosis1 / Heizkreis1 ---
   - platform: vitohome
     name: "WPR GueltSolltemp HK1"
@@ -72,6 +76,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat InternerZustand HK1"
     id: WPR_Zustandsautomat_InternerZustand_HK1
@@ -81,6 +86,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Heizperiode Heizkreis1"
     id: WPR_Heizperiode_Heizkreis1
@@ -90,6 +96,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Kuehlperiode Heizkreis1"
     id: WPR_Kuehlperiode_Heizkreis1
@@ -99,6 +106,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Frostschutz Heizkreis1"
     id: WPR_Frostschutz_Heizkreis1
@@ -108,6 +116,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Anforderung Heizkreis1"
     id: WPR_Anforderung_Heizkreis1
@@ -117,6 +126,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- DiagnosisDiagnosis1 / Heizkreis2 ---
   - platform: vitohome
     name: "WPR GueltSolltemp HK2"
@@ -129,6 +139,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat InternerZustand HK2"
     id: WPR_Zustandsautomat_InternerZustand_HK2
@@ -138,6 +149,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Heizperiode Heizkreis2"
     id: WPR_Heizperiode_Heizkreis2
@@ -147,6 +159,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Kuehlperiode Heizkreis2"
     id: WPR_Kuehlperiode_Heizkreis2
@@ -156,6 +169,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Frostschutz Heizkreis2"
     id: WPR_Frostschutz_Heizkreis2
@@ -165,6 +179,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Anforderung Heizkreis2"
     id: WPR_Anforderung_Heizkreis2
@@ -174,6 +189,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- DiagnosisDiagnosis1 / Heizkreis3 ---
   - platform: vitohome
     name: "WPR GueltSolltemp HK3"
@@ -186,6 +202,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat InternerZustand HK3"
     id: WPR_Zustandsautomat_InternerZustand_HK3
@@ -195,6 +212,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Heizperiode Heizkreis3"
     id: WPR_Heizperiode_Heizkreis3
@@ -204,6 +222,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Kuehlperiode Heizkreis3"
     id: WPR_Kuehlperiode_Heizkreis3
@@ -213,6 +232,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Frostschutz Heizkreis3"
     id: WPR_Frostschutz_Heizkreis3
@@ -222,6 +242,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Anforderung Heizkreis3"
     id: WPR_Anforderung_Heizkreis3
@@ -231,6 +252,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- DiagnosisDiagnosis1 / Kuehlkreis ---
   - platform: vitohome
     name: "WPR GueltSolltemp Kuehlkreis"
@@ -243,6 +265,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR GueltSollleistung Kuehlkreis"
     id: WPR_GueltSollleistung_Kuehlkreis
@@ -253,6 +276,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat InternerZustand Kuehlkreis"
     id: WPR_Zustandsautomat_InternerZustand_Kuehlkreis
@@ -262,6 +286,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Anforderung Kuehlkreis"
     id: WPR_Anforderung_Kuehlkreis
@@ -271,6 +296,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- DiagnosisDiagnosis1 / Pufferspeicher ---
   - platform: vitohome
     name: "WPR GueltSolltemp HW Pufferspeicher"
@@ -283,6 +309,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR GueltSollleistung HW Pufferspeicher"
     id: WPR_GueltSollleistung_HW_Pufferspeicher
@@ -293,6 +320,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat InternerZustand HW Pufferspeicher"
     id: WPR_Zustandsautomat_InternerZustand_HW_Pufferspeicher
@@ -302,6 +330,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Anforderung HW Pufferspeicher"
     id: WPR_Anforderung_HW_Pufferspeicher
@@ -311,6 +340,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- DiagnosisDiagnosis1 / Warmwasser ---
   - platform: vitohome
     name: "WPR GueltSolltemp Warmwasser"
@@ -323,6 +353,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR GueltSollleistung Warmwasser"
     id: WPR_GueltSollleistung_Warmwasser
@@ -333,6 +364,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Anforderung Warmwasser"
     id: WPR_Anforderung_Warmwasser
@@ -342,6 +374,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- DiagnosisDiagnosis2 / MittlereDruecke ---
   - platform: vitohome
     name: "WPR gemitteltDruck Verdampfungsdruck Verdichter1"
@@ -353,6 +386,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR gemitteltDruck Verdampfungsdruck Verdichter2"
     id: WPR_gemitteltDruck_Verdampfungsdruck_Verdichter2
@@ -363,6 +397,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR gemitteltDruck Kondensationsdruck Verdichter1"
     id: WPR_gemitteltDruck_Kondensationsdruck_Verdichter1
@@ -373,6 +408,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR gemitteltDruck Kondensationsdruck Verdichter2"
     id: WPR_gemitteltDruck_Kondensationsdruck_Verdichter2
@@ -383,6 +419,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- DiagnosisDiagnosis2 / MittlereTemp ---
   - platform: vitohome
     name: "WPR gemitteltTemp Sek VLTemp"
@@ -395,6 +432,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR gemitteltTemp PrimEingTemp"
     id: WPR_gemitteltTemp_PrimEingTemp
@@ -406,6 +444,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR gemitteltTemp PrimAusgTemp"
     id: WPR_gemitteltTemp_PrimAusgTemp
@@ -417,6 +456,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR gemitteltTemp Sek RL1Temp"
     id: WPR_gemitteltTemp_Sek_RL1Temp
@@ -428,6 +468,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR gemitteltTemp Sek RL2Temp"
     id: WPR_gemitteltTemp_Sek_RL2Temp
@@ -439,6 +480,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- DiagnosisDiagnosis2 / Zustandsautom ---
   - platform: vitohome
     name: "WPR Zustandsautomat extWaermeerzeuger"
@@ -449,6 +491,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat HeizKuehlbetrieb extWaermepumpe1"
     id: WPR_Zustandsautomat_HeizKuehlbetrieb_extWaermepumpe1
@@ -458,6 +501,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat HeizKuehlbetrieb extWaermepumpe2"
     id: WPR_Zustandsautomat_HeizKuehlbetrieb_extWaermepumpe2
@@ -467,6 +511,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat HeizKuehlbetrieb extWaermepumpe3"
     id: WPR_Zustandsautomat_HeizKuehlbetrieb_extWaermepumpe3
@@ -476,6 +521,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat InternerZustand WW Speicher"
     id: WPR_Zustandsautomat_InternerZustand_WW_Speicher
@@ -485,6 +531,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat LFDM SC1"
     id: WPR_Zustandsautomat_LFDM_SC1
@@ -494,6 +541,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat LFDM SC2"
     id: WPR_Zustandsautomat_LFDM_SC2
@@ -503,6 +551,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat LFDM SC3"
     id: WPR_Zustandsautomat_LFDM_SC3
@@ -512,6 +561,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat LFDM SC4"
     id: WPR_Zustandsautomat_LFDM_SC4
@@ -521,6 +571,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat PM SC1"
     id: WPR_Zustandsautomat_PM_SC1
@@ -530,6 +581,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat PM SC2"
     id: WPR_Zustandsautomat_PM_SC2
@@ -539,6 +591,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat PM SC3"
     id: WPR_Zustandsautomat_PM_SC3
@@ -548,6 +601,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat PM SC4"
     id: WPR_Zustandsautomat_PM_SC4
@@ -557,6 +611,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat WP1"
     id: WPR_Zustandsautomat_WP1
@@ -566,6 +621,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat WP2"
     id: WPR_Zustandsautomat_WP2
@@ -575,6 +631,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Expertlayer / KorrekturwerteAnlage ---
   - platform: vitohome
     name: "WPR Korrekturwert Aussentemperatur"
@@ -587,6 +644,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Mediumtemperatur extWaermeerzeuger"
     id: WPR_Korrekturwert_Mediumtemperatur_extWaermeerzeuger
@@ -598,6 +656,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Kollektortemperatur Solar"
     id: WPR_Korrekturwert_Kollektortemperatur_Solar
@@ -609,6 +668,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Speichertemperatur SolarmodulVitosolic"
     id: WPR_Korrekturwert_Speichertemperatur_SolarmodulVitosolic
@@ -620,6 +680,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert WW TemperaturUnten"
     id: WPR_Korrekturwert_WW_TemperaturUnten
@@ -631,6 +692,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert WW TemperaturMitte"
     id: WPR_Korrekturwert_WW_TemperaturMitte
@@ -642,6 +704,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert WW TemperaturOben"
     id: WPR_Korrekturwert_WW_TemperaturOben
@@ -653,6 +716,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert WW TemperaturAusgang"
     id: WPR_Korrekturwert_WW_TemperaturAusgang
@@ -664,6 +728,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert HeizwasserPufferspeichertemperatur"
     id: WPR_Korrekturwert_HeizwasserPufferspeichertemperatur
@@ -675,6 +740,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Anlagenvorlauftemperatur"
     id: WPR_Korrekturwert_Anlagenvorlauftemperatur
@@ -686,6 +752,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Raumtemperatur HK A1 Vitotrol"
     id: WPR_Korrekturwert_Raumtemperatur_HK_A1_Vitotrol
@@ -697,6 +764,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Raumtemperatur HK M2 Vitotrol"
     id: WPR_Korrekturwert_Raumtemperatur_HK_M2_Vitotrol
@@ -708,6 +776,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Vorlauftemperatur HK M2"
     id: WPR_Korrekturwert_Vorlauftemperatur_HK_M2
@@ -719,6 +788,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Raumtemperatur HK M3 Vitotrol"
     id: WPR_Korrekturwert_Raumtemperatur_HK_M3_Vitotrol
@@ -730,6 +800,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Vorlauftemperatur HK M3"
     id: WPR_Korrekturwert_Vorlauftemperatur_HK_M3
@@ -741,6 +812,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Raumtemperatur NatCooling"
     id: WPR_Korrekturwert_Raumtemperatur_NatCooling
@@ -752,6 +824,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Vorlauftemperatur NatCoolingKreis"
     id: WPR_Korrekturwert_Vorlauftemperatur_NatCoolingKreis
@@ -763,6 +836,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Vorlauftemperatur NatCoolingHKxx"
     id: WPR_Korrekturwert_Vorlauftemperatur_NatCoolingHKxx
@@ -774,6 +848,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Expertlayer / KorrekturwerteWP ---
   - platform: vitohome
     name: "WPR Korrekturwert Vorlauftemperatur Prim"
@@ -786,6 +861,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Vorlauftemperatur Sek"
     id: WPR_Korrekturwert_Vorlauftemperatur_Sek
@@ -797,6 +873,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Ruecklauftemp Prim"
     id: WPR_Korrekturwert_Ruecklauftemp_Prim
@@ -808,6 +885,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Ruecklauftemperatur Sek1"
     id: WPR_Korrekturwert_Ruecklauftemperatur_Sek1
@@ -819,6 +897,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Ruecklauftemperatur Sek2"
     id: WPR_Korrekturwert_Ruecklauftemperatur_Sek2
@@ -830,6 +909,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Heissgastemperatur1"
     id: WPR_Korrekturwert_Heissgastemperatur1
@@ -841,6 +921,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Heissgastemperatur2"
     id: WPR_Korrekturwert_Heissgastemperatur2
@@ -852,6 +933,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert EVI Sauggastemperatur EEV1"
     id: WPR_Korrekturwert_EVI_Sauggastemperatur_EEV1
@@ -863,6 +945,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert EVI Sauggastemperatur EEV2"
     id: WPR_Korrekturwert_EVI_Sauggastemperatur_EEV2
@@ -874,6 +957,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Heissgastemperatur EEV1"
     id: WPR_Korrekturwert_Heissgastemperatur_EEV1
@@ -885,6 +969,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Heissgastemperatur EEV2"
     id: WPR_Korrekturwert_Heissgastemperatur_EEV2
@@ -896,6 +981,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Sauggastemperatur EEV1"
     id: WPR_Korrekturwert_Sauggastemperatur_EEV1
@@ -907,6 +993,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Sauggastemperatur EEV2"
     id: WPR_Korrekturwert_Sauggastemperatur_EEV2
@@ -918,6 +1005,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Fluessiggastemperatur EEV1"
     id: WPR_Korrekturwert_Fluessiggastemperatur_EEV1
@@ -929,6 +1017,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Fluessiggastemperatur EEV2"
     id: WPR_Korrekturwert_Fluessiggastemperatur_EEV2
@@ -940,6 +1029,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Verdampfertemperatur"
     id: WPR_Korrekturwert_Verdampfertemperatur
@@ -951,6 +1041,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Overview / Allgemein ---
   - platform: vitohome
     name: "WPR Geraeteklasse"
@@ -961,6 +1052,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Protokollversion LDAP"
     id: WPR_Protokollversion_LDAP
@@ -970,6 +1062,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Protokollversion RDAP"
     id: WPR_Protokollversion_RDAP
@@ -979,6 +1072,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Software Version Byte1"
     id: WPR_Software_Version_Byte1
@@ -988,6 +1082,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Software Version Byte2"
     id: WPR_Software_Version_Byte2
@@ -997,6 +1092,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Overview / Solar ---
   - platform: vitohome
     name: "WPR Kollektortemperatur Solar"
@@ -1009,6 +1105,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Speichertemperatur SolarmodulVitosolic"
     id: WPR_Speichertemperatur_SolarmodulVitosolic
@@ -1020,6 +1117,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Solarertrag Reglermethoden"
     id: WPR_Solarertrag_Reglermethoden
@@ -1031,6 +1129,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Overview / TemperaturenAllgemein ---
   - platform: vitohome
     name: "WPR Aussentemperatur"
@@ -1043,6 +1142,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Vorlauftemperatur Primaerquelle"
     id: WPR_Vorlauftemperatur_Primaerquelle
@@ -1054,6 +1154,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Ruecklauftemperatur Primaerquelle"
     id: WPR_Ruecklauftemperatur_Primaerquelle
@@ -1065,6 +1166,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Vorlauftemperatur Sek"
     id: WPR_Vorlauftemperatur_Sek
@@ -1076,6 +1178,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Ruecklauftemperatur Sek1"
     id: WPR_Ruecklauftemperatur_Sek1
@@ -1087,6 +1190,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Ruecklauftemperatur Sek2"
     id: WPR_Ruecklauftemperatur_Sek2
@@ -1098,6 +1202,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Verdampfertemperatur"
     id: WPR_Verdampfertemperatur
@@ -1109,6 +1214,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Heissgastemperatur1"
     id: WPR_Heissgastemperatur1
@@ -1120,6 +1226,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Heissgastemperatur2"
     id: WPR_Heissgastemperatur2
@@ -1131,6 +1238,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Overview / TemperaturenAnlage ---
   - platform: vitohome
     name: "WPR HeizwasserPufferspeicher Temperatur"
@@ -1143,6 +1251,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Anlagenvorlauftemperatur"
     id: WPR_Anlagenvorlauftemperatur
@@ -1154,6 +1263,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Warmwasser TemperaturUnten"
     id: WPR_Warmwasser_TemperaturUnten
@@ -1165,6 +1275,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Warmwasser TemperaturMitte"
     id: WPR_Warmwasser_TemperaturMitte
@@ -1176,6 +1287,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Warmwasser TemperaturOben"
     id: WPR_Warmwasser_TemperaturOben
@@ -1187,6 +1299,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Warmwasser TemperaturAusgang"
     id: WPR_Warmwasser_TemperaturAusgang
@@ -1198,6 +1311,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Raumtemperatur NatCooling"
     id: WPR_Raumtemperatur_NatCooling
@@ -1209,6 +1323,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Vorlauftemperatur NatCoolingHKxx"
     id: WPR_Vorlauftemperatur_NatCoolingHKxx
@@ -1220,6 +1335,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Mediumtemperatur extWaermeerzeuger"
     id: WPR_Mediumtemperatur_extWaermeerzeuger
@@ -1231,6 +1347,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Ruecklauftemperatur Solar"
     id: WPR_Ruecklauftemperatur_Solar
@@ -1242,6 +1359,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Vorlauftemperatur NatCoolingKreis"
     id: WPR_Vorlauftemperatur_NatCoolingKreis
@@ -1253,6 +1371,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Overview / TemperaturenHeizkreise ---
   - platform: vitohome
     name: "WPR Raumtemperatur HK A1 Vitotrol"
@@ -1265,6 +1384,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Raumtemperatur HK M2 Vitotrol"
     id: WPR_Raumtemperatur_HK_M2_Vitotrol
@@ -1276,6 +1396,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Vorlauftemperatur HK M2"
     id: WPR_Vorlauftemperatur_HK_M2
@@ -1287,6 +1408,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Raumtemperatur HK M3 Vitotrol"
     id: WPR_Raumtemperatur_HK_M3_Vitotrol
@@ -1298,6 +1420,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Vorlauftemperatur HK M3"
     id: WPR_Vorlauftemperatur_HK_M3
@@ -1309,6 +1432,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Overview / TemperaturenWP ---
   - platform: vitohome
     name: "WPR Heissgastemperatur EEV1"
@@ -1321,6 +1445,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Fluessiggastemperatur EEV1"
     id: WPR_Fluessiggastemperatur_EEV1
@@ -1332,6 +1457,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR SensorDruck EEV Kondensatordruck1"
     id: WPR_SensorDruck_EEV_Kondensatordruck1
@@ -1341,6 +1467,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR SensorDruck EEV Saugdruck1"
     id: WPR_SensorDruck_EEV_Saugdruck1
@@ -1350,6 +1477,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Heissgastemperatur EEV2"
     id: WPR_Heissgastemperatur_EEV2
@@ -1361,6 +1489,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Sauggastemperatur EEV2"
     id: WPR_Sauggastemperatur_EEV2
@@ -1372,6 +1501,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Fluessiggastemperatur EEV2"
     id: WPR_Fluessiggastemperatur_EEV2
@@ -1383,6 +1513,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR SensorDruck EEV Kondensatordruck2"
     id: WPR_SensorDruck_EEV_Kondensatordruck2
@@ -1392,6 +1523,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR SensorDruck EEV Saugdruck2"
     id: WPR_SensorDruck_EEV_Saugdruck2
@@ -1401,6 +1533,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- PlantOverview / Anlage ---
   - platform: vitohome
     name: "WPR Mischer ext Waermerzeuger SollTemp"
@@ -1413,6 +1546,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- PlantOverview / Heizkreise ---
   - platform: vitohome
     name: "WPR Mischer HK M2 TempBefehl"
@@ -1425,6 +1559,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Mischer HK M3 SollTemp"
     id: WPR_Mischer_HK_M3_SollTemp
@@ -1436,6 +1571,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- ProgrammingPlant / Elektroheizung ---
   - platform: vitohome
     name: "WPR eHeizung Stufe"
@@ -1446,6 +1582,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Statistic / Belastungsklasse ---
   - platform: vitohome
     name: "WPR Belastungsklasse1 Verdichter1"
@@ -1458,6 +1595,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Belastungsklasse2 Verdichter1"
     id: WPR_Belastungsklasse2_Verdichter1
@@ -1469,6 +1607,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Belastungsklasse3 Verdichter1"
     id: WPR_Belastungsklasse3_Verdichter1
@@ -1480,6 +1619,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Belastungsklasse4 Verdichter1"
     id: WPR_Belastungsklasse4_Verdichter1
@@ -1491,6 +1631,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Belastungsklasse5 Verdichter1"
     id: WPR_Belastungsklasse5_Verdichter1
@@ -1502,6 +1643,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Belastungsklasse1 Verdichter2"
     id: WPR_Belastungsklasse1_Verdichter2
@@ -1513,6 +1655,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Belastungsklasse2 Verdichter2"
     id: WPR_Belastungsklasse2_Verdichter2
@@ -1524,6 +1667,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Belastungsklasse3 Verdichter2"
     id: WPR_Belastungsklasse3_Verdichter2
@@ -1535,6 +1679,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Belastungsklasse4 Verdichter2"
     id: WPR_Belastungsklasse4_Verdichter2
@@ -1546,6 +1691,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Belastungsklasse5 Verdichter2"
     id: WPR_Belastungsklasse5_Verdichter2
@@ -1557,6 +1703,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Statistic / BetriebsstundenAnlage ---
   - platform: vitohome
     name: "WPR RelaisLaufzeiten Heizkreispumpe A1"
@@ -1570,6 +1717,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten Heizkreispumpe M2"
     id: WPR_RelaisLaufzeiten_Heizkreispumpe_M2
@@ -1582,6 +1730,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten Heizkreispumpe M3"
     id: WPR_RelaisLaufzeiten_Heizkreispumpe_M3
@@ -1594,6 +1743,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten Ansteuerung ExtWaermeerzeuger"
     id: WPR_RelaisLaufzeiten_Ansteuerung_ExtWaermeerzeuger
@@ -1606,6 +1756,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten Speicherladepumpe"
     id: WPR_RelaisLaufzeiten_Speicherladepumpe
@@ -1618,6 +1769,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten ActiveCooling"
     id: WPR_RelaisLaufzeiten_ActiveCooling
@@ -1630,6 +1782,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten NatCooling Ansteuerung"
     id: WPR_RelaisLaufzeiten_NatCooling_Ansteuerung
@@ -1642,6 +1795,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten Schwimmbad Ventil"
     id: WPR_RelaisLaufzeiten_Schwimmbad_Ventil
@@ -1654,6 +1808,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten Speichernachheizung"
     id: WPR_RelaisLaufzeiten_Speichernachheizung
@@ -1666,6 +1821,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten WW Ladung 2terSollwert"
     id: WPR_RelaisLaufzeiten_WW_Ladung_2terSollwert
@@ -1678,6 +1834,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   # --- Statistic / BetriebsstundenWP ---
   - platform: vitohome
     name: "WPR RelaisLaufzeiten 3W VentilHeizen WW1"
@@ -1691,6 +1848,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten 3W VentilHeizen WW2"
     id: WPR_RelaisLaufzeiten_3W_VentilHeizen_WW2
@@ -1703,6 +1861,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten eHeizung Stufe1"
     id: WPR_RelaisLaufzeiten_eHeizung_Stufe1
@@ -1715,6 +1874,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten eHeizung Stufe2"
     id: WPR_RelaisLaufzeiten_eHeizung_Stufe2
@@ -1727,6 +1887,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten EEV1 Verdichter"
     id: WPR_RelaisLaufzeiten_EEV1_Verdichter
@@ -1739,6 +1900,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten EEV2 Verdichter"
     id: WPR_RelaisLaufzeiten_EEV2_Verdichter
@@ -1751,6 +1913,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten Kaeltekreis Umkehr"
     id: WPR_RelaisLaufzeiten_Kaeltekreis_Umkehr
@@ -1763,6 +1926,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten Primaerquelle1"
     id: WPR_RelaisLaufzeiten_Primaerquelle1
@@ -1775,6 +1939,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten Primaerquelle2"
     id: WPR_RelaisLaufzeiten_Primaerquelle2
@@ -1787,6 +1952,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten Sammelstoerung"
     id: WPR_RelaisLaufzeiten_Sammelstoerung
@@ -1800,6 +1966,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten Schaltausgang Wtimer ZP"
     id: WPR_RelaisLaufzeiten_Schaltausgang_Wtimer_ZP
@@ -1812,6 +1979,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten SekPumpe1"
     id: WPR_RelaisLaufzeiten_SekPumpe1
@@ -1824,6 +1992,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten SekPumpe2"
     id: WPR_RelaisLaufzeiten_SekPumpe2
@@ -1836,6 +2005,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   # --- Statistic / Energiebilanz ---
   - platform: vitohome
     name: "WPR Heizwaerme01"
@@ -1847,6 +2017,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Heizwaerme02"
     id: WPR_Heizwaerme02
@@ -1857,6 +2028,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Heizwaerme03"
     id: WPR_Heizwaerme03
@@ -1867,6 +2039,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Heizwaerme04"
     id: WPR_Heizwaerme04
@@ -1877,6 +2050,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Heizwaerme05"
     id: WPR_Heizwaerme05
@@ -1887,6 +2061,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Heizwaerme06"
     id: WPR_Heizwaerme06
@@ -1897,6 +2072,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Heizwaerme07"
     id: WPR_Heizwaerme07
@@ -1907,6 +2083,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Heizwaerme08"
     id: WPR_Heizwaerme08
@@ -1917,6 +2094,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Heizwaerme09"
     id: WPR_Heizwaerme09
@@ -1927,6 +2105,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Heizwaerme10"
     id: WPR_Heizwaerme10
@@ -1937,6 +2116,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Heizwaerme11"
     id: WPR_Heizwaerme11
@@ -1947,6 +2127,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Heizwaerme12"
     id: WPR_Heizwaerme12
@@ -1957,6 +2138,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Statistic / SchaltzyklenAnlage ---
   - platform: vitohome
     name: "WPR RelaisZyklen NatCooling Ansteuerung"
@@ -1967,6 +2149,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen ActiveCooling"
     id: WPR_RelaisZyklen_ActiveCooling
@@ -1976,6 +2159,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen Ansteuerung ExtWaermeerzeuger"
     id: WPR_RelaisZyklen_Ansteuerung_ExtWaermeerzeuger
@@ -1985,6 +2169,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen Schwimmbad Ventil"
     id: WPR_RelaisZyklen_Schwimmbad_Ventil
@@ -1994,6 +2179,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen Speicherladepumpe"
     id: WPR_RelaisZyklen_Speicherladepumpe
@@ -2003,6 +2189,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen Speichernachheizung"
     id: WPR_RelaisZyklen_Speichernachheizung
@@ -2012,6 +2199,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen WW Ladung 2terSollwert"
     id: WPR_RelaisZyklen_WW_Ladung_2terSollwert
@@ -2021,6 +2209,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen Solarpumpe"
     id: WPR_RelaisZyklen_Solarpumpe
@@ -2030,6 +2219,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen SolarpumpeVitosolic"
     id: WPR_RelaisZyklen_SolarpumpeVitosolic
@@ -2039,6 +2229,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen FolgeWP1 Kaskade"
     id: WPR_RelaisZyklen_FolgeWP1_Kaskade
@@ -2048,6 +2239,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen FolgeWP2 Kaskade"
     id: WPR_RelaisZyklen_FolgeWP2_Kaskade
@@ -2057,6 +2249,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen FolgeWP3 Kaskade"
     id: WPR_RelaisZyklen_FolgeWP3_Kaskade
@@ -2066,6 +2259,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen FolgeWP4 Kaskade"
     id: WPR_RelaisZyklen_FolgeWP4_Kaskade
@@ -2075,6 +2269,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- Statistic / SchaltzyklenWP ---
   - platform: vitohome
     name: "WPR RelaisZyklen Primaerquelle1"
@@ -2085,6 +2280,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen SekPumpe1"
     id: WPR_RelaisZyklen_SekPumpe1
@@ -2094,6 +2290,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen Verdichter1"
     id: WPR_RelaisZyklen_Verdichter1
@@ -2103,6 +2300,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen EEV1 Verdichter"
     id: WPR_RelaisZyklen_EEV1_Verdichter
@@ -2112,6 +2310,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen 3W VentilHeizen WW1"
     id: WPR_RelaisZyklen_3W_VentilHeizen_WW1
@@ -2121,6 +2320,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen EEV1 HeizenKuehlen"
     id: WPR_RelaisZyklen_EEV1_HeizenKuehlen
@@ -2130,6 +2330,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen Primaerquelle2"
     id: WPR_RelaisZyklen_Primaerquelle2
@@ -2139,6 +2340,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen SekPumpe2"
     id: WPR_RelaisZyklen_SekPumpe2
@@ -2148,6 +2350,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen Verdichter2"
     id: WPR_RelaisZyklen_Verdichter2
@@ -2157,6 +2360,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen EEV2 Verdichter"
     id: WPR_RelaisZyklen_EEV2_Verdichter
@@ -2166,6 +2370,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen 3W VentilHeizen WW2"
     id: WPR_RelaisZyklen_3W_VentilHeizen_WW2
@@ -2175,6 +2380,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen EEV2 HeizenKuehlen"
     id: WPR_RelaisZyklen_EEV2_HeizenKuehlen
@@ -2184,6 +2390,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen eHeizung Stufe1"
     id: WPR_RelaisZyklen_eHeizung_Stufe1
@@ -2193,6 +2400,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen eHeizung Stufe2"
     id: WPR_RelaisZyklen_eHeizung_Stufe2
@@ -2202,6 +2410,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen Sammelstoerung"
     id: WPR_RelaisZyklen_Sammelstoerung
@@ -2212,6 +2421,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   # --- (ohne Gruppenzuordnung) ---
   - platform: vitohome
     name: "WPR Raumsolltemperatur HK A1 Vitocom100"
@@ -2224,6 +2434,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Raumsolltemperatur HK M2 Vitocom100"
     id: WPR_Raumsolltemperatur_HK_M2_Vitocom100
@@ -2235,6 +2446,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Raumsolltemperatur HK M3 Vitocom100"
     id: WPR_Raumsolltemperatur_HK_M3_Vitocom100
@@ -2246,6 +2458,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Raumsolltemperatur HK A1 Vitocom100"
     id: WPR_Korrekturwert_Raumsolltemperatur_HK_A1_Vitocom100
@@ -2257,6 +2470,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Raumsolltemperatur HK M2 Vitocom100"
     id: WPR_Korrekturwert_Raumsolltemperatur_HK_M2_Vitocom100
@@ -2268,6 +2482,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Korrekturwert Raumsolltemperatur HK M3 Vitocom100"
     id: WPR_Korrekturwert_Raumsolltemperatur_HK_M3_Vitocom100
@@ -2279,6 +2494,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Aussentemperatur"
     id: WPR_Gradient_Aussentemperatur
@@ -2288,6 +2504,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Verdampfertemperatur"
     id: WPR_Gradient_Verdampfertemperatur
@@ -2297,6 +2514,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Vorlauftemperatur Prim"
     id: WPR_Gradient_Vorlauftemperatur_Prim
@@ -2306,6 +2524,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Ruecklauftemperatur Prim"
     id: WPR_Gradient_Ruecklauftemperatur_Prim
@@ -2315,6 +2534,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Vorlauftemperatur Sek"
     id: WPR_Gradient_Vorlauftemperatur_Sek
@@ -2324,6 +2544,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Ruecklauftemperatur1 Sek"
     id: WPR_Gradient_Ruecklauftemperatur1_Sek
@@ -2333,6 +2554,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Ruecklauftemperatur2 Sek"
     id: WPR_Gradient_Ruecklauftemperatur2_Sek
@@ -2342,6 +2564,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Heissgastemperatur1"
     id: WPR_Gradient_Heissgastemperatur1
@@ -2351,6 +2574,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Heissgastemperatur2"
     id: WPR_Gradient_Heissgastemperatur2
@@ -2360,6 +2584,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Anlagenvorlauftemperatur"
     id: WPR_Gradient_Anlagenvorlauftemperatur
@@ -2369,6 +2594,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient HeizwasserPufferspeichertemperatur"
     id: WPR_Gradient_HeizwasserPufferspeichertemperatur
@@ -2378,6 +2604,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Mediumtemperatur extWaermeerzeuger"
     id: WPR_Gradient_Mediumtemperatur_extWaermeerzeuger
@@ -2387,6 +2614,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient WW TemperaturOben"
     id: WPR_Gradient_WW_TemperaturOben
@@ -2396,6 +2624,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient WW TemperaturUnten"
     id: WPR_Gradient_WW_TemperaturUnten
@@ -2405,6 +2634,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient WW TemperaturMitte"
     id: WPR_Gradient_WW_TemperaturMitte
@@ -2414,6 +2644,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient WW TemperaturAusgang"
     id: WPR_Gradient_WW_TemperaturAusgang
@@ -2423,6 +2654,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Kollektortemperatur Solar"
     id: WPR_Gradient_Kollektortemperatur_Solar
@@ -2432,6 +2664,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Ruecklauftemperatur Solar"
     id: WPR_Gradient_Ruecklauftemperatur_Solar
@@ -2441,6 +2674,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Speichertemperatur SolarmodulVitosolic"
     id: WPR_Gradient_Speichertemperatur_SolarmodulVitosolic
@@ -2450,6 +2684,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Vorlauftemperatur HK M2"
     id: WPR_Gradient_Vorlauftemperatur_HK_M2
@@ -2459,6 +2694,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Vorlauftemperatur HK M3"
     id: WPR_Gradient_Vorlauftemperatur_HK_M3
@@ -2468,6 +2704,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Raumtemperatur HK A1 Vitotrol"
     id: WPR_Gradient_Raumtemperatur_HK_A1_Vitotrol
@@ -2477,6 +2714,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Raumtemperatur HK M2 Vitotrol"
     id: WPR_Gradient_Raumtemperatur_HK_M2_Vitotrol
@@ -2486,6 +2724,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Raumtemperatur HK M3 Vitotrol"
     id: WPR_Gradient_Raumtemperatur_HK_M3_Vitotrol
@@ -2495,6 +2734,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Vorlauftemperatur NatCoolingKreis"
     id: WPR_Gradient_Vorlauftemperatur_NatCoolingKreis
@@ -2504,6 +2744,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Vorlauftemperatur NatCoolingHKxx"
     id: WPR_Gradient_Vorlauftemperatur_NatCoolingHKxx
@@ -2513,6 +2754,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Raumtemperatur NatCooling"
     id: WPR_Gradient_Raumtemperatur_NatCooling
@@ -2522,6 +2764,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Raumsolltemperatur HK A1 Vitocom100"
     id: WPR_Gradient_Raumsolltemperatur_HK_A1_Vitocom100
@@ -2531,6 +2774,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Raumsolltemperatur HK M2 Vitocom100"
     id: WPR_Gradient_Raumsolltemperatur_HK_M2_Vitocom100
@@ -2540,6 +2784,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Raumsolltemperatur HK M3 Vitocom100"
     id: WPR_Gradient_Raumsolltemperatur_HK_M3_Vitocom100
@@ -2549,6 +2794,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Sauggastemperatur EEV1"
     id: WPR_Gradient_Sauggastemperatur_EEV1
@@ -2558,6 +2804,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Sauggastemperatur EEV2"
     id: WPR_Gradient_Sauggastemperatur_EEV2
@@ -2567,6 +2814,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Heissgastemperatur EEV1"
     id: WPR_Gradient_Heissgastemperatur_EEV1
@@ -2576,6 +2824,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Heissgastemperatur EEV2"
     id: WPR_Gradient_Heissgastemperatur_EEV2
@@ -2585,6 +2834,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Fluessiggastemperatur EEV1"
     id: WPR_Gradient_Fluessiggastemperatur_EEV1
@@ -2594,6 +2844,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient Fluessiggastemperatur EEV2"
     id: WPR_Gradient_Fluessiggastemperatur_EEV2
@@ -2603,6 +2854,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient EVI Sauggastemperatur EEV1"
     id: WPR_Gradient_EVI_Sauggastemperatur_EEV1
@@ -2612,6 +2864,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Gradient EVI Sauggastemperatur EEV2"
     id: WPR_Gradient_EVI_Sauggastemperatur_EEV2
@@ -2621,6 +2874,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen FLGasMagnetventil V1"
     id: WPR_RelaisZyklen_FLGasMagnetventil_V1
@@ -2630,6 +2884,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen FLGasMagnetventil V2"
     id: WPR_RelaisZyklen_FLGasMagnetventil_V2
@@ -2639,6 +2894,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen Heizkreispumpe A1"
     id: WPR_RelaisZyklen_Heizkreispumpe_A1
@@ -2648,6 +2904,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen Heizkreispumpe M2"
     id: WPR_RelaisZyklen_Heizkreispumpe_M2
@@ -2657,6 +2914,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen Heizkreispumpe M3"
     id: WPR_RelaisZyklen_Heizkreispumpe_M3
@@ -2666,6 +2924,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen Schaltausgang Wtimer ZP"
     id: WPR_RelaisZyklen_Schaltausgang_Wtimer_ZP
@@ -2675,6 +2934,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen Kaeltekreis Umkehr"
     id: WPR_RelaisZyklen_Kaeltekreis_Umkehr
@@ -2684,6 +2944,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen Fernbed1 StoerLED"
     id: WPR_RelaisZyklen_Fernbed1_StoerLED
@@ -2694,6 +2955,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen Fernbed2 StoerLED"
     id: WPR_RelaisZyklen_Fernbed2_StoerLED
@@ -2704,6 +2966,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen Fernbed3 StoerLED"
     id: WPR_RelaisZyklen_Fernbed3_StoerLED
@@ -2714,6 +2977,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen EEV1 FreigabeEEVRegelung"
     id: WPR_RelaisZyklen_EEV1_FreigabeEEVRegelung
@@ -2723,6 +2987,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen EEV2 FreigabeEEVRegelung"
     id: WPR_RelaisZyklen_EEV2_FreigabeEEVRegelung
@@ -2732,6 +2997,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen EEV2 FreigabeEVIRegelung"
     id: WPR_RelaisZyklen_EEV2_FreigabeEVIRegelung
@@ -2741,6 +3007,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen EEV1 DigitalScroll"
     id: WPR_RelaisZyklen_EEV1_DigitalScroll
@@ -2750,6 +3017,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen EEV2 DigitalScroll"
     id: WPR_RelaisZyklen_EEV2_DigitalScroll
@@ -2759,6 +3027,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen EEV2 EVIVentil"
     id: WPR_RelaisZyklen_EEV2_EVIVentil
@@ -2768,6 +3037,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen EEV1 ECVPosition"
     id: WPR_RelaisZyklen_EEV1_ECVPosition
@@ -2777,6 +3047,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen EEV2 ECVPosition"
     id: WPR_RelaisZyklen_EEV2_ECVPosition
@@ -2786,6 +3057,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen M2 MischerAUF"
     id: WPR_RelaisZyklen_M2_MischerAUF
@@ -2795,6 +3067,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen M2 MischerZU"
     id: WPR_RelaisZyklen_M2_MischerZU
@@ -2804,6 +3077,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen M3 MischerAUF"
     id: WPR_RelaisZyklen_M3_MischerAUF
@@ -2813,6 +3087,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen M3 MischerZU"
     id: WPR_RelaisZyklen_M3_MischerZU
@@ -2822,6 +3097,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen NCueberHK MischerAUF"
     id: WPR_RelaisZyklen_NCueberHK_MischerAUF
@@ -2831,6 +3107,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen extWaermeerzeuger MischerZU"
     id: WPR_RelaisZyklen_extWaermeerzeuger_MischerZU
@@ -2840,6 +3117,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisZyklen MischerZU Relaistest"
     id: WPR_RelaisZyklen_MischerZU_Relaistest
@@ -2849,6 +3127,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten Verdichter1"
     id: WPR_RelaisLaufzeiten_Verdichter1
@@ -2861,6 +3140,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten Verdichter2"
     id: WPR_RelaisLaufzeiten_Verdichter2
@@ -2873,6 +3153,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten FLGasMagnetventil V1"
     id: WPR_RelaisLaufzeiten_FLGasMagnetventil_V1
@@ -2885,6 +3166,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten FLGasMagnetventil V2"
     id: WPR_RelaisLaufzeiten_FLGasMagnetventil_V2
@@ -2897,6 +3179,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten Solarpumpe"
     id: WPR_RelaisLaufzeiten_Solarpumpe
@@ -2909,6 +3192,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten FolgeWP1 Kaskade"
     id: WPR_RelaisLaufzeiten_FolgeWP1_Kaskade
@@ -2921,6 +3205,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten FolgeWP2 Kaskade"
     id: WPR_RelaisLaufzeiten_FolgeWP2_Kaskade
@@ -2933,6 +3218,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten FolgeWP3 Kaskade"
     id: WPR_RelaisLaufzeiten_FolgeWP3_Kaskade
@@ -2945,6 +3231,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten FolgeWP4 Kaskade"
     id: WPR_RelaisLaufzeiten_FolgeWP4_Kaskade
@@ -2957,6 +3244,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten Fernbed1 StoerLED"
     id: WPR_RelaisLaufzeiten_Fernbed1_StoerLED
@@ -2970,6 +3258,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten Fernbed2 StoerLED"
     id: WPR_RelaisLaufzeiten_Fernbed2_StoerLED
@@ -2983,6 +3272,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten Fernbed3 StoerLED"
     id: WPR_RelaisLaufzeiten_Fernbed3_StoerLED
@@ -2996,6 +3286,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten SolarpumpeVitosolic"
     id: WPR_RelaisLaufzeiten_SolarpumpeVitosolic
@@ -3008,6 +3299,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten EEV1 FreigabeEEVRegelung"
     id: WPR_RelaisLaufzeiten_EEV1_FreigabeEEVRegelung
@@ -3020,6 +3312,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten EEV2 FreigabeEEVRegelung"
     id: WPR_RelaisLaufzeiten_EEV2_FreigabeEEVRegelung
@@ -3032,6 +3325,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten EEV1 FreigabeEVIRegelung"
     id: WPR_RelaisLaufzeiten_EEV1_FreigabeEVIRegelung
@@ -3044,6 +3338,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten EEV2 FreigabeEVIRegelung"
     id: WPR_RelaisLaufzeiten_EEV2_FreigabeEVIRegelung
@@ -3056,6 +3351,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten EEV1 HeizenKuehlen"
     id: WPR_RelaisLaufzeiten_EEV1_HeizenKuehlen
@@ -3068,6 +3364,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten EEV2 HeizenKuehlen"
     id: WPR_RelaisLaufzeiten_EEV2_HeizenKuehlen
@@ -3080,6 +3377,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten EEV1 DigitalScroll"
     id: WPR_RelaisLaufzeiten_EEV1_DigitalScroll
@@ -3092,6 +3390,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten EEV2 DigitalScroll"
     id: WPR_RelaisLaufzeiten_EEV2_DigitalScroll
@@ -3104,6 +3403,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten EEV1 EVIVentil"
     id: WPR_RelaisLaufzeiten_EEV1_EVIVentil
@@ -3116,6 +3416,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten EEV2 EVIVentil"
     id: WPR_RelaisLaufzeiten_EEV2_EVIVentil
@@ -3128,6 +3429,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten EEV1 ECVPosition"
     id: WPR_RelaisLaufzeiten_EEV1_ECVPosition
@@ -3140,6 +3442,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten EEV2 ECVPosition"
     id: WPR_RelaisLaufzeiten_EEV2_ECVPosition
@@ -3152,6 +3455,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten EEV1 EVIPosition"
     id: WPR_RelaisLaufzeiten_EEV1_EVIPosition
@@ -3164,6 +3468,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten EEV2 EVIPosition"
     id: WPR_RelaisLaufzeiten_EEV2_EVIPosition
@@ -3176,6 +3481,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten M2 MischerZU"
     id: WPR_RelaisLaufzeiten_M2_MischerZU
@@ -3188,6 +3494,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten M3 MischerAUF"
     id: WPR_RelaisLaufzeiten_M3_MischerAUF
@@ -3200,6 +3507,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten M3 MischerZU"
     id: WPR_RelaisLaufzeiten_M3_MischerZU
@@ -3212,6 +3520,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten NCueberHK MischerAUF"
     id: WPR_RelaisLaufzeiten_NCueberHK_MischerAUF
@@ -3224,6 +3533,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten NCueberHK MischerZU"
     id: WPR_RelaisLaufzeiten_NCueberHK_MischerZU
@@ -3236,6 +3546,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten extWaermeerzeuger MischerAUF"
     id: WPR_RelaisLaufzeiten_extWaermeerzeuger_MischerAUF
@@ -3248,6 +3559,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten extWaermeerzeuger MischerZU"
     id: WPR_RelaisLaufzeiten_extWaermeerzeuger_MischerZU
@@ -3260,6 +3572,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten MischerAUF Relaistest"
     id: WPR_RelaisLaufzeiten_MischerAUF_Relaistest
@@ -3272,6 +3585,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR RelaisLaufzeiten MischerZU Relaistest"
     id: WPR_RelaisLaufzeiten_MischerZU_Relaistest
@@ -3284,6 +3598,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR3 05BC Freigabe Absorberpumpe"
     id: WPR3_05BC_Freigabe_Absorberpumpe
@@ -3296,6 +3611,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR3 05BD Umschaltventil Brennwert"
     id: WPR3_05BD_Umschaltventil_Brennwert
@@ -3308,6 +3624,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR3 05BED Umschaltventil Bivalenzbetrieb"
     id: WPR3_05BED_Umschaltventil_Bivalenzbetrieb
@@ -3320,6 +3637,7 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 600s
+
   - platform: vitohome
     name: "WPR Mischer HK M2 SollPos"
     id: WPR_Mischer_HK_M2_SollPos
@@ -3331,6 +3649,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Mischer HK M2 IstPos"
     id: WPR_Mischer_HK_M2_IstPos
@@ -3342,6 +3661,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Mischer HK M3 IstPos"
     id: WPR_Mischer_HK_M3_IstPos
@@ -3353,6 +3673,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Mischer HK M3 SollPos"
     id: WPR_Mischer_HK_M3_SollPos
@@ -3364,6 +3685,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Mischer Kuehlkreis NatCooling SollPos"
     id: WPR_Mischer_Kuehlkreis_NatCooling_SollPos
@@ -3375,6 +3697,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Mischer Kuehlkreis NatCooling IstPos"
     id: WPR_Mischer_Kuehlkreis_NatCooling_IstPos
@@ -3386,6 +3709,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Mischer ext Waermerzeuger SollPos"
     id: WPR_Mischer_ext_Waermerzeuger_SollPos
@@ -3397,6 +3721,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Mischer ext Waermerzeuger IstPos"
     id: WPR_Mischer_ext_Waermerzeuger_IstPos
@@ -3408,6 +3733,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Mischer sep NatCooling Kreis SollPos"
     id: WPR_Mischer_sep_NatCooling_Kreis_SollPos
@@ -3419,6 +3745,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Mischer Umschaltventil HeizenWW1 SollPos"
     id: WPR_Mischer_Umschaltventil_HeizenWW1_SollPos
@@ -3430,6 +3757,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Mischer Umschaltventil HeizenWW1 SollTemp"
     id: WPR_Mischer_Umschaltventil_HeizenWW1_SollTemp
@@ -3441,6 +3769,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Mischer Umschaltventil HeizenWW1 IstPos"
     id: WPR_Mischer_Umschaltventil_HeizenWW1_IstPos
@@ -3452,6 +3781,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Mischer EEV1 ECV Umschaltventil SollPos"
     id: WPR_Mischer_EEV1_ECV_Umschaltventil_SollPos
@@ -3463,6 +3793,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Mischer EEV1 ECV Umschaltventil IstPos"
     id: WPR_Mischer_EEV1_ECV_Umschaltventil_IstPos
@@ -3474,6 +3805,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Mischer EEV1 ECV Umschaltventil SollTemp"
     id: WPR_Mischer_EEV1_ECV_Umschaltventil_SollTemp
@@ -3485,6 +3817,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Mischer EEV2 ECV Umschaltventil IstPos"
     id: WPR_Mischer_EEV2_ECV_Umschaltventil_IstPos
@@ -3496,6 +3829,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Mischer EEV2 ECV Umschaltventil SollTemp"
     id: WPR_Mischer_EEV2_ECV_Umschaltventil_SollTemp
@@ -3507,6 +3841,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Mischer EEV2 ECV Umschaltventil SollPos"
     id: WPR_Mischer_EEV2_ECV_Umschaltventil_SollPos
@@ -3518,6 +3853,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR SensorPosition Eingang ext AE"
     id: WPR_SensorPosition_Eingang_ext_AE
@@ -3528,6 +3864,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR SensorPosition ECV 1"
     id: WPR_SensorPosition_ECV_1
@@ -3538,6 +3875,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR SensorPosition ECV 2"
     id: WPR_SensorPosition_ECV_2
@@ -3548,6 +3886,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Solldruck1 EEV1 MOP"
     id: WPR_Solldruck1_EEV1_MOP
@@ -3557,6 +3896,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Solldruck2 EEV2 MOP"
     id: WPR_Solldruck2_EEV2_MOP
@@ -3566,6 +3906,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR elektrExpansionsventil Stufe1"
     id: WPR_elektrExpansionsventil_Stufe1
@@ -3575,6 +3916,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR GueltSolltemp Schwimmbad"
     id: WPR_GueltSolltemp_Schwimmbad
@@ -3586,6 +3928,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR GueltSolltemp resultHeizKreisanforderung"
     id: WPR_GueltSolltemp_resultHeizKreisanforderung
@@ -3597,6 +3940,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR GueltSollleistung HK1"
     id: WPR_GueltSollleistung_HK1
@@ -3607,6 +3951,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR GueltSollleistung HK2"
     id: WPR_GueltSollleistung_HK2
@@ -3617,6 +3962,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR GueltSollleistung HK3"
     id: WPR_GueltSollleistung_HK3
@@ -3627,6 +3973,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR GueltSollleistung Schwimmbad"
     id: WPR_GueltSollleistung_Schwimmbad
@@ -3637,6 +3984,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR GueltSollleistung resultHeizKreisanforderung"
     id: WPR_GueltSollleistung_resultHeizKreisanforderung
@@ -3647,6 +3995,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat EHO"
     id: WPR_Zustandsautomat_EHO
@@ -3656,6 +4005,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat Erdsonde"
     id: WPR_Zustandsautomat_Erdsonde
@@ -3665,6 +4015,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat Solaranlage"
     id: WPR_Zustandsautomat_Solaranlage
@@ -3674,6 +4025,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat HCFDM"
     id: WPR_Zustandsautomat_HCFDM
@@ -3683,6 +4035,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat CFDM SC1"
     id: WPR_Zustandsautomat_CFDM_SC1
@@ -3692,6 +4045,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat CFDM SC2"
     id: WPR_Zustandsautomat_CFDM_SC2
@@ -3701,6 +4055,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat CFDM SC3"
     id: WPR_Zustandsautomat_CFDM_SC3
@@ -3710,6 +4065,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Zustandsautomat CFDM SC4"
     id: WPR_Zustandsautomat_CFDM_SC4
@@ -3719,6 +4075,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Hydraulikmanager HKPumpe1"
     id: WPR_Hydraulikmanager_HKPumpe1
@@ -3728,6 +4085,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Hydraulikmanager HKPumpe2"
     id: WPR_Hydraulikmanager_HKPumpe2
@@ -3737,6 +4095,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Hydraulikmanager HKPumpe3"
     id: WPR_Hydraulikmanager_HKPumpe3
@@ -3746,6 +4105,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Hydraulikmanager PrimPumpe WP1"
     id: WPR_Hydraulikmanager_PrimPumpe_WP1
@@ -3755,6 +4115,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Hydraulikmanager PrimPumpe WP2"
     id: WPR_Hydraulikmanager_PrimPumpe_WP2
@@ -3764,6 +4125,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Hydraulikmanager SekPumpe WP1"
     id: WPR_Hydraulikmanager_SekPumpe_WP1
@@ -3773,6 +4135,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Hydraulikmanager SekPumpe WP2"
     id: WPR_Hydraulikmanager_SekPumpe_WP2
@@ -3782,6 +4145,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Hydraulikmanager ZK Pumpe"
     id: WPR_Hydraulikmanager_ZK_Pumpe
@@ -3791,6 +4155,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Hydraulikmanager WW Ladepumpe"
     id: WPR_Hydraulikmanager_WW_Ladepumpe
@@ -3800,6 +4165,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Hydraulikmanager Solarpumpe"
     id: WPR_Hydraulikmanager_Solarpumpe
@@ -3809,6 +4175,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Anforderung HCFDM"
     id: WPR_Anforderung_HCFDM
@@ -3818,6 +4185,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR Anforderung CFDM"
     id: WPR_Anforderung_CFDM
@@ -3827,6 +4195,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR MischerBetrieb NatCoooling Mischer Heizkreise"
     id: WPR_MischerBetrieb_NatCoooling_Mischer_Heizkreise
@@ -3836,6 +4205,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR MischerBetrieb sep NatCooling Mischer"
     id: WPR_MischerBetrieb_sep_NatCooling_Mischer
@@ -3845,6 +4215,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR MischerBetrieb Heizkreis2"
     id: WPR_MischerBetrieb_Heizkreis2
@@ -3854,6 +4225,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR MischerBetrieb Heizkreis3"
     id: WPR_MischerBetrieb_Heizkreis3
@@ -3863,6 +4235,7 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR MischerBetrieb extWaermeerzeuger"
     id: WPR_MischerBetrieb_extWaermeerzeuger
@@ -3883,6 +4256,7 @@ binary_sensor:
     bit_mask: 0x01
     disabled_by_default: true
     update_interval: 60s
+
   # --- (ohne Gruppenzuordnung) ---
   - platform: vitohome
     name: "WPR RelaisStatus FLGasMagnetventil V1"
@@ -3893,6 +4267,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus FLGasMagnetventil V2"
     id: WPR_RelaisStatus_FLGasMagnetventil_V2
@@ -3902,6 +4277,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus Sammelstoerung"
     id: WPR_RelaisStatus_Sammelstoerung
@@ -3911,6 +4287,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus Fernbed1 StoerLED"
     id: WPR_RelaisStatus_Fernbed1_StoerLED
@@ -3920,6 +4297,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus Fernbed2 StoerLED"
     id: WPR_RelaisStatus_Fernbed2_StoerLED
@@ -3929,6 +4307,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus Fernbed3 StoerLED"
     id: WPR_RelaisStatus_Fernbed3_StoerLED
@@ -3938,6 +4317,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus WW Ladung 2terSollwert"
     id: WPR_RelaisStatus_WW_Ladung_2terSollwert
@@ -3947,6 +4327,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus EEV1 FreigabeEEVRegelung"
     id: WPR_RelaisStatus_EEV1_FreigabeEEVRegelung
@@ -3956,6 +4337,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus EEV2 FreigabeEEVRegelung"
     id: WPR_RelaisStatus_EEV2_FreigabeEEVRegelung
@@ -3965,6 +4347,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus EEV2 FreigabeEVIRegelung"
     id: WPR_RelaisStatus_EEV2_FreigabeEVIRegelung
@@ -3974,6 +4357,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus EEV1 HeizenKuehlen"
     id: WPR_RelaisStatus_EEV1_HeizenKuehlen
@@ -3983,6 +4367,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus EEV2 HeizenKuehlen"
     id: WPR_RelaisStatus_EEV2_HeizenKuehlen
@@ -3992,6 +4377,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus EEV1 Verdichter"
     id: WPR_RelaisStatus_EEV1_Verdichter
@@ -4001,6 +4387,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus EEV2 Verdichter"
     id: WPR_RelaisStatus_EEV2_Verdichter
@@ -4010,6 +4397,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus EEV1 DigitalScroll"
     id: WPR_RelaisStatus_EEV1_DigitalScroll
@@ -4019,6 +4407,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus EEV2 DigitalScroll"
     id: WPR_RelaisStatus_EEV2_DigitalScroll
@@ -4028,6 +4417,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus EEV1 EVIVentil"
     id: WPR_RelaisStatus_EEV1_EVIVentil
@@ -4037,6 +4427,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus EEV1 ECVPosition"
     id: WPR_RelaisStatus_EEV1_ECVPosition
@@ -4046,6 +4437,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus EEV2 ECVPosition"
     id: WPR_RelaisStatus_EEV2_ECVPosition
@@ -4055,6 +4447,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus EEV2 EVIPosition"
     id: WPR_RelaisStatus_EEV2_EVIPosition
@@ -4064,6 +4457,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus M3 MischerAUF"
     id: WPR_RelaisStatus_M3_MischerAUF
@@ -4073,6 +4467,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus M3 MischerZU"
     id: WPR_RelaisStatus_M3_MischerZU
@@ -4082,6 +4477,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus NCueberHK MischerAUF"
     id: WPR_RelaisStatus_NCueberHK_MischerAUF
@@ -4091,6 +4487,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus NCueberHK MischerZU"
     id: WPR_RelaisStatus_NCueberHK_MischerZU
@@ -4100,6 +4497,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus extWaermeerzeuger MischerZU"
     id: WPR_RelaisStatus_extWaermeerzeuger_MischerZU
@@ -4109,6 +4507,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus MischerZU Relaistest"
     id: WPR_RelaisStatus_MischerZU_Relaistest
@@ -4118,6 +4517,7 @@ binary_sensor:
     bit_mask: 0x40
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus Verdichter1 Neu"
     id: WPR_RelaisStatus_Verdichter1_Neu
@@ -4127,6 +4527,7 @@ binary_sensor:
     bit_mask: 0x01
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "WPR RelaisStatus Verdichter2"
     id: WPR_RelaisStatus_Verdichter2
@@ -4155,6 +4556,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Solaranlage Laufzeit Pumpenknick"
     id: WPR_Solaranlage_Laufzeit_Pumpenknick
@@ -4167,6 +4569,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Solaranlage TempMax solar"
     id: WPR_Solaranlage_TempMax_solar
@@ -4184,6 +4587,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Solaranlage Volumenstrom Solar"
     id: WPR_Solaranlage_Volumenstrom_Solar
@@ -4197,6 +4601,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Solaranlage Totzeit Pumpenknick"
     id: WPR_Solaranlage_Totzeit_Pumpenknick
@@ -4209,6 +4614,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Solaranlage Hysterese Pumpenknick"
     id: WPR_Solaranlage_Hysterese_Pumpenknick
@@ -4221,6 +4627,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Solaranlage Hysterese SolarAus"
     id: WPR_Solaranlage_Hysterese_SolarAus
@@ -4237,6 +4644,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Kommunikation / LON ---
   - platform: vitohome
     name: "WPR Teilnehmernummer"
@@ -4250,6 +4658,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR LON Feldbus WP Nr"
     id: WPR_LON_Feldbus_WP_Nr
@@ -4262,6 +4671,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Codierung 1 / Kommunikation LON ---
   - platform: vitohome
     name: "WPR LONObjekte Feldbus RecieveHeartbeat"
@@ -4277,6 +4687,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingCooling / Kuehlung ---
   - platform: vitohome
     name: "WPR SepNCKreis NatCooling Raumtemperatur"
@@ -4292,6 +4703,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR SepNCKreis NatCooling min Vorlauftemperatur"
     id: WPR_SepNCKreis_NatCooling_min_Vorlauftemperatur
@@ -4306,6 +4718,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR SepNCKreis NatCooling Neigung Raumaufschaltung"
     id: WPR_SepNCKreis_NatCooling_Neigung_Raumaufschaltung
@@ -4318,6 +4731,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR SepNCKreis NatCooling HystereseRaumtemperatur"
     id: WPR_SepNCKreis_NatCooling_HystereseRaumtemperatur
@@ -4331,6 +4745,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR SepNCKreis NatCooling Integralanteil Raumregler"
     id: WPR_SepNCKreis_NatCooling_Integralanteil_Raumregler
@@ -4343,6 +4758,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR SepNCKreis NatCooling Niveau Kuehlkennlinie"
     id: WPR_SepNCKreis_NatCooling_Niveau_Kuehlkennlinie
@@ -4355,6 +4771,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR SepNCKreis NatCooling Neigung Kuehlkennlinie"
     id: WPR_SepNCKreis_NatCooling_Neigung_Kuehlkennlinie
@@ -4367,6 +4784,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR SepNCKreis NatCooling Laufzeit Mischer"
     id: WPR_SepNCKreis_NatCooling_Laufzeit_Mischer
@@ -4381,6 +4799,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR SepNCKreis NatCooling Tastband Mischer"
     id: WPR_SepNCKreis_NatCooling_Tastband_Mischer
@@ -4393,6 +4812,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR SepNCKreis NatCooling Totband Mischer"
     id: WPR_SepNCKreis_NatCooling_Totband_Mischer
@@ -4405,6 +4825,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingHC / HK1allgemein ---
   - platform: vitohome
     name: "WPR HK1 Normaltemperatur"
@@ -4420,6 +4841,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK1 Redtemperatur"
     id: WPR_HK1_Redtemperatur
@@ -4434,6 +4856,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK1 Niveau Heizkennlinie"
     id: WPR_HK1_Niveau_Heizkennlinie
@@ -4447,6 +4870,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK1 Neigung Heizkennlinie"
     id: WPR_HK1_Neigung_Heizkennlinie
@@ -4459,6 +4883,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK1 Integralanteil raumregler"
     id: WPR_HK1_Integralanteil_raumregler
@@ -4471,6 +4896,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK1 Neigung Raumaufschaltung"
     id: WPR_HK1_Neigung_Raumaufschaltung
@@ -4483,6 +4909,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK1 max Vorlaufkorrekturen"
     id: WPR_HK1_max_Vorlaufkorrekturen
@@ -4496,6 +4923,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK1 max Vorlauftemperatur HK"
     id: WPR_HK1_max_Vorlauftemperatur_HK
@@ -4510,6 +4938,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK1 max Ueberhoehung TRaum"
     id: WPR_HK1_max_Ueberhoehung_TRaum
@@ -4524,6 +4953,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK1 Niveau HKMischer"
     id: WPR_HK1_Niveau_HKMischer
@@ -4537,6 +4967,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK1 Laufzeit HKMischer"
     id: WPR_HK1_Laufzeit_HKMischer
@@ -4551,6 +4982,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK1 Tastband HKMischer"
     id: WPR_HK1_Tastband_HKMischer
@@ -4564,6 +4996,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK1 Totband HKMischer"
     id: WPR_HK1_Totband_HKMischer
@@ -4577,6 +5010,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingHC / HK2allgemein ---
   - platform: vitohome
     name: "WPR HK2 Normaltemperatur"
@@ -4592,6 +5026,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK2 Redtemperatur"
     id: WPR_HK2_Redtemperatur
@@ -4606,6 +5041,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK2 Niveau Heizkennlinie"
     id: WPR_HK2_Niveau_Heizkennlinie
@@ -4619,6 +5055,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK2 Neigung Heizkennlinie"
     id: WPR_HK2_Neigung_Heizkennlinie
@@ -4631,6 +5068,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK2 Integralanteil raumregler"
     id: WPR_HK2_Integralanteil_raumregler
@@ -4643,6 +5081,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK2 Neigung Raumaufschaltung"
     id: WPR_HK2_Neigung_Raumaufschaltung
@@ -4655,6 +5094,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK2 max Vorlaufkorrekturen"
     id: WPR_HK2_max_Vorlaufkorrekturen
@@ -4668,6 +5108,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK2 max Vorlauftemperatur HK"
     id: WPR_HK2_max_Vorlauftemperatur_HK
@@ -4682,6 +5123,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK2 max Ueberhoehung TRaum"
     id: WPR_HK2_max_Ueberhoehung_TRaum
@@ -4696,6 +5138,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK2 Niveau HKMischer"
     id: WPR_HK2_Niveau_HKMischer
@@ -4709,6 +5152,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK2 Laufzeit HKMischer"
     id: WPR_HK2_Laufzeit_HKMischer
@@ -4723,6 +5167,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK2 Tastband HKMischer"
     id: WPR_HK2_Tastband_HKMischer
@@ -4736,6 +5181,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK2 Totband HKMischer"
     id: WPR_HK2_Totband_HKMischer
@@ -4749,6 +5195,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingHC / HK3allgemein ---
   - platform: vitohome
     name: "WPR HK3 Normaltemperatur"
@@ -4764,6 +5211,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK3 Redtemperatur"
     id: WPR_HK3_Redtemperatur
@@ -4778,6 +5226,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK3 Niveau Heizkennlinie"
     id: WPR_HK3_Niveau_Heizkennlinie
@@ -4791,6 +5240,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK3 Neigung Heizkennlinie"
     id: WPR_HK3_Neigung_Heizkennlinie
@@ -4803,6 +5253,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK3 Integralanteil raumregler"
     id: WPR_HK3_Integralanteil_raumregler
@@ -4815,6 +5266,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK3 Neigung Raumaufschaltung"
     id: WPR_HK3_Neigung_Raumaufschaltung
@@ -4827,6 +5279,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK3 max Vorlaufkorrekturen"
     id: WPR_HK3_max_Vorlaufkorrekturen
@@ -4840,6 +5293,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK3 max Vorlauftemperatur HK"
     id: WPR_HK3_max_Vorlauftemperatur_HK
@@ -4854,6 +5308,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK3 max Ueberhoehung TRaum"
     id: WPR_HK3_max_Ueberhoehung_TRaum
@@ -4868,6 +5323,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK3 Niveau HKMischer"
     id: WPR_HK3_Niveau_HKMischer
@@ -4881,6 +5337,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK3 Laufzeit HKMischer"
     id: WPR_HK3_Laufzeit_HKMischer
@@ -4895,6 +5352,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK3 Tastband HKMischer"
     id: WPR_HK3_Tastband_HKMischer
@@ -4908,6 +5366,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK3 Totband HKMischer"
     id: WPR_HK3_Totband_HKMischer
@@ -4921,6 +5380,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingPlant / Elektroheizung ---
   - platform: vitohome
     name: "WPR eHeizung hysterese heizung elektro not"
@@ -4935,6 +5395,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR eHeizung sperrzeit Eheiz"
     id: WPR_eHeizung_sperrzeit_Eheiz
@@ -4947,6 +5408,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR eHeizung Temp vorlauf max elektro"
     id: WPR_eHeizung_Temp_vorlauf_max_elektro
@@ -4961,6 +5423,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR eHeizung totzeit einschalt elektro"
     id: WPR_eHeizung_totzeit_einschalt_elektro
@@ -4973,6 +5436,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingPlant / ExtWaermeerzeuger ---
   - platform: vitohome
     name: "WPR extWE Hysterese extWE"
@@ -4987,6 +5451,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR extWE Laufzeit"
     id: WPR_extWE_Laufzeit
@@ -4999,6 +5464,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR extWE Laufzeit extWEMischer"
     id: WPR_extWE_Laufzeit_extWEMischer
@@ -5013,6 +5479,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR extWE minLaufzeit"
     id: WPR_extWE_minLaufzeit
@@ -5025,6 +5492,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR extWE Niveau extWEMischer"
     id: WPR_extWE_Niveau_extWEMischer
@@ -5038,6 +5506,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR extWE TambMax"
     id: WPR_extWE_TambMax
@@ -5052,6 +5521,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR extWE Tastband extWEMischer"
     id: WPR_extWE_Tastband_extWEMischer
@@ -5064,6 +5534,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR extWE Temp Mischer extWE"
     id: WPR_extWE_Temp_Mischer_extWE
@@ -5078,6 +5549,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR extWE Totband extWEMischer"
     id: WPR_extWE_Totband_extWEMischer
@@ -5090,6 +5562,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR extWE totzeit einschalt extWE"
     id: WPR_extWE_totzeit_einschalt_extWE
@@ -5104,6 +5577,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingPlant / Hydraulik ---
   - platform: vitohome
     name: "WPR Hydraulik hysterese vorlauf"
@@ -5118,6 +5592,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Hydraulik integralanteil ventil"
     id: WPR_Hydraulik_integralanteil_ventil
@@ -5130,6 +5605,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Hydraulik proportional ventil"
     id: WPR_Hydraulik_proportional_ventil
@@ -5142,6 +5618,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Hydraulik max schrittzahl 3W Ventil"
     id: WPR_Hydraulik_max_schrittzahl_3W_Ventil
@@ -5155,6 +5632,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Hydraulik nachlauf verdichter"
     id: WPR_Hydraulik_nachlauf_verdichter
@@ -5169,6 +5647,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Hydraulik nachlauf hydraulikkreis"
     id: WPR_Hydraulik_nachlauf_hydraulikkreis
@@ -5183,6 +5662,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Hydraulik VorlaufTempSoll ExtAnf"
     id: WPR_Hydraulik_VorlaufTempSoll_ExtAnf
@@ -5197,6 +5677,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingPlant / Pufferspeicher ---
   - platform: vitohome
     name: "WPR HeizSpeicher SollTemp Heizspeicher"
@@ -5212,6 +5693,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HeizSpeicher hysterese heizspeicher"
     id: WPR_HeizSpeicher_hysterese_heizspeicher
@@ -5225,6 +5707,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HeizSpeicher MaxTemp Heizspeicher"
     id: WPR_HeizSpeicher_MaxTemp_Heizspeicher
@@ -5239,6 +5722,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingPlant / Uhrzeit ---
   - platform: vitohome
     name: "WPR Uhrzeit Sommer Monat"
@@ -5252,6 +5736,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Uhrzeit Sommer Tag"
     id: WPR_Uhrzeit_Sommer_Tag
@@ -5264,6 +5749,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Uhrzeit Sommer Woche"
     id: WPR_Uhrzeit_Sommer_Woche
@@ -5276,6 +5762,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Uhrzeit Winter Monat"
     id: WPR_Uhrzeit_Winter_Monat
@@ -5288,6 +5775,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Uhrzeit Winter Tag"
     id: WPR_Uhrzeit_Winter_Tag
@@ -5300,6 +5788,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Uhrzeit Winter Woche"
     id: WPR_Uhrzeit_Winter_Woche
@@ -5312,6 +5801,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingPlant / Warmwasser ---
   - platform: vitohome
     name: "WPR WW Temp soll"
@@ -5327,6 +5817,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR WW Temp min WWspeicher"
     id: WPR_WW_Temp_min_WWspeicher
@@ -5341,6 +5832,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR WW Temp max WWspeicher"
     id: WPR_WW_Temp_max_WWspeicher
@@ -5355,6 +5847,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR WW Hysterese Warmwasser"
     id: WPR_WW_Hysterese_Warmwasser
@@ -5368,6 +5861,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR WW Hysterese Warmwasser not"
     id: WPR_WW_Hysterese_Warmwasser_not
@@ -5381,6 +5875,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR WW Temp Legionelle"
     id: WPR_WW_Temp_Legionelle
@@ -5395,6 +5890,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR WW max Laufzeit"
     id: WPR_WW_max_Laufzeit
@@ -5409,6 +5905,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR WW max Unterbrechung"
     id: WPR_WW_max_Unterbrechung
@@ -5423,6 +5920,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingWP / Anlagendefinition ---
   - platform: vitohome
     name: "WPR Anlagenkonfig Mittelzeit aussentemperatur"
@@ -5438,6 +5936,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Anlagenkonfig Hysterese Heizgrenze"
     id: WPR_Anlagenkonfig_Hysterese_Heizgrenze
@@ -5451,6 +5950,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Anlagenkonfig Hysterese Kuehlgrenze"
     id: WPR_Anlagenkonfig_Hysterese_Kuehlgrenze
@@ -5464,6 +5964,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Anlagenkonfig Hysterese TempGrenze red BA"
     id: WPR_Anlagenkonfig_Hysterese_TempGrenze_red_BA
@@ -5478,6 +5979,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Anlagenkonfig Frostschutztemperatur"
     id: WPR_Anlagenkonfig_Frostschutztemperatur
@@ -5492,6 +5994,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Anlagenkonfig LeistungFolgeWP"
     id: WPR_Anlagenkonfig_LeistungFolgeWP
@@ -5504,6 +6007,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingWP / AnlagendefinitionextAnschlusserw ---
   - platform: vitohome
     name: "WPR Anlagenkonfig BA Umschaltung Dauer"
@@ -5517,6 +6021,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Anlagenkonfig Wertebereich0 10V"
     id: WPR_Anlagenkonfig_Wertebereich0_10V
@@ -5529,6 +6034,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingWP / Verdichter1 ---
   - platform: vitohome
     name: "WPR Verdichter1 t vorlauf max wp"
@@ -5544,6 +6050,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 t ruecklauf min wp"
     id: WPR_Verdichter1_t_ruecklauf_min_wp
@@ -5558,6 +6065,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 hysterese t primaer ein AW"
     id: WPR_Verdichter1_hysterese_t_primaer_ein_AW
@@ -5572,6 +6080,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 laufzeit wp"
     id: WPR_Verdichter1_laufzeit_wp
@@ -5586,6 +6095,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 totzeit wp"
     id: WPR_Verdichter1_totzeit_wp
@@ -5600,6 +6110,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 anlaufverzoegerung"
     id: WPR_Verdichter1_anlaufverzoegerung
@@ -5614,6 +6125,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 optimaleLaufzeit WP AW"
     id: WPR_Verdichter1_optimaleLaufzeit_WP_AW
@@ -5628,6 +6140,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 abtauzeit wp"
     id: WPR_Verdichter1_abtauzeit_wp
@@ -5642,6 +6155,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 maxPause Abtaustart"
     id: WPR_Verdichter1_maxPause_Abtaustart
@@ -5656,6 +6170,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 sperre abtauung wp"
     id: WPR_Verdichter1_sperre_abtauung_wp
@@ -5670,6 +6185,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 differenz verdampfer wp"
     id: WPR_Verdichter1_differenz_verdampfer_wp
@@ -5683,6 +6199,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 Temp Abtaubeginn"
     id: WPR_Verdichter1_Temp_Abtaubeginn
@@ -5698,6 +6215,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 Temp Abtauende"
     id: WPR_Verdichter1_Temp_Abtauende
@@ -5712,6 +6230,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 max Thub WP AW"
     id: WPR_Verdichter1_max_Thub_WP_AW
@@ -5726,6 +6245,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 max t primaer ein wp"
     id: WPR_Verdichter1_max_t_primaer_ein_wp
@@ -5740,6 +6260,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 min t primaer ein wp AW"
     id: WPR_Verdichter1_min_t_primaer_ein_wp_AW
@@ -5754,6 +6275,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 Niederdruck Verzoegerungszeit Verdichteranlauf"
     id: WPR_Verdichter1_Niederdruck_Verzoegerungszeit_Verdichteranlauf
@@ -5768,6 +6290,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingWP / Verdichter1EEVRCD ---
   - platform: vitohome
     name: "WPR Verdichter1 Ueberhitzungssollwert"
@@ -5782,6 +6305,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 MOP Grenzwert"
     id: WPR_Verdichter1_MOP_Grenzwert
@@ -5795,6 +6319,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 PWMZykluszeit Digital Scroll"
     id: WPR_Verdichter1_PWMZykluszeit_Digital_Scroll
@@ -5809,6 +6334,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 Oeffnungsstellung EEV Ventil Startphase"
     id: WPR_Verdichter1_Oeffnungsstellung_EEV_Ventil_Startphase
@@ -5822,6 +6348,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 Startoeffnungsdauer"
     id: WPR_Verdichter1_Startoeffnungsdauer
@@ -5836,6 +6363,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 Heissgastemp Grenzwert"
     id: WPR_Verdichter1_Heissgastemp_Grenzwert
@@ -5850,6 +6378,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 Hochdruck Grenzwert Absolutdruck"
     id: WPR_Verdichter1_Hochdruck_Grenzwert_Absolutdruck
@@ -5863,6 +6392,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 Alarm Hochdruck Totband"
     id: WPR_Verdichter1_Alarm_Hochdruck_Totband
@@ -5876,6 +6406,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 Ueberhitzungstemp Grenzwert AW"
     id: WPR_Verdichter1_Ueberhitzungstemp_Grenzwert_AW
@@ -5890,6 +6421,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 Niederdruck Grenzwert AW"
     id: WPR_Verdichter1_Niederdruck_Grenzwert_AW
@@ -5903,6 +6435,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 Niederdruck Hysterese"
     id: WPR_Verdichter1_Niederdruck_Hysterese
@@ -5916,6 +6449,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 LeistungVerd"
     id: WPR_Verdichter1_LeistungVerd
@@ -5928,6 +6462,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingWP / Verdichter2 ---
   - platform: vitohome
     name: "WPR Verdichter2 t vorlauf max wp"
@@ -5943,6 +6478,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 t ruecklauf min wp"
     id: WPR_Verdichter2_t_ruecklauf_min_wp
@@ -5957,6 +6493,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 hysterese t primaer ein"
     id: WPR_Verdichter2_hysterese_t_primaer_ein
@@ -5970,6 +6507,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 laufzeit wp"
     id: WPR_Verdichter2_laufzeit_wp
@@ -5984,6 +6522,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 totzeit wp"
     id: WPR_Verdichter2_totzeit_wp
@@ -5998,6 +6537,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 anlaufverzoegerung"
     id: WPR_Verdichter2_anlaufverzoegerung
@@ -6012,6 +6552,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 optimaleLaufzeit WP"
     id: WPR_Verdichter2_optimaleLaufzeit_WP
@@ -6026,6 +6567,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 abtauzeit wp"
     id: WPR_Verdichter2_abtauzeit_wp
@@ -6038,6 +6580,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 maxPause Abtaustart"
     id: WPR_Verdichter2_maxPause_Abtaustart
@@ -6052,6 +6595,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 sperre abtauung wp"
     id: WPR_Verdichter2_sperre_abtauung_wp
@@ -6066,6 +6610,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 differenz verdampfer wp"
     id: WPR_Verdichter2_differenz_verdampfer_wp
@@ -6079,6 +6624,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 Temp Abtaubeginn"
     id: WPR_Verdichter2_Temp_Abtaubeginn
@@ -6093,6 +6639,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 Temp Abtauende"
     id: WPR_Verdichter2_Temp_Abtauende
@@ -6107,6 +6654,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 max Thub WP"
     id: WPR_Verdichter2_max_Thub_WP
@@ -6121,6 +6669,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 max t primaer ein wp"
     id: WPR_Verdichter2_max_t_primaer_ein_wp
@@ -6135,6 +6684,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 min t primaer ein wp"
     id: WPR_Verdichter2_min_t_primaer_ein_wp
@@ -6149,6 +6699,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 Niederdruck Verzoegerungszeit Verdichteranlauf"
     id: WPR_Verdichter2_Niederdruck_Verzoegerungszeit_Verdichteranlauf
@@ -6161,6 +6712,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingWP / Verdichter2EEVRCD ---
   - platform: vitohome
     name: "WPR Verdichter2 Ueberhitzungssollwert"
@@ -6176,6 +6728,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 MOP Grenzwert"
     id: WPR_Verdichter2_MOP_Grenzwert
@@ -6189,6 +6742,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 PWMZykluszeit Digital Scroll"
     id: WPR_Verdichter2_PWMZykluszeit_Digital_Scroll
@@ -6203,6 +6757,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 Oeffnungsstellung EEV Ventil Startphase"
     id: WPR_Verdichter2_Oeffnungsstellung_EEV_Ventil_Startphase
@@ -6216,6 +6771,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 Startoeffnungsdauer"
     id: WPR_Verdichter2_Startoeffnungsdauer
@@ -6230,6 +6786,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 Heissgastemp Grenzwert"
     id: WPR_Verdichter2_Heissgastemp_Grenzwert
@@ -6244,6 +6801,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 Hochdruck Grenzwert Absolutdruck"
     id: WPR_Verdichter2_Hochdruck_Grenzwert_Absolutdruck
@@ -6257,6 +6815,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 Alarm Hochdruck Totband"
     id: WPR_Verdichter2_Alarm_Hochdruck_Totband
@@ -6270,6 +6829,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 Ueberhitzungstemp Grenzwert"
     id: WPR_Verdichter2_Ueberhitzungstemp_Grenzwert
@@ -6284,6 +6844,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 Niederdruck Grenzwert"
     id: WPR_Verdichter2_Niederdruck_Grenzwert
@@ -6297,6 +6858,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 Niederdruck Hysterese"
     id: WPR_Verdichter2_Niederdruck_Hysterese
@@ -6310,6 +6872,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 LeistungVerd"
     id: WPR_Verdichter2_LeistungVerd
@@ -6322,6 +6885,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- (ohne Gruppenzuordnung) ---
   - platform: vitohome
     name: "WPR HK1 min Vorlauftemperatur HK"
@@ -6337,6 +6901,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK1 Neigung Kuehlkennlinie"
     id: WPR_HK1_Neigung_Kuehlkennlinie
@@ -6349,6 +6914,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK1 Tastband NCMischer"
     id: WPR_HK1_Tastband_NCMischer
@@ -6361,6 +6927,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK1 Totband NCMischer"
     id: WPR_HK1_Totband_NCMischer
@@ -6373,6 +6940,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK1 Laufzeit NCMischer"
     id: WPR_HK1_Laufzeit_NCMischer
@@ -6387,6 +6955,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "Absenkzeit gelerntA1M1"
     id: Absenkzeit_gelerntA1M1
@@ -6401,6 +6970,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK2 min Vorlauftemperatur HK"
     id: WPR_HK2_min_Vorlauftemperatur_HK
@@ -6415,6 +6985,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK2 Tastband NCMischer"
     id: WPR_HK2_Tastband_NCMischer
@@ -6427,6 +6998,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK2 Totband NCMischer"
     id: WPR_HK2_Totband_NCMischer
@@ -6439,6 +7011,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK2 Laufzeit NCMischer"
     id: WPR_HK2_Laufzeit_NCMischer
@@ -6453,6 +7026,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK3 min Vorlauftemperatur HK"
     id: WPR_HK3_min_Vorlauftemperatur_HK
@@ -6467,6 +7041,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK3 Tastband NCMischer"
     id: WPR_HK3_Tastband_NCMischer
@@ -6479,6 +7054,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK3 Totband NCMischer"
     id: WPR_HK3_Totband_NCMischer
@@ -6491,6 +7067,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK3 Laufzeit NCMischer"
     id: WPR_HK3_Laufzeit_NCMischer
@@ -6505,6 +7082,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR LON Anzahl ext WP"
     id: WPR_LON_Anzahl_ext_WP
@@ -6517,6 +7095,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR WW TWWSpeicher dT dt MigrationChange 33"
     id: WPR_WW_TWWSpeicher_dT_dt_MigrationChange_33
@@ -6545,6 +7124,7 @@ select:
       0x00: "0: lokal"
       0x01: "1: vom Feldbus (z.B. LON) empfangen"
       0x02: "2: auf Feldbus (z.B. LON) senden"
+
   - platform: vitohome
     name: "WPR LONObjekte Feldbus Uhrzeit"
     id: WPR_LONObjekte_Feldbus_Uhrzeit
@@ -6556,6 +7136,7 @@ select:
       0x00: "0: lokal"
       0x01: "1: vom Feldbus (z.B. LON) empfangen"
       0x02: "2: auf Feldbus (z.B. LON) senden"
+
   # --- ProgrammingCooling / Kuehlung ---
   - platform: vitohome
     name: "WPR SepNCKreis NatCooling Kreis"
@@ -6569,6 +7150,7 @@ select:
       0x01: "Natural Cooling"
       0x02: "NC mit Mischer"
       0x03: "Active Cooling"
+
   - platform: vitohome
     name: "WPR SepNCKreis NatCooling Kuehlkreis"
     id: WPR_SepNCKreis_NatCooling_Kuehlkreis
@@ -6581,6 +7163,7 @@ select:
       0x02: "Kühlen auf HK2"
       0x03: "Kühlen auf HK3"
       0x04: "Kühlen auf separaten Kühlkreis"
+
   - platform: vitohome
     name: "WPR SepNCKreis NatCooling RaumTempSens Rangierung"
     id: WPR_SepNCKreis_NatCooling_RaumTempSens_Rangierung
@@ -6593,6 +7176,7 @@ select:
       0x01: "1: Verwendung des HK1-Raumsensors"
       0x02: "2: Verwendung des HK2-Raumsensors"
       0x03: "3: Verwendung des HK3-Raumsensors"
+
   # --- ProgrammingHC / HK1allgemein ---
   - platform: vitohome
     name: "WPR HK1 WTimer HK"
@@ -6606,6 +7190,7 @@ select:
       0x0001: "Reduziert"
       0x0002: "Normal"
       0x0003: "Festwert"
+
   # Writable operating-mode (Betriebsart). KNOWN ISSUES on real 0x20CB /
   # VScotHO1 units (see project notes / hardware audit):
   #  * openv/community drives the mode at 0x2301 with 6 options
@@ -6631,6 +7216,7 @@ select:
       0x04: "4: Schaltzeiten"
       0x05: "5: Betriebsartenwahlschalter"
       0x06: "6: Standard"
+
   - platform: vitohome
     name: "WPR HK1 Raumtemperaturaufschaltung"
     id: WPR_HK1_Raumtemperaturaufschaltung
@@ -6643,6 +7229,7 @@ select:
       0x01: "1: Reduzierter Betrieb"
       0x02: "2: Normaler Betrieb"
       0x03: "3: Normaler & Reduzierter Betrieb"
+
   - platform: vitohome
     name: "WPR HK1 heizkreis reaktion force"
     id: WPR_HK1_heizkreis_reaktion_force
@@ -6654,6 +7241,7 @@ select:
       0x00: "0: keine Wärmeanahme"
       0x01: "1: nur bei kritischem Überschuss"
       0x02: "2: zu jeder Zeit"
+
   # --- ProgrammingHC / HK2allgemein ---
   - platform: vitohome
     name: "WPR HK2 WTimer HK"
@@ -6667,6 +7255,7 @@ select:
       0x0001: "Reduziert"
       0x0002: "Normal"
       0x0003: "Festwert"
+
   # Writable operating-mode (Betriebsart). KNOWN ISSUES on real 0x20CB /
   # VScotHO1 units (see project notes / hardware audit):
   #  * openv/community drives the mode at 0x2301 with 6 options
@@ -6692,6 +7281,7 @@ select:
       0x04: "4: Schaltzeiten"
       0x05: "5: Betriebsartenwahlschalter"
       0x06: "6: Standard"
+
   - platform: vitohome
     name: "WPR HK2 Raumtemperaturaufschaltung"
     id: WPR_HK2_Raumtemperaturaufschaltung
@@ -6704,6 +7294,7 @@ select:
       0x01: "1: Reduzierter Betrieb"
       0x02: "2: Normaler Betrieb"
       0x03: "3: Normaler & Reduzierter Betrieb"
+
   - platform: vitohome
     name: "WPR HK2 heizkreis reaktion force"
     id: WPR_HK2_heizkreis_reaktion_force
@@ -6715,6 +7306,7 @@ select:
       0x00: "0: keine Wärmeanahme"
       0x01: "1: nur bei kritischem Überschuss"
       0x02: "2: zu jeder Zeit"
+
   # --- ProgrammingHC / HK3allgemein ---
   - platform: vitohome
     name: "WPR HK3 WTimer HK"
@@ -6728,6 +7320,7 @@ select:
       0x0001: "Reduziert"
       0x0002: "Normal"
       0x0003: "Festwert"
+
   # Writable operating-mode (Betriebsart). KNOWN ISSUES on real 0x20CB /
   # VScotHO1 units (see project notes / hardware audit):
   #  * openv/community drives the mode at 0x2301 with 6 options
@@ -6753,6 +7346,7 @@ select:
       0x04: "4: Schaltzeiten"
       0x05: "5: Betriebsartenwahlschalter"
       0x06: "6: Standard"
+
   - platform: vitohome
     name: "WPR HK3 Raumtemperaturaufschaltung"
     id: WPR_HK3_Raumtemperaturaufschaltung
@@ -6765,6 +7359,7 @@ select:
       0x01: "1: Reduzierter Betrieb"
       0x02: "2: Normaler Betrieb"
       0x03: "3: Normaler & Reduzierter Betrieb"
+
   - platform: vitohome
     name: "WPR HK3 heizkreis reaktion force"
     id: WPR_HK3_heizkreis_reaktion_force
@@ -6776,6 +7371,7 @@ select:
       0x00: "0: keine Wärmeanahme"
       0x01: "1: nur bei kritischem Überschuss"
       0x02: "2: zu jeder Zeit"
+
   # --- ProgrammingPlant / Elektroheizung ---
   - platform: vitohome
     name: "WPR eHeizung Eheizstufe EVUSperre"
@@ -6789,6 +7385,7 @@ select:
       0x0001: "1: 1. Druchaluferhitzer"
       0x0002: "2: 2. Druchaluferhitzer"
       0x0003: "3: 3. Druchaluferhitzer"
+
   - platform: vitohome
     name: "WPR eHeizung Eheizstufe sperreStromausfall"
     id: WPR_eHeizung_Eheizstufe_sperreStromausfall
@@ -6800,6 +7397,7 @@ select:
       0x00: "0: 3 kW"
       0x01: "1: 6 kW"
       0x02: "2: 9 kW"
+
   - platform: vitohome
     name: "WPR eHeizung max Stufe Elektro"
     id: WPR_eHeizung_max_Stufe_Elektro
@@ -6811,6 +7409,7 @@ select:
       0x01: "1: 1.Durchlauferhitzer"
       0x02: "2: 2. Durchlauferhitzer"
       0x03: "3: 1. und 2. Durchlauferhitzer"
+
   # --- ProgrammingPlant / Hydraulik ---
   - platform: vitohome
     name: "WPR Hydraulik Estrichprogramm"
@@ -6834,6 +7433,7 @@ select:
       0x0B: "11: 25 Tage auf Festwert"
       0x0C: "12: 30 Tage auf Festwert"
       0x0D: "13..15: frei"
+
   # --- ProgrammingPlant / Pufferspeicher ---
   - platform: vitohome
     name: "WPR HeizSpeicher Wtimer Puffer"
@@ -6847,6 +7447,7 @@ select:
       0x0001: "1: OBERER SENSOR"
       0x0002: "2: NORMAL"
       0x0003: "3: FESTWERT"
+
   - platform: vitohome
     name: "WPR HeizSpeicher reaktion force"
     id: WPR_HeizSpeicher_reaktion_force
@@ -6858,6 +7459,7 @@ select:
       0x00: "0: KEINE WÄRMEABNAHME"
       0x01: "1: NUR BEI KRITISCHEM ÜBERSCHUSS"
       0x02: "2: ZU JEDER ZEIT"
+
   # --- ProgrammingPlant / Warmwasser ---
   - platform: vitohome
     name: "WPR WW WTimer"
@@ -6871,6 +7473,7 @@ select:
       0x0001: "REDUZIERT"
       0x0002: "NORMAL"
       0x0003: "2.SOLLTEMP"
+
   # Writable operating-mode (Betriebsart). KNOWN ISSUES on real 0x20CB /
   # VScotHO1 units (see project notes / hardware audit):
   #  * openv/community drives the mode at 0x2301 with 6 options
@@ -6893,6 +7496,7 @@ select:
       0x01: "NUR NACH SCHALTZEITEN"
       0x02: "DREHSCHALTER"
       0x03: "STANDARD"
+
   - platform: vitohome
     name: "WPR WW speicher reaktion force"
     id: WPR_WW_speicher_reaktion_force
@@ -6904,6 +7508,7 @@ select:
       0x00: "KEINE WÄRMEABNAHME"
       0x01: "NUR BEI KRITISCHEM ÜBERSCHUSS"
       0x02: "ZU JEDER ZEIT"
+
   # --- ProgrammingWP / Anlagendefinition ---
   - platform: vitohome
     name: "WPR Anlagenkonfig Anlagenschema"
@@ -6925,6 +7530,7 @@ select:
       0x09: "9: 1 HK 1 MHK 1 MHK"
       0x0A: "10: 1 HK 1 MHK 1 MHK WW"
       0x0B: "11: Fremdansteuerung"
+
   - platform: vitohome
     name: "WPR Anlagenkonfig Sprache"
     id: WPR_Anlagenkonfig_Sprache
@@ -6942,6 +7548,7 @@ select:
       0x06: "Finnisch"
       0x07: "Polnisch"
       0x08: "Tschechisch"
+
   - platform: vitohome
     name: "WPR Anlagenkonfig Kaskade"
     id: WPR_Anlagenkonfig_Kaskade
@@ -6953,6 +7560,7 @@ select:
       0x00: "0: keine"
       0x01: "1: Kaskade über H1"
       0x02: "2: LON-Kaskade"
+
   - platform: vitohome
     name: "WPR Anlagenkonfig Vitosolic100200"
     id: WPR_Anlagenkonfig_Vitosolic100200
@@ -6964,6 +7572,7 @@ select:
       0x00: "0: KEINE"
       0x01: "1: Vitosolic 100"
       0x02: "2: Vitosolic 200"
+
   - platform: vitohome
     name: "WPR Anlagenkonfig PrioExtAnf"
     id: WPR_Anlagenkonfig_PrioExtAnf
@@ -6974,6 +7583,7 @@ select:
     options:
       0x00: "NIEDRIGE PRIORITÄT"
       0x01: "HOHE PRIORITÄT"
+
   # --- ProgrammingWP / AnlagendefinitionextAnschlusserw ---
   - platform: vitohome
     name: "WPR Anlagenkonfig BA UmschaltungAufHK"
@@ -6995,6 +7605,7 @@ select:
       0x09: "9: 1 HK 1 MHK 1 MHK"
       0x0A: "10: 1 HK 1 MHK 1MHK WW"
       0x0B: "11: keine Umschaltung"
+
   - platform: vitohome
     name: "WPR Anlagenkonfig BA Umschaltung Wirkung"
     id: WPR_Anlagenkonfig_BA_Umschaltung_Wirkung
@@ -7007,6 +7618,7 @@ select:
       0x01: "REDUZIERT"
       0x02: "NORMAL"
       0x03: "FESTWERT"
+
   - platform: vitohome
     name: "WPR Anlagenkonfig ExternAnf MiAuf"
     id: WPR_Anlagenkonfig_ExternAnf_MiAuf
@@ -7023,6 +7635,7 @@ select:
       0x05: "5: M2 AUF M3 Regelbetrieb Anforderung Wirkung"
       0x06: "6: M2 Regelbetrieb M3 AUF Anforderung Wirkung"
       0x07: "7: M2 AUF M3 AUF Anforderung Wirkung"
+
   - platform: vitohome
     name: "WPR Anlagenkonfig ExternSperren MiZu"
     id: WPR_Anlagenkonfig_ExternSperren_MiZu
@@ -7040,6 +7653,7 @@ select:
       0x06: "6: M2 Regelbetrieb M3 AUF Sperren Wirkung"
       0x07: "7: M2 AUF M3 AUF Sperren Wirkung"
       0x08: "8: Extern Sperren von AC M2 Regelbetrieb M3 Regelbetrieb Sperren Wirkung"
+
   - platform: vitohome
     name: "WPR Anlagenkonfig ExternSperrenWirkung HKP1"
     id: WPR_Anlagenkonfig_ExternSperrenWirkung_HKP1
@@ -7050,6 +7664,7 @@ select:
     options:
       0x00: "REGELBETRIEB"
       0x01: "AUS"
+
   - platform: vitohome
     name: "WPR Anlagenkonfig ExternSperrenWirkung HKP2"
     id: WPR_Anlagenkonfig_ExternSperrenWirkung_HKP2
@@ -7060,6 +7675,7 @@ select:
     options:
       0x00: "REGELBETRIEB"
       0x01: "AUS"
+
   - platform: vitohome
     name: "WPR Anlagenkonfig ExternSperrenWirkung HKP3"
     id: WPR_Anlagenkonfig_ExternSperrenWirkung_HKP3
@@ -7070,6 +7686,7 @@ select:
     options:
       0x00: "REGELBETRIEB"
       0x01: "AUS"
+
   - platform: vitohome
     name: "WPR Anlagenkonfig ExternSperrenWirkung PrimPumpeVentilator"
     id: WPR_Anlagenkonfig_ExternSperrenWirkung_PrimPumpeVentilator
@@ -7080,6 +7697,7 @@ select:
     options:
       0x00: "REGELBETRIEB"
       0x01: "AUS"
+
   - platform: vitohome
     name: "WPR Anlagenkonfig ExternSperrenWirkung SekPumpe"
     id: WPR_Anlagenkonfig_ExternSperrenWirkung_SekPumpe
@@ -7090,6 +7708,7 @@ select:
     options:
       0x00: "REGELBETRIEB"
       0x01: "AUS"
+
   - platform: vitohome
     name: "WPR Anlagenkonfig ExternSperrenWirkung SLP"
     id: WPR_Anlagenkonfig_ExternSperrenWirkung_SLP
@@ -7100,6 +7719,7 @@ select:
     options:
       0x00: "REGELBETRIEB"
       0x01: "AUS"
+
   # --- (ohne Gruppenzuordnung) ---
   - platform: vitohome
     name: "WPR Anlagenkonfig Mischertyp"
@@ -7111,6 +7731,7 @@ select:
     options:
       0x00: "0: NR1 (GK 0x71)"
       0x01: "1: NRF (GK 0x73)"
+
   - platform: vitohome
     name: "WPR Anlagenkonfig TypNCMischer"
     id: WPR_Anlagenkonfig_TypNCMischer
@@ -7132,6 +7753,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Solaranlage Rueckschlagklappenfehler"
     id: WPR_Solaranlage_Rueckschlagklappenfehler
@@ -7140,6 +7762,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Codierung 1 / Kommunikation LON ---
   - platform: vitohome
     name: "WPR LONObjekte Kommodul LON vorh"
@@ -7149,6 +7772,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingCooling / Kuehlung ---
   - platform: vitohome
     name: "WPR SepNCKreis NatCooling Raumregelung"
@@ -7158,6 +7782,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingHC / HK1allgemein ---
   - platform: vitohome
     name: "WPR HK1 Fernbedienung"
@@ -7167,6 +7792,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK1 Raumregelung"
     id: WPR_HK1_Raumregelung
@@ -7175,6 +7801,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK1 WWbeiParty"
     id: WPR_HK1_WWbeiParty
@@ -7183,6 +7810,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingHC / HK2allgemein ---
   - platform: vitohome
     name: "WPR HK2 Fernbedienung"
@@ -7192,6 +7820,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK2 Raumregelung"
     id: WPR_HK2_Raumregelung
@@ -7200,6 +7829,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK2 WWbeiParty"
     id: WPR_HK2_WWbeiParty
@@ -7208,6 +7838,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingHC / HK3allgemein ---
   - platform: vitohome
     name: "WPR HK3 Fernbedienung"
@@ -7217,6 +7848,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK3 Raumregelung"
     id: WPR_HK3_Raumregelung
@@ -7225,6 +7857,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK3 WWbeiParty"
     id: WPR_HK3_WWbeiParty
@@ -7233,6 +7866,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingPlant / Elektroheizung ---
   - platform: vitohome
     name: "WPR eHeizung Heizbetrieb mit Elektro"
@@ -7242,6 +7876,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR eHeizung vorhanden"
     id: WPR_eHeizung_vorhanden
@@ -7250,6 +7885,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR eHeizung Warmwasser mit Elektro"
     id: WPR_eHeizung_Warmwasser_mit_Elektro
@@ -7258,6 +7894,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingPlant / ExtWaermeerzeuger ---
   - platform: vitohome
     name: "WPR extWE auf WW"
@@ -7267,6 +7904,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR extWE Bivalentbetrieb"
     id: WPR_extWE_Bivalentbetrieb
@@ -7275,6 +7913,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR extWE ExtWaermeerzeuger"
     id: WPR_extWE_ExtWaermeerzeuger
@@ -7283,6 +7922,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR extWE Vorrang"
     id: WPR_extWE_Vorrang
@@ -7291,6 +7931,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingPlant / Hydraulik ---
   - platform: vitohome
     name: "WPR Hydraulik Waermepumpe fuer Bautrocknung"
@@ -7300,6 +7941,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingPlant / Pufferspeicher ---
   - platform: vitohome
     name: "WPR HeizSpeicher Heizspeicher"
@@ -7309,6 +7951,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HeizSpeicher Abschaltoptimierung HS"
     id: WPR_HeizSpeicher_Abschaltoptimierung_HS
@@ -7317,6 +7960,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingPlant / Uhrzeit ---
   - platform: vitohome
     name: "WPR Uhrzeit Zeitumstellung"
@@ -7326,6 +7970,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingPlant / Warmwasser ---
   - platform: vitohome
     name: "WPR WW Einschaltoptimierung"
@@ -7335,6 +7980,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR WW Abschaltoptimierung"
     id: WPR_WW_Abschaltoptimierung
@@ -7343,6 +7989,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR WW Legionellenautomat"
     id: WPR_WW_Legionellenautomat
@@ -7351,6 +7998,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR WW ZweiterTempSensor"
     id: WPR_WW_ZweiterTempSensor
@@ -7359,6 +8007,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR WW Warmwasservorrang"
     id: WPR_WW_Warmwasservorrang
@@ -7367,6 +8016,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR WW EHeizWWSpeicher"
     id: WPR_WW_EHeizWWSpeicher
@@ -7375,6 +8025,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingWP / Anlagendefinition ---
   - platform: vitohome
     name: "WPR Anlagenkonfig Primearpumpe NatCooling"
@@ -7385,6 +8036,7 @@ switch:
     off_value: 0x01  # NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Anlagenkonfig Schwimmbad"
     id: WPR_Anlagenkonfig_Schwimmbad
@@ -7394,6 +8046,7 @@ switch:
     off_value: 0x01  # NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Anlagenkonfig Ext WP auf Cool"
     id: WPR_Anlagenkonfig_Ext_WP_auf_Cool
@@ -7402,6 +8055,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Anlagenkonfig Ext WP auf WW"
     id: WPR_Anlagenkonfig_Ext_WP_auf_WW
@@ -7410,6 +8064,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Anlagenkonfig Ext Anschlusserw vorhanden"
     id: WPR_Anlagenkonfig_Ext_Anschlusserw_vorhanden
@@ -7419,6 +8074,7 @@ switch:
     off_value: 0x01  # NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Anlagenkonfig Vitocom100"
     id: WPR_Anlagenkonfig_Vitocom100
@@ -7427,6 +8083,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingWP / Verdichter1 ---
   - platform: vitohome
     name: "WPR Verdichter1 VerdStufeFreigegeben"
@@ -7436,6 +8093,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter1 Verdichter auf WW"
     id: WPR_Verdichter1_Verdichter_auf_WW
@@ -7444,6 +8102,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingWP / Verdichter1EEVRCD ---
   - platform: vitohome
     name: "WPR Verdichter1 Verdichter DigitalScroll"
@@ -7453,6 +8112,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   # --- ProgrammingWP / Verdichter2 ---
   - platform: vitohome
     name: "WPR Verdichter2 VerdStufeFreigegeben"
@@ -7462,6 +8122,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR Verdichter2 Verdichter auf WW"
     id: WPR_Verdichter2_Verdichter_auf_WW
@@ -7470,6 +8131,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   # --- (ohne Gruppenzuordnung) ---
   - platform: vitohome
     name: "WPR HK1 Raumtemperatursensor"
@@ -7479,6 +8141,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK1 Einschaltoptimierung"
     id: WPR_HK1_Einschaltoptimierung
@@ -7487,6 +8150,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK2 Raumtemperatursensor"
     id: WPR_HK2_Raumtemperatursensor
@@ -7495,6 +8159,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK2 Einschaltoptimierung"
     id: WPR_HK2_Einschaltoptimierung
@@ -7503,6 +8168,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK3 Raumtemperatursensor"
     id: WPR_HK3_Raumtemperatursensor
@@ -7511,6 +8177,7 @@ switch:
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
+
   - platform: vitohome
     name: "WPR HK3 Einschaltoptimierung"
     id: WPR_HK3_Einschaltoptimierung
@@ -7527,6 +8194,7 @@ text_sensor:
     id: device_type
     icon: "mdi:identifier"
     entity_category: diagnostic
+
   # --- Kommunikation / LON ---
   - platform: vitohome
     type: enum
@@ -7540,6 +8208,7 @@ text_sensor:
     options:
       0x00: "kein Manager"
       0x01: "Fehlermanager"
+
   # --- DiagnosisDiagnosis1 / Allgemein ---
   - platform: vitohome
     type: enum
@@ -7554,6 +8223,7 @@ text_sensor:
       0x01: "BA_Reduziert"
       0x02: "BA_Normal"
       0x03: "BA_Festwert"
+
   - platform: vitohome
     type: enum
     name: "WPR GueltBetriebsart ZentrAnforderung"
@@ -7567,6 +8237,7 @@ text_sensor:
       0x01: "BA_Reduziert"
       0x02: "BA_Normal"
       0x03: "BA_Festwert"
+
   - platform: vitohome
     type: enum
     name: "WPR GueltBetriebsmodus ZentrAnforderung"
@@ -7580,6 +8251,7 @@ text_sensor:
       0x01: "BM_Heizen"
       0x02: "BM_Kuehlen"
       0x03: "BM_Auto"
+
   # --- DiagnosisDiagnosis1 / Heizkreis1 ---
   - platform: vitohome
     type: enum
@@ -7594,6 +8266,7 @@ text_sensor:
       0x01: "BA_Reduziert"
       0x02: "BA_Normal"
       0x03: "BA_Festwert"
+
   - platform: vitohome
     type: enum
     name: "WPR GueltBetriebsmodus HK1"
@@ -7607,6 +8280,7 @@ text_sensor:
       0x01: "BM_Heizen"
       0x02: "BM_Kuehlen"
       0x03: "BM_Auto"
+
   - platform: vitohome
     type: enum
     name: "WPR GueltBedarf HK1"
@@ -7622,6 +8296,7 @@ text_sensor:
       0x03: "MITTLERER BEDARF"
       0x04: "HOHER BEDARF"
       0x05: "MAXIMAL BEDARF"
+
   # --- DiagnosisDiagnosis1 / Heizkreis2 ---
   - platform: vitohome
     type: enum
@@ -7636,6 +8311,7 @@ text_sensor:
       0x01: "BA_Reduziert"
       0x02: "BA_Normal"
       0x03: "BA_Festwert"
+
   - platform: vitohome
     type: enum
     name: "WPR GueltBetriebsmodus HK2"
@@ -7649,6 +8325,7 @@ text_sensor:
       0x01: "BM_Heizen"
       0x02: "BM_Kuehlen"
       0x03: "BM_Auto"
+
   - platform: vitohome
     type: enum
     name: "WPR GueltBedarf HK2"
@@ -7664,6 +8341,7 @@ text_sensor:
       0x03: "MITTLERER BEDARF"
       0x04: "HOHER BEDARF"
       0x05: "MAXIMAL BEDARF"
+
   # --- DiagnosisDiagnosis1 / Heizkreis3 ---
   - platform: vitohome
     type: enum
@@ -7678,6 +8356,7 @@ text_sensor:
       0x01: "BA_Reduziert"
       0x02: "BA_Normal"
       0x03: "BA_Festwert"
+
   - platform: vitohome
     type: enum
     name: "WPR GueltBetriebsmodus HK3"
@@ -7691,6 +8370,7 @@ text_sensor:
       0x01: "BM_Heizen"
       0x02: "BM_Kuehlen"
       0x03: "BM_Auto"
+
   - platform: vitohome
     type: enum
     name: "WPR GueltBedarf HK3"
@@ -7706,6 +8386,7 @@ text_sensor:
       0x03: "MITTLERER BEDARF"
       0x04: "HOHER BEDARF"
       0x05: "MAXIMAL BEDARF"
+
   # --- DiagnosisDiagnosis1 / Kuehlkreis ---
   - platform: vitohome
     type: enum
@@ -7720,6 +8401,7 @@ text_sensor:
       0x01: "BA_Reduziert"
       0x02: "BA_Normal"
       0x03: "BA_Festwert"
+
   - platform: vitohome
     type: enum
     name: "WPR GueltBetriebsmodus Kuehlkreis"
@@ -7733,6 +8415,7 @@ text_sensor:
       0x01: "BM_Heizen"
       0x02: "BM_Kuehlen"
       0x03: "BM_Auto"
+
   - platform: vitohome
     type: enum
     name: "WPR GueltBedarf Kuehlkreis"
@@ -7748,6 +8431,7 @@ text_sensor:
       0x03: "MITTLERER BEDARF"
       0x04: "HOHER BEDARF"
       0x05: "MAXIMAL BEDARF"
+
   # --- DiagnosisDiagnosis1 / Pufferspeicher ---
   - platform: vitohome
     type: enum
@@ -7762,6 +8446,7 @@ text_sensor:
       0x01: "BA_Reduziert"
       0x02: "BA_Normal"
       0x03: "BA_Festwert"
+
   - platform: vitohome
     type: enum
     name: "WPR GueltBetriebsmodus HW Pufferspeicher"
@@ -7775,6 +8460,7 @@ text_sensor:
       0x01: "BM_Heizen"
       0x02: "BM_Kuehlen"
       0x03: "BM_Auto"
+
   - platform: vitohome
     type: enum
     name: "WPR GueltBedarf HW Pufferspeicher"
@@ -7790,6 +8476,7 @@ text_sensor:
       0x03: "MITTLERER BEDARF"
       0x04: "HOHER BEDARF"
       0x05: "MAXIMAL BEDARF"
+
   # --- DiagnosisDiagnosis1 / Warmwasser ---
   - platform: vitohome
     type: enum
@@ -7804,6 +8491,7 @@ text_sensor:
       0x01: "BA_Reduziert"
       0x02: "BA_Normal"
       0x03: "BA_Festwert"
+
   - platform: vitohome
     type: enum
     name: "WPR GueltBetriebsmodus Warmwasser"
@@ -7817,6 +8505,7 @@ text_sensor:
       0x01: "BM_Heizen"
       0x02: "BM_Kuehlen"
       0x03: "BM_Auto"
+
   - platform: vitohome
     type: enum
     name: "WPR GueltBedarf Warmwasser"
@@ -7832,6 +8521,7 @@ text_sensor:
       0x03: "MITTLERER BEDARF"
       0x04: "HOHER BEDARF"
       0x05: "MAXIMAL BEDARF"
+
   # --- Expertlayer / Sensorstati1 ---
   - platform: vitohome
     type: enum
@@ -7853,6 +8543,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus ATS"
@@ -7873,6 +8564,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Fluessiggastemperatur EEV1"
@@ -7893,6 +8585,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Fluessiggastemperatur EEV2"
@@ -7913,6 +8606,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Heissgastemperatur1"
@@ -7933,6 +8627,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Heissgastemperatur2"
@@ -7953,6 +8648,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Heissgastemperatur EEV1"
@@ -7973,6 +8669,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Heissgastemperatur EEV2"
@@ -7993,6 +8690,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus HeizwasserPufferspeichertemperatur"
@@ -8013,6 +8711,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Kollektortemperatur Solar"
@@ -8033,6 +8732,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Mediumtemperatur extWaermeerzeuger"
@@ -8053,6 +8753,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Raumtemperatur HK A1 Vitotrol"
@@ -8073,6 +8774,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Raumtemperatur HK M2 Vitotrol"
@@ -8093,6 +8795,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Raumtemperatur HK M3 Vitotrol"
@@ -8113,6 +8816,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Raumtemperatur NatCooling"
@@ -8133,6 +8837,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Ruecklauftemperatur1 Sek"
@@ -8153,6 +8858,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Ruecklauftemperatur2 Sek"
@@ -8173,6 +8879,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Ruecklauftemperatur Solar"
@@ -8193,6 +8900,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Ruecklauf Primaer"
@@ -8213,6 +8921,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Sauggastemperatur EEV1"
@@ -8233,6 +8942,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Sauggastemperatur EEV2"
@@ -8253,6 +8963,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   # --- Expertlayer / Sensorstati2 ---
   - platform: vitohome
     type: enum
@@ -8274,6 +8985,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Verdampfer"
@@ -8294,6 +9006,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Vorlauftemperatur HK M2"
@@ -8314,6 +9027,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Vorlauftemperatur HK M3"
@@ -8334,6 +9048,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Vorlauftemperatur NatCoolingHKxx"
@@ -8354,6 +9069,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Vorlauftemperatur NatCoolingKreis"
@@ -8374,6 +9090,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Vorlauftemperatur Sek"
@@ -8394,6 +9111,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Vorlauf Primaer"
@@ -8414,6 +9132,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus WW TemperaturAusgang"
@@ -8434,6 +9153,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus WW TemperaturMitte"
@@ -8454,6 +9174,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus WW TemperaturOben"
@@ -8474,6 +9195,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus WW TemperaturUnten"
@@ -8494,6 +9216,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   # --- Expertlayer / SignaleingaengeAnlage ---
   - platform: vitohome
     type: enum
@@ -8515,6 +9238,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus DINachladeunterdrueckungWW"
@@ -8535,6 +9259,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus Anode"
@@ -8555,6 +9280,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus ExternSperren"
@@ -8575,6 +9301,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus Stoermeldung FolgeWP"
@@ -8595,6 +9322,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus EEV1 DIHeizen Kuehlen"
@@ -8615,6 +9343,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus EEV2 DIHeizen Kuehlen"
@@ -8635,6 +9364,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   # --- Expertlayer / SignaleingaengeWP ---
   - platform: vitohome
     type: enum
@@ -8656,6 +9386,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus Phasenwaechter"
@@ -8676,6 +9407,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus Primaerquelle1 Soledruck"
@@ -8696,6 +9428,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus Sicherheitshochdruck Verdichter1"
@@ -8716,6 +9449,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus Niederdruck Verdichter1"
@@ -8736,6 +9470,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus Regelhochdruck Verdichter1"
@@ -8756,6 +9491,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus Motor1"
@@ -8776,6 +9512,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus EEV1 DIFreigabeEEVRegelung"
@@ -8796,6 +9533,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus Primaerquelle2"
@@ -8816,6 +9554,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus Sicherheitshochdruck Verdichter2"
@@ -8836,6 +9575,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus Niederdruck Verdichter2"
@@ -8856,6 +9596,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus Regelhochdruck Verdichter2"
@@ -8876,6 +9617,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus Motor2"
@@ -8896,6 +9638,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus EEV2 DIFreigabeEEVRegelung"
@@ -8916,6 +9659,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus Verdichter"
@@ -8936,6 +9680,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus eNetz Verdichter"
@@ -8956,6 +9701,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus Kaeltekreis"
@@ -8976,6 +9722,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus Sicherheitskette"
@@ -8996,6 +9743,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus Stroemungssensor"
@@ -9016,6 +9764,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter EVU Sperre eHeizstab"
@@ -9027,6 +9776,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus Eheizstab1 Sicherheitstemperaturbegrenzer"
@@ -9047,6 +9797,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus Eheizstab2 Sicherheitstemperaturbegrenzer"
@@ -9067,6 +9818,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SchalterStatus Eheizstab3 Sicherheitstemperaturbegrenzer"
@@ -9087,6 +9839,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   # --- Overview / Solar ---
   - platform: vitohome
     type: enum
@@ -9099,6 +9852,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   # --- PlantOverview / Anlage ---
   - platform: vitohome
     type: enum
@@ -9111,6 +9865,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand extWaermeerzeuger MischerAUF"
@@ -9122,6 +9877,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand extWaermeerzeuger MischerZU"
@@ -9133,6 +9889,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand Speicherladepumpe"
@@ -9144,6 +9901,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand SolarpumpeVitosolic"
@@ -9155,6 +9913,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand Schaltausgang Wtimer ZP"
@@ -9166,6 +9925,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand WW Ladung 2terSollwert"
@@ -9177,6 +9937,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand Schwimmbad Ventil"
@@ -9188,6 +9949,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand NatCooling Ansteuerung"
@@ -9199,6 +9961,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand ActiveCooling"
@@ -9210,6 +9973,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand FolgeWP1 Kaskade"
@@ -9221,6 +9985,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand FolgeWP2 Kaskade"
@@ -9232,6 +9997,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand FolgeWP3 Kaskade"
@@ -9243,6 +10009,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand FolgeWP4 Kaskade"
@@ -9254,6 +10021,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand Sammelstoerung"
@@ -9266,6 +10034,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   # --- PlantOverview / Heizkreise ---
   - platform: vitohome
     type: enum
@@ -9278,6 +10047,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand Fernbed1 StoerLED"
@@ -9290,6 +10060,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand Heizkreispumpe M2"
@@ -9301,6 +10072,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand Fernbed2 StoerLED"
@@ -9313,6 +10085,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand Heizkreispumpe M3"
@@ -9324,6 +10097,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand Fernbed3 StoerLED"
@@ -9336,6 +10110,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   # --- PlantOverview / WP1 ---
   - platform: vitohome
     type: enum
@@ -9348,6 +10123,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand SekPumpe1"
@@ -9359,6 +10135,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand FLGasMagnetventil V1"
@@ -9370,6 +10147,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand 3W VentilHeizen WW1"
@@ -9381,6 +10159,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand EEV1 HeizenKuehlen"
@@ -9392,6 +10171,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand EEV1 FreigabeEEVRegelung"
@@ -9403,6 +10183,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand EEV1 FreigabeEVIRegelung"
@@ -9414,6 +10195,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand Verdichter1"
@@ -9425,6 +10207,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand EEV1 Verdichter"
@@ -9436,6 +10219,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   # --- PlantOverview / WP2 ---
   - platform: vitohome
     type: enum
@@ -9448,6 +10232,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand SekPumpe2"
@@ -9459,6 +10244,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand FLGasMagnetventil V2"
@@ -9470,6 +10256,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand 3W VentilHeizen WW2"
@@ -9481,6 +10268,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand EEV2 HeizenKuehlen"
@@ -9492,6 +10280,7 @@ text_sensor:
     options:
       0x00: "Allgemein_Zustand_Ein_Aus~0"
       0x01: "Allgemein_Zustand_Ein_Aus~1"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand EEV2 FreigabeEEVRegelung"
@@ -9503,6 +10292,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand Verdichter2"
@@ -9514,6 +10304,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand EEV2 Verdichter"
@@ -9525,6 +10316,7 @@ text_sensor:
     options:
       0x00: "Allgemein_Zustand_Ein_Aus~0"
       0x01: "Allgemein_Zustand_Ein_Aus~1"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand Kaeltekreis Umkehr"
@@ -9536,6 +10328,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   # --- (ohne Gruppenzuordnung) ---
   - platform: vitohome
     type: enum
@@ -9557,6 +10350,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Raumsolltemperatur HK M2 Vitocom100"
@@ -9577,6 +10371,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorStatus Raumsolltemperatur HK M3 Vitocom100"
@@ -9597,6 +10392,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter ExtAnforderungSchwimmbadBAUmschaltung"
@@ -9608,6 +10404,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter Stroemungssensor"
@@ -9619,6 +10416,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter Phasenwaechter"
@@ -9630,6 +10428,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter Primaerquelle1 Soledruck"
@@ -9641,6 +10440,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter Primaerquelle2 Soledruck"
@@ -9652,6 +10452,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter SicherheitsHochdruck Verdichter1"
@@ -9663,6 +10464,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter SicherheitsHochdruck Verdichter2"
@@ -9674,6 +10476,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter Regelhochdruck Verdichter1"
@@ -9685,6 +10488,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter Regelhochdruck Verdichter2"
@@ -9696,6 +10500,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter Niederdruck Verdichter1"
@@ -9707,6 +10512,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter Niederdruck Verdichter2"
@@ -9718,6 +10524,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter Motor1"
@@ -9729,6 +10536,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter Motor2"
@@ -9740,6 +10548,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter Eheizstab1 Sicherheitstemperaturbegrenzer"
@@ -9751,6 +10560,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter Eheizstab2 Sicherheitstemperaturbegrenzer"
@@ -9762,6 +10572,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter Eheizstab3 Sicherheitstemperaturbegrenzer"
@@ -9773,6 +10584,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter Anode"
@@ -9784,6 +10596,7 @@ text_sensor:
     options:
       0x00: "S_Ein"
       0x01: "S_Aus"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter Kaeltekreis"
@@ -9795,6 +10608,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter eNetz Verdichter"
@@ -9806,6 +10620,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter Sicherheitskette"
@@ -9817,6 +10632,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter Verdichter"
@@ -9828,6 +10644,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter ExternSperren"
@@ -9839,6 +10656,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter Stoermeldung FolgeWP"
@@ -9851,6 +10669,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter EEV1 DIFreigabeEEVRegelung"
@@ -9862,6 +10681,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter EEV2 DIFreigabeEEVRegelung"
@@ -9873,6 +10693,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter EEV1 DIHeizen Kuehlen"
@@ -9884,6 +10705,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter EEV2 DIHeizen Kuehlen"
@@ -9895,6 +10717,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Schalter DINachladeunterdrueckungWW"
@@ -9906,6 +10729,7 @@ text_sensor:
     options:
       0x00: "S_Aus"
       0x01: "S_Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand EEV1 DigitalScroll"
@@ -9917,6 +10741,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand EEV2 DigitalScroll"
@@ -9928,6 +10753,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand EEV1 EVIVentil"
@@ -9939,6 +10765,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand EEV2 EVIVentil"
@@ -9950,6 +10777,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand EEV1 ECVPosition"
@@ -9961,6 +10789,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand EEV2 ECVPosition"
@@ -9972,6 +10801,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR RelaisZustand EEV2 EVIPosition"
@@ -9983,6 +10813,7 @@ text_sensor:
     options:
       0x00: "Aus"
       0x01: "Ein"
+
   - platform: vitohome
     type: enum
     name: "WPR Mischer ext Waermerzeuger Status"
@@ -9996,6 +10827,7 @@ text_sensor:
     options:
       0x00: "VORHANDEN"
       0x01: "NICHT VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Mischer sep NatCooling Kreis Status"
@@ -10009,6 +10841,7 @@ text_sensor:
     options:
       0x00: "VORHANDEN"
       0x01: "NICHT VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Mischer Umschaltventil HeizenWW1 Status"
@@ -10022,6 +10855,7 @@ text_sensor:
     options:
       0x00: "VORHANDEN"
       0x01: "NICHT VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Mischer EEV1 ECV Umschaltventil Status"
@@ -10035,6 +10869,7 @@ text_sensor:
     options:
       0x00: "VORHANDEN"
       0x01: "NICHT VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Mischer EEV2 ECV Umschaltventil Status"
@@ -10048,6 +10883,7 @@ text_sensor:
     options:
       0x00: "VORHANDEN"
       0x01: "NICHT VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorPositionStatus Eingang ext AE"
@@ -10068,6 +10904,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorPositionStatus ECV 1"
@@ -10088,6 +10925,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorPositionStatus ECV 2"
@@ -10108,6 +10946,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorDruckStatus EEV Saugdruck1"
@@ -10128,6 +10967,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorDruckStatus EEV Saugdruck2"
@@ -10148,6 +10988,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorDruckStatus EEV Kondensatordruck1"
@@ -10168,6 +11009,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR SensorDruckStatus EEV Kondensatordruck2"
@@ -10188,6 +11030,7 @@ text_sensor:
       0x07: "SENSOR CHECK"
       0x08: "SENSOR FEHLER"
       0x09: "SENSOR KOM FEHLER"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal SoleWasserWP"
@@ -10199,6 +11042,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal LuftWasserWP"
@@ -10210,6 +11054,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal LuftLuftWP"
@@ -10221,6 +11066,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal WP Zweistufig"
@@ -10232,6 +11078,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal eHeizung moeglich"
@@ -10243,6 +11090,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal WW eHeizung moeglich"
@@ -10254,6 +11102,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal Ext Waermeerzeuger moeglich"
@@ -10265,6 +11114,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal Kaskade moeglich"
@@ -10276,6 +11126,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal Fremdansteuerung moeglich"
@@ -10287,6 +11138,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal Heissgassensor vorhanden"
@@ -10298,6 +11150,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal OelSumpfheizung vorhanden"
@@ -10309,6 +11162,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal TempSens Prim Ausg"
@@ -10320,6 +11174,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal ReversBetrieb moeglich"
@@ -10331,6 +11186,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal LeistungsregVerdichter moeglich"
@@ -10342,6 +11198,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal LeiterplatteMB760 moeglich"
@@ -10353,6 +11210,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal LeiterplatteMB770 moeglich"
@@ -10364,6 +11222,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal Heizspeicher moeglich"
@@ -10375,6 +11234,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal WWSpeicher moeglich"
@@ -10386,6 +11246,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal HeizenWW ueberSolar vorhanden"
@@ -10397,6 +11258,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal WW Zirkulationspumpe moeglich"
@@ -10408,6 +11270,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal Solarsteuerung int moeglich"
@@ -10419,6 +11282,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal Anschluss Vitosolic moeglich"
@@ -10430,6 +11294,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal NaturalCooling moeglich"
@@ -10441,6 +11306,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal SepNatCoolingKreis moeglich"
@@ -10452,6 +11318,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal ActiveCooling moeglich"
@@ -10463,6 +11330,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal KommunikModul moeglich"
@@ -10474,6 +11342,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal LONFktErweitert vorhanden"
@@ -10485,6 +11354,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal Schwimmbad moeglich"
@@ -10496,6 +11366,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal ElektrExpansionsventil1 vorhanden"
@@ -10507,6 +11378,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal ElektrExpansionsventil2 vorhanden"
@@ -10518,6 +11390,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal Verdampfersensor vorhanden"
@@ -10529,6 +11402,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal Heizkreis1 moeglich"
@@ -10540,6 +11414,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal Heizkreis2 moeglich"
@@ -10551,6 +11426,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: enum
     name: "WPR Produktmerkmal Heizkreis3 moeglich"
@@ -10562,6 +11438,7 @@ text_sensor:
     options:
       0x00: "NICHT VORHANDEN"
       0x01: "VORHANDEN"
+
   - platform: vitohome
     type: ascii
     name: "Sachnummer GWG Codierstecker"
@@ -10569,6 +11446,7 @@ text_sensor:
     address: 0x1010
     length: 7
     entity_category: diagnostic
+
   - platform: vitohome
     type: enum
     name: "WPR GueltBedarf Schwimmbad"
@@ -10584,6 +11462,7 @@ text_sensor:
       0x03: "MITTLERER BEDARF"
       0x04: "HOHER BEDARF"
       0x05: "MAXIMAL BEDARF"
+
   - platform: vitohome
     type: enum
     name: "WPR GueltBedarf resultHeizKreisanforderung"
@@ -10599,6 +11478,7 @@ text_sensor:
       0x03: "MITTLERER BEDARF"
       0x04: "HOHER BEDARF"
       0x05: "MAXIMAL BEDARF"
+
   - platform: vitohome
     type: enum
     name: "WPR GueltBedarf ZentrAnforderung"
@@ -10614,6 +11494,7 @@ text_sensor:
       0x03: "MITTLERER BEDARF"
       0x04: "HOHER BEDARF"
       0x05: "MAXIMAL BEDARF"
+
   - platform: vitohome
     type: enum
     name: "WPR GueltBetriebsart resultHeizKreisanforderung"
@@ -10627,6 +11508,7 @@ text_sensor:
       0x01: "BA_Reduziert"
       0x02: "BA_Normal"
       0x03: "BA_Festwert"
+
   - platform: vitohome
     type: enum
     name: "WPR GueltBetriebsmodus Schwimmbad"
@@ -10640,6 +11522,7 @@ text_sensor:
       0x01: "BM_Heizen"
       0x02: "BM_Kuehlen"
       0x03: "BM_Auto"
+
   - platform: vitohome
     type: enum
     name: "WPR GueltBetriebsmodus resultHeizKreisanforderung"

@@ -41,6 +41,7 @@ binary_sensor:
     bit_mask: 0x80
     disabled_by_default: true
     update_interval: 60s
+
   - platform: vitohome
     name: "Vitogate Nebenversion"
     id: Vitogate_Nebenversion
@@ -64,6 +65,7 @@ number:
     mode: box
     disabled_by_default: true
     update_interval: 3600s
+
   # --- Konfiguration / Teilnehmernummer ---
   - platform: vitohome
     name: "vitogateTeilnehmernummer"

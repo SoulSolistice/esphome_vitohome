@@ -56,6 +56,23 @@ Typical use::
     python3 scripts/gen_catalog.py --data <export-dir> --export-all --out ./catalogs \
         --export-filter '^V' --no-error-codes
 
+GWG devices are handled with a different rule set, selected automatically from
+the Vitosoft device token (``GWG_*`` / ``HV_GWG``; ``--protocol`` overrides)::
+
+    python3 scripts/gen_catalog.py --data <export-dir> --device GWG_VBES_00 \
+        --profile standard --out gwg.yaml
+
+GWG carries the access mode in the telegram TYPE byte and its address space is
+PER MODE -- in ``GWG_VBES_00``, address 0x01 is five different datapoints across
+four modes. The generator therefore maps each event's ``FCRead`` onto the
+component's ``access:`` option (see FCREAD_TO_GWG_ACCESS) and emits it on every
+entity; the address alone would be ambiguous. It also inverts the reachability
+rule (on P300 only ``Virtual_READ`` is readable; on GWG that is 3% of the data
+and the rest is readable on its own mode), maps ``FCWrite`` the same way so
+writable datapoints become number/select/switch in the mode they also read in
+(see FCWRITE_TO_GWG_ACCESS; the KMBUS modes have no write TYPE byte and stay
+read-only), and drops addresses above 0xFF.
+
 Include the emitted file from your device YAML::
 
     packages:
@@ -918,8 +935,82 @@ def _make_obj_id(tech: str, used: set) -> str:
     return cand
 
 
-def _poll_for(ev: Event, conv_kind: str) -> int:
-    if _is_writable(ev):
+# Platforms whose vitohome schema accepts `access:` -- mirrors _ACCESS_DOMAINS
+# in components/vitohome/__init__.py. climate and event are deliberately absent
+# there (climate carries several addresses that could each want their own mode;
+# event is the error-history archive), and this generator emits neither for GWG.
+ACCESS_PLATFORMS = ("sensor", "binary_sensor", "text_sensor", "number", "select", "switch", "text")
+
+
+# Protocol tokens for --protocol / _protocol_for_device().
+PROTO_P300 = "P300"
+PROTO_KW = "KW"
+PROTO_GWG = "GWG"
+
+
+# Vitosoft FCRead -> vitohome `access:` value, for GWG only.
+#
+# GWG carries the access mode in the telegram's TYPE byte, and its address
+# space is PER MODE: in GWG_VBES_00, address 0x01 is five different datapoints
+# across four modes (OEM ident on kmbus_eeprom, max boiler temp on eeprom,
+# three outputs on port). So for GWG the address alone is not a datapoint
+# identity -- FCRead is the other half, and a catalog that drops it is not just
+# incomplete but wrong.
+#
+# The mapping is exact and triple-sourced: the openv wiki's Protokoll-GWG
+# "Telegramm Typen" table, vcontrold's <protocol name="GWG"> macros, and these
+# FCRead names all agree on the same seven bytes. Across all 22 Vitosoft GWG
+# device tokens (4143 events) the only FCRead values that occur are these seven
+# plus blank, plus 34 KBUS_VIRTUAL_READ (0.8%, a genuine K-bus tunnel that no
+# GWG access mode reaches). Note kmbus_ram (0x33) has no FCRead at all -- it is
+# used by zero Vitosoft GWG datapoints, and has no vcontrold macro either.
+#
+# Blank FCRead means "no access row"; it maps to the engine default, physical.
+FCREAD_TO_GWG_ACCESS = {
+    "physical_read": "physical",
+    "virtual_read": "virtual",
+    "eeprom_read": "eeprom",
+    "xram_read": "xram",
+    "port_read": "port",
+    "be_read": "be",
+    "kmbus_eeprom_read": "kmbus_eeprom",
+}
+
+
+# Vitosoft FCWrite -> the same `access:` values, for GWG only.
+#
+# The wiki gives a write TYPE byte for six of the eight modes (VIRTUAL 0xC4,
+# PHYSICAL 0xC8, EEPROM 0xAD, XRAM 0xC3, PORT 0x6D, BE 0x9D) and none for either
+# KMBUS mode, so those two are read-only by construction.
+#
+# What actually occurs in the data is narrower still: across all 22 Vitosoft GWG
+# device tokens the writable datapoints are EEPROM_WRITE (1082) and BE_WRITE
+# (280), plus 17 KBUS_VIRTUAL_WRITE that no access mode reaches -- and **zero**
+# PHYSICAL_WRITE. Since 0xC8 was the only write byte this project could emit
+# before the mode table existed, that is the likely reason no GWG write has ever
+# been confirmed to work anywhere (see THIRD_PARTY.md #19 and openv issue #467).
+FCWRITE_TO_GWG_ACCESS = {
+    "physical_write": "physical",
+    "virtual_write": "virtual",
+    "eeprom_write": "eeprom",
+    "xram_write": "xram",
+    "port_write": "port",
+    "be_write": "be",
+}
+
+
+# Vitosoft device tokens for GWG units are prefixed by Viessmann's own family
+# naming (GWG_VBES_00, GWG_BT2, HV_GWG, ...). --protocol overrides this, which
+# is what a caller needs for a token that does not follow the convention;
+# --export-all relies on the inference so one run can emit both families.
+def _protocol_for_device(token: str, override: str | None = None) -> str:
+    if override:
+        return override
+    return PROTO_GWG if "GWG" in (token or "").upper().split("_") else PROTO_P300
+
+
+def _poll_for(ev: Event, conv_kind: str, protocol: str = PROTO_P300) -> int:
+    if _is_writable(ev, protocol):
         return POLL_CODING
     if conv_kind == COUNTER:
         return POLL_SLOW
@@ -1202,7 +1293,7 @@ def _string_lines(name: str, kind: str, addr: int, field_len: int, field_off: in
     return lines
 
 
-def emit_entity(ev: Event, profile: str):
+def emit_entity(ev: Event, profile: str, protocol: str = PROTO_P300):
     """Return (platform, yaml_lines) for one event, or None to skip it.
     ev.name is the resolved friendly name; the stable technical ``id:`` is added
     by generate() (which can de-duplicate across the whole package)."""
@@ -1241,7 +1332,7 @@ def emit_entity(ev: Event, profile: str):
     # filters (there is no encode-side transform); they keep raw noconv + note.
     value_filters: list[tuple[str, float]] = []
     force_signed = False
-    writable = _is_writable(ev)
+    writable = _is_writable(ev, protocol)
 
     # ConversionFactor/ConversionOffset (value = raw * factor + offset).
     # Applied ONLY for MultOffset and for identity conversions carrying a real
@@ -1482,7 +1573,7 @@ def emit_entity(ev: Event, profile: str):
         )
         conv = "noconv"
 
-    poll = _poll_for(ev, conv_kind)
+    poll = _poll_for(ev, conv_kind, protocol)
     lines: list[str] = []
     if note:
         lines.append(f"  # NOTE: {note}")
@@ -1839,18 +1930,32 @@ def _schaltzeiten_entries(ev: Event) -> list[dict]:
     return entries
 
 
-def _schaltzeiten_lines(entry: dict, oid: str) -> list[str]:
+def _schaltzeiten_lines(entry: dict, oid: str, access: str = "") -> list[str]:
     """YAML lines for one per-day Schaltzeiten `text` entity. read == write at
     the same weekday address (the component re-reads what it wrote); polled
-    hourly and disabled by default like every generated entity."""
-    return [
+    hourly and disabled by default like every generated entity.
+
+    *access* is the GWG access mode (empty on every other protocol). It has to
+    be carried here for the same reason it is carried on ordinary entities: a
+    GWG address is only a datapoint identity together with its mode, so a text
+    entity emitted without it would be read (and written) on the engine's
+    PHYSICAL default no matter what FCRead said. No GWG device token in the
+    current export has a Schaltzeiten block, so this is reachable today only
+    via --protocol GWG -- but the fan-out must not be the one path that
+    silently drops the mode."""
+    lines = [
         "- platform: vitohome",
         f"  name: {_yaml_str(entry['name'])}",
         f"  id: {oid}",
         f"  address: 0x{entry['address']:04X}",
+    ]
+    if access:
+        lines.append(f"  access: {access}")
+    lines += [
         "  disabled_by_default: true",
         "  update_interval: 3600s",
     ]
+    return lines
 
 
 def _is_error_history(ev: Event) -> bool:
@@ -2141,17 +2246,42 @@ def _profile_keep(ev: Event, profile: str) -> bool:
     return True
 
 
-# The only read function code VitoWiFi's standard datapoint read issues over
-# Optolink is Virtual_READ (VS2/P300 FunctionCode 0x01). Datapoints whose access
-# method is anything else -- GFA_READ (0x6B), Remote_Procedure_Call (0x07),
-# PROZESS_READ (0x7B), KBUS_*/OT_*/Physical_READ -- are not reachable through that
-# read: the device NAKs or returns unrelated virtual-space data. They are dropped
-# by default (--no-reachable-only keeps them). An empty FCRead (no access row)
-# means "unknown" and is kept, since the token-derived address is treated as a
-# normal virtual read. Refs: openv "Protokoll 300";
+# Which datapoints the configured protocol can actually read.
+#
+# P300/KW: the only read function code VitoWiFi's standard datapoint read
+# issues over Optolink is Virtual_READ (VS2/P300 FunctionCode 0x01).
+# Datapoints whose access method is anything else -- GFA_READ (0x6B),
+# Remote_Procedure_Call (0x07), PROZESS_READ (0x7B), KBUS_*/OT_*/Physical_READ
+# -- are not reachable through that read: the device NAKs or returns unrelated
+# virtual-space data.
+#
+# GWG: the opposite is true. Virtual_READ is a mere 3% of a GWG device's
+# datapoints (6 of 195 on GWG_VBES_00); the bulk are physical/eeprom/
+# kmbus_eeprom/be/xram/port, and each is reachable -- on its own access mode,
+# via `access:`. Applying the P300 rule here would drop 187 of 195 datapoints
+# AND mislabel the 8 it kept (they are Virtual_READ, but with no `access:`
+# emitted the engine would read them as physical). So under GWG, reachable
+# means "FCRead maps to an access mode we can emit".
+#
+# Either way an empty FCRead (no access row) means "unknown" and is kept: on
+# P300 the token-derived address is treated as a normal virtual read, on GWG it
+# falls back to the engine default (physical). Dropped datapoints come back
+# with --no-reachable-only. Refs: openv "Protokoll 300" and "Protokoll-GWG";
 # InsideViessmannVitosoft/VitosoftCommunication.md.
-def _is_reachable(ev: Event) -> bool:
-    return (ev.fc_read or "").strip().lower() in ("", "virtual_read")
+def _is_reachable(ev: Event, protocol: str = PROTO_P300) -> bool:
+    fc = (ev.fc_read or "").strip().lower()
+    if protocol == PROTO_GWG:
+        return fc == "" or fc in FCREAD_TO_GWG_ACCESS
+    return fc in ("", "virtual_read")
+
+
+# The `access:` value to emit for one event, or "" when nothing should be
+# emitted (non-GWG, or GWG with a blank FCRead where the engine default already
+# is physical).
+def _access_for(ev: Event, protocol: str) -> str:
+    if protocol != PROTO_GWG:
+        return ""
+    return FCREAD_TO_GWG_ACCESS.get((ev.fc_read or "").strip().lower(), "")
 
 
 # Mirror of _is_reachable on the write side. A datapoint Vitosoft marks writable
@@ -2160,7 +2290,23 @@ def _is_reachable(ev: Event) -> bool:
 # "undefined", GFA_WRITE, Remote_Procedure_Call, etc. mean the write would not
 # take, so the datapoint is demoted to a read-only sensor instead of a
 # number/select. Blank FCWrite is unknown and trusted to the access type.
-def _is_writable(ev: Event) -> bool:
+def _is_writable(ev: Event, protocol: str = PROTO_P300) -> bool:
+    if protocol == PROTO_GWG:
+        # A GWG datapoint is writable when Vitosoft marks it so AND its write
+        # function code names a mode with a write TYPE byte AND that mode is the
+        # same one its reads use. The last condition is not defensive padding:
+        # `access:` is a single option driving both directions (one mode is a
+        # property of the datapoint, not of the direction), so a datapoint whose
+        # read and write modes disagreed could not be expressed at all. Vitosoft
+        # never pairs them across modes -- every writable GWG row is
+        # (EEPROM_READ, EEPROM_WRITE) or (BE_READ, BE_WRITE) -- so this drops
+        # nothing real, and would catch a future export that broke the rule.
+        if ev.access_type not in (2, 3):
+            return False
+        write_access = FCWRITE_TO_GWG_ACCESS.get((ev.fc_write or "").strip().lower())
+        if write_access is None:
+            return False
+        return write_access == _access_for(ev, PROTO_GWG)
     if ev.access_type not in (2, 3):
         return False
     return (ev.fc_write or "").strip().lower() in ("", "virtual_write")
@@ -2178,6 +2324,7 @@ def generate(
     error_code_set: str = "vd300",
     reachable_only: bool = True,
     order: str = "address",
+    protocol: str | None = None,
     stats: dict | None = None,
 ) -> str:
     """Render the package for one device token. ``order`` is "address"
@@ -2187,6 +2334,11 @@ def generate(
     ``stats``, if a dict is passed, receives {"entities": <emitted count>,
     "comments": <custom-decode hint count>} so callers (export_all) can tell a
     real catalog from an empty shell without parsing the output."""
+    # Which Optolink protocol this catalog targets. It changes what is
+    # reachable, whether anything is writable, and whether `access:` is emitted
+    # -- see _is_reachable / _is_writable / FCREAD_TO_GWG_ACCESS.
+    protocol = _protocol_for_device(device, protocol)
+
     events = catalog.events_for(device)
     if not events:
         raise SystemExit(
@@ -2250,14 +2402,20 @@ def generate(
     # (address, byte_position, bit_position) -- which still folds true
     # duplicates (same field via several event variants) into one entity.
     def _field_key(ev: Event):
-        return (ev.address, ev.byte_position or 0, ev.bit_position or 0)
+        # The access mode is part of the identity under GWG: its address space
+        # is per-mode, so 0x01/port and 0x01/eeprom are different datapoints and
+        # must not collapse into one another. Empty for every other protocol, so
+        # the key is unchanged there.
+        return (ev.address, ev.byte_position or 0, ev.bit_position or 0, _access_for(ev, protocol))
 
     seen_addr: set = set()
     used_ids: set[str] = set()
     kept = 0
     real_entities = 0  # emitted entities that are NOT the hub-fed device_id
     dropped_unreachable = 0
+    dropped_wide_addr = 0
     history_suppressed = False
+    gwg_system_history_suppressed = False
 
     # Hub-fed device identity (covers the 0xF8..0xFB identification reads, which
     # are then suppressed below).
@@ -2270,6 +2428,7 @@ def generate(
         # Special datapoints are handled independently of profile/name filters.
         if emit_device_id and _is_identification(ev):
             continue  # represented by the device_id entity above
+
         if emit_error_history and _is_error_history(ev):
             # The SYSTEM history (ecnsysEventType~Error / the 0x7507 fallback)
             # and the GFA (Feuerungsautomat) FehlerHis* archive are different
@@ -2282,10 +2441,25 @@ def generate(
             # at least one real entity at all -- decided in the second pass
             # below (KBUS-only Dekamatik units, M-Bus meters -> 0x7507 can
             # never answer, so the catalog would be a phantom history).
-            if reachable_only and not _is_reachable(ev):
+            if reachable_only and not _is_reachable(ev, protocol):
                 dropped_unreachable += 1
                 continue
             deferred_history.append(ev)
+            continue
+
+        # GWG addresses a single byte. This guard has to sit HERE, above every
+        # remaining branch, rather than in the ordinary-datapoint path further
+        # down: the Schaltzeiten branch below fans one datapoint out into seven
+        # entities and used to `continue` before ever reaching the guard, so a
+        # >0xFF block was emitted verbatim and the hub's _final_validate then
+        # rejected the whole catalog. Same defect class as the generic system
+        # archive, structurally fixed so a future fan-out path inherits it.
+        # (Error history is exempt on purpose -- it is deferred above and the
+        # second pass applies the identical guard per slot, with a better
+        # explanation in the header.) Vitosoft's GWG tables are almost entirely
+        # 8-bit already: 4066 of 4143 events across all 22 GWG device tokens.
+        if protocol == PROTO_GWG and ev.address is not None and ev.address > 0xFF:
+            dropped_wide_addr += 1
             continue
 
         # Weekday switching-time programs: one 56-byte token -> 7 per-day `text`
@@ -2293,16 +2467,26 @@ def generate(
         # _is_schaltzeiten). Handled here because one datapoint fans out to
         # seven entities, like error history.
         if _is_schaltzeiten(ev):
-            if reachable_only and not _is_reachable(ev):
+            if reachable_only and not _is_reachable(ev, protocol):
                 dropped_unreachable += 1
                 continue
+            # The block's BASE passed the 8-bit guard above, but the fan-out
+            # reaches base + 6*8, so a base near 0xFF would still emit
+            # out-of-range weekday addresses. Drop the whole block rather than
+            # a partial week.
+            if protocol == PROTO_GWG and ev.address is not None:
+                last = ev.address + (len(_WEEKDAYS) - 1) * _SCHALTZEITEN_RECORD_LEN
+                if last > 0xFF:
+                    dropped_wide_addr += 1
+                    continue
             if ev.address is not None and _field_key(ev) in seen_addr:
                 continue
             if ev.address is not None:
                 seen_addr.add(_field_key(ev))
+            sz_access = _access_for(ev, protocol)
             for entry in _schaltzeiten_entries(ev):
                 oid = _make_obj_id(entry["seed"], used_ids)
-                _add_chunk("text", ev, _schaltzeiten_lines(entry, oid))
+                _add_chunk("text", ev, _schaltzeiten_lines(entry, oid, sz_access))
                 kept += 1
                 real_entities += 1
             continue
@@ -2317,11 +2501,11 @@ def generate(
         if ev.address is not None and _field_key(ev) in seen_addr:
             continue
 
-        if reachable_only and not _is_reachable(ev):
+        if reachable_only and not _is_reachable(ev, protocol):
             dropped_unreachable += 1
             continue
 
-        result = emit_entity(ev, profile)
+        result = emit_entity(ev, profile, protocol)
         if result is None:
             continue
         platform, lines = result
@@ -2343,6 +2527,21 @@ def generate(
             if ln.startswith("  name:"):
                 lines.insert(idx + 1, f"  id: {oid}")
                 break
+        # GWG: the access mode is half the datapoint's identity (see
+        # FCREAD_TO_GWG_ACCESS), so it has to travel with the address. Emitted
+        # only for the platforms whose schema accepts it -- which is every
+        # platform GWG can produce, since _is_writable() forces read-only there.
+        access = _access_for(ev, protocol)
+        if access and platform in ACCESS_PLATFORMS:
+            for idx, ln in enumerate(lines):
+                if ln.lstrip().startswith(("address:", "state_address:")):
+                    src = ev.fc_read
+                    if _is_writable(ev, protocol):
+                        # One mode drives both directions -- say so, so the
+                        # reader does not take this for a read-only annotation.
+                        src = f"{ev.fc_read} / {ev.fc_write}"
+                    lines.insert(idx + 1, f"  access: {access}  # Vitosoft {src}")
+                    break
         _add_chunk(platform, ev, lines)
         kept += 1
         real_entities += 1
@@ -2355,15 +2554,41 @@ def generate(
         if real_entities == 0 and _error_history_slot(ev) is None:
             history_suppressed = True
             continue
+        # The GENERIC system archive (ecnsysEventType~Error, slot None) is a
+        # Vitotronic construct: its slots are the fixed 16-bit addresses
+        # 0x7507, 0x7510, ... 0x7558. Vitosoft links it to GWG device tokens
+        # too, but GWG addresses a single byte, so not one of those slots is
+        # expressible -- and emitting them made every generated GWG catalog
+        # fail `esphome config` outright on the hub's own 8-bit address check.
+        # Per-unit FehlerHis* archives (slot not None) are real device
+        # datapoints and still go through the address guard below.
+        if protocol == PROTO_GWG and _error_history_slot(ev) is None:
+            history_suppressed = True
+            gwg_system_history_suppressed = True
+            continue
         for entry in _error_history_entries(ev):
             if entry["address"] is None:
+                continue
+            # Same 8-bit guard as the main pass: a wide address would be
+            # rejected by the hub at config time.
+            if protocol == PROTO_GWG and entry["address"] > 0xFF:
+                dropped_wide_addr += 1
                 continue
             key = (entry["address"], 0, 0)
             if key in seen_addr:
                 continue
             seen_addr.add(key)
             oid = _make_obj_id(entry["seed"], used_ids)
-            _add_chunk("text_sensor", ev, _error_history_lines(entry, oid, codes_map, codes_set_name))
+            lines = _error_history_lines(entry, oid, codes_map, codes_set_name)
+            # Error-history slots are ordinary reads, so under GWG they need
+            # their access mode like anything else.
+            access = _access_for(ev, protocol)
+            if access:
+                for idx, ln in enumerate(lines):
+                    if ln.lstrip().startswith("address:"):
+                        lines.insert(idx + 1, f"  access: {access}  # Vitosoft {ev.fc_read}")
+                        break
+            _add_chunk("text_sensor", ev, lines)
             kept += 1
             real_entities += 1
 
@@ -2378,9 +2603,44 @@ def generate(
     out.append("# disabled_by_default; enable the ones you want in Home Assistant.")
     out.append("#")
     if reachable_only:
-        out.append(f"# FCRead filter ON: {dropped_unreachable} datapoint(s) requiring a non-Optolink")
-        out.append("# access method (GFA_READ/RPC/PROZESS/KBUS/OT) were omitted as unreachable")
-        out.append("# via VitoWiFi's read. Re-run with --no-reachable-only to include them.")
+        if protocol == PROTO_GWG:
+            out.append(f"# FCRead filter ON (GWG): {dropped_unreachable} datapoint(s) whose access")
+            out.append("# method is not one this engine can select via `access:` (KBUS_VIRTUAL_READ")
+            out.append("# and friends) were omitted. Re-run with --no-reachable-only to include them.")
+        else:
+            out.append(f"# FCRead filter ON: {dropped_unreachable} datapoint(s) requiring a non-Optolink")
+            out.append("# access method (GFA_READ/RPC/PROZESS/KBUS/OT) were omitted as unreachable")
+            out.append("# via VitoWiFi's read. Re-run with --no-reachable-only to include them.")
+        out.append("#")
+    if gwg_system_history_suppressed:
+        out.append("# The generic system fault archive (0x7507..0x7558) is NOT emitted: those")
+        out.append("# are fixed 16-bit Vitotronic addresses and GWG addresses a single byte,")
+        out.append("# so no slot of it is reachable on this protocol.")
+        out.append("#")
+    if protocol == PROTO_GWG:
+        out.append("# GWG catalog. Every entity carries `access:` -- the Vitosoft FCRead that")
+        out.append("# selects the read TYPE byte. GWG's address space is PER ACCESS MODE, so")
+        out.append("# address alone is NOT a datapoint identity here: dropping or changing an")
+        out.append("# `access:` line silently points the entity at a different register.")
+        out.append("# Writable datapoints are emitted as number/select/switch and write in the")
+        out.append("# SAME `access:` mode they read in (Vitosoft pairs GWG reads and writes")
+        out.append("# that way, e.g. EEPROM_READ with EEPROM_WRITE). Nothing on a GWG unit is")
+        out.append("# writable in `physical` mode; the writable ones are `eeprom` and `be`.")
+        out.append("# The KMBUS modes have no write TYPE byte at all and stay read-only.")
+        out.append("#")
+        out.append("# WRITES ARE UNCONFIRMED ON HARDWARE. The write TYPE bytes come from the")
+        out.append("# openv wiki table and are corroborated by vogod, but no GWG write has")
+        out.append("# been verified end-to-end anywhere, and the placement of the 0x04")
+        out.append("# terminator in a write frame has no source at all (see")
+        out.append("# kGwgWriteEotBeforePayload). Reads are unaffected by that choice.")
+        out.append("#")
+        out.append("# On the read side only `physical` has hardware confirmation; the other")
+        out.append("# modes are sourced from Vitosoft, the openv wiki and vcontrold, which")
+        out.append("# agree. Verify on the unit before relying on a value.")
+        if dropped_wide_addr:
+            out.append("#")
+            out.append(f"# {dropped_wide_addr} datapoint(s) with an address above 0xFF were dropped")
+            out.append("# (GWG addresses a single byte).")
         out.append("#")
     if history_suppressed:
         out.append("# System error history omitted: this unit has NO Optolink-reachable")
@@ -2399,7 +2659,16 @@ def generate(
         if buckets[platform]:
             out.append(f"{platform}:")
             last_label = None
+            first = True
             for _key, label, chunk in sorted(buckets[platform], key=lambda c: c[0]):
+                # One blank line between entities (not before the first in a
+                # section, and before the group header rather than after it, so
+                # a header stays attached to the block it introduces). These
+                # catalogs run to thousands of lines and are read by humans
+                # picking entities to enable; YAML ignores the blank lines.
+                if not first:
+                    out.append("")
+                first = False
                 if order == "group" and label and label != last_label:
                     out.append(f"  # --- {label} ---")
                 last_label = label
@@ -2510,6 +2779,7 @@ def export_all(
     error_codes: bool,
     error_code_set: str,
     reachable_only: bool,
+    protocol: str | None = None,
     order: str = "address",
 ) -> int:
     """Write one catalog per device token into *out_dir* (created if needed).
@@ -2596,6 +2866,7 @@ def export_all(
                 error_code_set=error_code_set,
                 reachable_only=reachable_only,
                 order=order,
+                protocol=protocol,
                 stats=gen_stats,
             )
         except SystemExit as exc:  # generate() uses this for "no emittable events"
@@ -2698,6 +2969,16 @@ def main(argv=None):
         "fault-code semantics are device-variant-specific -- verify on the unit",
     )
     p.add_argument(
+        "--protocol",
+        choices=[PROTO_P300, PROTO_KW, PROTO_GWG],
+        default=None,
+        help="Optolink protocol the catalog targets. Default: inferred per device token "
+        "(a Vitosoft GWG_* / *_GWG token means GWG, everything else P300), which is what lets "
+        "--export-all emit both families in one run. Under GWG the reachability rule inverts "
+        "(physical/eeprom/kmbus_eeprom/be/xram/port are readable, each via `access:`), every "
+        "datapoint is emitted read-only, and addresses above 0xFF are dropped",
+    )
+    p.add_argument(
         "--reachable-only",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -2724,12 +3005,23 @@ def main(argv=None):
     p.add_argument(
         "--order",
         choices=("address", "group"),
-        default="address",
-        help="entity ordering: 'address' (default; sorted by Optolink address) or "
-        "'group' (grouped by the Vitosoft navigation tree with a section comment per group)",
+        default=None,
+        help="entity ordering: 'address' (sorted by Optolink address) or 'group' "
+        "(grouped by the Vitosoft navigation tree with a section comment per "
+        "group). Default: 'group' with --export-all, 'address' otherwise -- the "
+        "catalogs shipped in example/catalogs are group-ordered, so a bulk "
+        "re-export is comparable with them out of the box",
     )
     p.add_argument("--out", help="output file (default: stdout); with --export-all, the output DIRECTORY")
     args = p.parse_args(argv)
+
+    # --order defaults per mode (see the flag's help). A bulk export is how the
+    # shipped example/catalogs were produced, and those are group-ordered, so
+    # defaulting the batch to 'address' meant a routine re-export reordered
+    # every file and buried real changes in a whole-file diff. An explicit
+    # --order still wins in both modes.
+    if args.order is None:
+        args.order = "group" if args.export_all else "address"
 
     catalog = load_catalog(args.data, culture=args.culture)
 
@@ -2749,6 +3041,7 @@ def main(argv=None):
             error_codes=args.error_codes,
             error_code_set=args.error_code_set,
             reachable_only=args.reachable_only,
+            protocol=args.protocol,
             order=args.order,
         )
 
@@ -2800,6 +3093,7 @@ def main(argv=None):
         error_code_set=args.error_code_set,
         reachable_only=args.reachable_only,
         order=args.order,
+        protocol=args.protocol,
     )
     if args.out:
         with open(args.out, "w", encoding="utf-8") as fh:
