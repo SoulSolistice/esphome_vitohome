@@ -133,7 +133,17 @@ def test_gwg_accepts_8bit_addresses_everywhere():
             _entity(
                 {
                     "target_address": 0x23,
-                    "operating_mode": {"address": 0x30, "state_address": 0x31, "presets": []},
+                    # climate writes, so both channels must state an access mode
+                    # (see the writable-entity check in _final_validate). This
+                    # test is about ADDRESS width; the modes are just what makes
+                    # the entity legal enough to reach that check.
+                    "access": "eeprom",
+                    "operating_mode": {
+                        "address": 0x30,
+                        "state_address": 0x31,
+                        "presets": [],
+                        "access": "eeprom",
+                    },
                 }
             )
         ],

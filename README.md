@@ -231,6 +231,22 @@ Accepted values: `physical` (default), `virtual`, `eeprom`, `xram`, `port`,
 protocol is a config error. The two `kmbus_*` modes are read-only — they have
 no write telegram type — and writes in them are refused.
 
+**On a writable entity `access:` is required, not optional.** Across all 22
+Vitosoft GWG device tokens the writable datapoints are `EEPROM_WRITE` (1082)
+and `BE_WRITE` (280) — and *zero* `PHYSICAL_WRITE`. So an omitted mode would
+emit a write telegram (`0xC8`) that matches no documented GWG datapoint, at an
+address whose meaning is mode-dependent: a silent write to something other than
+what you intended. There is no safe default to fall back on, so `esphome config`
+rejects it. A generated catalog always carries the right value, so this only
+affects hand-written configs.
+
+On a **read-only** entity an omitted `access:` is a warning rather than an
+error: Vitosoft emits rows with a blank `FCRead`, and blank legitimately means
+physical, so demanding an explicit `access: physical` on those would be
+ceremony. The warning names the entity and the assumption, because if physical
+is the wrong mode the entity publishes a plausible-looking value read from the
+wrong register.
+
 `climate` is the one platform with two datapoints, and they are separate
 registers, so each carries its own mode: the top-level `access:` applies to the
 setpoint channel (`target_address`), and `operating_mode.access:` to the

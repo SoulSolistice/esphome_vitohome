@@ -105,7 +105,12 @@ def test_setpoint_access_accepted_under_gwg():
 
 
 def test_operating_mode_access_accepted_under_gwg():
-    _validate("GWG", {"climate": [_climate(operating_mode={CONF_ACCESS: "be"})]})
+    # Both slots must be set: climate writes, and every writable slot now needs
+    # an explicit mode (see test_writable_climate_requires_both_slots).
+    _validate(
+        "GWG",
+        {"climate": [_climate({CONF_ACCESS: "eeprom"}, operating_mode={CONF_ACCESS: "be"})]},
+    )
 
 
 def test_both_channels_may_use_different_modes():
@@ -132,13 +137,19 @@ def test_readonly_mode_rejected_on_operating_mode(mode):
     """The nested block must be reached too -- the original loop only looked at
     the entity's top level, so this one would have slipped through."""
     with pytest.raises(cv.Invalid, match="read-only"):
-        _validate("GWG", {"climate": [_climate(operating_mode={CONF_ACCESS: mode})]})
+        _validate(
+            "GWG",
+            {"climate": [_climate({CONF_ACCESS: "eeprom"}, operating_mode={CONF_ACCESS: mode})]},
+        )
 
 
 def test_readonly_rejection_names_the_nested_key():
     """The message must point at operating_mode.access, not a bare 'access'."""
     with pytest.raises(cv.Invalid, match=r"operating_mode\.access"):
-        _validate("GWG", {"climate": [_climate(operating_mode={CONF_ACCESS: "kmbus_ram"})]})
+        _validate(
+            "GWG",
+            {"climate": [_climate({CONF_ACCESS: "eeprom"}, operating_mode={CONF_ACCESS: "kmbus_ram"})]},
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -158,10 +169,11 @@ def test_operating_mode_access_rejected_off_gwg(protocol):
         _validate(protocol, {"climate": [_climate(operating_mode={CONF_ACCESS: "virtual"})]})
 
 
-def test_climate_without_access_is_fine_on_every_protocol():
-    """Scope guard: the default (unset) path must stay untouched."""
-    for protocol in ("P300", "KW", "GWG"):
-        _validate(protocol, {"climate": [_climate(operating_mode={})]})
+@pytest.mark.parametrize("protocol", ["P300", "KW"])
+def test_climate_without_access_is_fine_off_gwg(protocol):
+    """Scope guard: the unset path must stay untouched where access has no
+    meaning. Only GWG requires it (see the writable-entity tests)."""
+    _validate(protocol, {"climate": [_climate(operating_mode={})]})
 
 
 # ---------------------------------------------------------------------------

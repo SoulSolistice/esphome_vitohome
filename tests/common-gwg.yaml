@@ -43,6 +43,12 @@ vitohome:
   log_frames: ${log_frames}
 
 sensor:
+  # NOTE: several read entities below deliberately omit `access:` to keep the
+  # implicit-physical read path in the codegen gate. Under GWG that now emits
+  # a "does not set 'access'; assuming physical" WARNING per entity -- expected
+  # here, not a regression. Reads only warn (a blank Vitosoft FCRead genuinely
+  # means physical); writes are a hard error, which is why every writable
+  # entity in this file states its mode.
   # vcontrold GWG (device 2053): getTempA -> addr 05, len 1, unit UTI
   - platform: vitohome
     name: "GWG Temp Aussen"
@@ -130,9 +136,18 @@ number:
     max_value: 90
     step: 1
     update_interval: 3600s
+  # The other writable GWG mode. EEPROM_WRITE (1082 datapoints) and BE_WRITE
+  # (280) are the only two Vitosoft uses, so between them these two entities
+  # cover every writable shape that actually occurs. This one carried no
+  # access: until the writable-entity requirement landed -- it was relying on
+  # the implicit physical default, i.e. exactly the silent-wrong-datapoint case
+  # that requirement exists to stop (PHYSICAL_WRITE is used by zero Vitosoft
+  # GWG datapoints). Codegen gate only: GWG writes are unverified on hardware
+  # (THIRD_PARTY.md #19).
   - platform: vitohome
     name: "GWG WW Solltemperatur"
     address: 0x63
+    access: be
     length: 1
     converter: noconv
     min_value: 10

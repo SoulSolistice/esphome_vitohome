@@ -747,24 +747,29 @@ def _entity_gwg_addresses(entity):
                 yield f"{_CLIMATE_OPERATING_MODE}.{key}", addr
 
 
-def _entity_gwg_access_modes(entity):
-    """Yield (key_path, access) for every access mode this entity config carries,
-    including climate's nested operating_mode block.
+def _entity_gwg_access_slots(entity):
+    """Yield (key_path, access_or_None) for every place this entity config COULD
+    carry an access mode -- present or not.
 
     Mirrors _entity_gwg_addresses: climate is the one platform whose datapoints
     are not all at the top level, and its two channels (setpoint at
     target_address, Betriebsart at operating_mode.address) are separately
-    addressed, so they carry separate access modes. Every value yielded here
-    belongs to a channel that both reads AND writes, which is why climate is in
-    _WRITE_DOMAINS."""
-    access = entity.get(CONF_ACCESS)
-    if access is not None:
-        yield CONF_ACCESS, access
+    addressed, so they carry separate access modes. The Betriebsart slot exists
+    only when the optional operating_mode block does.
+
+    Yielding absent slots too is what lets the "writable entity must state its
+    mode" check below know which key to name."""
+    yield CONF_ACCESS, entity.get(CONF_ACCESS)
     operating_mode = entity.get(_CLIMATE_OPERATING_MODE)
     if isinstance(operating_mode, dict):
-        access = operating_mode.get(CONF_ACCESS)
+        yield f"{_CLIMATE_OPERATING_MODE}.{CONF_ACCESS}", operating_mode.get(CONF_ACCESS)
+
+
+def _entity_gwg_access_modes(entity):
+    """The subset of _entity_gwg_access_slots that is actually set."""
+    for key, access in _entity_gwg_access_slots(entity):
         if access is not None:
-            yield f"{_CLIMATE_OPERATING_MODE}.{CONF_ACCESS}", access
+            yield key, access
 
 
 def _entities_for_hub(full, domains, hub_id):
@@ -856,6 +861,38 @@ def _final_validate(config):
                         f"pass --protocol GWG)."
                     )
 
+        # A writable GWG entity must STATE its access mode; the physical default
+        # is never right for a write. Across all 22 Vitosoft GWG device tokens
+        # (4143 events) the writable datapoints are EEPROM_WRITE (1082) and
+        # BE_WRITE (280) -- and ZERO PHYSICAL_WRITE (see FCWRITE_TO_GWG_ACCESS
+        # in scripts/gen_catalog.py, which counts them). So an unstated mode
+        # silently emits 0xC8, a write telegram no documented GWG datapoint
+        # uses, at an address whose meaning is mode-dependent -- i.e. a write to
+        # a datapoint other than the intended one, with no error anywhere.
+        #
+        # This breaks no generated catalog: _is_writable() only calls a GWG
+        # datapoint writable when its write mode equals its read mode, and a
+        # blank FCRead resolves to "" which equals no write mode, so a
+        # generated writable GWG entity always carries an explicit access:.
+        # Only hand-written configs are affected.
+        for domain, entity in _entities_for_hub(full, _WRITE_DOMAINS, hub_id):
+            for key, access in _entity_gwg_access_slots(entity):
+                if access is None:
+                    raise cv.Invalid(
+                        f"{domain} '{_entity_name(entity)}' writes but does not set '{key}'. "
+                        f"Under GWG the access mode is half a datapoint's identity (the same "
+                        f"address means different things in different modes), and it cannot be "
+                        f"defaulted for a write: no Vitosoft GWG datapoint uses PHYSICAL_WRITE, "
+                        f"so the implicit mode would emit a write telegram that matches no "
+                        f"documented datapoint -- writing to something other than what you "
+                        f"intended, silently. Set '{key}' explicitly (writable modes: physical, "
+                        f"virtual, eeprom, xram, port, be; Vitosoft's writable GWG datapoints "
+                        f"are eeprom or be), or declare this datapoint as a read-only sensor. "
+                        f"scripts/gen_catalog.py emits the right value from Vitosoft's own "
+                        f"FCRead/FCWrite fields.",
+                        path=key.split("."),
+                    )
+
         # A writable entity in an access mode that has no write telegram type
         # is a config error, not a runtime one. GWG's KMBUS modes are read-only
         # (the wiki gives no write TYPE byte for either), so GWGEngine::write()
@@ -874,6 +911,34 @@ def _final_validate(config):
                         f"virtual, eeprom, xram, port, be), or declare this datapoint as a "
                         f"read-only sensor.",
                         path=key.split("."),
+                    )
+
+        # Read-only entities: WARN rather than reject. Unlike the write case
+        # above, defaulting to physical here is defensible -- Vitosoft emits
+        # rows with a blank FCRead, and gen_catalog.py deliberately maps blank
+        # to physical ("no access row" -> the engine default), so a missing
+        # mode is not necessarily a mistake. But it is still an assumption
+        # being made silently about a datapoint's identity, and if it is wrong
+        # the entity publishes a plausible-looking number from the wrong
+        # register. Say so once per entity and let the person decide; erroring
+        # would force `access: physical` onto every datapoint about which
+        # Vitosoft itself says nothing, which trains people to paste a value
+        # they have not thought about.
+        _readonly_access_domains = tuple(d for d in _ACCESS_DOMAINS if d not in _WRITE_DOMAINS)
+        for domain, entity in _entities_for_hub(full, _readonly_access_domains, hub_id):
+            for key, access in _entity_gwg_access_slots(entity):
+                if access is None:
+                    _LOGGER.warning(
+                        "%s '%s' does not set '%s'; assuming physical. Under GWG the same "
+                        "address means different datapoints in different access modes (in "
+                        "GWG_VBES_00, address 0x01 is five datapoints across four modes), so if "
+                        "physical is not this datapoint's mode the entity will publish a "
+                        "plausible-looking value read from the wrong register. "
+                        "scripts/gen_catalog.py emits the right value from Vitosoft's own "
+                        "FCRead field.",
+                        domain,
+                        _entity_name(entity),
+                        key,
                     )
     else:
         # access: selects a GWG TYPE byte (GWGAccessMode, constants.h) and is
