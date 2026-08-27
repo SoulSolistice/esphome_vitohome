@@ -15,6 +15,51 @@ but remains **untested**. Selecting a non-default protocol logs a warning at
 compile time, and the component fails fast at start-up if the configured
 protocol doesn't establish a link. Feedback from anyone running GWG is welcome.
 
+## ⚠️ Read this before writing to your controller
+
+**This project is not affiliated with Viessmann.** It is independent and
+unofficial, built by reverse-engineering an undocumented protocol from
+community sources. The authors are not heating engineers.
+
+**Reading is low-risk. Writing is not.** A wrong write can leave you with no
+heat — and, in winter, frozen pipes — or scalding hot water, disabled frost
+protection, a burner cycling far more than it should, or a controller
+configuration you cannot restore without a service visit. Lowering the DHW
+setpoint below about 60 °C, or disabling a disinfection programme, carries a
+legionella risk. **Write down the original value of anything you change, before
+you change it.**
+
+**No claims are made regarding the hardware safety chain.** How rigorously a
+hardware unit enforces safety-limits or value-sanity is unknown and should not
+be relied upon.
+
+**Datapoint names are not authoritative.** Labels here come from
+reverse-engineered tables, not from Viessmann documentation, and a plausible
+name is not proof that an address means what it says. This project has hit
+exactly that: a GWG datapoint labelled *Brennerlaufzeit* (burner operating
+hours) returned a **decreasing** value across consecutive polls — a counter
+cannot do that, so either the label, the address or the framing was wrong.
+Under GWG the same address is genuinely a different datapoint in different
+access modes: address `0x01` is five of them across four modes. Read a
+datapoint and watch it behave sensibly before you ever write to it.
+
+**Where a write lands is unknown.** We do not know whether a given controller
+holds a written value in RAM, in RAM with a periodic commit to non-volatile
+storage, or writes straight to EEPROM. GWG is the only protocol that even hints
+at this, because it names the access mode — and there, the writable datapoints
+are explicitly the EEPROM ones (`EEPROM_WRITE` and `BE_WRITE`; see
+`scripts/gen_catalog.py`). EEPROM cells have a finite write endurance, and we
+do not know the figure for these controllers.
+
+**So do not put writes in fast-firing automations.** A write on every state
+change, or a periodic write "to keep things in sync", can accumulate hundreds
+of thousands of cycles a year. Write on deliberate user action or on a real
+change, and rate-limit it. This is the most likely way to do lasting damage
+with this component, and it is entirely avoidable.
+
+Use at your own risk. There is no warranty; see [`NOTICE.md`](NOTICE.md) for
+licensing and trademarks.
+
 ## Features
 
 **Entity platforms.** Every ESPHome entity type that maps to a Viessmann
@@ -172,6 +217,11 @@ sensor:
     accuracy_decimals: 1
 ```
 
+This starting config is deliberately **read-only** — one sensor, no writable
+entities. That is the right way to begin: confirm the link comes up and that a
+datapoint you can verify against the front panel reads correctly, before adding
+anything that writes.
+
 The `converter:` above is one preset among several. For the full set of
 converters, the options each platform (`sensor`, `binary_sensor`,
 `text_sensor`, `number`, `select`, `switch`) accepts, and how a raw Optolink payload
@@ -200,14 +250,22 @@ from.
 
 ## Reading and writing
 
-This component can write to a heating controller. Treat configuration with
-care:
+This component can write to a heating controller. Read the warning at the top
+of this README ("Read this before writing to your controller") first — in
+particular, that a datapoint's *name* is not evidence of what its address does,
+and that repeated writes may be wearing an EEPROM cell.
+
+Beyond that, treat configuration with care:
 
 - Always run `esphome config`, then `esphome compile` / `run`, before relying
   on a value. Schema validation does not run code generation, and code
   generation does not run on the device.
 - Not every address answers on every firmware. A datapoint that validates and
   compiles may still not respond on your unit.
+- Prove a writable datapoint by reading it first. Poll it, change the setting
+  at the front panel, and confirm the value tracks — that is the cheapest
+  evidence that the address and its scaling are what you think, and it costs
+  nothing but a poll cycle.
 
 ### GWG only: `access:`
 
