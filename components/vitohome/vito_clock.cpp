@@ -117,9 +117,17 @@ void VitoClock::handle_response(const ResponseView &response) {
 }
 
 void VitoClock::handle_read_(const ResponseView &response) {
-  // The compare is finished with this read; drop to IDLE so any early return
-  // below (no drift, unreadable source, encode/queue failure) leaves the chain
-  // cleanly idle. A successful write re-arms it into WRITING at the end.
+  // CONTRACT for anyone editing this function: it must leave phase_ == IDLE on
+  // every path except the one that successfully queues the write, which ends at
+  // WRITING. Nothing re-queues the clock -- tick() refuses to start a new chain
+  // while phase_ != IDLE (design_notes.md 5a) -- so a path that exits with a
+  // stale non-IDLE phase disables time sync until reboot, silently.
+  //
+  // The structure that guarantees it: drop to IDLE up front, so all seven early
+  // returns below (no drift, unreadable source, encode/queue failure, ...) are
+  // correct by default rather than each needing to remember. A new early return
+  // is therefore safe anywhere ABOVE the WRITING assignment; one added below it
+  // is not, and must go through abort_() instead.
   this->phase_ = Phase::IDLE;
 
   if (this->time_source_ == nullptr)

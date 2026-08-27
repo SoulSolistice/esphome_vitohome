@@ -388,7 +388,30 @@ void VitoHomeComponent::loop() {
           entity->write_in_flight_ = false;
           entity->handle_write_error(optolink::OptolinkResult::TIMEOUT);
         } else {
-          ESP_LOGE(TAG, "watchdog found entity in flight with no operation type");
+          // Unreachable against this file as written: in_flight_ and
+          // in_flight_op_ are set together (dispatch_write_/dispatch_read_) and
+          // cleared together (here, on_response_, on_error_), so a non-null
+          // in_flight_ always carries a READ or a WRITE. Kept as defence in
+          // depth because the failure mode is silent and permanent, not noisy
+          // and transient: a dispatched entity has already been popped from its
+          // lane, and BOTH re-queue paths refuse to re-add it while its flag is
+          // set (schedule_due_entities_ counts it as skipped; queue_read_
+          // returns early as "already pending"). So a flag left set here would
+          // strand that entity until reboot, with this one ERROR line as the
+          // only trace.
+          //
+          // Clearing both flags is safe precisely because the state is
+          // contradictory: whichever lane the entity was really in, its flag is
+          // now false and the scheduler can re-queue it on the next due tick.
+          // The cost of guessing wrong is one skipped poll; the cost of not
+          // guessing is a dead entity. No handle_error() call, deliberately --
+          // this is not a protocol timeout to report to the entity, it is an
+          // internal bookkeeping fault, and the entity has no in-flight
+          // operation to fail.
+          ESP_LOGE(TAG, "watchdog found %s in flight with no operation type; clearing lane flags",
+                   entity->get_datapoint().name());
+          entity->read_queued_ = false;
+          entity->write_in_flight_ = false;
         }
       }
     }
@@ -1080,13 +1103,22 @@ bool VitoHomeComponent::refresh_all() {
 
   this->last_refresh_all_ms_ = now;
 
+  // Only the poll rotation is refreshed. next_due_ms_ is the poll scheduler's
+  // field, and an entity that opts out of polling does not read it -- VitoClock
+  // is the case in point: it drives itself from next_sync_ms_ on the hub tick
+  // and says so at vito_clock.h ("Deliberately not next_due_ms_"). Writing the
+  // field on it was harmless but untrue to the intent, and would have quietly
+  // become load-bearing the day anything non-polling started reading it. Guard
+  // on the same predicate the scheduler itself uses so the two cannot drift.
+  unsigned refreshed = 0;
   for (auto *entity : this->entities_) {
-    if (entity != nullptr)
-      entity->next_due_ms_ = 0;
+    if (entity == nullptr || !entity->wants_polling())
+      continue;
+    entity->next_due_ms_ = 0;
+    ++refreshed;
   }
 
-  ESP_LOGI(TAG, "refresh_all(): %u entities marked due; queue drains at normal pace",
-           static_cast<unsigned>(this->entities_.size()));
+  ESP_LOGI(TAG, "refresh_all(): %u entities marked due; queue drains at normal pace", refreshed);
 
   return true;
 }

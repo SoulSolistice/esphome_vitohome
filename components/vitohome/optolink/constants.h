@@ -95,6 +95,17 @@ enum class GWGAccessMode : uint8_t {
   KMBUS_EEPROM,
 };
 
+// Enforced, not merely documented: VitoHomeComponent::RawOp deliberately gives
+// its `access` member NO default member initializer, because that would make
+// RawOp non-trivially-default-constructible and break RingBuffer<RawOp>'s
+// static_assert (which cost a real ESP32-C3 build once). It relies instead on
+// `RawOp operation{}` value-initializing the field to zero -- which is only the
+// intended PHYSICAL default while PHYSICAL is the zero enumerator. Reordering
+// this enum would otherwise silently change the default access mode of every
+// raw-lane operation; now it fails to compile here instead.
+static_assert(static_cast<uint8_t>(GWGAccessMode::PHYSICAL) == 0,
+              "GWGAccessMode::PHYSICAL must be 0: RawOp's value-initialized default depends on it");
+
 // The READ TelegrammByte for each access mode, per the wiki table:
 //   VIRTUAL READ=0xC7  PHYSICAL READ=0xCB  EEPROM READ=0xAE
 //   PHYSICAL XRAM READ=0xC5  PHYSICAL PORT READ=0x6E  PHYSICAL BE READ=0x9E

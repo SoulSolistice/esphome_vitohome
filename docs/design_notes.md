@@ -1268,6 +1268,43 @@ ESPHome framework:
   hardware-confirmed Betriebsart switches. Detail and the vector table are in
   [`tests/native/README.md`](../tests/native/README.md).
 
+### 10a. What the host harness deliberately cannot reach
+
+The native proofs link **only the vendored engine** — `optolink/constants.cpp`
+plus the six protocol files (see `SRCS` in
+`tests/native/build_and_run_protocols.sh`). They never compile `vitohome.cpp`,
+`vito_clock.cpp` or any entity, because those include `vitohome.h`, which pulls
+in the whole ESPHome component surface (`Component`, `uart`, `binary_sensor`,
+`text_sensor`, the platform bases). Testing them on the host means standing up
+stubs for all of it — a separate piece of test infrastructure, not an extra
+proof file.
+
+The consequence is a real, named boundary rather than an accident. The hub layer
+is covered by:
+
+- the ESP-IDF compile gate (all 22 `components/vitohome/` translation units,
+  under each protocol build),
+- the Python validation suite, for everything decidable at config time, and
+- `esphome run` on the real heater.
+
+but **not** behaviourally on the host. The two invariants this leaves unproven
+are worth naming, because both are load-bearing and both are documented
+elsewhere in this file as obligations rather than as tested facts:
+
+1. **`VitoClock`'s phase recovery** (§5a) — every completion path must return
+   `phase_` to `IDLE`, since nothing re-queues the clock. Currently guaranteed
+   by the structure of `handle_read_()` (drop to `IDLE` first, re-arm to
+   `WRITING` only on the success path) and stated as an editing contract at the
+   top of that function.
+2. **The hub's `in_flight_` / `in_flight_op_` pairing** — the two are set
+   together and cleared together on every path, so the watchdog's
+   "no operation type" branch is unreachable. That branch no longer *depends* on
+   the invariant holding: it clears both lane flags, so a violation costs one
+   skipped poll instead of stranding the entity until reboot.
+
+If hub-level host testing is ever taken on, these two are the first things to
+point it at.
+
 Three findings the transaction build surfaced, each now a permanent lesson:
 
 1. **Namespace collides with the umbrella class name** — it must be fully
