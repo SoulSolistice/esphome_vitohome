@@ -73,10 +73,10 @@ int main() {
   check(adapter.write(0x0060, wr_data, 1), "write accepted");
   uart.feed({0x05});  // device ENQ
   pump(adapter);
-  // Payload/EOT ordering follows kGwgWriteEotBeforePayload -- see that constant
+  // Payload/EOT ordering follows gwgWriteEotBeforePayload -- see that constant
   // for why the write frame keeps a layout switch while the read frame does not
   // (three sources agree on the read, none settles the write).
-  const std::vector<uint8_t> want_write = optolink::kGwgWriteEotBeforePayload
+  const std::vector<uint8_t> want_write = optolink::gwgWriteEotBeforePayload
                                               ? std::vector<uint8_t>{0x01, 0xC8, 0x60, 0x01, 0x04, 0x07}
                                               : std::vector<uint8_t>{0x01, 0xC8, 0x60, 0x01, 0x07, 0x04};
   check(uart.written() == want_write, "write frame = 01 C8 60 01 + payload/EOT per layout switch");

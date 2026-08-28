@@ -448,7 +448,7 @@ These are intentional divergences from upstream `edc059a7`:
     payload); vcontrold's KW sibling emits no terminator at all. The wiki calls
     `0x04` the "Telegramm Ende Byte" and shows no write example. Neither GWG
     layout has hardware evidence, so the choice sits behind
-    `kGwgWriteEotBeforePayload` (default: this project's pre-existing layout)
+    `gwgWriteEotBeforePayload` (default: this project's pre-existing layout)
     until a unit settles it. Reads are byte-identical under both, which is why
     this never surfaced. Both settings build and pass the full proof suite.
 

@@ -13,7 +13,7 @@
 //       are REFUSED rather than silently downgraded to another mode;
 //   (3) the default (2-argument-plus-data) write is byte-identical to the
 //       single PHYSICAL frame this emitted before, so nothing regresses;
-//   (4) the write frame layout matches kGwgWriteEotBeforePayload -- the one
+//   (4) the write frame layout matches gwgWriteEotBeforePayload -- the one
 //       part of the GWG write frame with no evidence behind it, kept behind a
 //       switch until a unit settles it;
 //   (5) a write completes on one ack byte and is subject to the same
@@ -67,7 +67,7 @@ int main() {
   check(adapter.write(0x0053, &payload, 1), "write(addr, data, len) [3-arg] accepted");
   uart.feed({0x05});
   adapter.loop();
-  const std::vector<uint8_t> want_physical = optolink::kGwgWriteEotBeforePayload
+  const std::vector<uint8_t> want_physical = optolink::gwgWriteEotBeforePayload
                                                  ? std::vector<uint8_t>{0x01, 0xC8, 0x53, 0x01, 0x04, 0x2A}
                                                  : std::vector<uint8_t>{0x01, 0xC8, 0x53, 0x01, 0x2A, 0x04};
   check(uart.written() == want_physical, "3-arg write == PHYSICAL WRITE frame (unchanged)");
@@ -75,6 +75,58 @@ int main() {
   pump(adapter);
   check(g_responses == 1 && g_errors == 0, "write completes on a single ack byte");
   uart.clear_written();
+
+  // --- (5) the layout flag is RUNTIME: flipping it changes the very next
+  // frame. Added 2026-08-28 when gwgWriteEotBeforePayload stopped being a
+  // constexpr, so that one hardware session can try both layouts against the
+  // same address instead of needing two firmware builds. This proof asserts
+  // BOTH byte orders explicitly, so it also pins the two candidate layouts
+  // themselves rather than only the currently-selected one.
+  {
+    const bool saved = optolink::gwgWriteEotBeforePayload;
+
+    optolink::gwgWriteEotBeforePayload = false;
+    check(adapter.write(0x0053, &payload, 1), "layout=false: write accepted");
+    uart.feed({0x05});
+    adapter.loop();
+    check(uart.written() == std::vector<uint8_t>({0x01, 0xC8, 0x53, 0x01, 0x2A, 0x04}),
+          "layout=false -> payload BEFORE eot");
+    uart.feed({0x00});
+    pump(adapter);
+    uart.clear_written();
+
+    optolink::gwgWriteEotBeforePayload = true;
+    check(adapter.write(0x0053, &payload, 1), "layout=true: write accepted");
+    uart.feed({0x05});
+    adapter.loop();
+    check(uart.written() == std::vector<uint8_t>({0x01, 0xC8, 0x53, 0x01, 0x04, 0x2A}),
+          "layout=true -> eot BEFORE payload (dannerph)");
+    uart.feed({0x00});
+    pump(adapter);
+    uart.clear_written();
+
+    // Reads must be byte-identical under both layouts -- that is what makes it
+    // safe to flip mid-session while a read-back verifies the write.
+    optolink::gwgWriteEotBeforePayload = true;
+    check(adapter.read(0x0053, 1), "layout=true: read accepted");
+    uart.feed({0x05});
+    adapter.loop();
+    const std::vector<uint8_t> read_true = uart.written();
+    uart.feed({0x11});
+    pump(adapter);
+    uart.clear_written();
+
+    optolink::gwgWriteEotBeforePayload = false;
+    check(adapter.read(0x0053, 1), "layout=false: read accepted");
+    uart.feed({0x05});
+    adapter.loop();
+    check(uart.written() == read_true, "READ frame identical under both layouts");
+    uart.feed({0x11});
+    pump(adapter);
+    uart.clear_written();
+
+    optolink::gwgWriteEotBeforePayload = saved;
+  }
 
   // --- (1) each writable mode selects the documented TYPE byte ---------------
   // Table source: openv wiki, Protokoll-GWG "Telegramm Typen" (write column),
@@ -99,7 +151,7 @@ int main() {
     uart.feed({0x05});
     adapter.loop();
     // (4) frame layout follows the switch; reads are identical under both.
-    const std::vector<uint8_t> want = optolink::kGwgWriteEotBeforePayload
+    const std::vector<uint8_t> want = optolink::gwgWriteEotBeforePayload
                                           ? std::vector<uint8_t>{0x01, c.expected_type, 0x21, 0x01, 0x04, 0x2A}
                                           : std::vector<uint8_t>{0x01, c.expected_type, 0x21, 0x01, 0x2A, 0x04};
     check(uart.written() == want, "  frame matches table + layout switch");

@@ -26,7 +26,7 @@ PHYSICAL, byte-identical to pre-existing behaviour); see constants.h for the
 mode tables and their evidence. Note nothing on a GWG unit is physical-WRITABLE
 per Vitosoft -- EEPROM (0xAD) and BE (0x9D) are the modes that matter there --
 and the write frame's payload/EOT ordering is still unsettled, see
-kGwgWriteEotBeforePayload.
+gwgWriteEotBeforePayload.
 Timing instrument: an optional onTiming() callback reports, per completed read,
 the loop() gap that preceded the ENQ we answered and the send-to-response delta,
 both in milliseconds; motivated by the same hardware capture as the response

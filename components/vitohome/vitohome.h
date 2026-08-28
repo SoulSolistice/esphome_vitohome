@@ -225,6 +225,22 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // existed). Meaningful only under `protocol: GWG` -- see GWGAccessMode in
   // constants.h. A non-GWG build accepts the argument (so lambdas compile
   // unconditionally) but never reads it.
+  // GWG WRITE frame layout, diagnostic. Selects where the EOT byte sits
+  // relative to the payload -- see optolink::gwgWriteEotBeforePayload in
+  // constants.h for the two candidate layouts and the evidence. Takes effect
+  // on the NEXT write packet built, so one session can try both layouts
+  // against the same address and compare read-backs.
+  //
+  // This is a diagnostic, not a configuration choice: exactly one layout is
+  // correct, and once a real unit settles it the flag collapses into that
+  // layout. Deliberately NOT a YAML key -- there is no legitimate reason for a
+  // production config to select a wire format.
+  //
+  // Meaningful only under `protocol: GWG`. Compiles and is accepted on every
+  // build (so lambdas need no #ifdef) but nothing reads it elsewhere.
+  void set_gwg_write_eot_before_payload(bool eot_first) { optolink::gwgWriteEotBeforePayload = eot_first; }
+  bool gwg_write_eot_before_payload() const { return optolink::gwgWriteEotBeforePayload; }
+
   void queue_raw_read(uint16_t address, uint8_t length,
                       optolink::GWGAccessMode access = optolink::GWGAccessMode::PHYSICAL);
   // Two write overloads: the pointer/length form is the no-allocation path for

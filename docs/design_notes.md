@@ -384,7 +384,7 @@ KW sibling     01 F4  ADDR LEN <data...>          no terminator at all
 
 The wiki calls `0x04` the "Telegramm Ende Byte" and shows no write example.
 Neither GWG layout has hardware evidence, so the choice sits behind
-`kGwgWriteEotBeforePayload` in `constants.h` (default: this project's
+`gwgWriteEotBeforePayload` in `constants.h` (default: this project's
 pre-existing layout) until a unit settles it. **Reads are byte-identical under
 both**, which is why this never surfaced. Both settings build and pass the full
 proof suite, so flipping it is a one-line change and a reflash.

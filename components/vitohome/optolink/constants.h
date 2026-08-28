@@ -175,10 +175,39 @@ constexpr uint8_t kNoGwgWriteType = 0x00;
 // implementation to compare against -- its `setaddr` is `SYNC;RECV 1`, which
 // transmits no telegram whatsoever.
 //
-// Flip this to true to test the other layout. Reads are byte-identical under
-// both. Once a unit settles it, this switch and this comment should collapse
-// into the single correct layout.
-constexpr bool kGwgWriteEotBeforePayload = false;
+// Flip this to test the other layout. Reads are byte-identical under both.
+// Once a unit settles it, this switch and this comment should collapse into
+// the single correct layout.
+//
+// RUNTIME, not constexpr (2026-08-28). Deciding this needs both layouts tried
+// against the same address on the same unit in one session; a compile-time
+// constant would mean two firmware builds and a reflash between them, which
+// makes the comparison much weaker (different uptime, different bus state).
+// VitoHomeComponent::set_gwg_write_eot_before_payload() flips it from a lambda.
+// The default is UNCHANGED (false), so no existing behaviour moves until the
+// evidence is in.
+//
+// NEW EVIDENCE, 2026-08-28: dannerph/esphome_vitoconnect's
+// vitoconnect_optolinkGWG.cpp (GPLv3, 2025) settles what the wiki does not. Its
+// _send() builds `buff[3] = 0x04` and then `memcpy(&buff[4], dp->data, length)`,
+// documented in that file as:
+//     READ : <TYPE> <ADDR> <LEN> 0x04
+//     WRITE: <TYPE> <ADDR> <LEN> 0x04 <DATA...>
+// i.e. EOT BEFORE payload -- the `true` branch here. That is an independent
+// implementation, not a restatement of the wiki, so it is real evidence and it
+// points away from this project's current default.
+//
+// It also predicts the exact failure we observed. Under the `false` layout the
+// device reads LEN, then takes the NEXT byte as payload -- which is 0x04, not
+// the intended value. So the write is accepted and ACKed, and stores 0x04
+// instead of what was asked for: silent, not rejected, exactly as the
+// hardware session showed. A read-back of 0x04 after a write is therefore the
+// signature of the wrong layout, and is what the paired A/B test looks for.
+//
+// Still not flipped by default: dannerph's layout is evidence, not proof, and
+// this project's rule is that a wire-format change waits for a reading from a
+// real unit.
+extern bool gwgWriteEotBeforePayload;
 
 constexpr uint8_t gwgWriteTypeByte(GWGAccessMode mode) {
   switch (mode) {

@@ -2638,7 +2638,7 @@ def generate(
         out.append("# openv wiki table and are corroborated by vogod, but no GWG write has")
         out.append("# been verified end-to-end anywhere, and the placement of the 0x04")
         out.append("# terminator in a write frame has no source at all (see")
-        out.append("# kGwgWriteEotBeforePayload). Reads are unaffected by that choice.")
+        out.append("# gwgWriteEotBeforePayload). Reads are unaffected by that choice.")
         out.append("#")
         out.append("# On the read side only `physical` has hardware confirmation; the other")
         out.append("# modes are sourced from Vitosoft, the openv wiki and vcontrold, which")

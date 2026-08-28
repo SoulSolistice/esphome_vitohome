@@ -61,10 +61,13 @@ bool PacketGWG::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, con
   if (is_write) {
     // Payload placement relative to the EOT terminator is the one part of the
     // GWG write frame with no evidence behind it -- see
-    // GWGEngine::WRITE_EOT_BEFORE_PAYLOAD for the two candidate layouts and
-    // why neither can be ruled out from the sources. Reads are unaffected:
-    // both layouts produce the identical 01 TYPE ADDR LEN 04.
-    if (kGwgWriteEotBeforePayload) {
+    // gwgWriteEotBeforePayload (constants.h) for the two candidate layouts,
+    // the evidence for each, and why the default has not moved. Reads are
+    // unaffected: both layouts produce the identical 01 TYPE ADDR LEN 04.
+    // The flag is read here on every packet build, so flipping it at runtime
+    // takes effect on the very next write -- which is what lets one session
+    // try both layouts against the same address.
+    if (gwgWriteEotBeforePayload) {
       _buffer[step++] = internals::ProtocolBytes.EOT;
       for (uint8_t i = 0; i < len; ++i) {
         _buffer[step++] = data[i];

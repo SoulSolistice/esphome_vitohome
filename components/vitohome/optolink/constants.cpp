@@ -11,6 +11,11 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 namespace esphome::vitohome::optolink {
 
+// GWG WRITE frame layout switch -- see the long comment on the declaration in
+// constants.h. Default false preserves this project's pre-existing layout;
+// nothing changes until something flips it.
+bool gwgWriteEotBeforePayload = false;
+
 const char *errorToString(OptolinkResult error) {
   if (error == OptolinkResult::TIMEOUT) {
     return "timeout";
