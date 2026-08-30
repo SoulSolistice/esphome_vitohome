@@ -1246,6 +1246,7 @@ host C++ : decode/encode tests           tests/native/test_decode.cpp   (400 che
 host C++ : VS2 transaction harness        tests/native/test_vs2_transaction.cpp (8/8)
 host C++ : engine / GWG compile-proofs    engine_compile_proof.cpp, proof_gwg_poke.cpp
 host C++ : VS2 parser zero-payload (OOB)  tests/native/proof_vs2_zero_payload.cpp
+host C++ : VS2 parser fuzz corpus         tests/native/fuzz_parser_vs2.cpp  (replay; libFuzzer via fuzz.sh)
 python   : validators + catalog generator tests/unit/  (pytest)
 lint     : ruff check / ruff format
 format   : clang-format  (pinned v22.1.8)
@@ -1350,6 +1351,80 @@ Two limits worth re-stating because they are recurring footguns:
 - **No host test substitutes for `esphome run` on *address* correctness.** The
   catalog and reference YAML get the *shape* right; only the wire confirms that a
   given address answers on a given firmware.
+
+---
+
+### 10b. Fuzzing, and why it is split across two builds
+
+`ParserVS2::parse()` is the one function here that is a byte-at-a-time state
+machine driven directly by untrusted input, and the input is untrusted in the
+ordinary sense rather than the adversarial one: a noisy optical head produces
+garbled framing as normal operation. It is also the only code in the tree with
+a track record — the zero-payload OOB write (THIRD_PARTY.md #12) and the
+RESPONSE payload guards next door in the packet (#16). Both were found by
+someone hand-writing the single input that trips them, which is exactly the
+method that does not scale to sequences nobody imagined.
+
+`tests/native/fuzz_parser_vs2.cpp` is one source compiled two ways: a
+deterministic replay over the committed seed corpus (g++, in `build_and_run.sh`,
+sub-second) and a libFuzzer target (clang, via `fuzz.sh`, human-initiated).
+**CI runs only the replay.** An open-ended search on every push buys nothing
+reproducible, but every input a campaign finds is promoted into
+`fuzz_corpus_vs2.h` and executed forever after. The promotion step is what
+turns a campaign into a gate; without it a finding is a file in `/tmp`.
+
+The corpus lives in a header rather than as binary files, for two reasons that
+are both about this repository specifically: a committed blob is unreviewable
+in a diff, and the pre-commit hooks (`trailing-whitespace`, `end-of-file-fixer`,
+`mixed-line-ending`) are text-typed, so a blob that happened to be all-printable
+would be rewritten in place and quietly stop being the byte sequence it was
+added for. Bytes plus a stated reason, in the `fixture_vectors.h` idiom.
+
+**Oracles matter more than crashes here.** Memory safety is free once the
+sanitizers are on, and it is most of the value — but §1a's whole argument is
+that this project's characteristic defect is a silent wrong value, not a
+segfault. So the harness also asserts that `COMPLETE` implies a verified
+checksum; that a frame the engine would actually deliver keeps its advertised
+payload inside the packet buffer; that `dataLength()` equals `length() - 6` for
+those frames; and that **no byte sequence can permanently wedge the parser**,
+checked by draining and then requiring a probe frame to complete *and be that
+frame*.
+
+Two things that came out of building it are worth keeping:
+
+- **The RESPONSE guard is load-bearing for memory safety, not just semantics.**
+  The parser skips payload-length validation for the two frame shapes that
+  carry no inline payload (`READ`+`REQUEST`, `WRITE`+`RESPONSE`), so a
+  `READ`+`REQUEST` frame can complete with `dataLength() == 255` while six
+  bytes were written — and `data()` is non-null for it, since only `fc ==
+  WRITE` returns null. A consumer reading `data()[0..dataLength())` would run
+  261 bytes into a 256-byte buffer. Nothing can reach it today because
+  `VS2Engine::_receive()` forwards only RESPONSE frames, a guard added for a
+  different reason entirely (#9: upstream published an ERROR frame's payload as
+  data). That coupling is now pinned by an oracle instead of resting on the
+  coincidence of two unrelated decisions.
+- **What the coverage says.** A gcov build replayed over a campaign corpus
+  reaches **100% of `parser_vs2.cpp`'s 42 branches** (95.2% taken at least
+  once) and 90.4% of its lines, and libFuzzer's edge count plateaus at 80 —
+  the parser is small enough that the search saturates it, so a long campaign
+  is not buying much beyond a short one. Two things account for the uncovered
+  remainder, and neither is a gap in the corpus. `ParserVS2::reset()` is
+  engine-driven rather than byte-driven and is covered by
+  `proof_vs2_guards.cpp` (#10). And the `!_packet.setLength(b)` failure branch
+  is **unreachable by construction**: `setLength` rejects only
+  `length + 1 > _buffer.size()`, `length` is a `uint8_t` and `kMaxFrame` is
+  256, so 255 + 1 == 256 never exceeds it. It is inherited defensive code, it
+  is harmless, and it is worth knowing it is dead before anyone reads it as a
+  guard that fires.
+- **An oracle that never fires is indistinguishable from one that cannot**, so
+  both classes were negative-controlled: reverting the zero-payload fix makes
+  the corpus trap under ASan, and removing the CHECKSUM step's reset wedges the
+  parser and trips the liveness oracle. The second control initially *passed*
+  against a wedged parser — the probe reused the 0x5525 capture frame, and a
+  parser stuck in `CHECKSUM` completed it on a coincidental match with the
+  stale buffer's checksum. The probe is now an address and payload that appear
+  in no seed and no real datapoint, and what completed is checked for identity.
+  Any future liveness probe needs the same property.
 
 ---
 

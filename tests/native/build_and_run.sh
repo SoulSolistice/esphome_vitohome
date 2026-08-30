@@ -107,5 +107,19 @@ g++ -std=c++17 -Wall -Wextra -Werror $SAN \
   -I"$ROOT" proof_ring_buffer.cpp -o proof_ring_buffer
 ./proof_ring_buffer
 
+# VS2 parser fuzz corpus, replayed deterministically. Same source file the
+# libFuzzer target is built from (fuzz.sh), minus the fuzzer driver: here it
+# walks the committed seeds in fuzz_corpus_vs2.h, so the oracles CI enforces
+# and the oracles a campaign enforces cannot drift apart. Sub-second, no clang
+# needed. The open-ended search is deliberately not run here -- see fuzz.sh.
+g++ -std=c++17 -Wall -Wextra -Werror $SAN \
+  -I"$ROOT" -I"$OPTO" \
+  fuzz_parser_vs2.cpp \
+  "$OPTO/protocol/vs2/parser_vs2.cpp" \
+  "$OPTO/protocol/vs2/packet_vs2.cpp" \
+  "$OPTO/constants.cpp" \
+  -o fuzz_parser_vs2
+./fuzz_parser_vs2
+
 # Protocol-adapter proofs: all three engines compile + the GWG poke stays off.
 bash "$(dirname "$0")/build_and_run_protocols.sh" "$ROOT"

@@ -74,6 +74,9 @@ tests/native/proof_packet_vs2_response
 tests/native/proof_scheduler
 tests/native/proof_string_offset
 tests/native/proof_ring_buffer
+tests/native/fuzz_parser_vs2
+# libFuzzer -jobs writes one of these per worker into its working directory.
+tests/native/fuzz-*.log
 
 # ==========================================
 # OS & IDEs

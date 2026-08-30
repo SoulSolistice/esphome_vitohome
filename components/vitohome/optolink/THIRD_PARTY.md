@@ -531,13 +531,51 @@ These are intentional divergences from upstream `edc059a7`:
     a genuinely empty interface. Host-proven by
     `tests/native/proof_vs1_chain.cpp`.
 
+23. **Host clock made injectable (test-only, no device path touched).**
+    `optolink_millis()`'s `__linux__` branch -- which exists solely so
+    `tests/native` builds -- now resolves to an inline function behind a
+    freezable clock (`optolink_test_clock_freeze` / `_advance` / `_release` in
+    `helpers.h`) instead of expanding `std::chrono` inline. The `ESP_PLATFORM`
+    and Arduino branches are byte-for-byte unchanged, so no device build sees
+    any of it.
+
+    Why: every engine here is a `millis()`-deadline state machine, and the
+    proofs were advancing those deadlines with `std::this_thread::sleep_for`.
+    That makes the proof race the thing it measures. The tightest case is a
+    GWG read, where the response must be pumped within `RESPONSE_TIMEOUT_MS`
+    (250 ms) of the send -- two adjacent statements in the test, but not a
+    safe bet on a loaded host. `proof_gwg_access_mode.cpp` lost that bet once
+    (2026-08-30, host suite run alongside a 6-worker sanitized fuzzing
+    campaign): the read timed out, `onTiming` never fired, and the two
+    `enq_age` assertions silently compared the PREVIOUS read's leftover
+    globals -- reporting as an ENQ-age accounting failure something that was
+    only ever a host stall. Reproduced exactly by injecting a 260 ms sleep
+    before the pump; 200 ms still passes, 260 ms fails both checks. The engine
+    behaved correctly throughout: discarding a response buffered across a
+    >250 ms stall is precisely what item 18 exists to do.
+
+    `proof_gwg_access_mode.cpp` is converted: it freezes the clock before
+    constructing the engine and advances it by exact amounts, so `enq_age` and
+    `send_to_response` are asserted as equalities (0, 30, 120) rather than
+    margins, and the run is stall-immune (verified with 400 ms real sleeps
+    injected at every deadline boundary) and ~1.7 s faster. The remaining
+    proofs still sleep; theirs are mostly one-sided waits that only need to
+    OVERSHOOT a deadline, which merely costs time -- but any sleep that has to
+    land INSIDE a window (e.g. `proof_vs1_chain.cpp`'s 200 ms against
+    `CHAIN_WINDOW_MS`) is the same latent flake and should move to this clock.
+
+    The real-time path also switched from `system_clock` to `steady_clock`:
+    every reading is used as a difference against an earlier one, and
+    `system_clock` can be stepped backwards mid-run.
+
 Items 7-12, 18, 19, 21 and 22 are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16 are structural (no behavior change from any call
 site that exists -- item 16 alters bytes only on a RESPONSE-construction path
 nothing exercises); item 17 changes only construction-failure handling
 (abort -> fail-soft), not protocol or normal-path behavior; item 20 is a
-read-only diagnostic that emits nothing. Everything else preserves upstream
-protocol behavior. Each of items 7-12, 18 and 19 is covered by a host proof
+read-only diagnostic that emits nothing; item 23 is confined to the host test
+branch of `optolink_millis()` and cannot reach a device build. Everything else
+preserves upstream protocol behavior. Each of items 7-12, 18 and 19 is covered by a host proof
 that fails against the upstream code (item 18:
 `tests/native/proof_gwg_enq_misread.cpp`, 9 assertions failing pre-fix, plus 4
 more for the stalled-host ordering case -- those 4 fail even against a build

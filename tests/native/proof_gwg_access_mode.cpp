@@ -14,9 +14,19 @@
 //         proof in this suite relies on that.
 //
 // Built with -DVITOHOME_PROTOCOL_GWG by build_and_run_protocols.sh.
-#include <chrono>  // NOLINT [build/c++11]
+//
+// TIME IS INJECTED, NOT SLEPT (see optolink_test_clock_freeze in helpers.h).
+// The timing assertions below are about millis() deltas the engine computes,
+// and the engine's own deadlines are millis() deltas too, so a proof built on
+// std::this_thread::sleep_for is racing the thing it measures: the response
+// here has to be pumped within RESPONSE_TIMEOUT_MS (250 ms) of the send, and
+// on a loaded host that is not a safe bet between two adjacent statements. It
+// lost once, under a concurrent sanitized fuzzing campaign -- the read timed
+// out, onTiming never fired, and the two enq-age checks silently compared the
+// PREVIOUS read's leftovers. With the clock frozen every number below is
+// exact, the assertions are equalities rather than margins, and the proof runs
+// ~1.7 s faster because the burst window lapses by arithmetic.
 #include <cstdio>
-#include <thread>  // NOLINT [build/c++11]
 #include <vector>
 
 #include "fake_optolink.h"
@@ -40,6 +50,10 @@ static void pump(Engine &a, int n = 6) {
 }
 
 int main() {
+  // Before the engine is constructed, so its first _currentMillis sample and
+  // every later one come from the same frozen clock.
+  optolink::optolink_test_clock_freeze();
+
   FakeOptolink uart;
   Engine adapter(&uart);
   adapter.onResponse([](const uint8_t *, uint8_t, uint16_t address) {
@@ -122,16 +136,18 @@ int main() {
   check(adapter.read(0x0070, 1), "timing: read accepted");
   uart.feed({0x05});
   adapter.loop();  // ENQ observed -> loop gap captured -> same-loop send
-  std::this_thread::sleep_for(std::chrono::milliseconds(30));
+  optolink::optolink_test_clock_advance(30);
   uart.feed({0x5F});
   pump(adapter);
   check(g_timing_calls == timing_calls_before_read + 1, "onTiming fired exactly once for this completed read");
   check(g_last_timing_addr == 0x0070, "onTiming reports the request address");
   // enq_age is the loop() gap preceding the iteration that consumed the ENQ.
-  // Here the loops run back-to-back with no sleep in between, so it must be a
-  // couple of ms at most. send->response should reflect the ~30ms sleep above.
-  check(g_last_enq_age < 20, "enq age is small when loops run back-to-back");
-  check(g_last_send_to_response >= 25 && g_last_send_to_response < 500, "send->response reflects the injected delay");
+  // Here the loops run back-to-back with no time advanced in between, so on a
+  // frozen clock it is exactly 0 -- the previous formulation (< 20) could only
+  // ever be an upper bound on host jitter. send->response is exactly the 30 ms
+  // advanced above, likewise: not "at least 25 and under half a second".
+  check(g_last_enq_age == 0, "enq age is 0 when loops run back-to-back");
+  check(g_last_send_to_response == 30, "send->response == the 30 ms advanced between send and response");
 
   // enq_age must actually MEASURE the host stall, not report a constant. This
   // is the assertion the instrument exists for: stall the host between two
@@ -143,17 +159,17 @@ int main() {
   // Let the burst window lapse first (see GWGEngine::ENQ_VALIDITY_MS): with a
   // recent sync in hand the engine would send WITHOUT waiting for an ENQ, and
   // there would be no ENQ wait left to measure.
-  std::printf("  (letting the burst window lapse, %u ms ...)\n",
-              static_cast<unsigned>(optolink::GWGEngine::ENQ_VALIDITY_MS));
-  std::this_thread::sleep_for(std::chrono::milliseconds(optolink::GWGEngine::ENQ_VALIDITY_MS + 150));
+  optolink::optolink_test_clock_advance(optolink::GWGEngine::ENQ_VALIDITY_MS + 150);
   check(adapter.read(0x0073, 1), "timing: read accepted (stalled host)");
   adapter.loop();  // establish a loop timestamp with nothing to read
   uart.feed({0x05});
-  std::this_thread::sleep_for(std::chrono::milliseconds(120));
+  optolink::optolink_test_clock_advance(120);
   adapter.loop();  // this iteration consumes the ENQ, 120 ms after the last one
   uart.feed({0x5F});
   pump(adapter);
-  check(g_last_enq_age >= 100, "enq age tracks a real host stall");
+  // Exactly the gap between the two loop() iterations -- the instrument reports
+  // the stall it was given, neither rounded nor accumulated from anywhere else.
+  check(g_last_enq_age == 120, "enq age == the 120 ms host stall");
   check(g_last_enq_age > enq_age_no_stall, "enq age is not a constant");
 
   // --- (1/2) timing instrument: must NOT fire for writes ---------------------

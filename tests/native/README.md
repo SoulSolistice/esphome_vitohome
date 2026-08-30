@@ -61,6 +61,13 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
 - `build_and_run.sh` — host compile + run. Optional `$1` is the component root
   containing `optolink/` (default `../../components/vitohome`); it compiles the
   P300 translation units (`constants`, `datapoint/*`, `protocol/vs2/*`).
+- `fuzz_parser_vs2.cpp` — fuzz target for `ParserVS2::parse()`, in two builds
+  from one source: a deterministic corpus replay (g++, run by CI) and a
+  libFuzzer target (clang, run by hand). Carries the oracles.
+- `fuzz_corpus_vs2.h` — the seed corpus, as byte arrays with a stated reason
+  each. Seeds the fuzzer and doubles as the permanent regression corpus CI
+  replays; see "Fuzzing the VS2 parser" below.
+- `fuzz.sh` — campaign driver (clang/libFuzzer). Not a gate, not run by CI.
 - `build_and_run_wsl.sh` — Windows-only convenience wrapper. Mirrors the two
   directories the suite reads onto ext4 inside WSL and then calls
   `build_and_run.sh` there, because building straight off `/mnt/<drive>` pays a
@@ -68,6 +75,88 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
   same run on the same machine. Not a gate, not called by CI, and a no-op
   detour on a Linux checkout — run `build_and_run.sh` directly there. See the
   script header for the invocation.
+
+## Fuzzing the VS2 parser
+
+`ParserVS2::parse()` is a byte-at-a-time state machine fed straight off the
+optical link, where garbled RX is routine rather than exceptional, and it is
+the one place in this tree with a history of memory-safety defects — the
+zero-payload out-of-bounds write (THIRD_PARTY.md #12) and, in the packet it
+fills, the RESPONSE payload guards (#16). Both were found by someone writing
+down the single input that trips them. Fuzzing covers the inputs nobody thought
+of.
+
+**Two builds, one source.** `fuzz_parser_vs2.cpp` compiles either way, so the
+oracles CI enforces and the oracles a campaign enforces cannot drift apart:
+
+| build | driver | who runs it |
+|---|---|---|
+| replay | walks `fuzz_corpus_vs2.h`, plus any files named as arguments | CI, via `build_and_run.sh`; sub-second, g++ |
+| libFuzzer | `-fsanitize=fuzzer`, coverage-guided search | a person, via `fuzz.sh`; needs clang |
+
+CI runs only the replay. An unbounded search does not belong on a push, and a
+campaign that finds nothing is not worth a CI minute — but every input a
+campaign *does* find becomes a seed, and from then on CI executes it forever.
+That promotion step is the point of the split.
+
+**The oracles.** Memory safety comes free from ASan/UBSan and is most of the
+value. On top of it the harness asserts four properties, because a fuzzer with
+no oracle finds only crashes while the defects this project fears are
+silent-wrong-value ones (design_notes.md §1a):
+
+1. `COMPLETE` is only ever returned on a checksum the packet agrees with.
+2. For a frame the engine would deliver (`packetType() == RESPONSE`) with
+   non-null `data()`, the advertised payload lies inside the packet buffer.
+3. ... and `dataLength()` equals `length() - 6`, the structural invariant that
+   makes (2) true.
+4. **Liveness:** no byte sequence can permanently wedge the parser. After the
+   input, the harness drains any partial state and feeds a probe frame, which
+   must complete *and be that frame*.
+
+(2) and (3) are scoped to RESPONSE deliberately, and the scope is the
+interesting part — see the comment in `check_complete_frame()`. The parser
+skips payload-length validation for the two frame shapes carrying no inline
+payload, so a `READ`+`REQUEST` frame can complete claiming `dataLength() == 255`
+with only six bytes written and a non-null `data()`. Nothing can reach that
+today, because `VS2Engine::_receive()` forwards only RESPONSE frames. That
+guard was added for correctness (#9); it turns out to also be what keeps a
+consumer inside the packet buffer, which is recorded nowhere else.
+
+**Both oracle classes were negative-controlled**, because an oracle that never
+fires is indistinguishable from one that cannot:
+
+- reverting the zero-payload fix in `parser_vs2.cpp` makes the corpus trap
+  under ASan (`heap-use-after-free`, exit 1);
+- removing the `CHECKSUM` step's reset-to-`STARTBYTE` wedges the parser, and
+  oracle (4) reports it against the `bad_checksum` seed.
+
+The second control is why the probe frame is `0xBEEF`/`0xDEAD` rather than a
+capture frame: the first version reused the 0x5525 response, and a wedged
+parser sitting in `CHECKSUM` completed it on a coincidental checksum match —
+the oracle passed and the wedge went unseen. A probe that cannot be
+impersonated by stale state, plus an identity check on what completed, is the
+difference between that oracle working and merely appearing to.
+
+**Coverage.** A gcov build replayed over a campaign corpus reaches 100% of
+`parser_vs2.cpp`'s 42 branches (95.2% taken at least once) and 90.4% of lines;
+libFuzzer's edge count plateaus at 80, so the search saturates this parser
+quickly. The uncovered remainder is `ParserVS2::reset()`, which is
+engine-driven and covered by `proof_vs2_guards.cpp`, and the
+`!_packet.setLength(b)` branch, which is unreachable by construction — a
+`uint8_t` length plus one can never exceed the 256-byte `kMaxFrame`.
+
+**Running a campaign.**
+
+```
+bash fuzz.sh          # 5 minutes, one worker per core
+bash fuzz.sh 3600 6   # an hour, 6 workers
+```
+
+A finding is written to `$FUZZ_DIR/findings/`. Replay it against the CI build
+first to confirm it is not an artefact of the fuzzer's own instrumentation,
+minimise it (`-minimize_crash=1`), then add the reduced bytes to
+`fuzz_corpus_vs2.h` with a note on what it broke. A crash file left in `/tmp`
+is a finding that will be rediscovered from scratch next year.
 
 ## Sanitizers are not per-target
 
