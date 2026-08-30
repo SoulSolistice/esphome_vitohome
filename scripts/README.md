@@ -148,6 +148,10 @@ Every emitted entity is `disabled_by_default: true`, so you opt in to each one
 from Home Assistant. Always run `esphome config`, then `esphome compile` /
 `run`, before relying on a value — not every address answers on every firmware.
 
+To facilitate the interpretation of the datapoints' naming, an overview of the
+Viessmann nomenclature has been established in
+[`docs/datapoint_acronyms.md`](../docs/datapoint_acronyms.md)
+
 ## `migrate_ecnViessmann.cmd` — Vitosoft database to SQLite (development tool)
 
 A one-time Windows utility that exports the Vitosoft SQL Server database
