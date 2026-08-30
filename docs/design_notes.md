@@ -1242,10 +1242,10 @@ The gates are **sequential and non-substituting** — passing an earlier gate do
 not vouch for a later one:
 
 ```
-host C++ : decode/encode tests           tests/native/test_decode.cpp   (380 checks)
+host C++ : decode/encode tests           tests/native/test_decode.cpp   (400 checks)
 host C++ : VS2 transaction harness        tests/native/test_vs2_transaction.cpp (8/8)
 host C++ : engine / GWG compile-proofs    engine_compile_proof.cpp, proof_gwg_poke.cpp
-host C++ : VS2 parser zero-payload (OOB)  tests/native/proof_vs2_zero_payload.cpp  (ASan/UBSan)
+host C++ : VS2 parser zero-payload (OOB)  tests/native/proof_vs2_zero_payload.cpp
 python   : validators + catalog generator tests/unit/  (pytest)
 lint     : ruff check / ruff format
 format   : clang-format  (pinned v22.1.8)
@@ -1254,10 +1254,32 @@ compile  : esphome compile  (esp-idf AND arduino)
 run      : esphome run       (real heater — the definitive gate)
 ```
 
+**Every host binary is built with ASan + UBSan**, and this is a rule rather
+than a per-target choice because it did not used to be one. The sanitizers
+were opt-in, and the split had settled in the wrong place: five binaries
+carried them and roughly seventeen did not — including *every* engine proof in
+`build_and_run_protocols.sh`, i.e. the whole of the VS1/GWG sync, burst and
+access-mode work. That is the code that consumes bytes off a noisy optical
+link, where garbled RX is the normal case rather than the exceptional one, and
+it is where both memory-safety defects this project has found actually lived
+(the zero-payload OOB write in `parser_vs2.cpp`, and THIRD_PARTY.md #16's
+RESPONSE payload guards). Both were caught by someone hand-writing the single
+input that trips them; neither would have needed to be thought of if the
+proofs around them had been instrumented. The flag set lives in one exported
+`$SAN` variable in `build_and_run.sh` (inherited by the chained protocol
+script, so there is no second copy to drift) and on the `test_decode` line in
+`ci.yml`.
+
+`-fno-sanitize-recover=all` is not decoration either: UBSan's default is to
+print a runtime error and **continue**, leaving the process exit code at 0, so
+without it an undefined-behaviour hit is reported *into a green build* — the
+same failure mode the `-Werror` note in `build_and_run.sh` describes for
+warnings. ASan aborts on its own; UBSan has to be told to.
+
 Two coverage layers compose to give wire→decode→value end-to-end without the
 ESPHome framework:
 
-- **`test_decode.cpp` (380 checks)** locks down the *value* layer — the
+- **`test_decode.cpp` (400 checks)** locks down the *value* layer — the
   precision fix, BCD/datetime, sign-extend, encode round-trips, `raw_fits`
   boundaries.
 - **The VS2 transaction harness (8/8)** locks down the *transaction* layer the

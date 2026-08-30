@@ -2,7 +2,7 @@
 
 Host-side regression gate for the part of the engine upstream never unit-tested:
 the request/ACK/response/fragment-reassembly choreography. It composes with the
-existing 380-check `decode.h` tests — this harness covers wire→payload; those cover
+existing 400-check `decode.h` tests — this harness covers wire→payload; those cover
 payload→value.
 
 ## Status: built and run against the in-tree optolink engine — 8/8 pass
@@ -61,6 +61,27 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
 - `build_and_run.sh` — host compile + run. Optional `$1` is the component root
   containing `optolink/` (default `../../components/vitohome`); it compiles the
   P300 translation units (`constants`, `datapoint/*`, `protocol/vs2/*`).
+- `build_and_run_wsl.sh` — Windows-only convenience wrapper. Mirrors the two
+  directories the suite reads onto ext4 inside WSL and then calls
+  `build_and_run.sh` there, because building straight off `/mnt/<drive>` pays a
+  9p round-trip per header open: 68 s in place against 39.5 s staged, for the
+  same run on the same machine. Not a gate, not called by CI, and a no-op
+  detour on a Linux checkout — run `build_and_run.sh` directly there. See the
+  script header for the invocation.
+
+## Sanitizers are not per-target
+
+Every binary either script builds carries `$SAN` —
+`-fsanitize=address,undefined -fno-sanitize-recover=all` — defined once in
+`build_and_run.sh` and exported to the chained `build_and_run_protocols.sh`.
+It was previously opt-in, which left every engine proof (the VS1/GWG sync,
+burst and access-mode work) running with no memory checker over exactly the
+byte-consuming code where garbled RX is routine; see design_notes.md §10.
+`-fno-sanitize-recover=all` is what makes a UBSan hit fail the run instead of
+printing into a green one.
+
+`SAN= bash build_and_run.sh` builds unsanitized. That is a debugging
+convenience — it does not count as passing the gate.
 
 ## Three things the original build surfaced (now resolved in-tree)
 

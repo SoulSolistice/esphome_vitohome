@@ -53,12 +53,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - run: g++ -std=c++17 -Wall -Wextra -Werror -o /tmp/test_decode tests/native/test_decode.cpp
+      # Sanitized like every other host binary (see the note at the top of
+      # tests/native/build_and_run.sh). decode.h is where the fixed-size char
+      # buffers and the hand-rolled snprintf offset arithmetic live --
+      # decode_schaltzeiten_day, decode_ascii, decode_utf16, format_raw_dump --
+      # so an off-by-one there is precisely what ASan is for, and this suite
+      # ran without it. -fno-sanitize-recover=all so a UBSan hit FAILS the job
+      # rather than being printed into a green one.
+      - run: >
+          g++ -std=c++17 -Wall -Wextra -Werror
+          -fsanitize=address,undefined -fno-sanitize-recover=all
+          -o /tmp/test_decode tests/native/test_decode.cpp
       - run: /tmp/test_decode
       - name: VS2 transaction harness (vendored optolink engine)
         working-directory: tests/native
         # Chains build_and_run_protocols.sh. Every g++ line in both scripts
-        # carries -Wall -Wextra -Werror; see the header note in build_and_run.sh.
+        # carries -Wall -Wextra -Werror and the $SAN sanitizer set; see the
+        # header note in build_and_run.sh.
         run: bash build_and_run.sh
       # Narrow, deliberate coverage ratchet on decode.h ONLY -- the one file
       # that is pure, 100% host-executable, and where a missed branch is a
