@@ -1247,6 +1247,7 @@ host C++ : VS2 transaction harness        tests/native/test_vs2_transaction.cpp 
 host C++ : engine / GWG compile-proofs    engine_compile_proof.cpp, proof_gwg_poke.cpp
 host C++ : VS2 parser zero-payload (OOB)  tests/native/proof_vs2_zero_payload.cpp
 host C++ : VS2 parser fuzz corpus         tests/native/fuzz_parser_vs2.cpp  (replay; libFuzzer via fuzz.sh)
+host C++ : decode.h fuzz corpus           tests/native/fuzz_decode.cpp      (replay; libFuzzer via fuzz.sh)
 python   : validators + catalog generator tests/unit/  (pytest)
 lint     : ruff check / ruff format
 format   : clang-format  (pinned v22.1.8)
@@ -1425,6 +1426,51 @@ Two things that came out of building it are worth keeping:
   stale buffer's checksum. The probe is now an address and payload that appear
   in no seed and no real datapoint, and what completed is checked for identity.
   Any future liveness probe needs the same property.
+
+---
+
+### 10c. The second fuzz target, and two lessons from building it
+
+`fuzz_decode.cpp` covers the other half of the path — payload to text — and one
+input class the parser target cannot reach: `encode_schaltzeiten_day()` parses
+a string a **person** typed into Home Assistant, with raw `const char *`
+walking. Everything else here is fed by the device.
+
+**Exact-size heap buffers are the technique that matters.** Every output buffer
+is allocated at precisely the capacity handed to the function, so a
+one-past-the-end write lands in an ASan redzone rather than in slack a test
+happened to reserve, and the capacity itself comes out of the fuzz input so the
+truncation branches actually run. That is what turns "ASan is on" into "ASan
+can see this": a fixed 4 KiB scratch buffer would have made every off-by-one in
+`decode_ascii` / `decode_utf16` / `format_raw_dump` invisible.
+
+**The round-trip oracle is the one that catches a silent wrong value.**
+`decode.h` states the Schaltzeiten string as round-trippable, so bytes out of
+the encoder must decode to a canonical string that re-encodes to the same
+bytes. A negative control confirms it fires: swapping the ON/OFF writes in
+`encode_schaltzeiten_day` trips it on the seed corpus. But note the limit,
+because it bounds what this oracle proves — a *duplicated* write
+(`tmp[2*pair+1] = onb`) does **not** trip it, since that bug is idempotent over
+its own output. Round-trip oracles catch reordering and loss, not every error.
+Only the encode→decode→encode direction is asserted: device bytes → string →
+bytes is deliberately not a contract, because a malformed OFF byte (disabled
+while its ON is active) renders through the same formula so the raw state stays
+visible, and that rendering is intentionally not re-encodable.
+
+**A harness whose parameter range is narrower than the caller's is not testing
+the caller.** The output-capacity range was first capped at 96, chosen as
+comfortably more than the longest canonical Schaltzeiten string (47 + NUL). It
+silently made one branch unreachable: `format_raw_dump`'s `" ...(N bytes)"`
+elision is only considered once the hex run has been written, and 48 bytes of
+hex need 7 + 144 characters, so with a 96-byte ceiling the buffer was always
+full first and no input could get there. The real caller passes
+`char buffer[208]`. gcov found it; no amount of fuzzing would have, because the
+input space never contained the case. The range is now 1..256, spanning every
+buffer a real caller passes, and coverage went from 99.35% to 100% of
+`decode.h`'s 308 branches (94.2% of lines). The remaining uncovered lines are
+null-pointer guards and `snprintf`-failure paths unreachable from a caller with
+real buffers; they are left uncovered rather than padded with calls that cannot
+happen in production.
 
 ---
 

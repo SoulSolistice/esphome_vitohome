@@ -121,5 +121,15 @@ g++ -std=c++17 -Wall -Wextra -Werror $SAN \
   -o fuzz_parser_vs2
 ./fuzz_parser_vs2
 
+# decode.h fuzz corpus, the same two-build arrangement over the other half of
+# the path: payload->text, where the fixed char buffers and the hand-rolled
+# snprintf offset arithmetic live, plus encode_schaltzeiten_day, which parses a
+# string a PERSON typed into Home Assistant. decode.h is header-only and
+# includes itself relatively (as test_decode.cpp does), so this needs no -I and
+# no extra translation units.
+g++ -std=c++17 -Wall -Wextra -Werror $SAN \
+  fuzz_decode.cpp -o fuzz_decode
+./fuzz_decode
+
 # Protocol-adapter proofs: all three engines compile + the GWG poke stays off.
 bash "$(dirname "$0")/build_and_run_protocols.sh" "$ROOT"

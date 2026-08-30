@@ -64,10 +64,18 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
 - `fuzz_parser_vs2.cpp` — fuzz target for `ParserVS2::parse()`, in two builds
   from one source: a deterministic corpus replay (g++, run by CI) and a
   libFuzzer target (clang, run by hand). Carries the oracles.
-- `fuzz_corpus_vs2.h` — the seed corpus, as byte arrays with a stated reason
+- `fuzz_corpus_vs2.h` — its seed corpus, as byte arrays with a stated reason
   each. Seeds the fuzzer and doubles as the permanent regression corpus CI
-  replays; see "Fuzzing the VS2 parser" below.
-- `fuzz.sh` — campaign driver (clang/libFuzzer). Not a gate, not run by CI.
+  replays; see "Fuzzing" below.
+- `fuzz_decode.cpp` — the same two builds over the buffer-writing helpers in
+  `decode.h`: `decode_schaltzeiten_day`, `decode_ascii`, `decode_utf16`,
+  `format_raw_dump`, `decode_datetime_bcd`, `encode_scaled`, `encode_raw_le`
+  and `encode_schaltzeiten_day`.
+- `fuzz_corpus_decode.h` — its seed corpus. The first two bytes of every seed
+  steer the output-buffer capacity and the declared field width; the rest is
+  the payload.
+- `fuzz.sh` — campaign driver (clang/libFuzzer), one target per run. Not a
+  gate, not run by CI.
 - `build_and_run_wsl.sh` — Windows-only convenience wrapper. Mirrors the two
   directories the suite reads onto ext4 inside WSL and then calls
   `build_and_run.sh` there, because building straight off `/mnt/<drive>` pays a
@@ -76,7 +84,7 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
   detour on a Linux checkout — run `build_and_run.sh` directly there. See the
   script header for the invocation.
 
-## Fuzzing the VS2 parser
+## Fuzzing
 
 `ParserVS2::parse()` is a byte-at-a-time state machine fed straight off the
 optical link, where garbled RX is routine rather than exceptional, and it is
@@ -145,18 +153,67 @@ engine-driven and covered by `proof_vs2_guards.cpp`, and the
 `!_packet.setLength(b)` branch, which is unreachable by construction — a
 `uint8_t` length plus one can never exceed the 256-byte `kMaxFrame`.
 
+### The `decode` target
+
+The second target covers the other half of the path — payload to text — and one
+thing the parser target does not touch at all: `encode_schaltzeiten_day()`
+parses an arbitrary string a **person** typed into a Home Assistant field, with
+raw `const char *` walking in `parse_hhmm_`. Everything else in this codebase
+is fed by the device.
+
+Two techniques do the work:
+
+- **Every output buffer is heap-allocated at exactly the capacity passed in**,
+  so a one-past-the-end write lands in an ASan redzone instead of in slack the
+  test happened to reserve. The capacity comes from the fuzz input (1..256,
+  spanning every buffer a real caller passes — `char out[64]`, `char buf[80]`,
+  `char buf[160]`, `char buffer[208]`), so the truncation branches are explored
+  rather than assumed away. Buffers are pre-filled with a non-zero canary so
+  the NUL-termination assertions cannot pass vacuously against zeroed heap.
+- **A round-trip oracle on the Schaltzeiten program**, which `decode.h` states
+  as a contract ("Canonical string (round-trippable — decode and encode share
+  it)"). Bytes out of the encoder must decode to a canonical string that
+  re-encodes to the *same* bytes. Only that direction: device bytes → string →
+  bytes is deliberately **not** a contract, because a malformed OFF byte
+  renders through the same formula so the raw state stays visible, and that
+  rendering is intentionally not re-encodable.
+
+Both were negative-controlled. Loosening `decode_utf16`'s three-byte bound
+check trips ASan on the seed corpus alone; swapping the ON/OFF writes in
+`encode_schaltzeiten_day` — a plausible copy-paste slip — trips the round-trip
+oracle naming the seeds. Note a subtlety worth keeping: a *duplicated* write
+(`tmp[2*pair+1] = onb`) would **not** trip it, because that bug is idempotent
+over its own output. The oracle catches reordering, not every possible error.
+
+**Coverage.** Replayed over a campaign corpus, the target reaches 100% of
+`decode.h`'s 308 branches (86.0% taken at least once) and 94.2% of lines. The
+uncovered remainder is null-pointer guards and `snprintf`-failure paths that
+cannot be reached from a caller passing real buffers; they are left uncovered
+rather than padded with calls that cannot happen in production.
+
+Getting there exposed a defect in the harness rather than the code, which is
+worth recording. The capacity range was first capped at 96 — generous against
+the longest canonical Schaltzeiten string (47 + NUL) — and that silently made
+`format_raw_dump`'s `" ...(N bytes)"` elision unreachable: 48 bytes of hex need
+7 + 144 characters before the elision is even considered, so the buffer was
+always full first. gcov found it; no amount of fuzzing would have, because the
+input space never contained the case. **A harness whose parameter range is
+narrower than the caller's is not testing the caller.**
+
 **Running a campaign.**
 
 ```
-bash fuzz.sh          # 5 minutes, one worker per core
-bash fuzz.sh 3600 6   # an hour, 6 workers
+bash fuzz.sh                  # list the targets
+bash fuzz.sh parser_vs2       # 5 minutes, one worker per core
+bash fuzz.sh decode 3600 6    # an hour, 6 workers
 ```
 
-A finding is written to `$FUZZ_DIR/findings/`. Replay it against the CI build
-first to confirm it is not an artefact of the fuzzer's own instrumentation,
-minimise it (`-minimize_crash=1`), then add the reduced bytes to
-`fuzz_corpus_vs2.h` with a note on what it broke. A crash file left in `/tmp`
-is a finding that will be rediscovered from scratch next year.
+A finding is written to `$FUZZ_DIR/<target>/findings/`. Replay it against the
+CI build first to confirm it is not an artefact of the fuzzer's own
+instrumentation (`./fuzz_decode <crash-file>` — the replay binaries take files
+as arguments), minimise it (`-minimize_crash=1`), then add the reduced bytes to
+the target's corpus header with a note on what it broke. A crash file left in
+`/tmp` is a finding that will be rediscovered from scratch next year.
 
 ## Sanitizers are not per-target
 
