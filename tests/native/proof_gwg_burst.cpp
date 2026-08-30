@@ -22,9 +22,7 @@
 //       bursting only ever removes a wait, it never adds one.
 //
 // Built with -DVITOHOME_PROTOCOL_GWG by build_and_run_protocols.sh.
-#include <chrono>  // NOLINT [build/c++11]
 #include <cstdio>
-#include <thread>  // NOLINT [build/c++11]
 #include <vector>
 
 #include "fake_optolink.h"
@@ -55,6 +53,10 @@ static void sync_and_complete(Engine &a, FakeOptolink &u, uint8_t addr, uint8_t 
 }
 
 int main() {
+  // Before the engine is constructed, so its first _currentMillis sample and
+  // every later one come from the same frozen clock.
+  optolink::optolink_test_clock_freeze();
+
   FakeOptolink uart;
   Engine adapter(&uart);
   adapter.onResponse([](const uint8_t *, uint8_t, uint16_t) { g_responses++; });
@@ -143,9 +145,7 @@ int main() {
   uart.clear_written();
 
   // --- (3) the window expires ----------------------------------------------
-  std::printf("  (letting the burst window lapse, %u ms ...)\n",
-              static_cast<unsigned>(optolink::GWGEngine::ENQ_VALIDITY_MS));
-  std::this_thread::sleep_for(std::chrono::milliseconds(optolink::GWGEngine::ENQ_VALIDITY_MS + 150));
+  optolink::optolink_test_clock_advance(optolink::GWGEngine::ENQ_VALIDITY_MS + 150);
   check(adapter.read(0x0072, 1), "read accepted after the window lapsed");
   pump(adapter);
   check(uart.written().empty(), "expired window -> waits for a real ENQ again");
@@ -164,7 +164,7 @@ int main() {
   pump(adapter);
   check(!uart.written().empty(), "sent (riding the sync from the previous completion)");
   uart.clear_written();
-  std::this_thread::sleep_for(std::chrono::milliseconds(400));
+  optolink::optolink_test_clock_advance(400);  // past RESPONSE_TIMEOUT_MS (250)
   pump(adapter);
   check(g_errors == errors_before + 1, "silent device -> TIMEOUT");
   check(adapter.read(0x0074, 1), "next read accepted");
@@ -224,7 +224,7 @@ int main() {
     adapter.read(static_cast<uint8_t>(0x60 + i), 1);
     pump(adapter);
     uart.clear_written();
-    std::this_thread::sleep_for(std::chrono::milliseconds(400));
+    optolink::optolink_test_clock_advance(400);  // past RESPONSE_TIMEOUT_MS (250)
     pump(adapter);
   }
   // Bursting is now off: even with a fresh sync, the engine waits for an ENQ.

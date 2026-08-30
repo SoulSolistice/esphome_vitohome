@@ -554,15 +554,30 @@ These are intentional divergences from upstream `edc059a7`:
     behaved correctly throughout: discarding a response buffered across a
     >250 ms stall is precisely what item 18 exists to do.
 
-    `proof_gwg_access_mode.cpp` is converted: it freezes the clock before
-    constructing the engine and advances it by exact amounts, so `enq_age` and
-    `send_to_response` are asserted as equalities (0, 30, 120) rather than
-    margins, and the run is stall-immune (verified with 400 ms real sleeps
-    injected at every deadline boundary) and ~1.7 s faster. The remaining
-    proofs still sleep; theirs are mostly one-sided waits that only need to
-    OVERSHOOT a deadline, which merely costs time -- but any sleep that has to
-    land INSIDE a window (e.g. `proof_vs1_chain.cpp`'s 200 ms against
-    `CHAIN_WINDOW_MS`) is the same latent flake and should move to this clock.
+    `proof_gwg_access_mode.cpp` was converted first: it freezes the clock
+    before constructing the engine and advances it by exact amounts, so
+    `enq_age` and `send_to_response` are asserted as equalities (0, 30, 120)
+    rather than margins, and the run is stall-immune and ~1.7 s faster.
+
+    Every other sleeping proof has since followed, so **no `sleep_for` remains
+    anywhere in `tests/native/`**: `proof_gwg_burst.cpp`,
+    `proof_gwg_enq_misread.cpp`, `proof_gwg_poke.cpp`,
+    `proof_gwg_write_access.cpp`, `proof_vs1_chain.cpp` and
+    `proof_vs2_guards.cpp`. Most of those were one-sided overshoot waits that
+    only cost time (7 x `RESPONSE_TIMEOUT_MS`, 4 s past VS2's
+    `REQUEST_TIMEOUT_MS`, two window lapses). The exception is the one flagged
+    above as the remaining latent flake: `proof_vs1_chain.cpp` case (3) has to
+    land INSIDE `CHAIN_WINDOW_MS` (200 ms, which must also clear the old 50 ms
+    `ENQ_ACK_WINDOW_MS`), and a sleep pins only the lower bound. It is now an
+    exact advance guarded by two `static_assert`s tying 200 to both constants,
+    so the window cannot be re-tuned out from under it silently.
+
+    Verification is the same both times: the full suite reports 0 failures, and
+    re-running it with 400 ms of REAL sleep injected inside
+    `optolink_test_clock_advance()` -- a genuine host stall at every deadline
+    boundary the proofs express -- still reports 0 failures, which is what shows
+    the proofs depend on the injected clock rather than on the wall clock. Suite
+    wall time went from 39.6 s to 25.4 s.
 
     The real-time path also switched from `system_clock` to `steady_clock`:
     every reading is used as a difference against an earlier one, and

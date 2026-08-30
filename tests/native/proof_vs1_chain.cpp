@@ -26,9 +26,17 @@
 //       where _receive() would read it as its payload.
 //
 // Built with -DVITOHOME_PROTOCOL_KW by build_and_run_protocols.sh.
-#include <chrono>  // NOLINT [build/c++11]
+//
+// TIME IS INJECTED, NOT SLEPT (see optolink_test_clock_freeze in helpers.h).
+// Case (3) is the one THIRD_PARTY.md item 23 named as the remaining latent
+// flake, and it is the two-sided kind: its 200 ms pause must land past the old
+// 50 ms ENQ_ACK_WINDOW_MS *and* inside the 1500 ms CHAIN_WINDOW_MS. sleep_for
+// guarantees only "at least 200 ms", so the upper bound was never actually
+// pinned -- a host stall past 1500 ms expired the window and failed case (3)
+// for a reason having nothing to do with the engine. Advancing a frozen clock
+// pins both sides exactly; the two static_asserts below keep the constants
+// from drifting out from under the number.
 #include <cstdio>
-#include <thread>  // NOLINT [build/c++11]
 #include <vector>
 
 #include "fake_optolink.h"
@@ -49,6 +57,10 @@ static void pump(Engine &a, int n = 8) {
 }
 
 int main() {
+  // Before the engine is constructed, so its first _currentMillis sample and
+  // every later one come from the same frozen clock.
+  optolink::optolink_test_clock_freeze();
+
   FakeOptolink uart;
   Engine adapter(&uart);
   adapter.onResponse([](const uint8_t *d, uint8_t len, uint16_t) {
@@ -94,10 +106,11 @@ int main() {
   check(g_responses == 4 && g_errors == 0, "whole chain completed off one ENQ");
 
   // --- (3) a pause the OLD 50 ms window would have killed ------------------
-  // 200 ms is comfortably past the former ceiling and comfortably inside
-  // CHAIN_WINDOW_MS, so this is the regression the split was made for.
-  std::printf("  (pausing 200 ms mid-chain -- past the old 50 ms window ...)\n");
-  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  // The two-sided case; see the header note. Both bounds are asserted here so
+  // re-tuning either window breaks the build rather than the meaning of 200.
+  static_assert(200u > optolink::VS1Engine::ENQ_ACK_WINDOW_MS, "pause must exceed the old sync window");
+  static_assert(200u < optolink::VS1Engine::CHAIN_WINDOW_MS, "pause must stay inside the chain window");
+  optolink::optolink_test_clock_advance(200);
   check(adapter.read(0x0025, 1), "read accepted after a 200 ms pause");
   pump(adapter);
   const std::vector<uint8_t> want_after_pause = {0xF7, 0x00, 0x25, 0x01};
@@ -108,9 +121,7 @@ int main() {
   check(g_responses == 5, "  and completes");
 
   // --- (4) past CHAIN_WINDOW_MS the engine re-syncs -------------------------
-  std::printf("  (letting the chain window lapse, %u ms ...)\n",
-              static_cast<unsigned>(optolink::VS1Engine::CHAIN_WINDOW_MS));
-  std::this_thread::sleep_for(std::chrono::milliseconds(optolink::VS1Engine::CHAIN_WINDOW_MS + 150));
+  optolink::optolink_test_clock_advance(optolink::VS1Engine::CHAIN_WINDOW_MS + 150);
   check(adapter.read(0x0026, 1), "read accepted after the window lapsed");
   pump(adapter);
   check(uart.written().empty(), "expired window -> nothing sent without an ENQ");

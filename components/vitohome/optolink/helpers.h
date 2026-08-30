@@ -61,10 +61,9 @@ inline uint32_t optolink_host_real_millis() {
   // steady_clock, not system_clock: every use of this value is a difference
   // against an earlier reading, and system_clock can be stepped backwards by
   // NTP mid-run, which would make a deadline appear to have not yet started.
-  return static_cast<uint32_t>(
-      std::chrono::duration_cast<std::chrono::duration<uint32_t, std::milli>>(
-          std::chrono::steady_clock::now().time_since_epoch())
-          .count());
+  return static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::duration<uint32_t, std::milli>>(
+                                   std::chrono::steady_clock::now().time_since_epoch())
+                                   .count());
 }
 
 inline uint32_t optolink_host_millis() {

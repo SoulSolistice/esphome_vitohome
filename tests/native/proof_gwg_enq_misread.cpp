@@ -18,9 +18,7 @@
 // ENQ" implementation passes cases 1 and 2 and fails this one.
 //
 // Built with -DVITOHOME_PROTOCOL_GWG by build_and_run_protocols.sh.
-#include <chrono>  // NOLINT [build/c++11]
 #include <cstdio>
-#include <thread>  // NOLINT [build/c++11]
 #include <vector>
 
 #include "fake_optolink.h"
@@ -44,6 +42,10 @@ static void pump(Engine &a, int n = 6) {
 }
 
 int main() {
+  // Before the engine is constructed, so its first _currentMillis sample and
+  // every later one come from the same frozen clock.
+  optolink::optolink_test_clock_freeze();
+
   FakeOptolink uart;
   Engine adapter(&uart);
   adapter.onResponse([](const uint8_t *data, uint8_t length, uint16_t) {
@@ -79,8 +81,7 @@ int main() {
   // Real cadence on the capture was ~1.23 s (min 0.75 s); 400 ms is past
   // RESPONSE_TIMEOUT_MS (250 ms) and well short of REQUEST_TIMEOUT_MS (3000 ms),
   // so a pass here cannot be the old 3 s watchdog firing late.
-  std::printf("  (device silent; sleeping past RESPONSE_TIMEOUT_MS = 250 ms ...)\n");
-  std::this_thread::sleep_for(std::chrono::milliseconds(400));
+  optolink::optolink_test_clock_advance(400);
   pump(adapter);
   check(g_errors == 1 && g_last_error == optolink::OptolinkResult::TIMEOUT, "silent device -> TIMEOUT");
   check(g_last_error_addr == 0x006F, "TIMEOUT reports the request address");
@@ -109,8 +110,7 @@ int main() {
   uart.feed({0x63});  // only one of the two expected bytes
   pump(adapter);
   check(g_responses == 1 && g_errors == 1, "partial frame is not completed early");
-  std::printf("  (short answer; sleeping past RESPONSE_TIMEOUT_MS ...)\n");
-  std::this_thread::sleep_for(std::chrono::milliseconds(400));
+  optolink::optolink_test_clock_advance(400);  // past RESPONSE_TIMEOUT_MS
   pump(adapter);
   check(g_errors == 2 && g_last_error == optolink::OptolinkResult::TIMEOUT, "short answer -> TIMEOUT");
   check(g_responses == 1, "no partial payload delivered");
@@ -134,9 +134,9 @@ int main() {
   adapter.loop();
   uart.clear_written();
   std::printf("  (host stalled; idle ENQ arrives INTO THE BUFFER during the stall ...)\n");
-  uart.feed({0x05});  // device's next idle ENQ, buffered while we are not looking
-  std::this_thread::sleep_for(std::chrono::milliseconds(400));
-  pump(adapter);  // first loop() after the stall: byte is already buffered
+  uart.feed({0x05});                           // device's next idle ENQ, buffered while we are not looking
+  optolink::optolink_test_clock_advance(400);  // the stall itself, past RESPONSE_TIMEOUT_MS
+  pump(adapter);                               // first loop() after the stall: byte is already buffered
   check(g_responses == responses_before, "buffered idle ENQ is NOT delivered as data");
   check(g_errors == errors_before + 1 && g_last_error == optolink::OptolinkResult::TIMEOUT,
         "stalled-host misread -> TIMEOUT");

@@ -2,9 +2,7 @@
 // engine must NOT emit an EOT (0x04) while waiting for ENQ; with it on, the
 // engine must emit the EOT poke after the interval. Built twice (default
 // header, then a copy with the switch flipped) by the surrounding script.
-#include <chrono>
 #include <cstdio>
-#include <thread>
 
 #include "fake_optolink.h"
 #include "protocol_select.h"
@@ -12,6 +10,10 @@
 using namespace esphome::vitohome;
 
 int main() {
+  // Before the engine is constructed, so its first _currentMillis sample and
+  // every later one come from the same frozen clock.
+  optolink::optolink_test_clock_freeze();
+
   FakeOptolink uart;
   esphome::vitohome::optolink::OptolinkEngine<esphome::vitohome::SelectedProtocol> adapter(
       &uart);  // GWGEngine under -DVITOHOME_PROTOCOL_GWG
@@ -21,10 +23,10 @@ int main() {
 
   adapter.read(0x0000, 2);
 
-  // Pump the loop across a >2ms window with no ENQ ever fed by the fake device.
+  // Pump the loop across a 50 ms window with no ENQ ever fed by the fake device.
   for (int i = 0; i < 50; ++i) {
     adapter.loop();
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    optolink::optolink_test_clock_advance(1);
   }
 
   bool eot = false;

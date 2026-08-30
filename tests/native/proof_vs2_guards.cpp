@@ -12,15 +12,15 @@
 //     the byte-at-a-time parser stuck mid-parse: after the engine's own
 //     timeout/RESET and a fresh handshake, the first new transaction must
 //     succeed at the first attempt (upstream needed one extra failed
-//     transaction to self-heal via CS_ERROR). This test sleeps past
-//     REQUEST_TIMEOUT_MS (4 s) once, deliberately.
+//     transaction to self-heal via CS_ERROR). This test crosses
+//     REQUEST_TIMEOUT_MS (4 s) once, deliberately -- as a clock advance rather
+//     than a real wait (see optolink_test_clock_freeze in helpers.h), so it is
+//     exact and costs no wall time.
 //
 // Built for P300 (no protocol flag) by build_and_run_protocols.sh.
-#include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <numeric>
-#include <thread>
 #include <vector>
 
 #include "fake_optolink.h"
@@ -64,6 +64,10 @@ static void handshake(Engine &a, FakeOptolink &u) {
 }
 
 int main() {
+  // Before the engine is constructed, so its first _currentMillis sample and
+  // every later one come from the same frozen clock.
+  optolink::optolink_test_clock_freeze();
+
   FakeOptolink uart;
   Engine adapter(&uart);
   adapter.onResponse([](const uint8_t *data, uint8_t length, uint16_t) {
@@ -120,9 +124,8 @@ int main() {
   pump(adapter);                  // -> RECEIVE
   uart.feed({0x41, 0x07, 0x01});  // frame starts... then the device dies
   pump(adapter);
-  std::printf("  (sleeping past REQUEST_TIMEOUT_MS = 4 s ...)\n");
-  std::this_thread::sleep_for(std::chrono::milliseconds(4200));
-  pump(adapter);  // engine timeout: onError(TIMEOUT), -> RESET
+  optolink::optolink_test_clock_advance(4200);  // past REQUEST_TIMEOUT_MS (4000)
+  pump(adapter);                                // engine timeout: onError(TIMEOUT), -> RESET
   check(g_errors == 1 && g_last_error == optolink::OptolinkResult::TIMEOUT, "B: mid-frame timeout surfaced");
   handshake(adapter, uart);  // engine re-handshakes after RESET
 

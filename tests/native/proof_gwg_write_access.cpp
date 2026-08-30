@@ -22,9 +22,7 @@
 //       recorded).
 //
 // Built with -DVITOHOME_PROTOCOL_GWG by build_and_run_protocols.sh.
-#include <chrono>  // NOLINT [build/c++11]
 #include <cstdio>
-#include <thread>  // NOLINT [build/c++11]
 #include <vector>
 
 #include "fake_optolink.h"
@@ -45,6 +43,10 @@ static void pump(Engine &a, int n = 6) {
 }
 
 int main() {
+  // Before the engine is constructed, so its first _currentMillis sample and
+  // every later one come from the same frozen clock.
+  optolink::optolink_test_clock_freeze();
+
   FakeOptolink uart;
   Engine adapter(&uart);
   adapter.onResponse([](const uint8_t *, uint8_t, uint16_t) { g_responses++; });
@@ -189,8 +191,8 @@ int main() {
   uart.feed({0x05});
   adapter.loop();
   std::printf("  (device ignores the write; idle ENQ arrives during the stall ...)\n");
-  uart.feed({0x05});  // the next idle ENQ, buffered while the host is busy
-  std::this_thread::sleep_for(std::chrono::milliseconds(400));
+  uart.feed({0x05});                           // the next idle ENQ, buffered while the host is busy
+  optolink::optolink_test_clock_advance(400);  // the stall itself, past RESPONSE_TIMEOUT_MS
   pump(adapter);
   check(g_responses == responses_before, "idle ENQ is NOT accepted as a write ack");
   check(g_errors == errors_before + 1 && g_last_error == optolink::OptolinkResult::TIMEOUT,
