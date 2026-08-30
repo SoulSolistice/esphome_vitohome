@@ -208,7 +208,7 @@ vitohome:
 sensor:
   - platform: vitohome
     name: "Outside temperature"
-    address: 0x0800
+    address: 0x5525
     length: 2
     converter: div10        # signed, divide by 10
     unit_of_measurement: "°C"
