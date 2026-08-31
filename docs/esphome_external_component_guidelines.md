@@ -437,9 +437,9 @@ compile time. See [G2](#g2).
 **Rule.** Codegen that must see all registered entities runs as a final job:
 
 ```python
-@coroutine_with_priority(CoroPriority.FINAL)     # coroutine.py:59, FINAL = -1000
-async def _emit_tables():
-    ...
+@coroutine_with_priority(CoroPriority.FINAL)  # coroutine.py:59, FINAL = -1000
+async def _emit_tables(): ...
+
 
 # from the hub's to_code:
 CORE.add_job(_emit_tables)
@@ -515,7 +515,7 @@ spelling by rewriting keys by hand in `to_code`, and do not silently accept both
 
 ```python
 CONFIG_SCHEMA = cv.All(
-    cv.Schema({ ... }),
+    cv.Schema({...}),
     cv.rename_key(CONF_OLD_NAME, CONF_NEW_NAME),
 )
 ```
@@ -549,14 +549,17 @@ the function that needs them, not at the top of the module.
 import requests
 from esphome.components.esp32 import add_idf_component
 
-CATALOG = _parse_catalog(Path(__file__).parent / "catalog.json")   # also module scope
+CATALOG = _parse_catalog(Path(__file__).parent / "catalog.json")  # also module scope
+
 
 # RIGHT — deferred to the call that actually needs it
 async def to_code(config):
     from esphome.components.esp32 import add_idf_component
+
     ...
 
-def _catalog():                      # memoise if it is genuinely needed twice
+
+def _catalog():  # memoise if it is genuinely needed twice
     global _CATALOG
     if _CATALOG is None:
         _CATALOG = _parse_catalog(...)
