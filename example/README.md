@@ -3,26 +3,14 @@
 Configurations for the `vitohome` component. Each file carries a header comment
 explaining its purpose in more detail.
 
-Two kinds of file live here. **Standalone configs** — `vscotho1_72.vitohome.yaml`
-and the four `vitohome-*.yaml` feature examples — you point `esphome config` at
-directly; they read `secrets.yaml` (see `secrets.example.yaml`) and pull their
-datapoints from a package. **Packages** — `vscotho1_72.dp.*.yaml` and everything
-under `catalogs/` — are include-only fragments meant to be `!include`d into a
-config, not validated on their own.
+## Reference-unit device configs / user curated
 
-The reference unit throughout is the maintainer's **Vitodens 300-W (B3HA)** with
-a **Vitotronic 200** controller — wire ident **`0x20CB`**, Vitosoft token
-**`VScotHO1_72`**. That unit is **heating-only** (no DHW cylinder), so DHW
-entities in these examples are present as platform coverage and as a template,
-and read inert on the reference hardware.
+The official Viessmann XML catalogs are not complete and datapoints that are
+supported by the unit may not be included in the automatically generated
+configuration files.
 
-## Reference-unit device configs
-
-| File | What it is |
-|---|---|
-| `vscotho1_72.vitohome.yaml` | The **flash-and-go** config. Board (ESP32-C3 + DM9051 Ethernet), Optolink `uart:` at 4800 8E2, API/OTA, and `time_sync` (device clock follows Home Assistant). Includes `vscotho1_72.dp.curated.yaml` as its package. Start here, then edit the board/network/secrets for your hardware. |
-| `vscotho1_72.dp.curated.yaml` | The **curated** datapoint package it pulls in: a hand-picked monitoring + control set that exercises every platform (`sensor`, `binary_sensor`, `text_sensor`, `number`, `select`, `switch`, `climate`, `text`, `event`, template `water_heater`). Doubles as the starting template you trim to your own unit. |
-| `vscotho1_72.dp.complete.yaml` | The **full generated catalog** for the reference unit — `standard` profile, 710 entities, address-ordered, every Optolink-reachable datapoint, all `disabled_by_default`. Same content as `catalogs/vscotho1_72.yaml`, just ordered by address instead of by navigation group. |
+[`example/user_curated`](example/user_curated/) contains contributed device
+configurations that can serve as a starting point.
 
 ## Feature examples
 
