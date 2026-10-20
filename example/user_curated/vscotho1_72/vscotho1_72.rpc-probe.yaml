@@ -1,0 +1,82 @@
+# ============================================================
+# RPC probe for VScotHO1_72 (P300) -- needs the access-rpc patch.
+#
+# Add this file to `packages:` in vscotho1_72.vitohome.yaml (as a local
+# !include, or from the branch carrying the patch), and on the hub set:
+#
+#   vitohome:
+#     log_frames: true      # the >>> TX / <<< RX lines are the evidence
+#     raw_queue_size: 4     # the raw lane, for the buttons below
+#
+# The component has to come from the patched tree too: point
+# vitohome_repo/vitohome_ref at a branch with the patch, or use a local
+# external_components source.
+#
+# What it settles, in order of safety:
+#   1. Does the unit answer function code 0x07 at all?
+#   2. What does an answer's DataLength byte hold -- the returned byte count
+#      or the parameter's length? The engine accepts both, but the frames tell.
+#   3. The entity path: `access: rpc` with `prefix:`, polled like a read.
+# Everything here is a READ of the LON participant list (0xA010), which Vitosoft
+# marks read-only. Without a LON module the answer is expected to be empty
+# entries (zeros or 0xFF), an error frame, or nothing -- each is an answer to 1.
+# ============================================================
+
+text_sensor:
+  # Entity path. type: raw publishes every byte the controller returns, so the
+  # full 6-byte entry is visible although length is capped at 4 for raw.
+  - platform: vitohome
+    type: raw
+    name: "RPC Probe · LON entry 00 (own)"
+    address: 0xA010
+    access: rpc
+    prefix: [0x00]
+    length: 4
+    update_interval: 300s
+    entity_category: diagnostic
+
+  # Keep this only if your config has no scan_result sensor yet
+  # (vscotho1_72.dp.curated.mb.yaml already declares one).
+  # - platform: vitohome
+  #   type: scan_result
+  #   name: "Scan · Rohergebnis"
+  #   entity_category: diagnostic
+
+button:
+  # Raw lane: one call, the answer goes to the scan_result sensor and the log.
+  - platform: template
+    name: "RPC Probe · read LON entry 00"
+    entity_category: diagnostic
+    on_press:
+      - lambda: |-
+          std::vector<uint8_t> p{0x00};
+          id(vito).queue_raw_rpc(0xA010, p);
+  - platform: template
+    name: "RPC Probe · read LON entry 01"
+    entity_category: diagnostic
+    on_press:
+      - lambda: |-
+          std::vector<uint8_t> p{0x01};
+          id(vito).queue_raw_rpc(0xA010, p);
+
+  # ------------------------------------------------------------------
+  # PROCEDURE -- this RUNS on the controller. Left commented out on purpose.
+  # valmRPCClearErrorHistoryTable (0xA029, no parameter) deletes the fault
+  # history. It is the only procedure on this unit whose effect is merely a
+  # loss of data. Note the history (error_history sensors / scan of
+  # 0x7507..0x7558) BEFORE pressing, then read it again: an emptied history
+  # confirms the parameterless call path end to end.
+  #
+  # Do NOT try the others on this unit:
+  #   0xA050 Konfi_FunktionReset_GWG      -> factory reset of ALL codings
+  #   0xA051 Bedienparameter*FunktionReset (prefix 00/01/02)
+  #                                      -> circuit operating parameters to default
+  #   0xA009 vlogRPCClearMemberList       -> clears the LON participant list
+  # ------------------------------------------------------------------
+  # - platform: template
+  #   name: "RPC Probe · CLEAR fault history"
+  #   entity_category: config
+  #   on_press:
+  #     - lambda: |-
+  #         std::vector<uint8_t> none;
+  #         id(vito).queue_raw_rpc(0xA029, none);

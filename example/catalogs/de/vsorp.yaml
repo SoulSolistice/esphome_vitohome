@@ -7,9 +7,13 @@
 # include this file via `packages:`. All entities are
 # disabled_by_default; enable the ones you want in Home Assistant.
 #
-# FCRead filter ON: 156 datapoint(s) requiring a non-Optolink
+# FCRead filter ON: 140 datapoint(s) requiring a non-Optolink
 # access method (GFA_READ/RPC/PROZESS/KBUS/OT) were omitted as unreachable
 # via VitoWiFi's read. Re-run with --no-reachable-only to include them.
+#
+# Remote procedure readings omitted: 16 (the LON participant
+# list and LON identity, read by P300 function code 0x07). They answer only
+# with a LON module. --profile full includes them.
 #
 # LON inputs omitted: 15 network-variable input(s) (nvi*). A LON
 # master writes them; without a LON module they hold no data (0xFF
