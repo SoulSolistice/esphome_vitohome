@@ -172,10 +172,14 @@ def _is_reachable(ev: Event, protocol: str = PROTO_P300) -> bool:
     return fc in ("", "virtual_read") or _is_rpc_reading(ev, protocol)
 
 
-def _rpc_prefix(ev: Event) -> list[int] | None:
-    """The PrefixRead bytes; [] when there is none (a call without a parameter),
-    None when it is unparsable or longer than the component accepts."""
-    text = (getattr(ev, "prefix_read", "") or "").replace(" ", "")
+def _rpc_prefix(ev: Event, field: str = "prefix_read") -> list[int] | None:
+    """The PrefixRead bytes (or PrefixWrite's, with field="prefix_write"); []
+    when there is none (a call without a parameter), None when it is
+    unparsable or longer than the component accepts. Hex, with or without
+    spaces and a 0x (the export writes both "0E" and "0x0E")."""
+    text = (getattr(ev, field, "") or "").replace(" ", "")
+    if text[:2].lower() == "0x":
+        text = text[2:]
     if not text:
         return []
     if len(text) % 2:
@@ -225,6 +229,52 @@ def _is_rpc_reading(ev: Event, protocol: str = PROTO_P300) -> bool:
     if not (ev.block_length or ev.byte_length):
         return False
     return _rpc_prefix(ev) is not None
+
+
+def _is_rpc_action(ev: Event, protocol: str = PROTO_P300) -> bool:
+    """Whether a Remote_Procedure_Call datapoint is an ACTION, emitted as a
+    `type: action` button: a procedure that a press runs, with PrefixWrite as
+    its parameter and nothing else to send.
+
+    The procedures are the writable RPC rows (AccessMode 2/3), and a call to
+    one is the same telegram as an RPC read -- function code 0x07 plus the
+    parameter; BlockLength is the size of the answer, not a value. What a
+    button cannot do is supply a value, so a procedure that takes one stays
+    out. The export tells them apart this way:
+
+    * answers nothing (BlockLength 0): a trigger, whatever else the row says --
+      valmRPCClearErrorHistoryTable, RPCWink, KesselfolgeFunktionNext,
+      vlogRPCClearMemberList;
+    * write-only (AccessMode 2), a one-byte `Array`, no borders, no unit: a
+      trigger too -- the circuit and coding resets
+      (BedienparameterA1M1FunktionReset, Konfi_FunktionReset_GWG), the heat-pump
+      resets and restart;
+    * everything else carries a value: borders (RPCLesenFehlertabelle 0..74),
+      a unit (RPCKonfigTrendingZeitintervall*, seconds), a numeric type
+      (RPCSetImpulseCounter*, Int4), or a read+write row that answers
+      (RPCSetDigitalOutput*).
+
+    P300 only, not an array, and a PrefixWrite that parses.
+    """
+    if protocol != PROTO_P300:
+        return False
+    if (getattr(ev, "fc_write", "") or "").strip().lower() != "remote_procedure_call":
+        return False
+    if ev.access_type not in (2, 3):
+        return False
+    if (ev.block_factor or 0) > 1:
+        return False
+    if _rpc_prefix(ev, "prefix_write") is None:
+        return False
+    answer = ev.block_length or ev.byte_length or 0
+    if answer == 0:
+        return True
+    return (
+        ev.access_type == 2
+        and answer <= 1
+        and (ev.parameter_type or "").lower() == "array"
+        and not (ev.lower or ev.upper or ev.unit_token)
+    )
 
 
 def _access_for(ev: Event, protocol: str) -> str:

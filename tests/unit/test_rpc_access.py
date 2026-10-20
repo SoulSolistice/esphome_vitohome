@@ -107,3 +107,15 @@ def test_prefix_is_one_to_rpc_prefix_max_bytes():
         RPC_PREFIX_SCHEMA(list(range(RPC_PREFIX_MAX + 1)))
     with pytest.raises(cv.Invalid):
         RPC_PREFIX_SCHEMA([0x100])
+
+
+@pytest.mark.parametrize("protocol", ["KW", "GWG"])
+def test_an_action_button_is_refused_where_there_is_no_such_telegram(protocol):
+    action = _entity({"type": "action", CONF_ACCESS: ACCESS_RPC})
+    with pytest.raises(cv.Invalid, match="no remote procedure call telegram"):
+        _validate(protocol, {"button": [action]})
+    _validate("P300", {"button": [action]})
+
+
+def test_a_refresh_button_needs_no_access():
+    _validate("KW", {"button": [_entity({"type": "refresh"})]})

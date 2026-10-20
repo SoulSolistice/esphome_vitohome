@@ -221,15 +221,19 @@ GWG_ACCESS_MODES = {
 # history -- and those are calls with an effect, not readings, so polling one
 # would run it every cycle. Nothing on the wire tells the two apart; the
 # catalog does (scripts/gen_catalog.py emits readings only), so `access: rpc`
-# is for an address the catalog calls a reading. A procedure is reachable
-# through the raw lane (queue_raw_rpc), deliberately, and nowhere else. KW and
-# GWG have no such telegram; _final_validate rejects `access: rpc` under both.
+# is for an address the catalog calls a reading. A procedure is a `button` of
+# `type: action` (button.py), which runs it once per press, or a raw-lane call
+# (queue_raw_rpc). KW and GWG have no such telegram; _final_validate rejects
+# `access: rpc` under both.
 ACCESS_RPC = "rpc"
 CONF_PREFIX = "prefix"
 # Mirrors VitoEntityBase::RPC_PREFIX_MAX (vito_entity.h). Vitosoft's longest
 # PrefixRead is three bytes.
 RPC_PREFIX_MAX = 4
 _RPC_DOMAINS = ("sensor", "binary_sensor", "text_sensor")
+# Where _final_validate looks for `access: rpc`: the readings above, and the
+# action button (button.py, `type: action`), which runs a procedure.
+_RPC_CHECK_DOMAINS = (*_RPC_DOMAINS, "button")
 
 
 def read_access(value):
@@ -1007,7 +1011,7 @@ def _entity_gwg_access_modes(entity):
 
 def _validate_rpc_access(full, hub_id, protocol):
     """`prefix:` only with `access: rpc`, and `access: rpc` only where P300 can send it."""
-    for domain, entity in _entities_for_hub(full, _RPC_DOMAINS, hub_id):
+    for domain, entity in _entities_for_hub(full, _RPC_CHECK_DOMAINS, hub_id):
         is_rpc = str(entity.get(CONF_ACCESS)) == ACCESS_RPC
         if CONF_PREFIX in entity and not is_rpc:
             raise cv.Invalid(
@@ -1038,10 +1042,10 @@ def _entities_for_hub(full, domains, hub_id):
 
 # Entity-registering platform domains: each vitohome entry in one of these
 # registers exactly one VitoEntityBase via register_entity(). (Connectivity
-# binary_sensors and device_id/scan_result text_sensors early-return onto the
+# binary_sensors, refresh buttons and device_id/scan_result text_sensors early-return onto the
 # link / device-id / raw-result lanes and never reach register_entity(); climate
 # is handled separately below because it contributes one or two channels.)
-_ENTITY_DOMAINS = ("sensor", "binary_sensor", "text_sensor", "number", "select", "switch", "text", "event")
+_ENTITY_DOMAINS = ("sensor", "binary_sensor", "text_sensor", "number", "select", "switch", "text", "event", "button")
 
 # Internal, codegen-only key: the entity-registry capacity computed by
 # _final_validate and consumed by to_code. Not a user-facing YAML option.

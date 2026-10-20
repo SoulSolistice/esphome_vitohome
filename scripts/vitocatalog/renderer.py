@@ -4,10 +4,18 @@ from __future__ import annotations
 
 import re
 
-from .constants import _SCHALTZEITEN_RECORD_LEN, _WEEKDAYS, ACCESS_PLATFORMS, PROTO_GWG, PROTO_P300, RPC_PLATFORMS
+from .constants import (
+    _SCHALTZEITEN_RECORD_LEN,
+    _WEEKDAYS,
+    ACCESS_PLATFORMS,
+    ACTION_WARNING,
+    PROTO_GWG,
+    PROTO_P300,
+    RPC_PLATFORMS,
+)
 from .emitter import _mode_select_caveat, build_entity_spec, render_entity_lines
 from .loader import Catalog
-from .models import CommentSpec, Event
+from .models import CommentSpec, EntitySpec, Event
 from .special import (
     _device_id_lines,
     _error_history_entries,
@@ -28,6 +36,7 @@ from .transforms import (
     _is_lon_input,
     _is_mode_select,
     _is_reachable,
+    _is_rpc_action,
     _is_writable,
     _profile_keep,
     _protocol_for_device,
@@ -212,6 +221,7 @@ def generate(
         "switch": [],
         "text": [],
         "text_sensor": [],
+        "button": [],
     }
     comments: list[str] = []
     seq = 0
@@ -249,6 +259,8 @@ def generate(
     dropped_lon_inputs = 0  # nvi* left out by the profile (_is_lon_input)
     rpc_readings = 0  # emitted with `access: rpc` (P300 remote procedure readings)
     dropped_rpc_readings = 0  # left out by the profile (_profile_keep)
+    rpc_actions = 0  # procedures emitted as `type: action` buttons (_is_rpc_action)
+    seen_actions: set[tuple] = set()
     dropped_wide_addr = 0
     history_suppressed = False
     gwg_system_history_suppressed = False
@@ -321,6 +333,37 @@ def generate(
                 real_entities += 1
             continue
 
+        # A procedure (P300): one `type: action` button, disabled by default and
+        # under a warning, in every profile but minimal -- an action is not a
+        # value, and minimal keeps values. The parameter is PrefixWrite.
+        if _is_rpc_action(ev, protocol):
+            target = ev.name or ""
+            if profile == "minimal" or (inc and not inc.search(target)) or (exc and exc.search(target)):
+                continue
+            prefix = _rpc_prefix(ev, "prefix_write")
+            key = (ev.address, tuple(prefix))
+            if key in seen_actions:
+                continue
+            seen_actions.add(key)
+            action = EntitySpec(
+                platform="button",
+                platform_type="action",
+                name=ev.name or ev.tech,
+                address=ev.address,
+                access="rpc",
+                access_source=ev.fc_write,
+                prefix=prefix,
+                prefix_source=f"PrefixWrite {ev.prefix_write}" if prefix else None,
+                entity_category="config",
+                disabled_by_default=True,
+                leading_comments=list(ACTION_WARNING),
+            )
+            action.id = _make_obj_id(ev.tech or ev.name, used_ids)
+            _add_chunk("button", ev, render_entity_lines(action))
+            kept += 1
+            rpc_actions += 1
+            continue
+
         if not _profile_keep(ev, profile):
             if _is_lon_input(ev) and (not reachable_only or _is_reachable(ev, protocol)):
                 dropped_lon_inputs += 1
@@ -375,7 +418,7 @@ def generate(
             spec.access = access
             spec.access_source = ev.fc_read
             spec.prefix = _rpc_prefix(ev)
-            spec.prefix_source = ev.prefix_read
+            spec.prefix_source = f"PrefixRead {ev.prefix_read}" if ev.prefix_read else None
             rpc_readings += 1
         elif access and spec.platform in ACCESS_PLATFORMS:
             spec.access = access
@@ -491,8 +534,14 @@ def generate(
         noun = "entity" if rpc_readings == 1 else "entities"
         out.append(f"# Remote procedure readings: {rpc_readings} {noun} read by P300 function code")
         out.append("# 0x07 (`access: rpc`), with the catalog's parameter (`prefix:`) where it has one.")
-        out.append("# Other remote procedure calls are procedures with an effect (resets,")
-        out.append("# clearing a history) and are never polled.")
+        out.append("# Procedures with an effect are never polled; they are the action buttons.")
+        out.append("#")
+    if rpc_actions:
+        noun = "procedure" if rpc_actions == 1 else "procedures"
+        out.append(f"# Actions: {rpc_actions} {noun} (P300 function code 0x07) as `type: action`")
+        out.append("# buttons, all disabled by default. Pressing one RUNS it on the controller")
+        out.append("# -- some clear a history, some reset settings or codings to their")
+        out.append("# defaults. Read each one's name before you enable it.")
         out.append("#")
     if dropped_rpc_readings:
         out.append(f"# Remote procedure readings omitted: {dropped_rpc_readings} (the LON participant")
@@ -523,7 +572,7 @@ def generate(
     out.append("")
 
     code_anchors: dict = {}  # codes block -> its YAML anchor (_share_codes_blocks)
-    for platform in ("sensor", "binary_sensor", "number", "select", "switch", "text", "text_sensor"):
+    for platform in ("sensor", "binary_sensor", "number", "select", "switch", "text", "text_sensor", "button"):
         if buckets[platform]:
             out.append(f"{platform}:")
             last_label = None

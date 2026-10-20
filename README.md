@@ -401,14 +401,37 @@ belongs on an address the catalog calls a reading, which is what the generator
 emits. `length:` and `byte_offset:` mean what they mean for a read; they are not
 sent. KW and GWG have no such telegram, so `esphome config` rejects it there.
 
+A procedure is a **`button` of `type: action`**: each press is one call, with
+the procedure's parameter where it takes one. It is never polled and never read
+back -- reading a procedure would run it again -- and once the controller
+acknowledges, every value is re-read so the effect shows up:
+
+```yaml
+button:
+  - platform: vitohome
+    type: action
+    name: "Fehlerhistorie Löschen"
+    address: 0xA029
+    access: rpc
+    disabled_by_default: true
+```
+
 `scripts/gen_catalog.py` emits `access: rpc` (and `prefix:` where there is one)
-for the remote procedure readings in Vitosoft's data, and never a procedure.
-The unit's own readings -- a cascade controller's boiler sequence, an M-Bus
-module's state -- are in the default profile. The LON-bound ones (the LON
-participant list, a Vitocom's LON identity, LON inputs read by procedure) answer
-only with a LON module and are in `--profile full` only. A procedure itself can
-be called from a lambda with `queue_raw_rpc(address, parameter)`; that **runs**
-it. Details and the one open wire question are in
+for the remote procedure readings in Vitosoft's data. The unit's own readings --
+a cascade controller's boiler sequence, an M-Bus module's state -- are in the
+default profile. The LON-bound ones (the LON participant list, a Vitocom's LON
+identity, LON inputs read by procedure) answer only with a LON module and are in
+`--profile full` only.
+
+It also emits every **procedure** as an action button, in the default profile
+too: clear the fault history, reset a circuit's operating parameters,
+**reset all codings to the delivery state**, step a boiler sequence. Every one
+is `disabled_by_default` under a warning comment, because a press **runs** the
+procedure on the controller, at once and without asking, and nothing here undoes
+it. Read the name before you enable one. A procedure that needs a value (a
+setter) is not a button and is not emitted. From a lambda, `queue_raw_rpc(address,
+parameter)` calls any procedure directly. Details and the one open wire question
+are in
 [`docs/design_notes.md`](docs/design_notes.md#p300-remote-procedure-calls-access-rpc).
 
 ## Development

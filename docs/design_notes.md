@@ -448,8 +448,8 @@ Vitosoft uses it for two different things, both under the same `FCRead`:
 In the 2026 export 1,010 events read by RPC and 896 of them carry a
 `PrefixRead`. A reading is therefore: P300, `Remote_Procedure_Call`, read-only,
 one record (BlockFactor <= 1 -- a multi-record RPC is one call per index), an
-answer of known size, and a `PrefixRead` that is absent or 1..4 bytes. A
-procedure is never emitted. KW and GWG have no RPC telegram at all.
+answer of known size, and a `PrefixRead` that is absent or 1..4 bytes. KW and
+GWG have no RPC telegram at all.
 
 Across the 399 device tokens the readings fall into two groups, and the profiles
 split them there:
@@ -482,10 +482,35 @@ The component side follows from that:
   (`VS2Engine::rpc()` instead of `read()`). A write to the same address does not
   refresh it: an RPC answer is computed, not read from the memory the write
   changed.
-- A procedure is reachable through the raw lane alone, on purpose:
-  `queue_raw_rpc(address, parameter)` sends one (0..32 parameter bytes, empty
-  allowed) and publishes the answer like a raw read. That call **runs** a
-  procedure, at once.
+- A procedure is a `button` of `type: action` (`VitoActionButton`). A press
+  queues it on the write lane, which sends the RPC call instead of a write --
+  the same telegram a reading sends, here for its effect. It is never polled
+  and never read back (reading it would run it again); once the controller
+  acknowledges, the hub re-reads every value (`refresh_all()`), since what a
+  procedure changes is elsewhere. From a lambda, `queue_raw_rpc(address,
+  parameter)` sends one (0..32 parameter bytes, empty allowed) and publishes
+  the answer like a raw read.
+
+**Actions in the catalogs.** The generator emits every procedure it can call as
+an action button, in `standard` and `full` (`minimal` keeps values, and an
+action is not one), `disabled_by_default` and under a warning comment. A call
+needs nothing but the parameter -- `PrefixWrite`, equal to `PrefixRead` wherever
+both are given, written `0E` or `0x0E` -- because `BlockLength` on these rows is
+the size of the answer, not a value. What a button cannot do is supply a value,
+so `_is_rpc_action` keeps the procedures that take none:
+
+| shape | examples | button |
+|---|---|---|
+| writable, answers nothing (BlockLength 0) | `valmRPCClearErrorHistoryTable`, `RPCWink`, `KesselfolgeFunktionNext`, `vlogRPCClearMemberList`, a Vitocom's read-out triggers | yes |
+| write-only `Array` of one byte, no borders, no unit | `BedienparameterA1M1FunktionReset` (`00`/`01`/`02` per circuit), `Konfi_FunktionReset_GWG`, the heat-pump resets and restart | yes |
+| borders, a unit or a numeric type | `RPCLesenFehlertabelle` (0..74), `RPCKonfigTrendingZeitintervall*` (seconds), `RPCSetImpulseCounter*` (`Int4`) | no: a setter |
+| read+write that answers | `RPCSetDigitalOutput*` | no: a setter |
+
+That is 984 buttons over the 201 shipped catalogs: three to eight on a
+controller (VScotHO1_72: the three circuit resets, the coding reset, clearing
+the fault history and the LON participant list), and most of the rest on the
+Vitocom gateways, whose read-out and configuration triggers are procedures
+too (`vitocom300_lan`: 215). No action has been run on this project's hardware.
 
 **Unsettled: the answer's DataLength.** Whether it counts the returned bytes or
 repeats the parameter's length is not known, and no RPC answer has been

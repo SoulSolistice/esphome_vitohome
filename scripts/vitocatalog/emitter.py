@@ -89,7 +89,7 @@ def render_entity_lines(spec: EntitySpec) -> list[str]:
         # read-only, so it never has a state_address.
         if spec.prefix:
             prefix = ", ".join(f"0x{b:02X}" for b in spec.prefix)
-            comment = f"  # Vitosoft PrefixRead {spec.prefix_source}" if spec.prefix_source else ""
+            comment = f"  # Vitosoft {spec.prefix_source}" if spec.prefix_source else ""
             lines.append(f"  prefix: [{prefix}]{comment}")
 
     if spec.length is not None:

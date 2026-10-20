@@ -640,6 +640,13 @@ void VitoHomeComponent::dispatch_next_() {
     // 0xC8 this lane emitted before.
     const bool write_ok = this->vito_->write(entity->get_write_datapoint().address(), entity->write_data(),
                                              entity->write_length(), entity->access());
+#elif defined(VITOHOME_HAS_RPC)
+    // An action (VitoActionButton) is a procedure call, not a write: the same
+    // telegram an `access: rpc` read sends, here for its effect.
+    const bool write_ok =
+        entity->is_rpc()
+            ? this->vito_->rpc(entity->get_write_datapoint().address(), entity->rpc_prefix(), entity->rpc_prefix_len())
+            : this->vito_->write(entity->get_write_datapoint().address(), entity->write_data(), entity->write_length());
 #else
     const bool write_ok =
         this->vito_->write(entity->get_write_datapoint().address(), entity->write_data(), entity->write_length());
@@ -902,7 +909,9 @@ void VitoHomeComponent::dump_config() {
 }
 
 bool VitoHomeComponent::request_write(VitoEntityBase *entity) {
-  if (entity == nullptr || entity->write_length() == 0)
+  // A procedure call carries its parameter, not a write payload, and may carry
+  // none at all (VitoActionButton).
+  if (entity == nullptr || (entity->write_length() == 0 && !entity->is_rpc()))
     return false;
 
   if (entity->write_queued_) {

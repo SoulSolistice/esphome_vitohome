@@ -150,6 +150,12 @@ ACCESS_PLATFORMS = ("sensor", "binary_sensor", "text_sensor", "number", "select"
 # The subset that takes `access: rpc` (the component's _RPC_DOMAINS): the
 # read-only platforms. A remote procedure reading is never written.
 RPC_PLATFORMS = ("sensor", "binary_sensor", "text_sensor")
+# Every action button carries this above it (_action_warning).
+ACTION_WARNING = [
+    "# WARNING: pressing this RUNS a procedure on the controller (Vitosoft",
+    "# Remote_Procedure_Call), at once and without asking. Nothing here undoes",
+    "# it. It is disabled by default: enable it only once you know what it does.",
+]
 # Mirrors components/vitohome/__init__.py RPC_PREFIX_MAX. Vitosoft's longest
 # PrefixRead is three bytes.
 RPC_PREFIX_MAX = 4

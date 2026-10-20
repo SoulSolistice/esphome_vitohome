@@ -74,6 +74,9 @@ class Event:
     # hex, e.g. "00"): the index of one entry of a list kept behind one
     # address. "" for every other datapoint. See transforms._rpc_prefix().
     prefix_read: str = ""
+    # The parameter a Remote_Procedure_Call write -- a procedure's call -- takes
+    # (PrefixWrite). Equal to prefix_read wherever both are given.
+    prefix_write: str = ""
     # Access-layer value transform: value = raw * conv_factor + conv_offset.
     # None when absent or when the export carries its placeholder pair (see
     # _FACTOR_PLACEHOLDERS). Consumed for MultOffset and for identity
@@ -111,8 +114,9 @@ class EntitySpec:
     address: int | None = None
     access: str | None = None
     access_source: str | None = None  # Vitosoft FCRead (/ FCWrite), shown as the access line's comment
-    # `prefix:` of an `access: rpc` read: the call's parameter bytes, and the
-    # Vitosoft PrefixRead it came from (the line's comment).
+    # `prefix:` of an `access: rpc` read or action: the call's parameter bytes,
+    # and the Vitosoft field it came from (the line's comment, e.g.
+    # "PrefixRead 00").
     prefix: list[int] | None = None
     prefix_source: str | None = None
     length: int | None = None

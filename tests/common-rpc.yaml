@@ -42,3 +42,20 @@ text_sensor:
     length: 4
     access: rpc
     prefix: 0x02
+
+button:
+  # Actions: one procedure call per press. Without a parameter (shaped like
+  # valmRPCClearErrorHistoryTable) and with one (BedienparameterA1M1FunktionReset).
+  - platform: vitohome
+    type: action
+    name: "Test RPC Action"
+    address: 0xA029
+    access: rpc
+    disabled_by_default: true
+  - platform: vitohome
+    type: action
+    name: "Test RPC Action With Parameter"
+    address: 0xA051
+    access: rpc
+    prefix: [0x00]
+    disabled_by_default: true

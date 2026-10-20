@@ -2,11 +2,12 @@
 
 Vitosoft marks two different things FCRead Remote_Procedure_Call: READINGS --
 a procedure answering with a value, called with a parameter (PrefixRead) or
-without one -- and PROCEDURES with an effect (a reset, clearing a history). Only
-readings may become entities, and only under P300, which has the telegram. They
-carry `access: rpc`, and `prefix:` when they take a parameter; since one address
-can hold a whole list, the prefix is part of the datapoint's identity. Readings
-that only a LON module fills are left to `--profile full`, like the LON inputs.
+without one -- and PROCEDURES with an effect (a reset, clearing a history).
+Under P300, which has the telegram, readings become sensors with `access: rpc`
+(and `prefix:` when they take a parameter; since one address can hold a whole
+list, the prefix is part of the datapoint's identity), and procedures become
+`type: action` buttons, disabled by default under a warning. Readings that only
+a LON module fills are left to `--profile full`, like the LON inputs.
 
 Run under any Python (gen_catalog is stdlib-only)::
 
@@ -122,21 +123,23 @@ def test_lon_bound_readings_are_told_apart_from_the_units_own(ev, lon):
 
 
 def _catalog():
-    """One P300 device: three entries of the LON participant list, one reading
-    without a parameter, a reset procedure that carries a PrefixRead, a
-    parameterless procedure, and a read-only delete with no answer."""
+    """One P300 device, shaped like the export: three entries of the LON
+    participant list, one reading without a parameter, a reset procedure with a
+    parameter, a parameterless procedure, a read-only delete with no answer, and
+    a setter that needs a value."""
     rows = {
-        # eid: (token, access type, PrefixRead, BlockLength)
-        "1": ("Teilnehmerliste_LON_00~0xA010", "1", "00", "6"),
-        "2": ("Teilnehmerliste_LON_01~0xA010", "1", "01", "6"),
-        "3": ("Teilnehmerliste_LON_15~0xA010", "1", "0F", "6"),
-        "4": ("KesselfolgeIst~0xA104", "1", "", "4"),
-        "5": ("BedienparameterA1M1FunktionReset~0xA051", "2", "00", "1"),
-        "6": ("valmRPCClearErrorHistoryTable~0xA029", "3", "", "0"),
-        "7": ("mBusRPCDeleteReadTableEM2~0xA093", "1", "01", "0"),
+        # eid: (token, access type, Prefix, BlockLength, Parameter, borders)
+        "1": ("Teilnehmerliste_LON_00~0xA010", "1", "00", "6", "Array", ""),
+        "2": ("Teilnehmerliste_LON_01~0xA010", "1", "01", "6", "Array", ""),
+        "3": ("Teilnehmerliste_LON_15~0xA010", "1", "0F", "6", "Array", ""),
+        "4": ("KesselfolgeIst~0xA104", "1", "", "4", "Array", ""),
+        "5": ("BedienparameterA1M1FunktionReset~0xA051", "2", "00", "1", "Array", ""),
+        "6": ("valmRPCClearErrorHistoryTable~0xA029", "3", "", "0", "Byte", ""),
+        "7": ("mBusRPCDeleteReadTableEM2~0xA093", "1", "01", "0", "Byte", ""),
+        "8": ("RPCLesenFehlertabelle~0xA0B0", "3", "", "1", "Byte", "74"),
     }
     raw_events, access = {}, {}
-    for eid, (token, access_type, prefix, block) in rows.items():
+    for eid, (token, access_type, prefix, block, parameter, upper) in rows.items():
         raw_events[eid] = {"Address": token, "Name": token.split("~")[0], "Type": access_type}
         access[token] = {
             "address": token.split("~")[1],
@@ -147,7 +150,10 @@ def _catalog():
             "fc_read": "Remote_Procedure_Call",
             "fc_write": "Remote_Procedure_Call",
             "prefix_read": prefix,
-            "parameter_type": "Int",
+            "prefix_write": prefix,
+            "parameter_type": parameter,
+            "lower_border": "0" if upper else "",
+            "upper_border": upper,
         }
     return gc.Catalog(
         {"VRpcTest_01": "dp1"},
@@ -168,31 +174,78 @@ def _generate(profile, protocol="P300"):
     )
 
 
-def test_full_emits_every_reading_and_no_procedure():
+def test_full_emits_every_reading_and_every_action():
     out = _generate("full")
-    assert out.count("    access: rpc  #") == 4
+    sensors, buttons = out.split("\nbutton:\n", 1)
+    assert sensors.count("    access: rpc  #") == 4
     for prefix in ("0x00", "0x01", "0x0F"):
-        assert f"prefix: [{prefix}]" in out
+        assert f"prefix: [{prefix}]  # Vitosoft PrefixRead" in sensors
     # The three list entries share 0xA010 and differ only in the prefix; none folds.
-    assert out.count("address: 0xA010") == 3
+    assert sensors.count("address: 0xA010") == 3
     # The reading without a parameter carries no prefix line.
-    block = out[out.index("address: 0xA104") :].split("\n\n", 1)[0]
+    block = sensors[sensors.index("address: 0xA104") :].split("\n\n", 1)[0]
     assert "access: rpc" in block and "prefix:" not in block
-    # No procedure is polled: the reset carries a PrefixRead but writes, the clear
-    # writes, and the delete answers nothing.
-    for address in ("0xA051", "0xA029", "0xA093"):
-        assert address not in out
+    # Both procedures are buttons, disabled, under the warning; the reset carries
+    # its parameter from PrefixWrite.
+    assert buttons.count("    type: action") == 2
+    assert buttons.count("# WARNING: pressing this RUNS a procedure") == 2
+    assert buttons.count("disabled_by_default: true") == 2
+    assert "prefix: [0x00]  # Vitosoft PrefixWrite 00" in buttons
+    assert "address: 0xA029" in buttons and "address: 0xA051" in buttons
+    # The read-only delete answers nothing and is neither; the setter needs a value.
+    assert "0xA093" not in out
+    assert "0xA0B0" not in out
     assert "Remote procedure readings: 4 " in out
+    assert "Actions: 2 procedures" in out
 
 
 @pytest.mark.parametrize("profile", ["standard", "minimal"])
-def test_standard_keeps_the_units_own_readings_and_leaves_lon_to_full(profile):
+def test_standard_keeps_the_units_own_readings_and_every_action(profile):
     out = _generate(profile)
     assert "0xA010" not in out
     assert "Remote procedure readings omitted: 3 " in out
     if profile == "standard":
-        assert out.count("    access: rpc  #") == 1
         assert "address: 0xA104" in out
+        assert out.count("    type: action") == 2
+    else:
+        # minimal keeps values; an action is not one.
+        assert "    type: action" not in out
+
+
+@pytest.mark.parametrize(
+    "ev,action",
+    [
+        (_ev(prefix="", access_type=3, block_length=0), True),  # clear the fault history
+        (_ev(prefix="00", access_type=2, block_length=1), True),  # a circuit reset (Array, no borders)
+        (_ev(prefix="", access_type=2, block_length=0), True),  # clear the LON participant list
+        (_ev(prefix="", access_type=1, block_length=0), False),  # read-only: not a procedure
+        (_ev(prefix="", access_type=3, block_length=2), False),  # read+write that answers: a setter
+        (_ev(prefix="", access_type=2, block_length=4), False),  # a 4-byte value: RPCSetImpulseCounter
+        (_ev(prefix="", access_type=2, block_factor=30), False),  # an array
+        (_ev(prefix="zz", access_type=3, block_length=0), False),  # unparsable parameter
+    ],
+)
+def test_what_counts_as_an_action(ev, action):
+    ev.parameter_type = "Array"
+    ev.prefix_write = ev.prefix_read
+    assert gc._is_rpc_action(ev, gc.PROTO_P300) is action
+    assert not gc._is_rpc_action(ev, gc.PROTO_KW)
+
+
+def test_a_setter_with_borders_or_a_unit_is_not_an_action():
+    ev = _ev(prefix="", access_type=2, block_length=1)
+    ev.parameter_type = "Array"
+    assert gc._is_rpc_action(ev)
+    ev.upper = "74"
+    assert not gc._is_rpc_action(ev)
+    ev.upper, ev.unit_token = "", "ecnUnit.Sekunden"
+    assert not gc._is_rpc_action(ev)
+
+
+def test_prefixwrite_may_be_written_with_0x():
+    ev = _ev(prefix="")
+    ev.prefix_write = "0x0E"
+    assert gc._rpc_prefix(ev, "prefix_write") == [0x0E]
 
 
 def test_kw_emits_none_of_them():
