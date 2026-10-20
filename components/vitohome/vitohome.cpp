@@ -18,6 +18,9 @@ namespace esphome::vitohome {
 
 static const char *const TAG = "vitohome";
 
+// What a raw-lane operation is, for its log lines.
+static const char *raw_kind(bool is_write, bool is_rpc) { return is_rpc ? "rpc" : (is_write ? "write" : "read"); }
+
 // Known device families (Identification at 0xF8/0xF9). Deliberately small:
 // it covers the units this project has seen on the wire; everything else is
 // reported as raw hex, and the catalogue tooling (scripts/gen_catalog.py)
@@ -455,9 +458,16 @@ void VitoHomeComponent::dispatch_raw_front_() {
     this->raw_dp_ = optolink::Datapoint("scan", operation.address, operation.length, optolink::noconv);
 
     this->raw_is_write_ = operation.is_write;
+    this->raw_is_rpc_ = operation.is_rpc;
 
     bool dispatched;
-    if (operation.is_write) {
+    if (operation.is_rpc) {
+#ifdef VITOHOME_HAS_RPC
+      dispatched = this->vito_->rpc(operation.address, operation.bytes, operation.bytes_len);
+#else
+      dispatched = false;  // unreachable: queue_raw_rpc() refuses it on this build
+#endif
+    } else if (operation.is_write) {
 #ifdef VITOHOME_PROTOCOL_GWG
       // GWG-only: the scan console can now pick the write access mode too, so a
       // tester can exercise EEPROM (0xAD) / BE (0x9D) -- the only modes Vitosoft
@@ -492,8 +502,8 @@ void VitoHomeComponent::dispatch_raw_front_() {
       // two with isBusy() and drop a permanently-refused op so the lane moves.
       if (this->vito_->isBusy())
         return false;  // transient: keep the item at the head and retry
-      ESP_LOGE(TAG, "Engine refused raw %s 0x%04X len %u (permanent); dropping", operation.is_write ? "write" : "read",
-               operation.address, operation.length);
+      ESP_LOGE(TAG, "Engine refused raw %s 0x%04X len %u (permanent); dropping",
+               raw_kind(operation.is_write, operation.is_rpc), operation.address, operation.length);
       this->raw_handle_error_(optolink::OptolinkResult::ERROR);
       return true;  // permanent: drop so the read/write lanes are reached
     }
@@ -502,7 +512,7 @@ void VitoHomeComponent::dispatch_raw_front_() {
     this->raw_in_flight_ = true;
     this->in_flight_started_ms_ = App.get_loop_component_start_time();
 
-    ESP_LOGV(TAG, "Dispatched raw %s 0x%04X len %u", operation.is_write ? "write" : "read", operation.address,
+    ESP_LOGV(TAG, "Dispatched raw %s 0x%04X len %u", raw_kind(operation.is_write, operation.is_rpc), operation.address,
              operation.length);
 
     return true;
@@ -683,6 +693,12 @@ void VitoHomeComponent::dispatch_next_() {
     // VitoEntityBase::access_), so an entity that never sets `access:` gets
     // exactly the pre-existing behaviour.
     const bool dispatched_ok = this->vito_->read(datapoint.address(), datapoint.length(), entity->access());
+#elif defined(VITOHOME_HAS_RPC)
+    // `access: rpc`: the same lane and the same response path as a read; only
+    // the telegram differs. See VitoEntityBase::set_rpc_prefix().
+    const bool dispatched_ok =
+        entity->is_rpc() ? this->vito_->rpc(datapoint.address(), entity->rpc_prefix(), entity->rpc_prefix_len())
+                         : this->vito_->read(datapoint.address(), datapoint.length());
 #else
     const bool dispatched_ok = this->vito_->read(datapoint.address(), datapoint.length());
 #endif
@@ -951,9 +967,31 @@ void VitoHomeComponent::queue_raw_write(uint16_t address, const std::vector<uint
   this->queue_raw_write(address, bytes.data(), bytes.size(), access);
 }
 
+void VitoHomeComponent::queue_raw_rpc(uint16_t address, const uint8_t *parameter, std::size_t len) {
+#ifdef VITOHOME_HAS_RPC
+  // Same cap as a raw write: the parameter rides in RawOp::bytes. Zero is
+  // allowed -- a procedure without a parameter -- and then runs the procedure.
+  if (len > RAW_WRITE_MAX || (len != 0 && parameter == nullptr)) {
+    ESP_LOGW(TAG, "queue_raw_rpc: %zu parameter bytes out of range (0..%u)", len, RAW_WRITE_MAX);
+    return;
+  }
+  this->enqueue_raw_(address, static_cast<uint8_t>(len), false, parameter, static_cast<uint8_t>(len),
+                     optolink::GWGAccessMode::PHYSICAL, true);
+#else
+  (void) parameter;
+  (void) len;
+  ESP_LOGW(TAG, "queue_raw_rpc: 0x%04X not sent -- %s has no remote procedure call telegram", address, PROTOCOL_NAME);
+#endif
+}
+
+void VitoHomeComponent::queue_raw_rpc(uint16_t address, const std::vector<uint8_t> &parameter) {
+  this->queue_raw_rpc(address, parameter.data(), parameter.size());
+}
+
 bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes,
-                                     uint8_t bytes_len, optolink::GWGAccessMode access) {
-  if (length == 0) {
+                                     uint8_t bytes_len, optolink::GWGAccessMode access, bool is_rpc) {
+  // An RPC's length is its parameter's, which may be empty; see queue_raw_rpc().
+  if (length == 0 && !is_rpc) {
     ESP_LOGW(TAG, "enqueue_raw_: zero-length operation rejected");
     return false;
   }
@@ -963,7 +1001,12 @@ bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
     return false;
   }
 
-  if (is_write) {
+  if (is_rpc) {
+    if (is_write || bytes_len != length || (bytes_len != 0 && bytes == nullptr)) {
+      ESP_LOGW(TAG, "enqueue_raw_: invalid rpc parameter (length=%u, bytes_len=%u)", length, bytes_len);
+      return false;
+    }
+  } else if (is_write) {
     if (bytes == nullptr || bytes_len == 0 || bytes_len != length) {
       ESP_LOGW(TAG, "enqueue_raw_: invalid write payload (length=%u, bytes_len=%u, data=%s)", length, bytes_len,
                bytes == nullptr ? "null" : "set");
@@ -980,8 +1023,9 @@ bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
   operation.is_write = is_write;
   operation.bytes_len = bytes_len;
   operation.access = access;  // ignored by dispatch for writes / non-GWG builds
+  operation.is_rpc = is_rpc;
 
-  if (is_write)
+  if ((is_write || is_rpc) && bytes_len != 0)
     std::memcpy(operation.bytes, bytes, bytes_len);
 
   // push_back() is authoritative. A preceding full() check would be a
@@ -994,16 +1038,16 @@ bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
       ESP_LOGW(TAG,
                "raw lane not allocated; dropping %s 0x%04X. Set raw_queue_size on the vitohome hub to use the "
                "scan console.",
-               is_write ? "write" : "read", address);
+               raw_kind(is_write, is_rpc), address);
     } else {
       ESP_LOGW(TAG, "raw queue full (%zu/%zu); dropping %s 0x%04X. Raise raw_queue_size for larger sweeps.",
-               this->raw_queue_.size(), this->raw_queue_.capacity(), is_write ? "write" : "read", address);
+               this->raw_queue_.size(), this->raw_queue_.capacity(), raw_kind(is_write, is_rpc), address);
     }
 
     return false;
   }
 
-  ESP_LOGD(TAG, "Queued raw %s 0x%04X len %u", is_write ? "write" : "read", address, length);
+  ESP_LOGD(TAG, "Queued raw %s 0x%04X len %u", raw_kind(is_write, is_rpc), address, length);
   return true;
 }
 
@@ -1027,7 +1071,7 @@ void VitoHomeComponent::raw_handle_error_(optolink::OptolinkResult error) {
   char buffer[96];
 
   snprintf(buffer, sizeof(buffer), "0x%04X: %s FAILED (%s)", this->raw_dp_.address(),
-           this->raw_is_write_ ? "write" : "read", optolink::errorToString(error));
+           raw_kind(this->raw_is_write_, this->raw_is_rpc_), optolink::errorToString(error));
 
   ESP_LOGW(TAG, "Raw: %s", buffer);
   this->raw_publish_(buffer);
@@ -1331,6 +1375,10 @@ void VitoHomeComponent::refresh_siblings_(VitoEntityBase *writer) {
     if (e->access() != writer->access())
       continue;
 #endif
+    // An RPC answer is computed by the controller, not read from the memory a
+    // write changed, so sharing the address says nothing about it.
+    if (e->is_rpc())
+      continue;
     if (this->request_priority_read(e))
       ++queued;
   }

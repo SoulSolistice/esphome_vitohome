@@ -51,6 +51,7 @@ class PacketVS2 {
   FunctionCode functionCode() const;
   uint16_t address() const;
   uint8_t dataLength() const;
+  uint8_t payloadLength() const;
   const uint8_t *data() const;
 
   uint8_t checksum() const;

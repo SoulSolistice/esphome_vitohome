@@ -8,14 +8,17 @@ from . import (
     CONF_BIT_MASK,
     CONF_BYTE_OFFSET,
     CONF_LENGTH,
+    CONF_PREFIX,
     CONF_VITOHOME_ID,
-    GWG_ACCESS_MODES,
     HUB_LINK_SENSORS,
     MAX_P300_READ_LENGTH,
+    RPC_PREFIX_SCHEMA,
     VitoHomeComponent,
     datapoint_expression,
+    emit_access,
     emit_poll_interval,
     pop_poll_interval,
+    read_access,
     register_hub_sensor,
     vitohome_ns,
 )
@@ -78,9 +81,11 @@ _DATAPOINT_SCHEMA = cv.All(
             cv.Optional(CONF_BYTE_OFFSET, default=0): cv.int_range(min=0, max=MAX_P300_READ_LENGTH - 1),
             cv.Optional(CONF_BIT_MASK, default=0xFF): cv.hex_uint8_t,
             cv.Optional(CONF_UPDATE_INTERVAL): cv.update_interval,
-            # GWG-only; rejected under any other protocol in _final_validate
-            # (__init__.py). See CONF_ACCESS there.
-            cv.Optional(CONF_ACCESS): cv.enum(GWG_ACCESS_MODES, lower=True),
+            # A GWG access mode (GWG only) or `rpc` (P300 only); checked in
+            # _final_validate (__init__.py). See CONF_ACCESS and ACCESS_RPC there.
+            cv.Optional(CONF_ACCESS): read_access,
+            # The parameter of an `access: rpc` read (P300); see ACCESS_RPC in __init__.py.
+            cv.Optional(CONF_PREFIX): RPC_PREFIX_SCHEMA,
         }
     )
     .extend(cv.COMPONENT_SCHEMA),
@@ -121,8 +126,7 @@ async def to_code(config):
     cg.add(var.set_datapoint(datapoint_expression(config[CONF_NAME], config[CONF_ADDRESS], config[CONF_LENGTH])))
     cg.add(var.set_byte_offset(config[CONF_BYTE_OFFSET]))
     cg.add(var.set_bit_mask(config[CONF_BIT_MASK]))
-    if CONF_ACCESS in config:
-        cg.add(var.set_access(config[CONF_ACCESS]))
+    emit_access(var, config)
     emit_poll_interval(var, poll_ms)
 
     cg.add(parent.register_entity(var))

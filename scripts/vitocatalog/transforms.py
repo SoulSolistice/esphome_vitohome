@@ -26,6 +26,7 @@ from .constants import (
     POLL_SLOW,
     PROTO_GWG,
     PROTO_P300,
+    RPC_PREFIX_MAX,
 )
 from .models import BoundsScale, Event
 
@@ -168,13 +169,70 @@ def _is_reachable(ev: Event, protocol: str = PROTO_P300) -> bool:
     fc = (getattr(ev, "fc_read", "") or "").strip().lower()
     if protocol == PROTO_GWG:
         return fc == "" or fc in FCREAD_TO_GWG_ACCESS
-    return fc in ("", "virtual_read")
+    return fc in ("", "virtual_read") or _is_rpc_reading(ev, protocol)
+
+
+def _rpc_prefix(ev: Event) -> list[int] | None:
+    """The PrefixRead bytes; [] when there is none (a call without a parameter),
+    None when it is unparsable or longer than the component accepts."""
+    text = (getattr(ev, "prefix_read", "") or "").replace(" ", "")
+    if not text:
+        return []
+    if len(text) % 2:
+        return None
+    try:
+        out = list(bytes.fromhex(text))
+    except ValueError:
+        return None
+    return out if len(out) <= RPC_PREFIX_MAX else None
+
+
+def _is_rpc_reading(ev: Event, protocol: str = PROTO_P300) -> bool:
+    """Whether a Remote_Procedure_Call datapoint is a READING, emitted with
+    `access: rpc` (and `prefix:` when it takes a parameter).
+
+    P300 function code 0x07 covers two different things in the export, and only
+    one of them may become an entity:
+
+    * a READING: the procedure answers with a value. Some are called with a
+      parameter (PrefixRead) naming one entry of a list -- Teilnehmerliste_LON_00..15
+      at 0xA010, sixteen rows sharing one address, prefix 00..0F, a 6-byte answer
+      each; others with none -- KesselfolgeIst and its siblings on a cascade
+      controller, a 4-byte answer.
+    * a PROCEDURE: a call with an effect -- RPCWink, valmRPCClearErrorHistoryTable,
+      BedienparameterA1M1FunktionReset. Polling one would run it every cycle.
+      A parameter says nothing either way (the reset takes the circuit as its
+      parameter, the clear takes none); the access mode does: the procedures are
+      marked writable (AccessMode 2/3). One row breaks that --
+      mBusRPCDeleteReadTableEM2 is marked read-only -- and it is caught by the
+      answer size: a procedure answers nothing (BlockLength 0).
+
+    So a reading is: P300, FCRead Remote_Procedure_Call, read-only (access type
+    1), not an array (BlockFactor <= 1: a multi-record RPC is one call per index,
+    not one entity), an answer of known size (BlockLength/ByteLength > 0), and a
+    PrefixRead that is absent or parsable in 1..4 bytes. KW and GWG have no RPC
+    telegram at all. Which readings a profile keeps is _is_lon_bound_rpc's
+    question.
+    """
+    if protocol != PROTO_P300:
+        return False
+    if (getattr(ev, "fc_read", "") or "").strip().lower() != "remote_procedure_call":
+        return False
+    if ev.access_type in (2, 3):
+        return False
+    if (ev.block_factor or 0) > 1:
+        return False
+    if not (ev.block_length or ev.byte_length):
+        return False
+    return _rpc_prefix(ev) is not None
 
 
 def _access_for(ev: Event, protocol: str) -> str:
     """The `access:` value to emit for one event, or "" when none is emitted
-    (non-GWG, or GWG with a blank FCRead, where the engine default already is
-    physical)."""
+    (KW, P300 other than an RPC reading, or GWG with a blank FCRead, where the
+    engine default already is physical)."""
+    if _is_rpc_reading(ev, protocol):
+        return "rpc"
     if protocol != PROTO_GWG:
         return ""
     return FCREAD_TO_GWG_ACCESS.get((getattr(ev, "fc_read", "") or "").strip().lower(), "")
@@ -517,11 +575,37 @@ def _is_lon_input(ev: Event) -> bool:
     return bool(_LON_INPUT_RE.match(tok.split("~", 1)[0]))
 
 
+# The LON participant procedure. Every reading at this address is one entry of
+# the LON participant list (Teilnehmerliste_LON_00..15) or the unit's own LON
+# identity (Vitocom_Node, _Subnet, _Neuron_ID).
+_LON_RPC_ADDRESS = 0xA010
+_LON_RPC_INPUT_RE = re.compile(r"nvi[A-Z]")
+
+
+def _is_lon_bound_rpc(ev: Event) -> bool:
+    """A remote procedure reading that only a LON module gives meaning to.
+
+    The LON participant list and LON identity (_LON_RPC_ADDRESS), a LON
+    module's own procedures (`vlon*`, e.g. vlonRPCGetBinding) and LON inputs read
+    by procedure (ddcRPCnvi*, the RPC counterpart of _is_lon_input). Without a
+    LON module none of these answers with data, so the profiles treat them like
+    the LON inputs (_profile_keep). The other readings -- a cascade controller's
+    boiler sequence, an M-Bus module's state -- belong to the unit itself.
+    """
+    if not _is_rpc_reading(ev):
+        return False
+    if ev.address == _LON_RPC_ADDRESS:
+        return True
+    stem = (getattr(ev, "token", "") or getattr(ev, "tech", "") or "").split("~", 1)[0]
+    return stem.lower().startswith("vlon") or bool(_LON_RPC_INPUT_RE.search(stem))
+
+
 def _profile_keep(ev: Event, profile: str) -> bool:
     if profile == "full":
         return True
-    # minimal and standard: no LON inputs (_is_lon_input).
-    if _is_lon_input(ev):
+    # minimal and standard: no LON inputs (_is_lon_input), and no LON-bound
+    # remote procedure readings (_is_lon_bound_rpc).
+    if _is_lon_input(ev) or _is_lon_bound_rpc(ev):
         return False
     _conv, conv_kind = CONVERSION_MAP.get(ev.conversion, (None, PLAIN))
     writable = ev.access_type in (2, 3)

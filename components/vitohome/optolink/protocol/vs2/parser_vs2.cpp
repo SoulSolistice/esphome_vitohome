@@ -80,6 +80,16 @@ ParserResult ParserVS2::parse(const uint8_t b) {
           (_packet.functionCode() == FunctionCode::WRITE && _packet.packetType() == PacketType::RESPONSE)) {
         // read requests and write responses don't have a data payload
         _step = ParserStep::CHECKSUM;
+      } else if (_packet.functionCode() == FunctionCode::RPC && _packet.packetType() == PacketType::RESPONSE) {
+        // An RPC request's DataLength is the length of the parameter it sends,
+        // so whether the answer's DataLength counts the returned bytes or
+        // repeats the parameter's length is not settled by the request side.
+        // The frame length byte counts the payload either way and the checksum
+        // covers both, so the frame decides: the answer is every byte between
+        // the header and the checksum, and DataLength is kept as received
+        // (it is part of the checksum). See PacketVS2::payloadLength().
+        _payloadLength = _packet.payloadLength();
+        _step = _payloadLength == 0 ? ParserStep::CHECKSUM : ParserStep::PAYLOAD;
       } else if (b != _packet.length() - 6U) {
         optolink_log_w("Invalid payload length: %u (expected %u)", b, _packet.length() - 6U);
         _step = ParserStep::STARTBYTE;
@@ -104,7 +114,11 @@ ParserResult ParserVS2::parse(const uint8_t b) {
       break;
 
     case ParserStep::PAYLOAD:
-      _packet[6 + _packet.dataLength() - _payloadLength--] = b;
+      // Indexed from the frame length rather than from DataLength: the two
+      // agree on every frame that reaches here except an RPC response, where
+      // only the frame length is trusted (see PAYLOADLENGTH). payloadLength()
+      // starts at length() - 6, so the first byte lands at index 6 as before.
+      _packet[_packet.length() - _payloadLength--] = b;
       if (_payloadLength == 0) {
         _step = ParserStep::CHECKSUM;
       }

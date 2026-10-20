@@ -11,17 +11,20 @@ from . import (
     CONF_BYTE_OFFSET,
     CONF_CONVERTER,
     CONF_LENGTH,
+    CONF_PREFIX,
     CONF_SIGNED,
     CONF_VITOHOME_ID,
     CONVERTERS,
-    GWG_ACCESS_MODES,
     MAX_P300_READ_LENGTH,
+    RPC_PREFIX_SCHEMA,
     VitoHomeComponent,
     converter_big_endian,
     datapoint_expression,
+    emit_access,
     emit_bit_mask,
     emit_poll_interval,
     pop_poll_interval,
+    read_access,
     resolve_signed,
     scale_literal,
     validate_bit_field,
@@ -116,11 +119,13 @@ CONFIG_SCHEMA = cv.All(
             # scaled by the converter. Read-only here, so any 1-byte shape.
             cv.Optional(CONF_BIT_MASK): BIT_MASK_SCHEMA,
             cv.Optional(CONF_UPDATE_INTERVAL): cv.update_interval,
-            # GWG-only (rejected under any other protocol in _final_validate,
-            # __init__.py). Selects the TYPE byte per GWGAccessMode
-            # (constants.h); default omitted here (physical is the engine's own
-            # default), so a sensor that never sets this is unaffected.
-            cv.Optional(CONF_ACCESS): cv.enum(GWG_ACCESS_MODES, lower=True),
+            # A GWG access mode (GWG only), selecting the TYPE byte per
+            # GWGAccessMode (constants.h), or `rpc` (P300 only); both checked
+            # in _final_validate (__init__.py). Default omitted here, so a
+            # sensor that never sets this reads as before.
+            cv.Optional(CONF_ACCESS): read_access,
+            # The parameter of an `access: rpc` read (P300); see ACCESS_RPC in __init__.py.
+            cv.Optional(CONF_PREFIX): RPC_PREFIX_SCHEMA,
         }
     )
     .extend(cv.COMPONENT_SCHEMA),
@@ -148,8 +153,7 @@ async def to_code(config):
         if CONF_BYTE_LENGTH in config:
             cg.add(var.set_extract_len(config[CONF_BYTE_LENGTH]))
     emit_bit_mask(var, config)
-    if CONF_ACCESS in config:
-        cg.add(var.set_access(config[CONF_ACCESS]))
+    emit_access(var, config)
     emit_poll_interval(var, poll_ms)
 
     cg.add(parent.register_entity(var))

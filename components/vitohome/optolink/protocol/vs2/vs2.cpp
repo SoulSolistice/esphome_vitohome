@@ -48,6 +48,22 @@ bool VS2Engine::write(uint16_t address, const uint8_t *data, uint8_t length) {
   return false;
 }
 
+bool VS2Engine::rpc(uint16_t address, const uint8_t *parameter, uint8_t length) {
+  if (_busy) {
+    return false;
+  }
+  if (_currentPacket.createPacket(PacketType::REQUEST, FunctionCode::RPC, 0, address, length, parameter)) {
+    _currentAddress = address;
+    _currentLength = length;
+    _busy = true;
+    _requestTime = _currentMillis;
+    optolink_log_i("rpc packet OK");
+    return true;
+  }
+  optolink_log_i("rpc not possible, packet creation error");
+  return false;
+}
+
 bool VS2Engine::begin() {
   if (_interface == nullptr)
     return false;
@@ -265,8 +281,10 @@ void VS2Engine::_tryOnResponse() {
     // the request's) so the caller's response-address match is a real
     // wire-level check on P300. A write ack has data()==nullptr by design but
     // a non-zero dataLength(); the caller must guard on data() before reading.
+    // An RPC answer is as long as its frame says (see ParserVS2).
     const PacketVS2 &packet = _parser.packet();
-    _onResponseCallback(packet.data(), packet.dataLength(), packet.address());
+    const uint8_t length = packet.functionCode() == FunctionCode::RPC ? packet.payloadLength() : packet.dataLength();
+    _onResponseCallback(packet.data(), length, packet.address());
   }
   _busy = false;
 }

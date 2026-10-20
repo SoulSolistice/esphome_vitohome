@@ -203,6 +203,60 @@ GWG_ACCESS_MODES = {
     "kmbus_eeprom": GWGAccessMode.KMBUS_EEPROM,
 }
 
+# `access: rpc` (P300 only). The datapoint is read as a remote procedure call
+# -- function code 0x07 -- instead of a Virtual_READ. Vitosoft marks such
+# datapoints FCRead Remote_Procedure_Call. Some are called with a parameter,
+# `prefix:` here and PrefixRead there: typically the index of one entry in a
+# list the controller keeps behind a single address (the LON participant list
+# at 0xA010, one entry per index), so several entities share an address and
+# differ only in their prefix. Others take none (the boiler-sequence values of a
+# cascade controller), and then `prefix:` is simply left out. `length:` and
+# `byte_offset:` mean what they mean for a read of the same datapoint -- the
+# bytes decoded, from the start of the answer or from inside it -- but they do
+# not go on the wire: the request carries the prefix's length, and the
+# controller answers with the whole entry (the catalog's BlockLength).
+#
+# Read-only platforms only (_RPC_DOMAINS). Vitosoft also marks procedures
+# Remote_Procedure_Call -- reset a circuit's parameters, clear the fault
+# history -- and those are calls with an effect, not readings, so polling one
+# would run it every cycle. Nothing on the wire tells the two apart; the
+# catalog does (scripts/gen_catalog.py emits readings only), so `access: rpc`
+# is for an address the catalog calls a reading. A procedure is reachable
+# through the raw lane (queue_raw_rpc), deliberately, and nowhere else. KW and
+# GWG have no such telegram; _final_validate rejects `access: rpc` under both.
+ACCESS_RPC = "rpc"
+CONF_PREFIX = "prefix"
+# Mirrors VitoEntityBase::RPC_PREFIX_MAX (vito_entity.h). Vitosoft's longest
+# PrefixRead is three bytes.
+RPC_PREFIX_MAX = 4
+_RPC_DOMAINS = ("sensor", "binary_sensor", "text_sensor")
+
+
+def read_access(value):
+    """`access:` on a read-only platform: a GWG access mode, or `rpc`."""
+    if isinstance(value, str) and value.strip().lower() == ACCESS_RPC:
+        return ACCESS_RPC
+    try:
+        return cv.enum(GWG_ACCESS_MODES, lower=True)(value)
+    except cv.Invalid as err:
+        raise cv.Invalid(f"{err.msg}, or '{ACCESS_RPC}'") from err
+
+
+RPC_PREFIX_SCHEMA = cv.All(cv.ensure_list(cv.hex_uint8_t), cv.Length(min=1, max=RPC_PREFIX_MAX))
+
+
+def emit_access(var, config):
+    """Emit `access:` -- a GWG mode, or an `access: rpc` read and its prefix."""
+    access = config.get(CONF_ACCESS)
+    if access is None:
+        return
+    if str(access) == ACCESS_RPC:
+        # An empty prefix still marks the entity an RPC: a call without a parameter.
+        cg.add(var.set_rpc_prefix(config.get(CONF_PREFIX, [])))
+    else:
+        cg.add(var.set_access(access))
+
+
 # One {wire value -> label} row of a lookup table (vito_entity.h). Emitted as a
 # `static const VitoOption name[] = {...}` array; see emit_option_table.
 VitoOption = vitohome_ns.struct("VitoOption")
@@ -945,10 +999,31 @@ def _entity_gwg_access_slots(entity):
 
 
 def _entity_gwg_access_modes(entity):
-    """The subset of _entity_gwg_access_slots that is actually set."""
+    """The subset of _entity_gwg_access_slots that is actually set to a GWG mode."""
     for key, access in _entity_gwg_access_slots(entity):
-        if access is not None:
+        if access is not None and str(access) != ACCESS_RPC:
             yield key, access
+
+
+def _validate_rpc_access(full, hub_id, protocol):
+    """`prefix:` only with `access: rpc`, and `access: rpc` only where P300 can send it."""
+    for domain, entity in _entities_for_hub(full, _RPC_DOMAINS, hub_id):
+        is_rpc = str(entity.get(CONF_ACCESS)) == ACCESS_RPC
+        if CONF_PREFIX in entity and not is_rpc:
+            raise cv.Invalid(
+                f"{domain} '{_entity_name(entity)}' sets '{CONF_PREFIX}', which is the parameter of a "
+                f"remote procedure call and means nothing without 'access: {ACCESS_RPC}'.",
+                path=[CONF_PREFIX],
+            )
+        if not is_rpc:
+            continue
+        if protocol != "P300":
+            raise cv.Invalid(
+                f"{domain} '{_entity_name(entity)}' sets 'access: {ACCESS_RPC}', but protocol "
+                f"'{protocol}' has no remote procedure call telegram -- it is function code 0x07 of "
+                f"P300 (VS2) only. Remove it, or read the datapoint another way.",
+                path=[CONF_ACCESS],
+            )
 
 
 def _entities_for_hub(full, domains, hub_id):
@@ -1001,6 +1076,8 @@ def _final_validate(config):
     protocol = str(config[CONF_PROTOCOL])
     full = fv.full_config.get()
     hub_id = config[CONF_ID]
+
+    _validate_rpc_access(full, hub_id, PROTOCOLS[protocol])
 
     if protocol == "GWG":
         # System-time sync cannot work under GWG, at any address.
@@ -1124,7 +1201,7 @@ def _final_validate(config):
         # meaningless -- and silently a no-op at runtime, since VitoEntityBase::
         # access_ is compiled but never read outside a GWG build -- under
         # any other protocol. Reject at config time rather than let it look
-        # configurable.
+        # configurable. `access: rpc` is not a GWG mode and was checked above.
         for domain, entity in _entities_for_hub(full, _ACCESS_DOMAINS, hub_id):
             for key, _access in _entity_gwg_access_modes(entity):
                 raise cv.Invalid(

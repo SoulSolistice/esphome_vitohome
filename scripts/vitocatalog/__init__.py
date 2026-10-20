@@ -44,6 +44,8 @@ from .constants import (  # noqa: F401
     PROTO_P300,
     RESOLVE_FILENAME,
     RESOLVE_SCHEMA,
+    RPC_PLATFORMS,
+    RPC_PREFIX_MAX,
     _ui,
 )
 from .emitter import (  # noqa: F401
@@ -127,9 +129,11 @@ from .transforms import (  # noqa: F401
     _enum_options,
     _enum_read_length,
     _is_diagnostic,
+    _is_lon_bound_rpc,
     _is_lon_input,
     _is_mode_select,
     _is_reachable,
+    _is_rpc_reading,
     _is_writable,
     _llround,
     _negative_option_count,
@@ -138,6 +142,7 @@ from .transforms import (  # noqa: F401
     _profile_keep,
     _protocol_for_device,
     _read_only_blocks,
+    _rpc_prefix,
     _scale_from_bounds,
     _unit_for,
     _unit_negated,

@@ -422,3 +422,12 @@ button:
       - lambda: |-
           std::vector<uint8_t> b{0x01};
           id(vito).queue_raw_write(0x2301, b);
+  # Remote procedure call on the raw lane. P300 sends it; KW, which shares this
+  # file, compiles the refusal branch instead.
+  - platform: template
+    name: "Test Raw RPC"
+    entity_category: diagnostic
+    on_press:
+      - lambda: |-
+          std::vector<uint8_t> p{0x00};
+          id(vito).queue_raw_rpc(0xA010, p);

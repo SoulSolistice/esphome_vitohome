@@ -268,6 +268,14 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
                        optolink::GWGAccessMode access = optolink::GWGAccessMode::PHYSICAL);
   void queue_raw_write(uint16_t address, const std::vector<uint8_t> &bytes,
                        optolink::GWGAccessMode access = optolink::GWGAccessMode::PHYSICAL);
+  // Remote procedure call (P300 function code 0x07) with `parameter` as its
+  // payload; the answer is published like a raw read's. A procedure that
+  // answers a parameter with an entry of a list is read this way; one without
+  // a reading to give -- clearing a history, stepping a sequence -- RUNS, on
+  // the controller, at once. 0..32 parameter bytes. Under KW and GWG, which
+  // have no such telegram, it is refused with a warning.
+  void queue_raw_rpc(uint16_t address, const uint8_t *parameter, std::size_t len);
+  void queue_raw_rpc(uint16_t address, const std::vector<uint8_t> &parameter);
 
  protected:
   enum class OpType : uint8_t {
@@ -367,7 +375,7 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   //
   // Returns false for invalid arguments or queue overflow.
   bool enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes, uint8_t bytes_len,
-                    optolink::GWGAccessMode access = optolink::GWGAccessMode::PHYSICAL);
+                    optolink::GWGAccessMode access = optolink::GWGAccessMode::PHYSICAL, bool is_rpc = false);
 
   bool ident_in_flight_{false};
 
@@ -584,13 +592,17 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
     // site) already value-initializes this to PHYSICAL, exactly like every
     // other field in this struct -- no initializer was ever needed.
     optolink::GWGAccessMode access;
+    // A remote procedure call: `bytes`/`bytes_len` are its parameter and
+    // `length` equals bytes_len (0 allowed). False by value-initialization,
+    // like every other field here.
+    bool is_rpc;
   };
 
   // The raw lane is explicitly bounded because a range sweep can enqueue much
   // faster than a 4800-baud link drains.
   //
   // RawOp carries RAW_WRITE_MAX inline bytes, so each slot is real RAM:
-  // sizeof(RawOp) is 38 bytes on a typical 32-bit ABI, exact value dependent on
+  // sizeof(RawOp) is 40 bytes on a typical 32-bit ABI, exact value dependent on
   // the selected compiler and target.
   //
   // DEFAULT 0: the lane is allocated only by configs that actually scan.
@@ -625,6 +637,7 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   bool raw_in_flight_{false};
   bool raw_is_write_{false};
+  bool raw_is_rpc_{false};
 
   optolink::Datapoint raw_dp_{"scan", 0, 1, optolink::noconv};
 

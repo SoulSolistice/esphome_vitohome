@@ -1,6 +1,8 @@
 #pragma once
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
+#include <vector>
 
 #include "optolink/optolink.h"
 #include "response_view.h"
@@ -82,6 +84,25 @@ class VitoEntityBase {
   // unaffected.
   void set_access(optolink::GWGAccessMode access) { this->access_ = access; }
   optolink::GWGAccessMode access() const { return this->access_; }
+
+  // `access: rpc` (P300 only). The datapoint is read as a remote procedure
+  // call: function code 0x07 with `prefix:` as the call's parameter -- the
+  // catalog's PrefixRead, typically the index of one entry in a list the
+  // controller keeps behind one address, so several entities share an address
+  // and differ only in their prefix. A call without a parameter has an empty
+  // prefix. The answer is decoded like a read of datapoint_'s length. Set only
+  // on read-only platforms (the codegen refuses it elsewhere), so an RPC entity
+  // never writes. Never set: an ordinary read.
+  static constexpr uint8_t RPC_PREFIX_MAX = 4;
+  void set_rpc_prefix(const std::vector<uint8_t> &prefix) {
+    this->rpc_ = true;
+    this->rpc_prefix_len_ = static_cast<uint8_t>(std::min<std::size_t>(prefix.size(), RPC_PREFIX_MAX));
+    if (this->rpc_prefix_len_ != 0)
+      std::memcpy(this->rpc_prefix_, prefix.data(), this->rpc_prefix_len_);
+  }
+  bool is_rpc() const { return this->rpc_; }
+  const uint8_t *rpc_prefix() const { return this->rpc_prefix_; }
+  uint8_t rpc_prefix_len() const { return this->rpc_prefix_len_; }
 
   // --- scheduling -----------------------------------------------------------
   // 0 (default) = poll on every hub update cycle. Anything else is a minimum
@@ -204,6 +225,9 @@ class VitoEntityBase {
   bool read_back_{true};
   uint32_t poll_interval_ms_{0};
   optolink::GWGAccessMode access_{optolink::GWGAccessMode::PHYSICAL};
+  uint8_t rpc_prefix_[RPC_PREFIX_MAX]{0, 0, 0, 0};
+  uint8_t rpc_prefix_len_{0};
+  bool rpc_{false};
 
  private:
   // Hub-side bookkeeping. Private, not public: only VitoHomeComponent (the

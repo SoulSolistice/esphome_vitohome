@@ -70,6 +70,12 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" \
   -o proof_vs2_zero_payload
 ./proof_vs2_zero_payload
 
+# Remote procedure call (P300 function code 0x07): the parameter rides in the
+# request, the answer is as long as its frame says, and reads/writes keep their
+# guards. Through the engine, so the wire bytes are checked as well as the parse.
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}"   -I"$ROOT" -I"$OPTO"   proof_vs2_rpc.cpp   "$OPTO/constants.cpp"   "$OPTO/protocol/vs2/vs2.cpp"   "$OPTO/protocol/vs2/parser_vs2.cpp"   "$OPTO/protocol/vs2/packet_vs2.cpp"   -o proof_vs2_rpc
+./proof_vs2_rpc
+
 # Packet regression: RESPONSE-type frames must hit the same payload guards as
 # writes (null-data, len > 250, buffer sizing). Pre-fix, a RESPONSE with len
 # 251-255 wrote past the 256-byte packet array and a null data pointer was

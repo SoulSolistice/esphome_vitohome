@@ -128,7 +128,7 @@ provides several things you would otherwise have to build by hand:
   see `example/vitohome-dhw.yaml`; no extra C++.
 - **Interactive scan console.** A `scan_result` text sensor plus
   `queue_raw_read` / `queue_raw_write` lets you read or write an arbitrary
-  address at runtime and sweep address ranges — useful for identifying
+  address at runtime (`queue_raw_rpc` makes a P300 remote procedure call) and sweep address ranges — useful for identifying
   datapoints on an unknown unit. These interactive operations preempt normal
   polling so the console feels immediate.
 - **Boot-time device identification.** The hub reads the controller
@@ -366,6 +366,50 @@ are corroborated twice over — by vcontrold's GWG macros and by Vitosoft, which
 between them poll `virtual`, `eeprom`, `port`, `xram`, `be` and `kmbus_eeprom`
 on real units. Details, the full TYPE-byte table and the per-mode evidence are
 in [`docs/design_notes.md`](docs/design_notes.md#gwg-access-modes-access).
+
+### P300 only: `access: rpc`
+
+Under `protocol: P300`, `access: rpc` reads a datapoint as a **remote procedure
+call** (function code `0x07`) instead of a plain read. A call may carry a
+parameter, `prefix:` -- Vitosoft's `PrefixRead`, typically the index of one entry
+in a list the controller keeps behind a single address -- so several entities
+can share an address and differ only in their prefix. A call without a
+parameter simply leaves `prefix:` out:
+
+```yaml
+sensor:
+  - platform: vitohome
+    name: "LON participant 0"
+    address: 0xA010
+    access: rpc
+    prefix: [0x00]          # 1..4 bytes; a single value is fine too
+    length: 6               # the entry the controller answers with
+    byte_offset: 3
+    byte_length: 2
+  - platform: vitohome
+    name: "Ist-Kesselfolge"   # a cascade controller; no parameter
+    address: 0xA104
+    access: rpc
+    length: 4
+```
+
+Accepted on `sensor`, `binary_sensor` and `text_sensor` only. Vitosoft also
+marks *procedures* `Remote_Procedure_Call` -- resetting a circuit's parameters,
+clearing the fault history -- and nothing on the wire tells a procedure from a
+reading: polling a procedure's address runs it, every cycle. So `access: rpc`
+belongs on an address the catalog calls a reading, which is what the generator
+emits. `length:` and `byte_offset:` mean what they mean for a read; they are not
+sent. KW and GWG have no such telegram, so `esphome config` rejects it there.
+
+`scripts/gen_catalog.py` emits `access: rpc` (and `prefix:` where there is one)
+for the remote procedure readings in Vitosoft's data, and never a procedure.
+The unit's own readings -- a cascade controller's boiler sequence, an M-Bus
+module's state -- are in the default profile. The LON-bound ones (the LON
+participant list, a Vitocom's LON identity, LON inputs read by procedure) answer
+only with a LON module and are in `--profile full` only. A procedure itself can
+be called from a lambda with `queue_raw_rpc(address, parameter)`; that **runs**
+it. Details and the one open wire question are in
+[`docs/design_notes.md`](docs/design_notes.md#p300-remote-procedure-calls-access-rpc).
 
 ## Development
 

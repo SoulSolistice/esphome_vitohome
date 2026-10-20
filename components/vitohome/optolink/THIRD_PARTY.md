@@ -617,7 +617,31 @@ These are intentional divergences from upstream `edc059a7`:
     untouched (the hub queries the accessor only under `VITOHOME_PROTOCOL_GWG`).
     Proof: case (8) in `tests/native/proof_gwg_eeprom_pairs.cpp`.
 
-Items 7-12, 18, 19, 21, 22 and 24 are the only intentional changes to on-wire/runtime
+26. **VS2 remote procedure call (behavioral divergence, additive).** Upstream
+    declares `FunctionCode::RPC` (`0x07`) and accepts it in the parser's
+    function-code check, but has no way to send one: `createPacket()` gives a
+    REQUEST a payload only for WRITE, and the engine exposes `read()` and
+    `write()` alone. Three changes:
+    - `createPacket()` carries an RPC request's parameter inline, with
+      DataLength = the parameter's length, and accepts length 0 for an RPC
+      only (a procedure without a parameter). Every other zero-length or
+      null-data request is refused exactly as before.
+    - `VS2Engine::rpc(address, parameter, length)` sends one; the answer
+      arrives through `onResponse` like a read's.
+    - The parser takes an RPC RESPONSE's payload size from the frame length
+      byte rather than from its DataLength field, which on the request side is
+      the parameter's length, so it is not settled whether an answer's
+      DataLength counts the returned bytes or repeats the parameter's. The
+      frame length and the checksum decide; DataLength is kept as received,
+      since the checksum covers it. `PacketVS2::payloadLength()` exposes the
+      frame-derived size and `_tryOnResponse()` delivers it for RPC answers.
+      The PAYLOAD step now indexes from the frame length, which equals the old
+      DataLength-based index on every frame that reached it before. No RPC
+      answer has been captured on this project's hardware yet.
+    READ and WRITE frames are byte-identical to before (the golden-master
+    harness, 8/8, is unaffected). Proof: `tests/native/proof_vs2_rpc.cpp`.
+
+Items 7-12, 18, 19, 21, 22, 24 and 26 are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16 are structural (no behavior change from any call
 site that exists -- item 16 alters bytes only on a RESPONSE-construction path
 nothing exercises); item 17 changes only construction-failure handling

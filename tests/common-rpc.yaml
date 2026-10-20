@@ -1,0 +1,44 @@
+# `access: rpc` entities, P300 only, so they cannot live in common.yaml (which
+# KW shares, and KW has no remote procedure call). Merged as a package by the
+# P300 configs that also include common.yaml.
+#
+# Shaped like Vitosoft's LON participant list (Teilnehmerliste_LON_xx): one
+# procedure at 0xA010 answering a 6-byte entry per index, the index being the
+# call's parameter (PrefixRead). Several entities share the address and differ
+# only in `prefix:`. The values are arbitrary; this never runs on hardware in CI.
+sensor:
+  - platform: vitohome
+    name: "Test RPC Entry 0"
+    address: 0xA010
+    length: 6
+    byte_offset: 0
+    byte_length: 2
+    access: rpc
+    prefix: [0x00]
+  # No parameter: shaped like a cascade controller's KesselfolgeIst (0xA104,
+  # a 4-byte answer, no PrefixRead).
+  - platform: vitohome
+    name: "Test RPC Without Parameter"
+    address: 0xA104
+    length: 4
+    access: rpc
+
+binary_sensor:
+  - platform: vitohome
+    name: "Test RPC Entry 1 Flag"
+    address: 0xA010
+    length: 6
+    byte_offset: 2
+    bit_mask: 0x01
+    access: rpc
+    prefix: [0x01]
+
+text_sensor:
+  # A single value is accepted for a one-byte prefix.
+  - platform: vitohome
+    type: raw
+    name: "Test RPC Entry 2 Raw"
+    address: 0xA010
+    length: 4
+    access: rpc
+    prefix: 0x02

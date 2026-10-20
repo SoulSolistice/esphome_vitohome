@@ -363,8 +363,9 @@ spec-plus-two-implementations rather than verified here, so `esphome config`,
 `access:` is accepted on `sensor`, `binary_sensor`, `text_sensor`, `number`,
 `select`, `switch` and `text`. `climate` and `event` do not take it — climate
 carries several addresses that could each want their own mode, and event is the
-error-history archive. `_final_validate` rejects `access:` under any non-GWG
-protocol rather than letting a silently-ignored option look configurable.
+error-history archive. `_final_validate` rejects a GWG mode under any other
+protocol rather than letting a silently-ignored option look configurable; the
+one non-GWG value, `access: rpc`, is P300's (§P300 remote procedure calls).
 
 ### Writes
 
@@ -415,6 +416,83 @@ proof suite, so flipping it is a one-line change and a reflash.
 
 **The identify read is always `virtual`** (see §Identification under GWG), not
 affected by any entity's `access:`.
+
+### P300 remote procedure calls (`access: rpc`)
+
+P300 has a third request beside READ (`0x01`) and WRITE (`0x02`): function code
+`0x07`, which Vitosoft names `Remote_Procedure_Call`. The request may carry a
+parameter, and its DataLength is the parameter's length (0 without one), not
+the answer's -- the controller decides how much it returns:
+
+```
+41 06 00 07 A0 10 01 05 <cs>            call 0xA010 with parameter 05
+41 0B 01 07 A0 10 06 <6 bytes> <cs>     the answer
+```
+
+Vitosoft uses it for two different things, both under the same `FCRead`:
+
+- **Readings.** The procedure answers with a value. Some take a parameter
+  (`PrefixRead`) naming one entry of a list: `Teilnehmerliste_LON_00..15` at
+  `0xA010`, sixteen read-only rows sharing one address, parameters `00`..`0F`, a
+  6-byte answer each. Others take none: `KesselfolgeIst` and five siblings at
+  `0xA100`..`0xA109` on a cascade controller, a 4-byte answer each. These become
+  entities with `access: rpc`, and `prefix:` where there is a parameter.
+- **Procedures.** A call with an effect: `RPCWink`,
+  `valmRPCClearErrorHistoryTable`, `BedienparameterA1M1FunktionReset`. Polling
+  one would run it every cycle. A parameter says nothing either way (the reset
+  takes the circuit as its parameter, the clear takes none). The access mode
+  does: the procedures are marked writable (AccessMode 2/3). One row breaks the
+  rule -- `mBusRPCDeleteReadTableEM2` is marked read-only -- and it is caught by
+  the answer size: a procedure answers nothing (BlockLength 0).
+
+In the 2026 export 1,010 events read by RPC and 896 of them carry a
+`PrefixRead`. A reading is therefore: P300, `Remote_Procedure_Call`, read-only,
+one record (BlockFactor <= 1 -- a multi-record RPC is one call per index), an
+answer of known size, and a `PrefixRead` that is absent or 1..4 bytes. A
+procedure is never emitted. KW and GWG have no RPC telegram at all.
+
+Across the 399 device tokens the readings fall into two groups, and the profiles
+split them there:
+
+| group | rows | where | profile |
+|---|---|---|---|
+| LON participant list, Vitocom LON identity (`0xA010`), `vlonRPCGetBinding`, `ddcRPCnvi*` | 1,731 | 106 device tokens | `full` only (§8k) |
+| `Kesselfolge*` (`0xA100`..`0xA109`) | 60 | 10 device tokens | default |
+| `mBusRPCCheckHW*`, M-Bus / RS485 scan state | 19 | 3 device tokens | default |
+| `ecnsysEventType~VCOMError` (`0xA020`) | 7 | 7 device tokens | default |
+
+The LON-bound ones answer only with a LON module (`_is_lon_bound_rpc`: the
+procedure at `0xA010`, a `vlon*` procedure, or an `nvi` input read by
+procedure). The header of each affected catalog says how many were emitted and
+how many were left to `full`. The `mBusRPCCheckHW*` names say "check"; Vitosoft
+marks them read-only with a 1- or 2-byte answer, which is the reading shape, but
+none has been seen on a unit.
+
+The component side follows from that:
+
+- `access: rpc` is accepted on `sensor`, `binary_sensor` and `text_sensor` only,
+  never on a platform that writes; `prefix:` is optional (0..4 bytes, left out
+  for a call without a parameter). Nothing on the wire tells a procedure from a
+  reading, so the config cannot either: `access: rpc` belongs on an address the
+  catalog calls a reading. `_final_validate` rejects it under KW and GWG, and a
+  `prefix:` without `access: rpc`.
+- `length:` and `byte_offset:` keep their read meaning (the bytes decoded, from
+  the start of the answer or from inside it) but do not go on the wire.
+- The entity rides the ordinary read lane; only the telegram differs
+  (`VS2Engine::rpc()` instead of `read()`). A write to the same address does not
+  refresh it: an RPC answer is computed, not read from the memory the write
+  changed.
+- A procedure is reachable through the raw lane alone, on purpose:
+  `queue_raw_rpc(address, parameter)` sends one (0..32 parameter bytes, empty
+  allowed) and publishes the answer like a raw read. That call **runs** a
+  procedure, at once.
+
+**Unsettled: the answer's DataLength.** Whether it counts the returned bytes or
+repeats the parameter's length is not known, and no RPC answer has been
+captured on this project's hardware. The parser takes the payload size from the
+frame length and the checksum, so either works (THIRD_PARTY #26,
+`tests/native/proof_vs2_rpc.cpp`). A capture of one participant-list read would
+settle it.
 
 ---
 
@@ -1731,6 +1809,13 @@ at `0xA132`, which carries real state) and configuration (`nci*`) stay. 1,389
 of the inputs are writable, and writing one over Optolink may stand in for a
 LON master, so `full` keeps them; the catalog header says how many were left
 out. `minimal` leaves them out too.
+
+The same profiles leave out the **LON-bound remote procedure readings**
+(`access: rpc`, see §P300 remote procedure calls): the participant list at
+`0xA010` on 105 device tokens, the Vitocom LON identity, `vlon*` and LON inputs
+read by procedure. Without a LON module none of them answers. `full` keeps them.
+The unit's own readings (boiler sequence, M-Bus module state) stay in
+`standard`.
 
 ---
 

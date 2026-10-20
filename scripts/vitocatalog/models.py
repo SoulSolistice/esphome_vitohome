@@ -70,6 +70,10 @@ class Event:
     token: str = ""  # raw DPDefinitions Address token (e.g. "ecnsysEventType~Error")
     fc_read: str = ""  # access function code for reads (Virtual_READ, GFA_READ, ...)
     fc_write: str = ""  # access function code for writes (Virtual_WRITE, ...)
+    # The parameter a Remote_Procedure_Call read is called with (PrefixRead,
+    # hex, e.g. "00"): the index of one entry of a list kept behind one
+    # address. "" for every other datapoint. See transforms._rpc_prefix().
+    prefix_read: str = ""
     # Access-layer value transform: value = raw * conv_factor + conv_offset.
     # None when absent or when the export carries its placeholder pair (see
     # _FACTOR_PLACEHOLDERS). Consumed for MultOffset and for identity
@@ -107,6 +111,10 @@ class EntitySpec:
     address: int | None = None
     access: str | None = None
     access_source: str | None = None  # Vitosoft FCRead (/ FCWrite), shown as the access line's comment
+    # `prefix:` of an `access: rpc` read: the call's parameter bytes, and the
+    # Vitosoft PrefixRead it came from (the line's comment).
+    prefix: list[int] | None = None
+    prefix_source: str | None = None
     length: int | None = None
     byte_offset: int | None = None
     byte_length: int | None = None

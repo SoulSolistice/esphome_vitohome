@@ -82,6 +82,11 @@ class VS2Engine {
 
   bool read(uint16_t address, uint8_t length);
   bool write(uint16_t address, const uint8_t *data, uint8_t length);
+  // Remote procedure call (FunctionCode::RPC, 0x07): `parameter` goes out as
+  // the request's payload and `length` is its size (0 for a procedure without
+  // one). The answer arrives through onResponse like a read's, as long as the
+  // controller makes it. P300 only: KW and GWG have no such telegram.
+  bool rpc(uint16_t address, const uint8_t *parameter, uint8_t length);
 
   bool begin();
   void loop();

@@ -315,6 +315,7 @@ def _load_access(path: str | None) -> dict[str, dict]:
                 "unit": _child(e, "Unit"),
                 "fc_read": _child(e, "FCRead"),
                 "fc_write": _child(e, "FCWrite"),
+                "prefix_read": _child(e, "PrefixRead"),
                 "parameter_type": _child(e, "Parameter"),
             }
     return acc
@@ -529,6 +530,7 @@ class Catalog:
             token=token,
             fc_read=(acc.get("fc_read") or f.get("FCRead") or ""),
             fc_write=(acc.get("fc_write") or f.get("FCWrite") or ""),
+            prefix_read=(acc.get("prefix_read") or f.get("PrefixRead") or "").strip(),
             parameter_type=(acc.get("parameter_type") or f.get("Parameter") or "").strip(),
             conv_factor=_fval("conversion_factor", "ConversionFactor", is_factor=True),
             conv_offset=_fval("conversion_offset", "ConversionOffset", is_factor=False),

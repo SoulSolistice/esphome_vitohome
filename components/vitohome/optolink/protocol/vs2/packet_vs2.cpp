@@ -19,20 +19,26 @@ bool PacketVS2::createPacket(PacketType pt, FunctionCode fc, uint8_t id, uint16_
                              const uint8_t *data) {
   reset();
 
+  // A remote procedure call carries its parameter inline and `len` is that
+  // parameter's length, not the answer's: the controller decides how much it
+  // returns. A procedure that takes no parameter is called with len 0, the
+  // one frame where a zero length is meaningful.
+  const bool is_rpc = (fc == FunctionCode::RPC);
+
   // check arguments
-  if (len == 0) {
+  if (len == 0 && !is_rpc) {
     optolink_log_w("Length error: %u", len);
     return false;
   }
-  // A frame carries an inline payload when it is a WRITE or a RESPONSE (a
-  // read response echoes the data back). Every payload guard below keys on
+  // A frame carries an inline payload when it is a WRITE, an RPC or a RESPONSE
+  // (a read response echoes the data back). Every payload guard below keys on
   // this, matching the copy loop at the end. Keying the guards on WRITE alone
   // (the upstream shape) let a RESPONSE pass the null-data check and a
   // 6-byte size check and then copy `len` bytes -- a null dereference and,
   // for len 251..255, an out-of-bounds write. Both were latent (the engines
   // only build REQUESTs), but present.
-  const bool has_payload = (fc == FunctionCode::WRITE || pt == PacketType::RESPONSE);
-  if (has_payload && !data) {
+  const bool has_payload = (fc == FunctionCode::WRITE || is_rpc || pt == PacketType::RESPONSE);
+  if (has_payload && !data && len != 0) {
     optolink_log_w("Function code - data mismatch");
     return false;
   }
@@ -94,6 +100,11 @@ uint16_t PacketVS2::address() const {
 }
 
 uint8_t PacketVS2::dataLength() const { return _buffer[5]; }
+
+// The payload bytes the frame itself carries, from its length byte. Equal to
+// dataLength() on every frame the parser accepts except an RPC response, whose
+// DataLength field is not taken as the size of the answer (see ParserVS2).
+uint8_t PacketVS2::payloadLength() const { return static_cast<uint8_t>(_buffer[0] - 5); }
 
 const uint8_t *PacketVS2::data() const {
   if (functionCode() == FunctionCode::WRITE)

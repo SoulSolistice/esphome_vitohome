@@ -147,6 +147,12 @@ _WANTED_ROWS = {
 # datapoints and a preset table, which is not derivable per XML row. `event` is
 # the error-history archive.
 ACCESS_PLATFORMS = ("sensor", "binary_sensor", "text_sensor", "number", "select", "switch", "text")
+# The subset that takes `access: rpc` (the component's _RPC_DOMAINS): the
+# read-only platforms. A remote procedure reading is never written.
+RPC_PLATFORMS = ("sensor", "binary_sensor", "text_sensor")
+# Mirrors components/vitohome/__init__.py RPC_PREFIX_MAX. Vitosoft's longest
+# PrefixRead is three bytes.
+RPC_PREFIX_MAX = 4
 
 # Protocol tokens for --protocol / _protocol_for_device().
 PROTO_P300 = "P300"

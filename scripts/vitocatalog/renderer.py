@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from .constants import _SCHALTZEITEN_RECORD_LEN, _WEEKDAYS, ACCESS_PLATFORMS, PROTO_GWG
+from .constants import _SCHALTZEITEN_RECORD_LEN, _WEEKDAYS, ACCESS_PLATFORMS, PROTO_GWG, PROTO_P300, RPC_PLATFORMS
 from .emitter import _mode_select_caveat, build_entity_spec, render_entity_lines
 from .loader import Catalog
 from .models import CommentSpec, Event
@@ -24,6 +24,7 @@ from .special import (
 from .transforms import (
     _access_for,
     _is_diagnostic,
+    _is_lon_bound_rpc,
     _is_lon_input,
     _is_mode_select,
     _is_reachable,
@@ -31,6 +32,7 @@ from .transforms import (
     _profile_keep,
     _protocol_for_device,
     _read_only_blocks,
+    _rpc_prefix,
 )
 
 
@@ -231,17 +233,22 @@ def generate(
     # field via several event variants) still fold into one entity. The access
     # mode is part of the identity under GWG: its address space is per mode, so
     # 0x01/port and 0x01/eeprom are different datapoints. It is empty for every
-    # other protocol.
-    def _field_key(ev: Event) -> tuple[int | None, int, int, str]:
-        return (ev.address, ev.byte_position or 0, ev.bit_position or 0, _access_for(ev, protocol))
+    # other protocol but an RPC reading, whose parameter is part of its identity
+    # too: the sixteen LON participant entries share 0xA010 and differ only in it.
+    def _field_key(ev: Event) -> tuple:
+        access = _access_for(ev, protocol)
+        prefix = tuple(_rpc_prefix(ev) or ()) if access == "rpc" else ()
+        return (ev.address, ev.byte_position or 0, ev.bit_position or 0, access, prefix)
 
-    seen_addr: set[tuple[int | None, int, int, str]] = set()
+    seen_addr: set[tuple] = set()
     used_ids: set[str] = set()
     gfa_ids: list[str] = []  # ids of the GFA burner-control slots (gfa_companion)
     kept = 0
     real_entities = 0  # emitted entities that are NOT the hub-fed device_id
     dropped_unreachable = 0
     dropped_lon_inputs = 0  # nvi* left out by the profile (_is_lon_input)
+    rpc_readings = 0  # emitted with `access: rpc` (P300 remote procedure readings)
+    dropped_rpc_readings = 0  # left out by the profile (_profile_keep)
     dropped_wide_addr = 0
     history_suppressed = False
     gwg_system_history_suppressed = False
@@ -268,7 +275,10 @@ def generate(
             # no Vitotronic map. A FehlerHis* slot is checked on its own FCRead
             # like any datapoint; the generic system archive additionally
             # needs the device to emit at least one real entity (second pass).
-            if reachable_only and not _is_reachable(ev, protocol):
+            # An archive read by procedure call is one call per slot index (an
+            # array, which _is_rpc_reading refuses); the slot lines carry no
+            # prefix, so such an archive stays out even with the filter off.
+            if (reachable_only and not _is_reachable(ev, protocol)) or _access_for(ev, protocol) == "rpc":
                 dropped_unreachable += 1
                 continue
             deferred_history.append(ev)
@@ -287,7 +297,7 @@ def generate(
         # entities at base + day*8 (only the 8-byte-record shape; see
         # _is_schaltzeiten).
         if _is_schaltzeiten(ev):
-            if reachable_only and not _is_reachable(ev, protocol):
+            if (reachable_only and not _is_reachable(ev, protocol)) or _access_for(ev, protocol) == "rpc":
                 dropped_unreachable += 1
                 continue
             # The block's BASE passed the 8-bit guard above, but the fan-out
@@ -314,6 +324,8 @@ def generate(
         if not _profile_keep(ev, profile):
             if _is_lon_input(ev) and (not reachable_only or _is_reachable(ev, protocol)):
                 dropped_lon_inputs += 1
+            elif _is_lon_bound_rpc(ev) and protocol == PROTO_P300:
+                dropped_rpc_readings += 1
             continue
         target = ev.name or ""
         if inc and not inc.search(target):
@@ -332,6 +344,11 @@ def generate(
             continue
         if isinstance(spec, CommentSpec):
             comments.extend(spec.lines)
+            continue
+        # An RPC reading needs a platform that takes `access: rpc`, which only the
+        # read-only ones do; anything else could not carry its prefix.
+        if _access_for(ev, protocol) == "rpc" and spec.platform not in RPC_PLATFORMS:
+            dropped_unreachable += 1
             continue
 
         if ev.address is not None:
@@ -352,7 +369,15 @@ def generate(
         # for the platforms whose schema accepts it. A writable datapoint names
         # both function codes: one mode drives both directions.
         access = _access_for(ev, protocol)
-        if access and spec.platform in ACCESS_PLATFORMS:
+        if access == "rpc":
+            # P300 remote procedure call reading: the access line and the call's
+            # parameter travel with the address, like a GWG mode does.
+            spec.access = access
+            spec.access_source = ev.fc_read
+            spec.prefix = _rpc_prefix(ev)
+            spec.prefix_source = ev.prefix_read
+            rpc_readings += 1
+        elif access and spec.platform in ACCESS_PLATFORMS:
             spec.access = access
             spec.access_source = f"{ev.fc_read} / {ev.fc_write}" if _is_writable(ev, protocol) else ev.fc_read
 
@@ -389,7 +414,7 @@ def generate(
                 continue
             # Same field identity as the main pass (_field_key), so a slot
             # whose address an ordinary datapoint already claimed is skipped.
-            key = (entry["address"], 0, 0, access)
+            key = (entry["address"], 0, 0, access, ())
             if key in seen_addr:
                 continue
             seen_addr.add(key)
@@ -461,6 +486,18 @@ def generate(
             out.append("#")
             out.append(f"# {dropped_wide_addr} datapoint(s) with an address above 0xFF were dropped")
             out.append("# (GWG addresses a single byte).")
+        out.append("#")
+    if rpc_readings:
+        noun = "entity" if rpc_readings == 1 else "entities"
+        out.append(f"# Remote procedure readings: {rpc_readings} {noun} read by P300 function code")
+        out.append("# 0x07 (`access: rpc`), with the catalog's parameter (`prefix:`) where it has one.")
+        out.append("# Other remote procedure calls are procedures with an effect (resets,")
+        out.append("# clearing a history) and are never polled.")
+        out.append("#")
+    if dropped_rpc_readings:
+        out.append(f"# Remote procedure readings omitted: {dropped_rpc_readings} (the LON participant")
+        out.append("# list and LON identity, read by P300 function code 0x07). They answer only")
+        out.append("# with a LON module. --profile full includes them.")
         out.append("#")
     if dropped_lon_inputs:
         out.append(f"# LON inputs omitted: {dropped_lon_inputs} network-variable input(s) (nvi*). A LON")

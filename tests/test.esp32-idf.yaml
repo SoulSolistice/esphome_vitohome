@@ -25,3 +25,7 @@ esp32:
     type: esp-idf
 
 <<: !include common.yaml
+
+# The P300-only `access: rpc` entities (common.yaml is shared with KW).
+packages:
+  rpc: !include common-rpc.yaml

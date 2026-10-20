@@ -21,6 +21,9 @@ inline constexpr const char *PROTOCOL_NAME = "GWG";
 #else
 using SelectedProtocol = optolink::P300;
 inline constexpr const char *PROTOCOL_NAME = "P300 (VS2)";
+// Only P300 has a remote procedure call telegram (function code 0x07);
+// VS2Engine::rpc() exists on that engine alone. Guards every call to it.
+#define VITOHOME_HAS_RPC
 #endif
 
 }  // namespace esphome::vitohome
