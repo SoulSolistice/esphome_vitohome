@@ -130,19 +130,28 @@ void check_complete_frame(const PacketVS2 &p, uint8_t checksum_byte) {
     return;
 
   if (p.data() != nullptr) {
+    // The length VS2Engine::_tryOnResponse() hands the consumer: DataLength,
+    // except for an RPC answer, whose size is the frame's own payload
+    // (payloadLength()) -- the parser keeps an RPC answer's DataLength as
+    // received and does not trust it (THIRD_PARTY.md #26).
+    const bool rpc = p.functionCode() == FunctionCode::RPC;
+    const std::size_t delivered = rpc ? p.payloadLength() : p.dataLength();
+
     // (2) A delivered payload lies wholly inside the packet buffer. The
     // payload starts at index 6, so this is the bound a consumer relies on.
-    const std::size_t end = 6u + static_cast<std::size_t>(p.dataLength());
-    oracle(end <= PacketVS2::kMaxFrame, "delivered payload extends past the packet buffer");
+    oracle(6u + delivered <= PacketVS2::kMaxFrame, "delivered payload extends past the packet buffer");
 
-    // (3) ... and it is exactly the payload the frame length declares. This is
-    // the structural invariant behind (2): dataLength() is only trustworthy
-    // because the PAYLOADLENGTH step rejected any frame where the two
-    // disagree. length() is uint8_t arithmetic (_buffer[0] + 1) and wraps to 0
-    // at a length byte of 255 -- the trap packet_vs2.cpp documents -- so a
-    // regression there surfaces here rather than as a quiet short read.
-    oracle(static_cast<int>(p.dataLength()) == static_cast<int>(p.length()) - 6,
-           "delivered dataLength() disagrees with the frame length");
+    // (3) ... and it is exactly the payload the frame carries. For every frame
+    // but an RPC answer that is the structural invariant behind (2):
+    // dataLength() is only trustworthy because the PAYLOADLENGTH step rejected
+    // any frame where it and the frame length disagree. It is compared against
+    // payloadLength() (_buffer[0] - 5), not length() - 6: length() is uint8_t
+    // arithmetic and wraps to 0 at a length byte of 255 -- the trap
+    // packet_vs2.cpp documents -- which an RPC answer may legitimately carry.
+    oracle(delivered == p.payloadLength(), "delivered length disagrees with the frame's payload");
+    if (!rpc)
+      oracle(static_cast<int>(p.dataLength()) == static_cast<int>(p.length()) - 6,
+             "delivered dataLength() disagrees with the frame length");
   }
 }
 

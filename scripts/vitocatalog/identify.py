@@ -110,8 +110,8 @@ def resolve_device(
     """Map live identification bytes to a datapoint-type token.
 
     ``resolve_pool()`` narrows the family by hardware and software index. If
-    several entries share the software-index range, F0
-    (ProtocolIdentifierOffset) disambiguates; without F0, the generic variant
+    several entries share the software-index range, F0 -- the value at 0x00F0,
+    Vitosoft's "Erweiterte Gerätekennung (F0)" -- disambiguates; without F0, the generic variant
     is preferred.
 
     Returns (token, reason) or (None, reason).

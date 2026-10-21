@@ -635,11 +635,17 @@ These are intentional divergences from upstream `edc059a7`:
       frame length and the checksum decide; DataLength is kept as received,
       since the checksum covers it. `PacketVS2::payloadLength()` exposes the
       frame-derived size and `_tryOnResponse()` delivers it for RPC answers.
-      The PAYLOAD step now indexes from the frame length, which equals the old
-      DataLength-based index on every frame that reached it before. No RPC
-      answer has been captured on this project's hardware yet.
+      The PAYLOAD step now indexes from `payloadLength()` -- never from
+      `length()`, which is `uint8_t` arithmetic and wraps to 0 at a length byte
+      of 255 -- and equals the old DataLength-based index on every frame that
+      reached it before. An RPC answer of 250 bytes (length byte `0xFF`) is the
+      case where the two differ: an earlier revision indexed from `length()` and
+      wrote the first payload byte 250 bytes before the buffer (caught by the
+      fuzz seed `rpc_resp_len255`; `proof_vs2_rpc.cpp` case F). No RPC answer
+      has been captured on this project's hardware yet.
     READ and WRITE frames are byte-identical to before (the golden-master
-    harness, 8/8, is unaffected). Proof: `tests/native/proof_vs2_rpc.cpp`.
+    harness, 8/8, is unaffected). Proofs: `tests/native/proof_vs2_rpc.cpp`, and the
+    RPC seeds in `tests/native/fuzz_corpus_vs2.h`.
 
 Items 7-12, 18, 19, 21, 22, 24 and 26 are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16 are structural (no behavior change from any call

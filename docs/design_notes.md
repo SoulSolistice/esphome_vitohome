@@ -1078,7 +1078,7 @@ Each field that can't be read is left unknown; the result (`group`,
 `controller`, `hw`, `sw`, and the chip) is logged at INFO --
 `Device identification: 0x20CB (VScotHO1) HW=0x03 SW=0x51 GFA=0x24 (NEC)` --
 and pushed to any `device_id` text sensors. A small built-in table names the families seen on the
-wire (`0x20CB` → VScotHO1, plus `0x2098`/`0x2094`/`0x2053`); everything else is
+wire (`0x20CB` → VScotHO1, plus `0x2098`/`0x2094`/`0x2053`/`0x2054`); everything else is
 reported as raw hex.
 
 Mapping the tuple to a catalog file is done off-device. The hub logs a link to
@@ -1087,8 +1087,32 @@ read as a query string (`?id=20CB&hw=03&sw=51&gfa=24`); the page looks them up i
 `example/catalogs/resolve.json`, which `gen_catalog.py --export-all` writes by
 enumerating `Catalog.resolve_pool()` (language-independent: one table serves
 `example/catalogs/de/` and `…/en/`, and the finder picks the folder). The firmware carries the URL and nothing
-of the table, and never contacts the site itself. `0xF0` is not read, so for
-the software-index ranges that F0 subdivides the finder lists the variants.
+of the table, and never contacts the site itself.
+
+**F0 decides between variants in two families only.** Vitosoft keys a few
+datapoint types on one more byte, "F0" -- the value at `0x00F0`, which its
+own catalog names `HO2B_Erweiterte_Geraetekennung` ("Erweiterte
+Gerätekennung (F0)", 2 bytes, Virtual_READ). Vitosoft's identification
+datapoints (`sysDeviceIdent*`) read only `0xF8..0xFF`; F0 is a datapoint of
+the devices that need it. In the 2026 export that is the software-index range
+`0xC8..0xFF` of two families:
+
+| ident | variants (F0 range) |
+|---|---|
+| `0x20CB` | `VScotHO1_200` (00), `_01` (01..09), `_10` (10), `_11` (11..19), `_20` (20..29), `_30` (30..39) |
+| `0x20C9` | `VScotHC1_200` (00..09), `_10` (10..19), `_30` (30..39) |
+
+(`0x20CA` has a single F0-keyed type, and `0x2621` is OpenTherm, which is not
+driven.) The hub does not read `0x00F0`, so for those two ranges the resolver
+and the finder fall back to the lowest-F0 variant and list the others
+("F0 decides: generic variant shown"). The variants are not interchangeable:
+`VScotHO1_200_01` declares 74 addresses the generic `VScotHO1_200` lacks, and
+`_10` .. `_30` lack 30..61 of the generic's. The finder already accepts an F0
+value (`&f0=`); what is missing is the read and the link parameter (§11). Not
+yet settled without a unit: which of the two bytes at `0x00F0` carries the
+value the export's `F0` column holds (`30..39`, read as hex by the resolver).
+Every other family, the reference `VScotHO1_72` (SW `0x51`) included, is
+decided by `0xF8..0xFB` alone.
 
 The load-bearing fact for anyone **adding new datapoints**:
 
@@ -1112,7 +1136,7 @@ The load-bearing fact for anyone **adding new datapoints**:
   (Existing datapoints pinned to bytes this physical unit returned are immune —
   the wire is ground truth and the software index is fixed at runtime.)
 - **Any future auto-identify feature must match the full tuple** (`0xF8`–`0xFB`,
-  optionally `0xF0`), never `0x20CB` alone, or it loads the wrong datapoint set
+  plus `0x00F0` for the two families F0 subdivides, above), never `0x20CB` alone, or it loads the wrong datapoint set
   for any family with software-index variants. The `0xFA`/`0xFB` reads on this
   unit are **model-derived** — verify on a first run.
 
@@ -1143,8 +1167,8 @@ falling back to code-only when the timestamp is empty/invalid.
 archives — not two addresses for one.** An earlier revision of this section
 claimed VScotHO1_72 "has no event at `0x7507`" and crowned `FehlerHisFA01`
 "Letzter Fehler"; on hardware that read the **wrong archive**, and the claim
-is retracted (see `gen_catalog.py::_is_error_history`, which records the
-correction). The current, hardware-confirmed picture on VScotHO1_72:
+is retracted (see `_is_error_history` in `scripts/vitocatalog/special.py`,
+which records the correction). The current, hardware-confirmed picture on VScotHO1_72:
 
 - `ecnsysEventType~Error` at **`0x7507`** is the Vitotronic **system** fault
   history — BlockLength 90 / BlockFactor 10, i.e. ten 9-byte slots at
@@ -1173,9 +1197,27 @@ the GFA slots above, the GFA byte (`0x5738`), the LON alarm record, or the
 self-describing sensor-status enums.
 
 **Heat pumps.** The WPR and WPR3 fault buffers are remote procedure arrays, not
-address ranges: thirty 8-byte (WPR) or 9-byte (WPR3) records, each one call with
-the record index as the parameter. The same slot fan-out emits them, as raw hex
-until their layout is decoded -- see §P300 remote procedure calls.
+address ranges: thirty 8-byte (WPR) or 9-byte (WPR3) records at `0xA801`, each
+one call with the record index as the parameter. The same slot fan-out emits
+them, as raw hex -- see §P300 remote procedure calls. What the export says about
+the record, and what it does not:
+
+- **Not this layout.** `MappingType`, whose value list `DPDefinitions.xml`
+  carries (`NoMap=0; PhaseCT=1; HydroCT=2; ErrorHistory=3;
+  WPRErrorHistory=4; ...`), is 3 for the system archive above (and the BHKW's
+  10-byte one) and 4 for both heat-pump buffers -- WPR3's 9 bytes included.
+  Vitosoft decodes them with a mapping of its own.
+- **Code and time.** Its fault-buffer view has three columns for every buffer
+  (`viessmann.errorbuffer.header.code/.message/.time`: Fehlercode, Meldung,
+  Zeitpunkt), so a record holds at least a code and a timestamp.
+- **Texts exist.** The heat pumps have their own fault texts, one-byte codes
+  (`viessmann.errorcode.CU401B_S.*` 158, `V200WO1A.*` 110, `VBC700_AW.*` 218).
+  They are not attached yet: the slots are raw, and the generic Vitotronic set
+  is not used for them (`ErrorType` 3/6, §8i).
+- **The byte positions are not in any file.** One captured record with the
+  controller's own reading of it settles them (§11); the decoder then belongs
+  in `error_history` as a second layout chosen by `MappingType`, not in a new
+  converter.
 
 > **Hardware status.** The 9-byte slot read of the system archive is
 > **hardware-confirmed** on the reference unit (slot 1 @ `0x7507`, newest
@@ -1290,51 +1332,6 @@ constant `0xFF` on KW).
 
 Every bitmask this generator emits from Vitosoft data is a *derivation*, not an
 observation. Confirm each against hardware before trusting it.
-
----
-
-## 9. Per-entity polling
-
-The hub has a base `update_interval` (the poll tick). Each entity may set its own
-`update_interval`, honoured at **hub-tick granularity** — so an entity interval
-shorter than the hub interval silently degrades to the hub interval. Rather than
-let that surprise anyone, `setup()` logs a warning naming each such entity.
-(There is intentionally no `final_validate` cross-check between entity and hub
-intervals: the hub id isn't reliably resolvable from a platform's
-`final_validate` without brittle global lookups, so the runtime warning is the
-chosen tradeoff.) Suggested tiers: live measurements ~60 s, monotonic counters
-~600 s, writable coding values ~3600 s, error history ~300 s.
-
-**Transient-error tolerance.** `sensor` and `number` publish NAN (HA
-"unavailable") only after **three consecutive failed reads**; a single CRC
-glitch or timeout no longer blanks an hourly-polled entity until its next
-poll, and a successful publish resets the streak. Failed **writes** never
-blank state at all — the device value did not change — which is why the hub
-dispatches read errors to `handle_error()` and write errors to
-`handle_write_error()` (default: keep state) separately.
-
-**No `update_interval` means *every hub tick*.** `poll_interval_ms_` defaults to
-`0`, which the scheduler reads as "due on every cycle". That is the right default
-for a sensor and a trap for an immutable identity string: `example/` had four of
-them (`Sachnummer`, two `HWHerstellNr*`, `Beschriftung_HK1` — 79 bytes) going out
-once a minute forever. `disabled_by_default: true` does not help; it is a Home
-Assistant hint and the device polls regardless. Always pin an interval on
-anything that cannot change.
-
-**The next-due time must be anchored on the schedule, not on `now`.** The
-scheduler advances `next_due_ms_` from the *previous scheduled* time
-(`components/vitohome/poll_schedule.h`), and treats an entity due within half a
-hub tick as due now. Both parts are load-bearing. `now` is `millis()` sampled
-*inside* `update()`, a few milliseconds after the interval anchor that invoked it,
-and that offset is not constant. Re-anchoring on it (`next_due = now + interval`)
-made any entity whose interval *equals* the hub tick fire or not fire depending on
-whether this tick's jitter happened to exceed the previous tick's — a coin flip.
-Two 2026-07-09 hardware logs, **from the same firmware binary**, disagreed: one
-dropped the entire 60 s tier on its second tick, the other never did. A host
-simulation with realistic non-monotonic jitter drops 5 of 12 ticks under the old
-formula and 0 of 12 under the new one (`tests/native/proof_scheduler.cpp`, which
-also pins the drift-free progression, the long-stall re-anchor, and the
-`millis()` wrap).
 
 ---
 
@@ -1484,7 +1481,7 @@ five that disagree:
 The three `OT` rows are byte-relative and are filtered out as unreachable
 anyway. The two `nvo`/`nvi` rows are `Virtual_READ` and **were reaching
 catalogs**, with `byte_offset: 3` derived from `BitPosition`. We cannot tell
-which field is right, so `gen_catalog.py` now emits a comment instead of an
+which field is right, so the generator now emits a comment instead of an
 entity that might silently read the wrong byte. 54 catalogs lost 2 entities each.
 
 ---
@@ -1518,7 +1515,7 @@ Fixed on both sides:
 * `text_sensor` types `ascii` and `utf16` now accept `byte_offset` +
   `byte_length`, the same aligned-block shape `sensor`, `binary_sensor` and
   `enum` already used. Without `byte_offset` the schema is unchanged.
-* `gen_catalog.py` emits `address: <block base>`, `length: <block>`,
+* the generator (`scripts/vitocatalog/`) emits `address: <block base>`, `length: <block>`,
   `byte_offset`, `byte_length` — and a **comment instead of an entity** when the
   block read would exceed `MAX_TEXT_BLOCK_LENGTH`. It no longer performs address
   arithmetic anywhere.
@@ -1554,7 +1551,7 @@ datapoint in the export; the block layout is:
 The general rule, now enforced in every platform, in the generator, and by a
 sweep test (`test_no_emitted_address_is_ever_block_base_plus_byte_position`):
 ***`Address` is the block base. `BytePosition` is an offset into the response,
-never into the address.*** `gen_catalog.py` contains no `addr + byte_position`
+never into the address.*** The generator contains no `addr + byte_position`
 arithmetic at all.
 
 #### The same bug on the write side
@@ -1636,10 +1633,6 @@ disagree. The generator trusts `Address`, and that datapoint (1 byte,
 
 ---
 
-
-
----
-
 ### 8h. ParameterType is a second signal for signedness, never the only one
 
 Every row of the export declares a value type in `Parameter`: `Byte`, `SByte`,
@@ -1657,8 +1650,7 @@ back to the 0/0/1 placeholders.
 
 `ParameterType` alone is not the answer either. It contradicts the borders on 27
 rows, among them the classic outdoor sensor `ADC_IstTemperaturwert_ATSV333MW1
-~0x0800` -- declared `Int`, bordered -60..60. A type-only rule (which is what
-gismo2004/optov does) publishes 6553.5 degC there at -0.1 degC.
+~0x0800` -- declared `Int`, bordered -60..60. A type-only rule publishes 6553.5 degC there at -0.1 degC.
 
 So the rule needs both signals to agree: `signed: false` is emitted on a
 `div2`/`div10` datapoint only when the type is `Byte`/`Int`/`Int4` **and** the
@@ -1678,7 +1670,7 @@ ids 1..18 as every file header declares them), ~30 MB and 95,625 labels each
 (Norwegian 95,596). The copies in the installer's `data\OFFLINE\…\` folder are
 byte-identical to an installed one's (2025-07-17). They carry entity names,
 option labels, unit labels and 35,640 `viessmann.errorcode.*` fault texts.
-`gen_catalog.py` layers them per label (`_load_text_layers`): slim
+The generator layers them per label (`_load_text_layers`, `scripts/vitocatalog/loader.py`): slim
 `Textresource.xml` < `Textresource_de.xml` < `Textresource_<culture>.xml`; an
 empty translation never hides German (English leaves many option and unit
 labels empty).
@@ -1717,7 +1709,8 @@ ESPHome itself substitutes (an error from ESPHome 2027.7.0).
 
 **Fault texts are per device.** 88 distinct sets across 206 device types; a set
 belongs to the Vitosoft token (`viessmann.errorcode.VScotHO1_72.<XX>`, hex code
-byte), so each generated catalog carries its own device's texts. Coverage over
+byte), so each generated catalog carries its own device's texts on its system
+fault history (the heat pumps' RPC fault records carry none yet, §7). Coverage over
 the 166 catalogs with a system history: 144 have their own set; the other 22
 are Vitobloc CHP units and `WILO`. The generic set
 (`viessmann.errorcode.<XX>`, 72 codes) is the Vitotronic boiler meaning and is
@@ -1869,6 +1862,51 @@ The unit's own readings (boiler sequence, M-Bus module state) stay in
 
 ---
 
+## 9. Per-entity polling
+
+The hub has a base `update_interval` (the poll tick). Each entity may set its own
+`update_interval`, honoured at **hub-tick granularity** — so an entity interval
+shorter than the hub interval silently degrades to the hub interval. Rather than
+let that surprise anyone, `setup()` logs a warning naming each such entity.
+(There is intentionally no `final_validate` cross-check between entity and hub
+intervals: the hub id isn't reliably resolvable from a platform's
+`final_validate` without brittle global lookups, so the runtime warning is the
+chosen tradeoff.) Suggested tiers: live measurements ~60 s, monotonic counters
+~600 s, writable coding values ~3600 s, error history ~300 s.
+
+**Transient-error tolerance.** `sensor` and `number` publish NAN (HA
+"unavailable") only after **three consecutive failed reads**; a single CRC
+glitch or timeout no longer blanks an hourly-polled entity until its next
+poll, and a successful publish resets the streak. Failed **writes** never
+blank state at all — the device value did not change — which is why the hub
+dispatches read errors to `handle_error()` and write errors to
+`handle_write_error()` (default: keep state) separately.
+
+**No `update_interval` means *every hub tick*.** `poll_interval_ms_` defaults to
+`0`, which the scheduler reads as "due on every cycle". That is the right default
+for a sensor and a trap for an immutable identity string: `example/` had four of
+them (`Sachnummer`, two `HWHerstellNr*`, `Beschriftung_HK1` — 79 bytes) going out
+once a minute forever. `disabled_by_default: true` does not help; it is a Home
+Assistant hint and the device polls regardless. Always pin an interval on
+anything that cannot change.
+
+**The next-due time must be anchored on the schedule, not on `now`.** The
+scheduler advances `next_due_ms_` from the *previous scheduled* time
+(`components/vitohome/poll_schedule.h`), and treats an entity due within half a
+hub tick as due now. Both parts are load-bearing. `now` is `millis()` sampled
+*inside* `update()`, a few milliseconds after the interval anchor that invoked it,
+and that offset is not constant. Re-anchoring on it (`next_due = now + interval`)
+made any entity whose interval *equals* the hub tick fire or not fire depending on
+whether this tick's jitter happened to exceed the previous tick's — a coin flip.
+Two 2026-07-09 hardware logs, **from the same firmware binary**, disagreed: one
+dropped the entire 60 s tier on its second tick, the other never did. A host
+simulation with realistic non-monotonic jitter drops 5 of 12 ticks under the old
+formula and 0 of 12 under the new one (`tests/native/proof_scheduler.cpp`, which
+also pins the drift-free progression, the long-stall re-anchor, and the
+`millis()` wrap).
+
+---
+
 ### 9a. Frame logging belongs in the component, not in `uart: debug:`
 
 ESPHome's UART debugger has no notion of an Optolink telegram, so it has to be
@@ -1911,16 +1949,17 @@ The gates are **sequential and non-substituting** — passing an earlier gate do
 not vouch for a later one:
 
 ```
-host C++ : decode/encode tests           tests/native/test_decode.cpp   (400 checks)
+host C++ : decode/encode tests           tests/native/test_decode.cpp   (916,696 checks)
 host C++ : VS2 transaction harness        tests/native/test_vs2_transaction.cpp (8/8)
 host C++ : engine / GWG compile-proofs    engine_compile_proof.cpp, proof_gwg_poke.cpp
 host C++ : VS2 parser zero-payload (OOB)  tests/native/proof_vs2_zero_payload.cpp
+host C++ : VS2 remote procedure call      tests/native/proof_vs2_rpc.cpp
 host C++ : VS2 parser fuzz corpus         tests/native/fuzz_parser_vs2.cpp  (replay; libFuzzer via fuzz.sh)
 host C++ : decode.h fuzz corpus           tests/native/fuzz_decode.cpp      (replay; libFuzzer via fuzz.sh)
 python   : validators + catalog generator tests/unit/  (pytest)
 lint     : ruff check / ruff format
 format   : clang-format  (pinned v22.1.8)
-config   : esphome config   (all six CI wrappers under tests/)
+config   : esphome config   (all eight test.*.yaml under tests/: six in the compile matrix, two in compile-idf-native)
 compile  : esphome compile  (esp-idf AND arduino)
 run      : esphome run       (real heater — the definitive gate)
 ```
@@ -1950,7 +1989,7 @@ warnings. ASan aborts on its own; UBSan has to be told to.
 Two coverage layers compose to give wire→decode→value end-to-end without the
 ESPHome framework:
 
-- **`test_decode.cpp` (400 checks)** locks down the *value* layer — the
+- **`test_decode.cpp` (916,696 checks, most of them exhaustive sweeps)** locks down the *value* layer — the
   precision fix, BCD/datetime, sign-extend, encode round-trips, `raw_fits`
   boundaries.
 - **The VS2 transaction harness (8/8)** locks down the *transaction* layer the
@@ -2005,7 +2044,14 @@ elsewhere in this file as obligations rather than as tested facts:
    Guaranteed by the structure of `dispatch_next_()` and stated as an editing
    contract next to `rmw_pending_` in `vitohome.h`.
 
-If hub-level host testing is ever taken on, these three are the first things to
+4. **The RPC dispatch** (§P300 remote procedure calls) -- an `access: rpc`
+   entity goes out as `VS2Engine::rpc()` on the read lane, an action button
+   as the same call on the write lane (which is also what lets it queue with
+   no write payload, `request_write()`), and `refresh_siblings_()` skips RPC
+   entities. The engine side is host-proven (`proof_vs2_rpc.cpp`); the hub's
+   choice of telegram is covered only by the compile gate.
+
+If hub-level host testing is ever taken on, these four are the first things to
 point it at.
 
 Three findings the transaction build surfaced, each now a permanent lesson:
@@ -2065,8 +2111,9 @@ sanitizers are on, and it is most of the value — but §1a's whole argument is
 that this project's characteristic defect is a silent wrong value, not a
 segfault. So the harness also asserts that `COMPLETE` implies a verified
 checksum; that a frame the engine would actually deliver keeps its advertised
-payload inside the packet buffer; that `dataLength()` equals `length() - 6` for
-those frames; and that **no byte sequence can permanently wedge the parser**,
+payload inside the packet buffer; that the delivered length is exactly the
+payload the frame carries (`dataLength()` for every frame but an RPC answer,
+which is delivered by its frame length); and that **no byte sequence can permanently wedge the parser**,
 checked by draining and then requiring a probe frame to complete *and be that
 frame*.
 
@@ -2083,8 +2130,19 @@ Two things that came out of building it are worth keeping:
   different reason entirely (#9: upstream published an ERROR frame's payload as
   data). That coupling is now pinned by an oracle instead of resting on the
   coincidence of two unrelated decisions.
+- **An RPC answer is the one delivered frame whose DataLength is not trusted**
+  (THIRD_PARTY.md #26): the parser takes its size from the frame length, and the
+  oracle checks the length the engine delivers, not `dataLength()`. Two seeds pin
+  it: `rpc_resp_param_len` (DataLength repeats the parameter's length) and
+  `rpc_resp_len255` (a 250-byte answer, length byte `0xFF`). The second caught
+  a real out-of-bounds write when it was added: the payload index was computed
+  from `length()`, which wraps to 0 at `0xFF`, so the first byte landed 250
+  bytes before the buffer. It is now computed from `payloadLength()`, and
+  `proof_vs2_rpc.cpp` case F pins the same frame through the engine.
 - **What the coverage says.** A gcov build replayed over a campaign corpus
-  reaches **100% of `parser_vs2.cpp`'s 42 branches** (95.2% taken at least
+  reaches **100% of `parser_vs2.cpp`'s 42 branches** (measured before the RPC
+  answer branch existed; the two RPC seeds cover it, no campaign has been run
+  since) (95.2% taken at least
   once) and 90.4% of its lines, and libFuzzer's edge count plateaus at 80 —
   the parser is small enough that the search saturates it, so a long campaign
   is not buying much beyond a short one. Two things account for the uncovered
@@ -2160,6 +2218,22 @@ happen in production.
 
 ## 11. Open items / forward work
 
+- **Remote procedure calls on hardware (§P300 remote procedure calls).**
+  Nothing RPC has been seen on a unit yet. Open, in the order a capture
+  answers them: whether a unit answers function code `0x07` at all, and
+  whether an answer's DataLength counts the returned bytes (the parser takes
+  either); the heat-pump record layout and whether index 0 is the newest
+  record (a CU401B_S test package exists, reads only); whether the
+  parameterless readings (`Kesselfolge*`, the M-Bus `mBusRPCCheckHW*` "check")
+  are side-effect-free to poll; and no action button has been pressed on a
+  unit. Left out until the export or a capture says how: `WPR3MldgsHistExtTn1..3`
+  (a parameter *and* 30 records) and the `*ErrorIndex` tables.
+- **F0 for the `VScotHO1_200*` / `VScotHC1_200*` variants (§6).** The hub does
+  not read `0x00F0`, so a unit of those two families at SW >= `0xC8` resolves to
+  the generic variant. The read would be one 2-byte Virtual_READ at boot, only
+  for idents `0x20C9`/`0x20CB` at SW >= `0xC8`, logged and appended to the
+  finder link as `&f0=` (the finder already takes it). Which of the two bytes
+  holds the `F0` value wants a unit of that family.
 - **Bit-field writes on hardware (§5b).** Confirmed on VScotHO1_72 (P300) on
   2026-10-14: fail-closed, the read / merge / write / read-back sequence,
   preservation of non-zero neighbouring bits, and adjacency during a poll burst.
@@ -2207,7 +2281,9 @@ happen in production.
   affected too; that read now goes out on `virtual` under GWG. The remaining
   work is confirmation on the unit, not investigation: generate the catalog for
   the matching `GWG_*` token and compare.
-  KW/VS1 and P300 remain the hardware-confirmed protocols. Note the vendored
+  GWG reads, bursting and the EEPROM complement pairs have since been
+  hardware-confirmed (issue #21, 2026-10-10..13; §2); GWG writes have not.
+  Note the vendored
   engine now
   deliberately diverges from upstream here: upstream's completion check waited
   for the request-frame length (5 bytes) instead of the datapoint length, so no
@@ -2236,8 +2312,8 @@ happen in production.
   - **What happened.** ESPHome 2026.5.0 shipped a native ESP-IDF toolchain
     that drives `idf.py`/CMake directly instead of wrapping PlatformIO,
     opt-in alongside the existing default. That default has since flipped
-    from `platformio` to `esp-idf` — first on `dev`, and as of **2026.7.0
-    (this project's pinned version)** in stable too (verified in the installed
+    from `platformio` to `esp-idf` — first on `dev`, and as of **2026.7.0** in
+    stable too (the project's pin, `requirements.txt`, has since moved to 2026.9.1) (verified in the installed
     `esp32/__init__.py`: `CONF_TOOLCHAIN` defaults to `Toolchain.ESP_IDF`), so
     the native toolchain is now what an unpinned config gets. The flip first
     broke the `upstream-canary` workflow on `dev`: under

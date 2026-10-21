@@ -148,6 +148,21 @@ int main() {
           "E: its frame counts the parameter");
   }
 
+  // F: the longest answer the length byte admits, 0xFF = 5 + 250. length() is
+  // uint8_t arithmetic and wraps to 0 there; the payload index used to be
+  // computed from it and wrote the first byte 250 bytes before the buffer.
+  // Under ASan that is a trap, so passing here is the regression check.
+  {
+    std::vector<uint8_t> counted{0xFF, 0x01, 0x07, 0xA8, 0x01, 0xFA};
+    std::vector<uint8_t> big(250, 0x5A);
+    big.front() = 0x01;
+    big.back() = 0x02;
+    counted.insert(counted.end(), big.begin(), big.end());
+    Result r = run(0xA801, {0x00}, frame(counted));
+    check(r.answered && !r.failed, "F: a 250-byte answer (length byte 0xFF) completes");
+    check(r.payload == big, "F: all 250 bytes are delivered, first and last in place");
+  }
+
   std::printf("vs2 rpc proof: %d failure(s)\n", g_fail);
   return g_fail == 0 ? 0 : 1;
 }
