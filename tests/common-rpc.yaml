@@ -42,6 +42,15 @@ text_sensor:
     length: 4
     access: rpc
     prefix: 0x02
+  # One record of an RPC array, shaped like the heat-pump fault buffer
+  # (ecnsysEventType~WPRError, 30 x 8 bytes at 0xA801, the index as parameter).
+  - platform: vitohome
+    type: raw
+    name: "Test RPC Fault Record 01"
+    address: 0xA801
+    access: rpc
+    prefix: [0x00]
+    length: 8
 
 button:
   # Actions: one procedure call per press. Without a parameter (shaped like

@@ -430,8 +430,13 @@ is `disabled_by_default` under a warning comment, because a press **runs** the
 procedure on the controller, at once and without asking, and nothing here undoes
 it. Read the name before you enable one. A procedure that needs a value (a
 setter) is not a button and is not emitted. From a lambda, `queue_raw_rpc(address,
-parameter)` calls any procedure directly. Details and the one open wire question
-are in
+parameter)` calls any procedure directly.
+
+A heat pump's **fault history** is a remote procedure array: thirty records
+behind one procedure at `0xA801`, each one call with the record index as its
+parameter. The generator fans it out like the Vitotronic archive -- "Letzter
+Fehler (WPR)" enabled, the other 29 records disabled -- as raw hex until the
+record layout is decoded. Details and the one open wire question are in
 [`docs/design_notes.md`](docs/design_notes.md#p300-remote-procedure-calls-access-rpc).
 
 ## Development

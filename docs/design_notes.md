@@ -447,9 +447,10 @@ Vitosoft uses it for two different things, both under the same `FCRead`:
 
 In the 2026 export 1,010 events read by RPC and 896 of them carry a
 `PrefixRead`. A reading is therefore: P300, `Remote_Procedure_Call`, read-only,
-one record (BlockFactor <= 1 -- a multi-record RPC is one call per index), an
-answer of known size, and a `PrefixRead` that is absent or 1..4 bytes. KW and
-GWG have no RPC telegram at all.
+one record (BlockFactor <= 1 -- a multi-record RPC is one call per index; the
+fault buffers among them are fanned out, below), an answer of known size, and a
+`PrefixRead` that is absent or 1..4 bytes. KW and GWG have no RPC telegram at
+all.
 
 Across the 399 device tokens the readings fall into two groups, and the profiles
 split them there:
@@ -511,6 +512,25 @@ controller (VScotHO1_72: the three circuit resets, the coding reset, clearing
 the fault history and the LON participant list), and most of the rest on the
 Vitocom gateways, whose read-out and configuration triggers are procedures
 too (`vitocom300_lan`: 215). No action has been run on this project's hardware.
+
+**RPC arrays: the heat-pump fault history.** A heat pump keeps its fault
+buffer behind one procedure: `ecnsysEventType~WPRError` at `0xA801` is
+BlockLength 240 / BlockFactor 30 (V200WO1A and the VBC700/702 units), `~WPR3Error`
+270 / 30 (the CU401B units). A record is not at an address of its own; each is
+one call to that procedure with the record's index as the parameter. The export
+gives no `PrefixRead` for them -- the index is the parameter. So they go through
+the same fan-out as the Vitotronic system archive (§7), which already turns a
+BlockFactor into slots: `_error_history_entries` takes the record shape from
+`_rpc_array_records` and emits one slot per record, all at the procedure's
+address with `prefix: [i]`, where the system archive steps the address. The
+slot convention is the archive's own: the newest (index 0) enabled, the other
+29 `disabled_by_default`, all on the fault-history poll interval. The records
+are shown as raw hex (`type: raw`, which takes a record of up to 48 bytes for an
+`access: rpc` answer, since its `length` is not sent): the WPR/WPR3 layout is
+not decoded, and "index 0 is the newest" is not confirmed on a unit. Left out:
+`WPR3MldgsHistExtTn1..3` (`0xA821`), which carry a `PrefixRead` *and* 30
+records, so a call needs both in an order the export does not state; and the
+`*ErrorIndex` rows, which are pointers, not history (§7's `_is_error_history`).
 
 **Unsettled: the answer's DataLength.** Whether it counts the returned bytes or
 repeats the parameter's length is not known, and no RPC answer has been
@@ -1151,6 +1171,11 @@ explicitly and are the fallback for exports without fault texts. It maps
 the display-Stoerungscode space (byte[0]) of the **system** archive only — not
 the GFA slots above, the GFA byte (`0x5738`), the LON alarm record, or the
 self-describing sensor-status enums.
+
+**Heat pumps.** The WPR and WPR3 fault buffers are remote procedure arrays, not
+address ranges: thirty 8-byte (WPR) or 9-byte (WPR3) records, each one call with
+the record index as the parameter. The same slot fan-out emits them, as raw hex
+until their layout is decoded -- see §P300 remote procedure calls.
 
 > **Hardware status.** The 9-byte slot read of the system archive is
 > **hardware-confirmed** on the reference unit (slot 1 @ `0x7507`, newest

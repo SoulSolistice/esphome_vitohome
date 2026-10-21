@@ -179,7 +179,7 @@ def _error_history_archive_tag(ev: Event) -> str:
     return tag or sub
 
 
-def _error_history_entries(ev: Event, lang: str = "de") -> list[dict]:
+def _error_history_entries(ev: Event, lang: str = "de", rpc_records: tuple[int, int] | None = None) -> list[dict]:
     """Expand one error-history event into per-slot emission specs.
 
     Returns dicts with: address, name, seed, disabled, system (bool), gfa
@@ -201,7 +201,37 @@ def _error_history_entries(ev: Event, lang: str = "de") -> list[dict]:
       _error_history_archive_tag).
     - any other system-history event (single slot, e.g. the 0x7507 address
       fallback) -> one enabled "Letzter Fehler" slot at its own address.
+    - ``rpc_records`` (count, length) from transforms._rpc_array_records -> the
+      same slots, named and enabled the same way, but every one at the archive's
+      own address with its record index as the call's parameter (``prefix``):
+      the heat-pump fault buffers are an RPC array, not a run of addresses. The
+      record layout is not decoded yet, so these slots are raw hex (``raw``).
     """
+    if rpc_records is not None:
+        count, length = rpc_records
+        tag = _error_history_archive_tag(ev)
+        name_suffix = f" ({tag})" if tag else ""
+        seed_suffix = "_" + re.sub(r"[^a-z0-9]+", "_", tag.lower()).strip("_") if tag else ""
+        token = getattr(ev, "token", "") or "ecnsysEventType~Error"
+        return [
+            {
+                "address": ev.address,
+                "prefix": [i],
+                "length": length,
+                "raw": True,
+                "name": (_ui(lang, "last_fault") if i == 0 else f"{_ui(lang, 'fault')} {i + 1:02d}") + name_suffix,
+                "seed": ("letzter_fehler" if i == 0 else f"fehler_{i + 1:02d}") + seed_suffix,
+                "disabled": i > 0,
+                "system": True,
+                "comment": [
+                    f"# Fault history record {i + 1} of {count} ({token}, a {count} x {length}-byte",
+                    f"# remote procedure array at 0x{ev.address:04X}: one call per record, the",
+                    f"# record index {i} as the parameter). Raw hex: the record layout is not",
+                    "# decoded yet." + (" Index 0 is taken as the newest; unconfirmed on hardware." if i == 0 else ""),
+                ],
+            }
+            for i in range(count)
+        ]
     fa_slot = _error_history_slot(ev)
     if fa_slot is not None:
         # Some units carry SEVERAL FehlerHis-style archives that all match the
@@ -317,6 +347,26 @@ def _error_history_lines(
     in output order (_share_codes_blocks). ``access`` / ``fc_read`` are the GWG
     access mode and its Vitosoft FCRead (empty on other protocols)."""
     lines = list(entry["comment"])
+    if entry.get("raw"):
+        # A record of an RPC array (_error_history_entries, rpc_records): the
+        # call's parameter is the record index, the answer is shown as raw hex.
+        prefix = ", ".join(f"0x{b:02X}" for b in entry["prefix"])
+        lines += [
+            "- platform: vitohome",
+            "  type: raw",
+            f"  name: {_yaml_str(entry['name'])}",
+            f"  id: {oid}",
+            f"  address: 0x{entry['address']:04X}",
+            f"  access: rpc  # Vitosoft {fc_read}",
+            f"  prefix: [{prefix}]  # the record index",
+            f"  length: {entry['length']}",
+            '  icon: "mdi:alert-circle"',
+            "  entity_category: diagnostic",
+        ]
+        if entry["disabled"]:
+            lines.append("  disabled_by_default: true")
+        lines.append(f"  update_interval: {POLL_ERROR}s")
+        return lines
     lines += [
         "# If the device NAKs the 9-byte block read, drop length to 1 (code only).",
         "- platform: vitohome",

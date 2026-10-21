@@ -18,6 +18,7 @@ from .constants import (
     DIV,
     FCREAD_TO_GWG_ACCESS,
     FCWRITE_TO_GWG_ACCESS,
+    MAX_P300_READ_LENGTH,
     MAX_RMW_BLOCK,
     NON_NUMERIC_CONVERSIONS,
     PLAIN,
@@ -229,6 +230,36 @@ def _is_rpc_reading(ev: Event, protocol: str = PROTO_P300) -> bool:
     if not (ev.block_length or ev.byte_length):
         return False
     return _rpc_prefix(ev) is not None
+
+
+def _rpc_array_records(ev: Event, protocol: str = PROTO_P300) -> tuple[int, int] | None:
+    """(record count, record length) of a Remote_Procedure_Call ARRAY the
+    error-history path fans out, one record per call; None for anything else.
+
+    The heat-pump fault buffers are this shape: ecnsysEventType~WPRError at
+    0xA801 is BlockLength 240 / BlockFactor 30 (thirty 8-byte records),
+    ~WPR3Error 270 / 30 (thirty 9-byte records). A record is not at an address
+    of its own: each is one call to the same procedure with the record's index
+    as the parameter (0 .. BlockFactor-1). The export gives no PrefixRead for
+    them -- the index is the parameter -- so a row that does carry one
+    (WPR3MldgsHistExtTn1..3, prefix 01..03 AND 30 records) would need the
+    prefix and the index in an order the export does not state, and stays out.
+
+    P300 only (KW and GWG have no RPC), read-only, and a record that fits a
+    raw read (MAX_P300_READ_LENGTH).
+    """
+    if protocol != PROTO_P300:
+        return None
+    if (getattr(ev, "fc_read", "") or "").strip().lower() != "remote_procedure_call":
+        return None
+    if ev.access_type != 1 or getattr(ev, "prefix_read", ""):
+        return None
+    count = ev.block_factor or 0
+    total = ev.block_length or ev.byte_length or 0
+    if count <= 1 or total <= 0 or total % count:
+        return None
+    length = total // count
+    return (count, length) if length <= MAX_P300_READ_LENGTH else None
 
 
 def _is_rpc_action(ev: Event, protocol: str = PROTO_P300) -> bool:

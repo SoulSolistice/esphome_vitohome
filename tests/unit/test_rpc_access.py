@@ -119,3 +119,15 @@ def test_an_action_button_is_refused_where_there_is_no_such_telegram(protocol):
 
 def test_a_refresh_button_needs_no_access():
     _validate("KW", {"button": [_entity({"type": "refresh"})]})
+
+
+def test_a_raw_rpc_record_may_be_longer_than_a_raw_read():
+    # A heat-pump fault record (8 or 9 bytes) is one RPC answer; `length` is not
+    # sent, so it may state the record. A plain raw read asks for `length` bytes
+    # and stays 1..4.
+    from components.vitohome.text_sensor import _validate_raw_length
+
+    _validate_raw_length({"length": 9, CONF_ACCESS: ACCESS_RPC})
+    _validate_raw_length({"length": 4})
+    with pytest.raises(cv.Invalid, match="only shown for an 'access: rpc' answer"):
+        _validate_raw_length({"length": 9})

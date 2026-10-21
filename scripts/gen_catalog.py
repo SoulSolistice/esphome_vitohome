@@ -225,6 +225,7 @@ from vitocatalog import (  # noqa: E402, F401
     _resolve_run_key,
     _resolve_runs,
     _resolve_unit,
+    _rpc_array_records,
     _rpc_prefix,
     _scale_from_bounds,
     _schaltzeiten_entries,

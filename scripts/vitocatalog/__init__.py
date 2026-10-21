@@ -144,6 +144,7 @@ from .transforms import (  # noqa: F401
     _profile_keep,
     _protocol_for_device,
     _read_only_blocks,
+    _rpc_array_records,
     _rpc_prefix,
     _scale_from_bounds,
     _unit_for,

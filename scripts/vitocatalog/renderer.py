@@ -41,6 +41,7 @@ from .transforms import (
     _profile_keep,
     _protocol_for_device,
     _read_only_blocks,
+    _rpc_array_records,
     _rpc_prefix,
 )
 
@@ -287,10 +288,13 @@ def generate(
             # no Vitotronic map. A FehlerHis* slot is checked on its own FCRead
             # like any datapoint; the generic system archive additionally
             # needs the device to emit at least one real entity (second pass).
-            # An archive read by procedure call is one call per slot index (an
-            # array, which _is_rpc_reading refuses); the slot lines carry no
-            # prefix, so such an archive stays out even with the filter off.
-            if (reachable_only and not _is_reachable(ev, protocol)) or _access_for(ev, protocol) == "rpc":
+            # An archive read by procedure call (the heat-pump fault buffers) is
+            # reachable record by record -- one call per index, fanned out in
+            # the second pass (_rpc_array_records). Any other RPC history row
+            # has no slot shape and stays out, with the filter off too.
+            rpc_array = _rpc_array_records(ev, protocol) is not None
+            rpc_other = (getattr(ev, "fc_read", "") or "").strip().lower() == "remote_procedure_call" and not rpc_array
+            if (reachable_only and not (rpc_array or _is_reachable(ev, protocol))) or rpc_other:
                 dropped_unreachable += 1
                 continue
             deferred_history.append(ev)
@@ -446,9 +450,11 @@ def generate(
             gwg_system_history_suppressed = True
             continue
         # Error-history slots are ordinary reads, so under GWG they carry their
-        # access mode like anything else.
+        # access mode like anything else. An RPC array fans out by record index
+        # instead of by address (_rpc_array_records).
         access = _access_for(ev, protocol)
-        for entry in _error_history_entries(ev, lang):
+        rpc_records = _rpc_array_records(ev, protocol)
+        for entry in _error_history_entries(ev, lang, rpc_records):
             if entry["address"] is None:
                 continue
             # Same 8-bit guard as the main pass.
@@ -456,8 +462,13 @@ def generate(
                 dropped_wide_addr += 1
                 continue
             # Same field identity as the main pass (_field_key), so a slot
-            # whose address an ordinary datapoint already claimed is skipped.
-            key = (entry["address"], 0, 0, access, ())
+            # whose address an ordinary datapoint already claimed is skipped. An
+            # RPC record is identified by its index, like an RPC reading by its
+            # prefix -- all thirty share the archive's address.
+            if "prefix" in entry:
+                key = (entry["address"], 0, 0, "rpc", tuple(entry["prefix"]))
+            else:
+                key = (entry["address"], 0, 0, access, ())
             if key in seen_addr:
                 continue
             seen_addr.add(key)

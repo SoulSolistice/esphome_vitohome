@@ -248,6 +248,86 @@ def test_prefixwrite_may_be_written_with_0x():
     assert gc._rpc_prefix(ev, "prefix_write") == [0x0E]
 
 
+# --- the heat-pump fault history: an RPC array, fanned out per record ----------
+
+
+def _heat_pump_catalog(extra=()):
+    """A P300 heat pump: one ordinary reading (so the system archive is emitted at
+    all), the WPRError fault buffer -- 30 x 8 bytes behind one procedure at
+    0xA801 -- and optionally more access rows."""
+    rows = [
+        ("Aussentemperatur~0x0101", "1", "Virtual_READ", "", "2", ""),
+        ("ecnsysEventType~WPRError", "1", "Remote_Procedure_Call", "", "240", "30"),
+        *extra,
+    ]
+    raw_events, access, ids = {}, {}, []
+    for n, (token, access_type, fc, prefix, block, factor) in enumerate(rows, start=1):
+        eid = str(n)
+        ids.append(eid)
+        raw_events[eid] = {"Address": token, "Name": token.split("~")[0], "Type": access_type}
+        access[token] = {
+            "address": "0x0101" if token.startswith("Aussen") else "0xA801" if "WPR" in token else "0xA821",
+            "block_length": block,
+            "byte_length": block,
+            "byte_position": "0",
+            "block_factor": factor,
+            "conversion": "Div10" if token.startswith("Aussen") else "NoConversion",
+            "fc_read": fc,
+            "fc_write": "Remote_Procedure_Call" if fc != "Virtual_READ" else "Virtual_WRITE",
+            "prefix_read": prefix,
+            "parameter_type": "Array",
+        }
+    return gc.Catalog({"VHeatPump_01": "dp1"}, {"dp1": "VHeatPump"}, {"dp1": ids}, raw_events, {}, {}, access, [], {})
+
+
+def _heat_pump(protocol="P300", extra=()):
+    return gc.generate(
+        _heat_pump_catalog(extra), "VHeatPump_01", "standard", None, None, emit_device_id=False, protocol=protocol
+    )
+
+
+def test_rpc_fault_history_fans_out_one_slot_per_record():
+    ev = _ev(prefix="", block_length=240, block_factor=30, address=0xA801, token="ecnsysEventType~WPRError")
+    assert gc._rpc_array_records(ev) == (30, 8)
+    out = _heat_pump()
+    # Thirty slots, all at the procedure's address, the record index as the parameter.
+    assert out.count("address: 0xA801") == 30
+    for i in (0, 1, 29):
+        assert f"prefix: [0x{i:02X}]  # the record index" in out
+    assert out.count("    type: raw") == 30
+    assert out.count("    length: 8") == 30
+    # The existing slot convention: the newest enabled, the other 29 disabled.
+    newest = out[out.index("prefix: [0x00]") :].split("\n\n", 1)[0]
+    assert "disabled_by_default" not in newest
+    assert out.count("disabled_by_default: true") >= 29
+    # Named like the system archive, tagged as the second archive it is.
+    assert '"Letzter Fehler (WPR)"' in out and '"Fehler 30 (WPR)"' in out
+
+
+def test_a_9_byte_wpr3_buffer_fans_out_too():
+    ev = _ev(prefix="", block_length=270, block_factor=30, address=0xA801, token="ecnsysEventType~WPR3Error")
+    assert gc._rpc_array_records(ev) == (30, 9)
+
+
+@pytest.mark.parametrize(
+    "ev",
+    [
+        # WPR3MldgsHistExtTn1: a prefix AND thirty records -- the order of the two is unknown.
+        _ev(prefix="01", block_length=270, block_factor=30, address=0xA821, token="WPR3MldgsHistExtTn1~0xA821"),
+        _ev(prefix="", block_length=240, block_factor=30, access_type=3),  # writable: not a buffer
+        _ev(prefix="", block_length=241, block_factor=30),  # records do not divide the block
+        _ev(prefix="", block_length=6, block_factor=1),  # not an array
+    ],
+)
+def test_other_rpc_arrays_are_not_fanned_out(ev):
+    assert gc._rpc_array_records(ev) is None
+
+
+@pytest.mark.parametrize("protocol", ["KW", "GWG"])
+def test_the_rpc_fault_history_needs_p300(protocol):
+    assert "0xA801" not in _heat_pump(protocol)
+
+
 def test_kw_emits_none_of_them():
     out = _generate("full", protocol="KW")
     assert "access: rpc" not in out
