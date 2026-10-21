@@ -96,6 +96,17 @@ def _manifest():
         (0x20CB, 0x01, 0xC8, 0x05, "Boiler_200_01", "F0 match"),
         (0x20CB, 0x01, 0xC8, None, "Boiler_200", "F0 not provided"),
         (0x20CB, 0x01, 0xC8, 0x77, "Boiler_200", "no F0 match"),
+        # The two raw bytes the hub reads at 0x00F0/0x00F1 (F0=0xXXYY): tried
+        # 0x00F0 first, then 0x00F1; the reason says which one decided.
+        (0x20CB, 0x01, 0xC8, "1000", "Boiler_200_10", "F0 match (0x00F0)"),
+        (0x20CB, 0x01, 0xC8, "7710", "Boiler_200_10", "F0 match (0x00F1)"),
+        (0x20CB, 0x01, 0xC8, "0510", "Boiler_200_01", "F0 match (0x00F0)"),
+        (0x20CB, 0x01, 0xC8, "0x0010", "Boiler_200", "F0 match (0x00F0)"),
+        (0x20CB, 0x01, 0xC8, "7777", "Boiler_200", "no F0 match"),
+        # Two hex digits stay one byte, as a person types the catalog's F0 value.
+        (0x20CB, 0x01, 0xC8, "10", "Boiler_200_10", "F0 match"),
+        # A family F0 does not subdivide ignores it.
+        (0x20CB, 0x01, 0x51, "3000", "Boiler_72", "software-index range"),
         (0x2053, 0x01, 0x7A, None, "GWG_A_21", "software-index floor"),
         (0x2053, 0x02, 0x00, None, "GWG_B_03", "lowest software index"),
         (0x208A, 0x01, 0x0C, None, "Com_10", "software-index range"),
@@ -106,6 +117,25 @@ def test_resolve(catalog, ident, hw, sw, f0, token, reason):
     got, why = catalog.resolve(ident, hw, sw, f0)
     assert got == token
     assert reason in why
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        (None, None),
+        (0x10, [0x10]),
+        (0x3010, [0x30, 0x10]),
+        ("10", [0x10]),
+        ("0x10", [0x10]),
+        ("0010", [0x00, 0x10]),
+        ("3000", [0x30, 0x00]),
+        ("12345", None),
+        ("zz", None),
+        ("", None),
+    ],
+)
+def test_f0_bytes_tells_one_byte_from_the_two_raw_ones(value, expected):
+    assert gc.f0_bytes(value) == expected
 
 
 def test_resolve_unknown_ident(catalog):
@@ -205,6 +235,8 @@ _LOG_LINES = [
     "Device: 0x20CB (VScotHO1) HW=0x03 SW=0x51 GFA=0x24",
     # Exactly as the hub logs it at boot (ident_string_), chip name included.
     "[I][vitohome:1771]: Device identification: 0x20CB (VScotHO1) HW=0x03 SW=0x51 GFA=0x41 (ÖFA)",
+    # The raw F0 bytes at 0x00F0/0x00F1, as ident_string_ appends them.
+    "[I][vitohome:1828]: Device identification: 0x20CB (VScotHO1) HW=0x01 SW=0xC8 GFA=0x24 (NEC) F0=0x1000",
 ]
 
 
@@ -216,7 +248,7 @@ def test_javascript_lookup_matches_resolve(catalog):
         for ident in (0x20CB, 0x2053, 0x208A, 0x2000, 0x20A3, 0x1234)
         for hw in (0x01, 0x02, 0x03)
         for sw in range(256)
-        for f0 in (None, 0x00, 0x05, 0x10, 0x77)
+        for f0 in (None, 0x00, 0x05, 0x10, 0x77, "10", "1000", "7710", "0010", "7777")
     ]
     done = subprocess.run(
         [_NODE, "-e", _NODE_DRIVER, _LOOKUP_JS],
@@ -232,12 +264,14 @@ def test_javascript_lookup_matches_resolve(catalog):
     assert out["parsed"] == [
         {"id": 0x2053, "hw": 0x01, "sw": 0x7A, "f0": None, "gfa": None},
         {"id": 0x20CB, "hw": 0x03, "sw": 0x51, "f0": None, "gfa": None},
-        {"id": 0x20CB, "hw": 0x03, "sw": 0x51, "f0": 0x10, "gfa": None},
+        # F0 comes back as text: its digit count tells one byte from two.
+        {"id": 0x20CB, "hw": 0x03, "sw": 0x51, "f0": "10", "gfa": None},
         {"id": 0x20A3, "hw": None, "sw": None, "f0": None, "gfa": None},
         {"id": None, "hw": None, "sw": None, "f0": None, "gfa": None},
         {"id": None, "hw": None, "sw": None, "f0": None, "gfa": None},
         {"id": 0x20CB, "hw": 0x03, "sw": 0x51, "f0": None, "gfa": 0x24},
         {"id": 0x20CB, "hw": 0x03, "sw": 0x51, "f0": None, "gfa": 0x41},
+        {"id": 0x20CB, "hw": 0x01, "sw": 0xC8, "f0": "1000", "gfa": 0x24},
     ]
     assert out["unknown_without_id"] == {"kind": "unknown", "ident": None}
 

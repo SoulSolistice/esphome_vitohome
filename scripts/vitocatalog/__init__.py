@@ -60,7 +60,7 @@ from .emitter import (  # noqa: F401
     render_entity_lines,
 )
 from .exporter import _export_stem, _identity_fields, build_resolve_index, export_all  # noqa: F401
-from .identify import _dump_resolve_index, _is_hw_sw_ext, _resolve_run_key, _resolve_runs  # noqa: F401
+from .identify import F0_ADDRESSES, _dump_resolve_index, _is_hw_sw_ext, _resolve_run_key, _resolve_runs, f0_bytes  # noqa: F401
 from .loader import (  # noqa: F401
     Catalog,
     _address_from_name,

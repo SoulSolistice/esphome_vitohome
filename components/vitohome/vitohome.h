@@ -302,6 +302,14 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   //             (example/catalogs/<lang>/gfa/). GWG addresses one byte, so the
   //             read does not exist there.
   //
+  //   then (P300/KW only): read 0x00F0 length 2, Vitosoft's "Erweiterte
+  //             Geraetekennung (F0)", which tells a few variants apart that
+  //             share one software-index range. The hub does not interpret it:
+  //             it is logged and linked raw (F0=0xXXYY, &f0=XXYY, register
+  //             order) and the catalog finder decides what it selects. Read on
+  //             every unit, fail-soft: a unit without it answers with an error
+  //             frame (P300) or FF FF fill (KW), and the value stays unknown.
+  //
   // The result is logged, shown in dump_config(), and published to registered
   // device_id text sensors.
   enum class IdentState : uint8_t {
@@ -312,6 +320,7 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
     READ_FA,
     READ_FB,
     READ_GFA,
+    READ_F0,
     DONE,
   };
 
@@ -547,6 +556,9 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // Burner-control chip at 0x7650 (READ_GFA); -1 = not read, absent, or a
   // unit without one (error frame on P300, 0x00/0xFF on KW).
   int ident_gfa_{-1};
+  // The two bytes at 0x00F0/0x00F1 (READ_F0), 0xF0 byte high; -1 = not read or
+  // absent (error frame on P300, FF FF on KW). Uninterpreted on the device.
+  int ident_f0_{-1};
   bool gwg_burst_disabled_{false};  // see gwg_burst_disabled()
 
   // --- raw scan console lane -------------------------------------------------

@@ -12,8 +12,8 @@
 # via VitoWiFi's read. Re-run with --no-reachable-only to include them.
 #
 # Remote procedure readings omitted: 16 (the LON participant
-# list and LON identity, read by P300 function code 0x07). They answer only
-# with a LON module. --profile full includes them.
+# list and LON identity, read by P300 function code 0x07). Without a LON
+# module they hold only the unit's own defaults. --profile full includes them.
 #
 # VERIFY ON HARDWARE: not every address answers on every firmware.
 # Run `esphome config` then `esphome compile`/`run` before relying

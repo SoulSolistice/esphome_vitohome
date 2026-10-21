@@ -641,8 +641,10 @@ These are intentional divergences from upstream `edc059a7`:
       reached it before. An RPC answer of 250 bytes (length byte `0xFF`) is the
       case where the two differ: an earlier revision indexed from `length()` and
       wrote the first payload byte 250 bytes before the buffer (caught by the
-      fuzz seed `rpc_resp_len255`; `proof_vs2_rpc.cpp` case F). No RPC answer
-      has been captured on this project's hardware yet.
+      fuzz seed `rpc_resp_len255`; `proof_vs2_rpc.cpp` case F). Hardware,
+      VScotHO1_72 (P300, 2026-10-21): the unit answers function code `0x07`
+      with DataLength = the returned bytes (`41 0A 01 07 A0 10 05 <5 bytes> CC`),
+      so on that unit the frame length and DataLength agree.
     READ and WRITE frames are byte-identical to before (the golden-master
     harness, 8/8, is unaffected). Proofs: `tests/native/proof_vs2_rpc.cpp`, and the
     RPC seeds in `tests/native/fuzz_corpus_vs2.h`.

@@ -556,8 +556,8 @@ def generate(
         out.append("#")
     if dropped_rpc_readings:
         out.append(f"# Remote procedure readings omitted: {dropped_rpc_readings} (the LON participant")
-        out.append("# list and LON identity, read by P300 function code 0x07). They answer only")
-        out.append("# with a LON module. --profile full includes them.")
+        out.append("# list and LON identity, read by P300 function code 0x07). Without a LON")
+        out.append("# module they hold only the unit's own defaults. --profile full includes them.")
         out.append("#")
     if dropped_lon_inputs:
         out.append(f"# LON inputs omitted: {dropped_lon_inputs} network-variable input(s) (nvi*). A LON")

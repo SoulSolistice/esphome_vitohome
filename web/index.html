@@ -96,7 +96,7 @@
       <div><label for="f0">F0 (optional)</label><input id="f0" autocomplete="off" placeholder=""></div>
       <div><label for="gfa">GFA chip (optional)</label><input id="gfa" autocomplete="off" placeholder="24"></div>
     </div>
-    <p class="hint">All values are hexadecimal, exactly as logged. The line appears as <code>Device identification: …</code> at start-up and as <code>Device: …</code> in the configuration dump. The GFA chip selects the burner-control fault texts; the hub logs it in the same line as <code>GFA=0x24</code> (read from <code>0x7650</code> on P300/KW units that have a burner control).</p>
+    <p class="hint">All values are hexadecimal, exactly as logged. The line appears as <code>Device identification: …</code> at start-up and as <code>Device: …</code> in the configuration dump. The GFA chip selects the burner-control fault texts; the hub logs it in the same line as <code>GFA=0x24</code> (read from <code>0x7650</code> on P300/KW units that have a burner control). F0 is logged as <code>F0=0x3000</code>, the two raw bytes at <code>0x00F0</code>; it only matters where several variants share a software index, and two hex digits are taken as one F0 byte.</p>
     <fieldset class="lang">
       <legend>Catalog language</legend>
       <label><input type="radio" name="lang" value="de"> Deutsch</label>

@@ -17,8 +17,8 @@
 # defaults. Read each one's name before you enable it.
 #
 # Remote procedure readings omitted: 16 (the LON participant
-# list and LON identity, read by P300 function code 0x07). They answer only
-# with a LON module. --profile full includes them.
+# list and LON identity, read by P300 function code 0x07). Without a LON
+# module they hold only the unit's own defaults. --profile full includes them.
 #
 # LON inputs omitted: 14 network-variable input(s) (nvi*). A LON
 # master writes them; without a LON module they hold no data (0xFF

@@ -18,13 +18,20 @@
 #      or the parameter's length? The engine accepts both, but the frames tell.
 #   3. The entity path: `access: rpc` with `prefix:`, polled like a read.
 # Everything here is a READ of the LON participant list (0xA010), which Vitosoft
-# marks read-only. Without a LON module the answer is expected to be empty
-# entries (zeros or 0xFF), an error frame, or nothing -- each is an answer to 1.
+# marks read-only.
+#
+# Result, 2026-10-21, no LON module fitted: 1 and 2 are settled. The unit
+# answers, and DataLength counts the returned bytes:
+#   >>> 41 06 00 07 A0 10 01 00 BE
+#   <<< 41 0A 01 07 A0 10 05 01 01 01 01 01 CC   entry 00: own number 1/1
+#   entry 01 answers 01 00 00 00 00, an empty slot.
+# The answer is 5 bytes (Vitosoft declares 6). 3 works as well.
 # ============================================================
 
 text_sensor:
   # Entity path. type: raw publishes every byte the controller returns, so the
-  # full 6-byte entry is visible although length is capped at 4 for raw.
+  # whole entry (5 bytes on this unit) is visible although length is capped at
+  # 4 for raw.
   - platform: vitohome
     type: raw
     name: "RPC Probe · LON entry 00 (own)"

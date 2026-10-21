@@ -425,16 +425,25 @@ parameter, and its DataLength is the parameter's length (0 without one), not
 the answer's -- the controller decides how much it returns:
 
 ```
-41 06 00 07 A0 10 01 05 <cs>            call 0xA010 with parameter 05
-41 0B 01 07 A0 10 06 <6 bytes> <cs>     the answer
+41 06 00 07 A0 10 01 00 BE                       call 0xA010 with parameter 00
+41 0A 01 07 A0 10 05 01 01 01 01 01 CC           the answer: 5 bytes, DataLength 05
 ```
+
+**Hardware-confirmed** on VScotHO1_72 (P300, 2026-10-21, no LON module fitted):
+the unit answers function code `0x07`, and the answer's DataLength counts the
+**returned** bytes (`05`), not the parameter's length. Parameter `01` answered
+`01 00 00 00 00` the same way. The parser still takes the payload size from the
+frame length and the checksum (THIRD_PARTY #26); on this unit the two agree.
 
 Vitosoft uses it for two different things, both under the same `FCRead`:
 
 - **Readings.** The procedure answers with a value. Some take a parameter
   (`PrefixRead`) naming one entry of a list: `Teilnehmerliste_LON_00..15` at
-  `0xA010`, sixteen read-only rows sharing one address, parameters `00`..`0F`, a
-  6-byte answer each. Others take none: `KesselfolgeIst` and five siblings at
+  `0xA010`, sixteen read-only rows sharing one address, parameters `00`..`0F`,
+  declared as a 6-byte block with the 2-byte field "Anlage/TN" at position 0
+  (`HexByte2DecimalByte`). The VScotHO1_72 answers **5** bytes, one fewer
+  than the declared block; the generated entity reads only that 2-byte field,
+  so the shorter answer covers it. Others take none: `KesselfolgeIst` and five siblings at
   `0xA100`..`0xA109` on a cascade controller, a 4-byte answer each. These become
   entities with `access: rpc`, and `prefix:` where there is a parameter.
 - **Procedures.** A call with an effect: `RPCWink`,
@@ -462,9 +471,14 @@ split them there:
 | `mBusRPCCheckHW*`, M-Bus / RS485 scan state | 19 | 3 device tokens | default |
 | `ecnsysEventType~VCOMError` (`0xA020`) | 7 | 7 device tokens | default |
 
-The LON-bound ones answer only with a LON module (`_is_lon_bound_rpc`: the
+The LON-bound ones carry LON network state (`_is_lon_bound_rpc`: the
 procedure at `0xA010`, a `vlon*` procedure, or an `nvi` input read by
-procedure). The header of each affected catalog says how many were emitted and
+procedure). They are **answered without a LON module** -- the VScotHO1_72,
+which has none, answers the participant list -- but then hold only the unit's
+own defaults: entry `00`, its own number, read `01 01 01 01 01` (Anlage 1 /
+participant 1, the delivery setting), entry `01` read `01 00 00 00 00`, an
+empty slot. So they cost a telegram each and say nothing on a unit without a
+LON network, which is why they are left to `full`. The header of each affected catalog says how many were emitted and
 how many were left to `full`. The `mBusRPCCheckHW*` names say "check"; Vitosoft
 marks them read-only with a 1- or 2-byte answer, which is the reading shape, but
 none has been seen on a unit.
@@ -532,12 +546,12 @@ not decoded, and "index 0 is the newest" is not confirmed on a unit. Left out:
 records, so a call needs both in an order the export does not state; and the
 `*ErrorIndex` rows, which are pointers, not history (§7's `_is_error_history`).
 
-**Unsettled: the answer's DataLength.** Whether it counts the returned bytes or
-repeats the parameter's length is not known, and no RPC answer has been
-captured on this project's hardware. The parser takes the payload size from the
-frame length and the checksum, so either works (THIRD_PARTY #26,
-`tests/native/proof_vs2_rpc.cpp`). A capture of one participant-list read would
-settle it.
+**The answer's DataLength counts the returned bytes** (VScotHO1_72, 2026-10-21,
+see the frames above). The parser still takes the payload size from the frame
+length and the checksum, so an answer that repeated the parameter's length
+would be read too (THIRD_PARTY #26, `tests/native/proof_vs2_rpc.cpp` case C);
+that tolerance costs nothing and stays, since one unit does not speak for every
+controller.
 
 ---
 
@@ -1074,8 +1088,15 @@ are logged at DEBUG only. In the whole 2026 export `0x7650` is `GFA_Kennung`
 and nothing else. GWG addresses one byte, so the step does not exist there.
 Hardware, VScotHO1_72 (P300): `0x7650` = `0x24` (NEC).
 
+Then, on P300 and KW too, **`0x00F0`, two bytes: F0** (below). Read on every
+unit the same way and for the same reason; the hub does not interpret it. A
+unit without it answers with an error frame (P300) or `FF FF` fill (KW), which
+leaves it unknown; `00 00` is a value (the generic variant of a family F0
+subdivides). It is logged raw in register order (`F0=0x3000`: `0x30` at
+`0x00F0`, `0x00` at `0x00F1`) and linked as `&f0=3000`.
+
 Each field that can't be read is left unknown; the result (`group`,
-`controller`, `hw`, `sw`, and the chip) is logged at INFO --
+`controller`, `hw`, `sw`, the chip and F0) is logged at INFO --
 `Device identification: 0x20CB (VScotHO1) HW=0x03 SW=0x51 GFA=0x24 (NEC)` --
 and pushed to any `device_id` text sensors. A small built-in table names the families seen on the
 wire (`0x20CB` → VScotHO1, plus `0x2098`/`0x2094`/`0x2053`/`0x2054`); everything else is
@@ -1103,16 +1124,33 @@ the devices that need it. In the 2026 export that is the software-index range
 | `0x20C9` | `VScotHC1_200` (00..09), `_10` (10..19), `_30` (30..39) |
 
 (`0x20CA` has a single F0-keyed type, and `0x2621` is OpenTherm, which is not
-driven.) The hub does not read `0x00F0`, so for those two ranges the resolver
-and the finder fall back to the lowest-F0 variant and list the others
-("F0 decides: generic variant shown"). The variants are not interchangeable:
-`VScotHO1_200_01` declares 74 addresses the generic `VScotHO1_200` lacks, and
-`_10` .. `_30` lack 30..61 of the generic's. The finder already accepts an F0
-value (`&f0=`); what is missing is the read and the link parameter (§11). Not
-yet settled without a unit: which of the two bytes at `0x00F0` carries the
-value the export's `F0` column holds (`30..39`, read as hex by the resolver).
-Every other family, the reference `VScotHO1_72` (SW `0x51`) included, is
-decided by `0xF8..0xFB` alone.
+driven.) The variants are not interchangeable: `VScotHO1_200_01` declares 74
+addresses the generic `VScotHO1_200` lacks, and `_10` .. `_30` lack 30..61 of
+the generic's.
+
+**Evaluated in the finder, not on the device.** The hub reads the two bytes at
+`0x00F0` and passes them on raw (above); what they select is decided where the
+catalog knowledge is, by the same rule in two places that the parity test
+(`tests/unit/test_resolve_index.py`) holds together: `f0_bytes()` /
+`resolve_device()` in `scripts/vitocatalog/identify.py` and `f0Bytes()` /
+`lookup()` in `web/lookup.js`.
+
+- One or two hex digits are one byte -- the export's `F0` column, as a person
+  types it from a catalog (`--f0 30`, or the finder's F0 field).
+- Three or four are the two raw bytes the hub reads. Which of them carries a
+  device's F0 is **not settled on a unit**, so both are tried: the `0x00F0`
+  byte first, the register that carries the name, then `0x00F1`. The first
+  that falls inside a variant's range decides, and the answer names the byte
+  ("F0 match (0x00F0)").
+- Without F0, or when neither byte matches, the lowest-F0 variant is shown and
+  the others listed ("F0 decides: generic variant shown").
+
+One consequence to keep in mind until a unit settles the byte: `VScotHO1_200`
+owns F0 `00`, so a raw value whose first byte is `00` always selects it, even
+if the second byte would have matched another variant. When a unit of these
+families confirms the byte, the try order (`F0_ADDRESSES`, both files) is the
+one thing to change. Every other family, the reference `VScotHO1_72` (SW
+`0x51`) included, is decided by `0xF8..0xFB` alone, and F0 is ignored there.
 
 The load-bearing fact for anyone **adding new datapoints**:
 
@@ -1856,8 +1894,10 @@ out. `minimal` leaves them out too.
 The same profiles leave out the **LON-bound remote procedure readings**
 (`access: rpc`, see §P300 remote procedure calls): the participant list at
 `0xA010` on 105 device tokens, the Vitocom LON identity, `vlon*` and LON inputs
-read by procedure. Without a LON module none of them answers. `full` keeps them.
-The unit's own readings (boiler sequence, M-Bus module state) stay in
+read by procedure. Without a LON module they are still answered, but hold
+only the unit's own defaults and empty slots (VScotHO1_72, 2026-10-21: own
+number `01 01`, entry `01` empty), which carries no information. `full` keeps
+them. The unit's own readings (boiler sequence, M-Bus module state) stay in
 `standard`.
 
 ---
@@ -1933,6 +1973,13 @@ The 30 ms constant comes off the wire, not from taste. At 4800 8E2 a byte occupi
 telegram is 18–20 ms, while the gap between the master's ACK (`0x06`) and the next
 telegram's `PACKETSTART` is ~35 ms. 30 ms therefore joins a telegram and separates
 the ACK from it, and is still far below KW's ~2.2 s idle-sync cadence.
+
+The ACK is separated only when the next request waits for the next `loop()`.
+When the hub dispatches the next request straight after acknowledging an
+answer -- identification steps, the clock read followed by the first poll --
+the two share one line (`>>> 06:41:05:00:01:76:50:01:CD`, VScotHO1_72,
+2026-10-21). Read the leading `06` as the ACK of the previous answer; the
+telegram after it is complete.
 
 It is a build flag rather than a runtime setter so a production firmware carries
 no buffers and no per-byte branch; `frame_tick()` degrades to an empty inline.
@@ -2219,21 +2266,22 @@ happen in production.
 ## 11. Open items / forward work
 
 - **Remote procedure calls on hardware (§P300 remote procedure calls).**
-  Nothing RPC has been seen on a unit yet. Open, in the order a capture
-  answers them: whether a unit answers function code `0x07` at all, and
-  whether an answer's DataLength counts the returned bytes (the parser takes
-  either); the heat-pump record layout and whether index 0 is the newest
-  record (a CU401B_S test package exists, reads only); whether the
+  Confirmed on VScotHO1_72 (P300, 2026-10-21): the unit answers function code
+  `0x07`, and an answer's DataLength counts the returned bytes; the participant
+  list answers 5 bytes against a declared block of 6, and is answered without
+  a LON module. Still open: the heat-pump record layout and whether index 0 is
+  the newest record (a CU401B_S test package exists, reads only); whether the
   parameterless readings (`Kesselfolge*`, the M-Bus `mBusRPCCheckHW*` "check")
-  are side-effect-free to poll; and no action button has been pressed on a
-  unit. Left out until the export or a capture says how: `WPR3MldgsHistExtTn1..3`
+  are side-effect-free to poll; no action button has been pressed on a unit;
+  and "Anlage/TN" (`HexByte2DecimalByte`) is two separate decimal bytes, which
+  the generated `noconv` sensor publishes as one 16-bit number (`01 01` reads
+  257). Left out until the export or a capture says how: `WPR3MldgsHistExtTn1..3`
   (a parameter *and* 30 records) and the `*ErrorIndex` tables.
-- **F0 for the `VScotHO1_200*` / `VScotHC1_200*` variants (§6).** The hub does
-  not read `0x00F0`, so a unit of those two families at SW >= `0xC8` resolves to
-  the generic variant. The read would be one 2-byte Virtual_READ at boot, only
-  for idents `0x20C9`/`0x20CB` at SW >= `0xC8`, logged and appended to the
-  finder link as `&f0=` (the finder already takes it). Which of the two bytes
-  holds the `F0` value wants a unit of that family.
+- **F0 on a unit (§6).** The hub reads `0x00F0` (2 bytes) at boot and links it
+  raw; the finder and `--identify` try the `0x00F0` byte, then `0x00F1`. Open:
+  which byte carries F0 on a `VScotHO1_200*` / `VScotHC1_200*` unit, and what
+  the other families answer there (the read is fail-soft, but unconfirmed on
+  any unit, the reference one included).
 - **Bit-field writes on hardware (§5b).** Confirmed on VScotHO1_72 (P300) on
   2026-10-14: fail-closed, the read / merge / write / read-back sequence,
   preservation of non-zero neighbouring bits, and adjacency during a poll burst.

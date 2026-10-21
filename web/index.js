@@ -167,12 +167,15 @@ function render() {
   if (!data) return;
   const v = {};
   for (const key of Object.keys(fields)) v[key] = parseHex(fields[key].value, limits[key]);
+  // F0 is passed on as text: its digit count tells one byte from the two raw
+  // bytes the hub reads (f0Bytes in lookup.js).
+  const f0Text = v.f0 === null ? null : fields.f0.value.trim();
   for (const key of Object.keys(fields)) {
     fields[key].setAttribute("aria-invalid", fields[key].value.trim() !== "" && v[key] === null ? "true" : "false");
   }
   if (v.id === null) return;
 
-  const r = lookup(data, v.id, v.hw, v.sw, v.f0);
+  const r = lookup(data, v.id, v.hw, v.sw, f0Text);
   const panel = el("div", { class: "panel" });
   out.append(panel);
   const idText = hexOf(v.id, 4);
@@ -228,8 +231,11 @@ function render() {
   if (r.f0 !== null) {
     panel.append(note(r.f0 === "matched" ? "" : "warn-note",
       el("p", {}, "For software index " + swRange + " this device has several variants, told apart by the value at address ",
-        el("code", {}, "0x00F0"), ". The hub does not read that address. ",
-        r.f0 === "matched" ? "Your F0 value selects the highlighted variant."
+        el("code", {}, "0x00F0"), " (Vitosoft: Erweiterte Gerätekennung, F0). The hub reads the two bytes there and logs them raw as ",
+        el("code", {}, "F0=0x…"), "; with two bytes the finder tries ", el("code", {}, "0x00F0"), " first, then ", el("code", {}, "0x00F1"),
+        ", since which one carries F0 is not yet confirmed on a unit. ",
+        r.f0 === "matched"
+          ? (r.f0Address ? "The byte at " + r.f0Address + " selects the highlighted variant." : "Your F0 value selects the highlighted variant.")
           : r.f0 === "no-match" ? "Your F0 value matches none of the listed ranges; the generic variant is highlighted."
           : "Without it, the generic variant is highlighted."),
       tokenTable([...r.candidates].sort((a, b) => (a.f0 ? a.f0[0] : -1) - (b.f0 ? b.f0[0] : -1)), r.token, true)));
@@ -244,7 +250,8 @@ function render() {
 function fromLine() {
   const parsed = parseIdentification($("line").value);
   for (const key of Object.keys(fields)) {
-    if (parsed[key] !== null) fields[key].value = parsed[key].toString(16).toUpperCase().padStart(widths[key], "0");
+    if (parsed[key] === null) continue;
+    fields[key].value = key === "f0" ? parsed.f0 : parsed[key].toString(16).toUpperCase().padStart(widths[key], "0");
   }
   render();
 }
@@ -253,7 +260,10 @@ function fromQuery() {
   const params = new URLSearchParams(location.search);
   for (const key of Object.keys(fields)) {
     const value = parseHex(params.get(key), limits[key]);
-    if (value !== null) fields[key].value = value.toString(16).toUpperCase().padStart(widths[key], "0");
+    if (value === null) continue;
+    // F0 keeps its digits: four are the hub's two raw bytes (f0Bytes).
+    fields[key].value = key === "f0" ? params.get(key).trim().replace(/^0x/i, "").toUpperCase()
+      : value.toString(16).toUpperCase().padStart(widths[key], "0");
   }
 }
 

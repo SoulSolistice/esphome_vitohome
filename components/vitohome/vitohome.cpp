@@ -101,8 +101,8 @@ static const char *gfa_chip_name(int chip) {
 // the matching catalog. The page does the matching from the generated
 // example/catalogs/resolve.json; the device itself never fetches it.
 static const char *const CATALOG_FINDER_URL = "https://soulsolistice.github.io/esphome_vitohome/";
-// URL (49) + "?id=XXXX&hw=XX&sw=XX" (20) + "&gfa=XX" (7) + NUL = 77.
-static const size_t CATALOG_FINDER_URL_SIZE = 80;
+// URL (49) + "?id=XXXX&hw=XX&sw=XX" (20) + "&gfa=XX" (7) + "&f0=XXXX" (8) + NUL = 85.
+static const size_t CATALOG_FINDER_URL_SIZE = 88;
 
 void VitoHomeComponent::reserve_entities(std::size_t capacity) { this->entities_.init(capacity); }
 
@@ -1642,6 +1642,10 @@ void VitoHomeComponent::ident_dispatch_(IdentState state) {
       this->ident_dp_ = optolink::Datapoint("ident", 0x7650, 1, optolink::noconv);
       break;
 
+    case IdentState::READ_F0:
+      this->ident_dp_ = optolink::Datapoint("ident", 0x00F0, 2, optolink::noconv);
+      break;
+
     default:
       break;
   }
@@ -1723,6 +1727,18 @@ void VitoHomeComponent::ident_handle_response_(const ResponseView &response) {
         this->ident_gfa_ = data[0];
       else
         ESP_LOGD(TAG, "No burner-control chip at 0x7650");
+      this->ident_dispatch_(IdentState::READ_F0);
+      return;
+
+    case IdentState::READ_F0:
+      // Raw and uninterpreted: which of the two bytes a device's F0 is, and
+      // what it selects, is the catalog finder's business. FF FF is KW's
+      // answer for an address the unit does not have; 00 00 is a real value
+      // (the generic variant of a family F0 subdivides).
+      if (length >= 2 && !(data[0] == 0xFF && data[1] == 0xFF))
+        this->ident_f0_ = (data[0] << 8) | data[1];
+      else
+        ESP_LOGD(TAG, "No extended identification (F0) at 0x00F0");
       this->ident_finish_();
       return;
 
@@ -1758,6 +1774,11 @@ void VitoHomeComponent::ident_handle_error_() {
 
     case IdentState::READ_GFA:
       // A unit without a burner control (heat pump, ...) has no 0x7650.
+      this->ident_dispatch_(IdentState::READ_F0);
+      return;
+
+    case IdentState::READ_F0:
+      // Most units have no 0x00F0; only a few variant families declare it.
       this->ident_finish_();
       return;
 
@@ -1794,9 +1815,11 @@ std::string VitoHomeComponent::ident_string_() const {
       offset += snprintf(buffer + offset, sizeof(buffer) - offset, " SW=0x%02X", this->ident_sw_);
     if (this->ident_gfa_ >= 0 && offset > 0 && offset < static_cast<int>(sizeof(buffer))) {
       const char *chip = gfa_chip_name(this->ident_gfa_);
-      snprintf(buffer + offset, sizeof(buffer) - offset, " GFA=0x%02X%s%s%s", this->ident_gfa_,
-               chip != nullptr ? " (" : "", chip != nullptr ? chip : "", chip != nullptr ? ")" : "");
+      offset += snprintf(buffer + offset, sizeof(buffer) - offset, " GFA=0x%02X%s%s%s", this->ident_gfa_,
+                         chip != nullptr ? " (" : "", chip != nullptr ? chip : "", chip != nullptr ? ")" : "");
     }
+    if (this->ident_f0_ >= 0 && offset > 0 && offset < static_cast<int>(sizeof(buffer)))
+      snprintf(buffer + offset, sizeof(buffer) - offset, " F0=0x%04X", this->ident_f0_);
 
     return std::string(buffer);
   }
@@ -1815,7 +1838,9 @@ bool VitoHomeComponent::ident_finder_url_(char *buffer, size_t size) const {
   if (this->ident_sw_ >= 0 && offset > 0 && offset < static_cast<int>(size))
     offset += snprintf(buffer + offset, size - offset, "&sw=%02X", this->ident_sw_);
   if (this->ident_gfa_ >= 0 && offset > 0 && offset < static_cast<int>(size))
-    snprintf(buffer + offset, size - offset, "&gfa=%02X", this->ident_gfa_);
+    offset += snprintf(buffer + offset, size - offset, "&gfa=%02X", this->ident_gfa_);
+  if (this->ident_f0_ >= 0 && offset > 0 && offset < static_cast<int>(size))
+    snprintf(buffer + offset, size - offset, "&f0=%04X", this->ident_f0_);
 
   return true;
 }

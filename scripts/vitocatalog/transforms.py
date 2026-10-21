@@ -201,8 +201,8 @@ def _is_rpc_reading(ev: Event, protocol: str = PROTO_P300) -> bool:
 
     * a READING: the procedure answers with a value. Some are called with a
       parameter (PrefixRead) naming one entry of a list -- Teilnehmerliste_LON_00..15
-      at 0xA010, sixteen rows sharing one address, prefix 00..0F, a 6-byte answer
-      each; others with none -- KesselfolgeIst and its siblings on a cascade
+      at 0xA010, sixteen rows sharing one address, prefix 00..0F, declared as a
+      6-byte block (VScotHO1_72 answers 5); others with none -- KesselfolgeIst and its siblings on a cascade
       controller, a 4-byte answer.
     * a PROCEDURE: a call with an effect -- RPCWink, valmRPCClearErrorHistoryTable,
       BedienparameterA1M1FunktionReset. Polling one would run it every cycle.
@@ -669,8 +669,9 @@ def _is_lon_bound_rpc(ev: Event) -> bool:
     The LON participant list and LON identity (_LON_RPC_ADDRESS), a LON
     module's own procedures (`vlon*`, e.g. vlonRPCGetBinding) and LON inputs read
     by procedure (ddcRPCnvi*, the RPC counterpart of _is_lon_input). Without a
-    LON module none of these answers with data, so the profiles treat them like
-    the LON inputs (_profile_keep). The other readings -- a cascade controller's
+    LON module they are still answered but hold only the unit's own defaults
+    (VScotHO1_72: own number 01/01, the other entries empty), so the profiles
+    treat them like the LON inputs (_profile_keep). The other readings -- a cascade controller's
     boiler sequence, an M-Bus module's state -- belong to the unit itself.
     """
     if not _is_rpc_reading(ev):

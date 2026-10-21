@@ -128,6 +128,7 @@ from vitocatalog import (  # noqa: E402, F401
     CONVERSION_MAP,
     COUNTER,
     DIV,
+    F0_ADDRESSES,
     FCREAD_TO_GWG_ACCESS,
     FCWRITE_TO_GWG_ACCESS,
     GFA_DIRNAME,
@@ -245,6 +246,7 @@ from vitocatalog import (  # noqa: E402, F401
     build_resolve_index,
     emit_entity,
     export_all,
+    f0_bytes,
     generate,
     gfa_chip_names,
     gfa_companion,
@@ -263,7 +265,11 @@ def main(argv=None) -> int:
     p.add_argument("--identify", help="device Identification hex (group<<8|ident), e.g. 0x20CB; auto-selects the revision")
     p.add_argument("--hw", help="hardware index hex (0xFA), used with --identify")
     p.add_argument("--sw", help="software index hex (0xFB), used with --identify")
-    p.add_argument("--f0", help="protocol identifier offset hex (0xF0), optional, used with --identify")
+    p.add_argument(
+        "--f0",
+        help="F0, the value at 0x00F0 (hex), optional, used with --identify: one byte, or the "
+        "two raw bytes the hub logs as F0=0xXXYY",
+    )
     p.add_argument("--list-devices", action="store_true", help="list device tokens (+ identification ranges) and exit")
     p.add_argument(
         "--profile",
@@ -428,7 +434,8 @@ def main(argv=None) -> int:
         ident_val = int(args.identify, 16)
         hw_val = int(args.hw, 16)
         sw_val = int(args.sw, 16)
-        f0_val = int(args.f0, 16) if args.f0 else None
+        # One byte, or the two raw bytes the hub logs as F0=0xXXYY (identify.f0_bytes).
+        f0_val = args.f0 or None
         token, why = catalog.resolve(ident_val, hw_val, sw_val, f0_val)
         if token is None:
             print(f"could not resolve device: {why}", file=sys.stderr)

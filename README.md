@@ -163,6 +163,12 @@ Find the matching datapoint catalog: https://soulsolistice.github.io/esphome_vit
 one). It selects the burner-control fault texts, which the finder adds as a
 small companion file next to the catalog.
 
+`F0=0xXXYY` appears on units that have Vitosoft's extended identification at
+`0x00F0` (on P300/KW; the link then carries `&f0=XXYY`). The hub passes the two
+bytes on raw; the finder uses them where a software-index range covers several
+variants (the Vitodens/Vitocrossal `VScotHO1_200*` and `VScotHC1_200*` families
+at software index `0xC8` and above) and ignores them everywhere else.
+
 Open the link, or paste the `Device` line into the finder, to get the catalog
 file for that controller. The device id alone is not enough: most ids cover
 several catalogs that differ by software index. The finder runs in the browser
@@ -420,8 +426,10 @@ button:
 for the remote procedure readings in Vitosoft's data. The unit's own readings --
 a cascade controller's boiler sequence, an M-Bus module's state -- are in the
 default profile. The LON-bound ones (the LON participant list, a Vitocom's LON
-identity, LON inputs read by procedure) answer only with a LON module and are in
-`--profile full` only.
+identity, LON inputs read by procedure) are answered without a LON module too,
+but then hold only the unit's own defaults, so they are in `--profile full` only.
+Confirmed on a VScotHO1_72: the unit answers remote procedure calls, and its
+participant list reads its own default number and empty slots.
 
 It also emits every **procedure** as an action button, in the default profile
 too: clear the fault history, reset a circuit's operating parameters,

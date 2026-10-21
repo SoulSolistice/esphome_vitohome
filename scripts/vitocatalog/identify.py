@@ -6,6 +6,44 @@ import json
 
 from .constants import RESOLVE_SCHEMA
 
+# Where each candidate F0 byte was read, in the order they are tried.
+F0_ADDRESSES = ("0x00F0", "0x00F1")
+
+
+def f0_bytes(value: int | str | None) -> list[int] | None:
+    """The candidate F0 bytes for an F0 value, in the order they are tried.
+
+    The export's F0 column is one byte (``30`` .. ``39``). The hub reads the two
+    bytes at 0x00F0/0x00F1 and passes them on raw (``F0=0x3000``), because
+    which of the two carries a device's F0 is not settled on a unit. So:
+
+    * one byte -- one or two hex digits, or an int <= 0xFF -- is that byte;
+    * two bytes -- three or four hex digits, or an int > 0xFF -- are tried as
+      the 0x00F0 byte first, the register that carries the name, then 0x00F1.
+
+    The finder (web/lookup.js, f0Bytes) applies the same rule. None for no F0
+    or text that is not hex.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        text = value.strip()
+        if text[:2].lower() == "0x":
+            text = text[2:]
+        if not text or len(text) > 4:
+            return None
+        try:
+            number = int(text, 16)
+        except ValueError:
+            return None
+        two = len(text) > 2
+    else:
+        number = int(value)
+        if not 0 <= number <= 0xFFFF:
+            return None
+        two = number > 0xFF
+    return [number >> 8, number & 0xFF] if two else [number]
+
 
 def _is_hw_sw_ext(ext: int | None) -> bool:
     """True when an IdentificationExtension is the 2-byte ``HW<<8 | SW`` form.
@@ -105,14 +143,16 @@ def resolve_device(
     device_id: int,
     hw: int,
     sw: int,
-    f0: int | None = None,
+    f0: int | str | None = None,
 ) -> tuple[str | None, str]:
     """Map live identification bytes to a datapoint-type token.
 
     ``resolve_pool()`` narrows the family by hardware and software index. If
     several entries share the software-index range, F0 -- the value at 0x00F0,
-    Vitosoft's "Erweiterte Gerätekennung (F0)" -- disambiguates; without F0, the generic variant
-    is preferred.
+    Vitosoft's "Erweiterte Gerätekennung (F0)" -- disambiguates; without F0, the
+    generic variant is preferred. *f0* is one byte or the two raw bytes the hub
+    reads (see f0_bytes); the first candidate byte inside a variant's range
+    decides, and the reason names the byte when there were two.
 
     Returns (token, reason) or (None, reason).
     """
@@ -130,11 +170,14 @@ def resolve_device(
 
     f0_aware = [t for t in pool if t["f0"] is not None]
     if f0_aware:
-        if f0 is not None:
-            fm = [t for t in f0_aware if t["f0"] <= f0 <= (t["f0t"] if t["f0t"] is not None else t["f0"])]
+        candidates = f0_bytes(f0)
+        # One byte uses the first address only; two use both, 0x00F0 first.
+        for at, byte in zip(F0_ADDRESSES, candidates or (), strict=False):
+            fm = [t for t in f0_aware if t["f0"] <= byte <= (t["f0t"] if t["f0t"] is not None else t["f0"])]
             if fm:
-                return fm[0]["token"], why + " + F0 match" + note
-        tail = " (F0 not provided; generic variant)" if f0 is None else " (no F0 match; generic variant)"
+                where = f" ({at})" if len(candidates) > 1 else ""
+                return fm[0]["token"], why + " + F0 match" + where + note
+        tail = " (F0 not provided; generic variant)" if candidates is None else " (no F0 match; generic variant)"
         return generic_of(pool)["token"], why + tail + note
     return pool[0]["token"], why + note
 

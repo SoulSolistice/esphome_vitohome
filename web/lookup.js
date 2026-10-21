@@ -17,10 +17,38 @@ function parseHex(text, max) {
   return value <= max ? value : null;
 }
 
+// Where each candidate F0 byte was read, in the order they are tried.
+const F0_ADDRESSES = ["0x00F0", "0x00F1"];
+
+// The candidate F0 bytes for an F0 value -- the same rule as
+// scripts/vitocatalog/identify.py f0_bytes. The export's F0 column is one byte;
+// the hub reads the two bytes at 0x00F0/0x00F1 and passes them on raw
+// (F0=0x3000, &f0=3000), since which of them carries a device's F0 is not
+// settled on a unit. One or two hex digits (or a number <= 0xFF) are one byte;
+// three or four (or a number > 0xFF) are two, tried 0x00F0 first.
+function f0Bytes(value) {
+  if (value === null || value === undefined) return null;
+  let number;
+  let two;
+  if (typeof value === "number") {
+    if (!Number.isInteger(value) || value < 0 || value > 0xffff) return null;
+    number = value;
+    two = value > 0xff;
+  } else {
+    const match = /^\s*(?:0x)?([0-9a-f]{1,4})\s*$/i.exec(String(value));
+    if (!match) return null;
+    number = parseInt(match[1], 16);
+    two = match[1].length > 2;
+  }
+  return two ? [number >> 8, number & 0xff] : [number];
+}
+
 // Reads the identification out of anything the hub prints, e.g.
 //   "Device: 0x2053 (GWG_VBEM) HW=0x01 SW=0x7A"
 // plus an optional "GFA=0x24": the burner-control chip, which selects the GFA
-// fault-text companion. Missing fields come back as null.
+// fault-text companion, and "F0=0x3000": the raw bytes at 0x00F0. Missing
+// fields come back as null; f0 comes back as its hex text, since its digit
+// count is what tells one byte from two (f0Bytes).
 function parseIdentification(text) {
   // Prefer the hub's own "Device:" / "Device identification:" line when a whole
   // log was pasted, so an unrelated 0xNNNN address earlier in it is not taken.
@@ -36,11 +64,12 @@ function parseIdentification(text) {
     const match = pattern.exec(source);
     return match ? parseHex(match[1], max) : null;
   };
+  const f0 = /\bF0\s*[=:]\s*(?:0x)?([0-9a-f]{1,4})\b/i.exec(source);
   return {
     id: pick(/\b0x([0-9a-f]{4})\b/i, 0xffff),
     hw: pick(/\bHW\s*[=:]\s*(?:0x)?([0-9a-f]{1,2})\b/i, 0xff),
     sw: pick(/\bSW\s*[=:]\s*(?:0x)?([0-9a-f]{1,2})\b/i, 0xff),
-    f0: pick(/\bF0\s*[=:]\s*(?:0x)?([0-9a-f]{1,4})\b/i, 0xffff),
+    f0: f0 ? f0[1].toUpperCase() : null,
     gfa: pick(/\bGFA\s*[=:]\s*(?:0x)?([0-9a-f]{1,2})\b/i, 0xff),
   };
 }
@@ -54,7 +83,9 @@ function catalogOf(data, token) {
 //   { kind: "family", ident, tokens: [{token, catalog}] }
 //   { kind: "need-sw", ident, tokens: [{token, catalog}] }
 //   { kind: "match", ident, token, catalog, how, hwIgnored, sw: [lo, hi],
-//     f0: null | "matched" | "missing" | "no-match", candidates, unranged }
+//     f0: null | "matched" | "missing" | "no-match", f0Address, candidates, unranged }
+// *f0* is one byte, the two raw bytes the hub reads, or their hex text (f0Bytes);
+// f0Address names the byte that matched when there were two.
 function lookup(data, id, hw, sw, f0) {
   if (id === null || id === undefined) return { kind: "unknown", ident: null };
   const ident = hex(id, 4);
@@ -76,13 +107,22 @@ function lookup(data, id, hw, sw, f0) {
   const run = runs.find((r) => r.sw[0] <= sw && sw <= r.sw[1]);
   let token = run.token;
   let f0State = null;
+  let f0Address = null;
   const candidates = (run.candidates || []).map((c) => ({ ...describe(c.token), f0: c.f0 }));
   if (candidates.some((c) => c.f0 !== null)) {
     f0State = "missing";
-    if (f0 !== null && f0 !== undefined) {
-      const hit = candidates.find((c) => c.f0 !== null && c.f0[0] <= f0 && f0 <= c.f0[1]);
-      f0State = hit ? "matched" : "no-match";
-      if (hit) token = hit.token;
+    const bytes = f0Bytes(f0);
+    if (bytes !== null) {
+      f0State = "no-match";
+      for (let i = 0; i < bytes.length; i++) {
+        const hit = candidates.find((c) => c.f0 !== null && c.f0[0] <= bytes[i] && bytes[i] <= c.f0[1]);
+        if (hit) {
+          f0State = "matched";
+          token = hit.token;
+          if (bytes.length > 1) f0Address = F0_ADDRESSES[i];
+          break;
+        }
+      }
     }
   }
   return {
@@ -95,11 +135,12 @@ function lookup(data, id, hw, sw, f0) {
     hwCatalogued: Object.keys(entry.hw),
     sw: run.sw,
     f0: f0State,
+    f0Address,
     candidates,
     unranged: (entry.unranged || []).map(describe),
   };
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { lookup, parseIdentification, parseHex };
+  module.exports = { lookup, parseIdentification, parseHex, f0Bytes };
 }
