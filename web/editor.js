@@ -359,6 +359,23 @@ function buildExportYaml(allEntities, anchorRegistry, meta = {}) {
   return out.join("\n").trimEnd() + "\n";
 }
 
+// Only catalog names ("v200kw1.yaml", "gfa/chip_20.yaml") and the two
+// languages are ever fetched or linked, wherever the value came from (URL
+// parameter, dropdown, stored preference).
+function catalogFileOrEmpty(name) {
+  const s = String(name || "");
+  return /^(gfa\/)?[A-Za-z0-9_.-]+\.ya?ml$/.test(s) && !s.includes("..") ? s : "";
+}
+
+function langOrNull(lang) {
+  return lang === "de" || lang === "en" ? lang : null;
+}
+
+// "<lang>/<file>" below example/catalogs/, each segment URL-encoded.
+function catalogPath(lang, file) {
+  return [lang, ...file.split("/")].map(encodeURIComponent).join("/");
+}
+
 function initEditorUI() {
   const $ = (id) => document.getElementById(id);
 
@@ -380,19 +397,16 @@ function initEditorUI() {
 
   function initParams() {
     const params = new URLSearchParams(location.search);
-    const askedLang = params.get("lang");
-    if (askedLang === "de" || askedLang === "en") {
+    const askedLang = langOrNull(params.get("lang"));
+    if (askedLang) {
       currentLang = askedLang;
     } else {
       try {
-        const kept = localStorage.getItem("vitohome-lang");
-        if (kept === "de" || kept === "en") currentLang = kept;
+        currentLang = langOrNull(localStorage.getItem("vitohome-lang")) || currentLang;
       } catch (e) { /* ignore */ }
     }
     $("lang-select").value = currentLang;
-    // Only catalog names ("v200kw1.yaml", "gfa/chip_20.yaml") are fetched.
-    const askedFile = params.get("file") || "";
-    currentFile = /^(gfa\/)?[A-Za-z0-9_.-]+\.ya?ml$/.test(askedFile) && !askedFile.includes("..") ? askedFile : "";
+    currentFile = catalogFileOrEmpty(params.get("file"));
     currentGfa = (params.get("gfa") || "").toUpperCase();
   }
 
@@ -881,13 +895,14 @@ function initEditorUI() {
     localFile = false;
     const seq = ++loadSeq;
     $("catalog-select").value = currentFile;
-    const rawUrl = `${RAW_BASE}${currentLang}/${currentFile}`;
+    const path = catalogPath(currentLang, currentFile);
+    const rawUrl = RAW_BASE + path;
     $("raw-link").href = rawUrl;
     showStatus(`Loading example/catalogs/${currentLang}/${currentFile}…`);
 
     const candidates = [
-      `catalogs/${currentLang}/${currentFile}`,
-      `../example/catalogs/${currentLang}/${currentFile}`,
+      `catalogs/${path}`,
+      `../example/catalogs/${path}`,
       rawUrl
     ];
 
@@ -969,7 +984,7 @@ function initEditorUI() {
   });
 
   $("catalog-select").addEventListener("change", () => {
-    const picked = $("catalog-select").value;
+    const picked = catalogFileOrEmpty($("catalog-select").value);
     if (!picked) return;
     currentFile = picked;
     const url = new URL(location.href);
@@ -979,7 +994,9 @@ function initEditorUI() {
   });
 
   $("lang-select").addEventListener("change", () => {
-    currentLang = $("lang-select").value;
+    const picked = langOrNull($("lang-select").value);
+    if (!picked) return;
+    currentLang = picked;
     try { localStorage.setItem("vitohome-lang", currentLang); } catch (e) { /* ignore */ }
     const url = new URL(location.href);
     url.searchParams.set("lang", currentLang);
