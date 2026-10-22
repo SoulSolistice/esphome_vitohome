@@ -17,38 +17,33 @@ function parseHex(text, max) {
   return value <= max ? value : null;
 }
 
-// Where each candidate F0 byte was read, in the order they are tried.
-const F0_ADDRESSES = ["0x00F0", "0x00F1"];
-
-// The candidate F0 bytes for an F0 value -- the same rule as
-// scripts/vitocatalog/identify.py f0_bytes. The export's F0 column is one byte;
-// the hub reads the two bytes at 0x00F0/0x00F1 and passes them on raw
-// (F0=0x3000, &f0=3000), since which of them carries a device's F0 is not
-// settled on a unit. One or two hex digits (or a number <= 0xFF) are one byte;
-// three or four (or a number > 0xFF) are two, tried 0x00F0 first.
-function f0Bytes(value) {
+// The F0 value the export's F0 ranges are compared against -- the same rule as
+// scripts/vitocatalog/identify.py f0_value. Vitosoft reads F0 at 0x00F0 as one
+// signed 16-bit little-endian integer and keeps its ranges in decimal (30..39
+// is 30..39, not 0x30..0x39). A number is the value itself; four hex digits
+// (with or without 0x) are the two raw bytes the hub logs in register order,
+// read little-endian (F0=0x1E00, &f0=1E00 -> 30; FF FF -> -1, in no range);
+// one to three decimal digits are the value as Vitosoft writes it ("30").
+function f0Value(value) {
   if (value === null || value === undefined) return null;
-  let number;
-  let two;
   if (typeof value === "number") {
-    if (!Number.isInteger(value) || value < 0 || value > 0xffff) return null;
-    number = value;
-    two = value > 0xff;
-  } else {
-    const match = /^\s*(?:0x)?([0-9a-f]{1,4})\s*$/i.exec(String(value));
-    if (!match) return null;
-    number = parseInt(match[1], 16);
-    two = match[1].length > 2;
+    return Number.isInteger(value) && value >= -0x8000 && value <= 0x7fff ? value : null;
   }
-  return two ? [number >> 8, number & 0xff] : [number];
+  const text = String(value).trim();
+  const raw = /^(?:0x)?([0-9a-f]{4})$/i.exec(text);
+  if (raw) {
+    const number = parseInt(raw[1].slice(0, 2), 16) | (parseInt(raw[1].slice(2), 16) << 8);
+    return number >= 0x8000 ? number - 0x10000 : number;
+  }
+  return /^[0-9]{1,3}$/.test(text) ? parseInt(text, 10) : null;
 }
 
 // Reads the identification out of anything the hub prints, e.g.
 //   "Device: 0x2053 (GWG_VBEM) HW=0x01 SW=0x7A"
 // plus an optional "GFA=0x24": the burner-control chip, which selects the GFA
-// fault-text companion, and "F0=0x3000": the raw bytes at 0x00F0. Missing
-// fields come back as null; f0 comes back as its hex text, since its digit
-// count is what tells one byte from two (f0Bytes).
+// fault-text companion, and "F0=0x1E00": the raw bytes at 0x00F0. Missing
+// fields come back as null; f0 comes back as text -- four hex digits are the
+// hub's raw bytes, up to three decimal digits the value itself (f0Value).
 function parseIdentification(text) {
   // Prefer the hub's own "Device:" / "Device identification:" line when a whole
   // log was pasted, so an unrelated 0xNNNN address earlier in it is not taken.
@@ -64,12 +59,12 @@ function parseIdentification(text) {
     const match = pattern.exec(source);
     return match ? parseHex(match[1], max) : null;
   };
-  const f0 = /\bF0\s*[=:]\s*(?:0x)?([0-9a-f]{1,4})\b/i.exec(source);
+  const f0 = /\bF0\s*[=:]\s*(?:(?:0x)?([0-9a-f]{4})|([0-9]{1,3}))\b/i.exec(source);
   return {
     id: pick(/\b0x([0-9a-f]{4})\b/i, 0xffff),
     hw: pick(/\bHW\s*[=:]\s*(?:0x)?([0-9a-f]{1,2})\b/i, 0xff),
     sw: pick(/\bSW\s*[=:]\s*(?:0x)?([0-9a-f]{1,2})\b/i, 0xff),
-    f0: f0 ? f0[1].toUpperCase() : null,
+    f0: f0 ? (f0[1] || f0[2]).toUpperCase() : null,
     gfa: pick(/\bGFA\s*[=:]\s*(?:0x)?([0-9a-f]{1,2})\b/i, 0xff),
   };
 }
@@ -83,9 +78,9 @@ function catalogOf(data, token) {
 //   { kind: "family", ident, tokens: [{token, catalog}] }
 //   { kind: "need-sw", ident, tokens: [{token, catalog}] }
 //   { kind: "match", ident, token, catalog, how, hwIgnored, sw: [lo, hi],
-//     f0: null | "matched" | "missing" | "no-match", f0Address, candidates, unranged }
-// *f0* is one byte, the two raw bytes the hub reads, or their hex text (f0Bytes);
-// f0Address names the byte that matched when there were two.
+//     f0: null | "matched" | "missing" | "no-match", f0Value, candidates, unranged }
+// *f0* is the F0 value, its decimal text, or the hub's four raw hex digits
+// (f0Value); f0Value is the value compared, null when F0 was not given.
 function lookup(data, id, hw, sw, f0) {
   if (id === null || id === undefined) return { kind: "unknown", ident: null };
   const ident = hex(id, 4);
@@ -107,21 +102,17 @@ function lookup(data, id, hw, sw, f0) {
   const run = runs.find((r) => r.sw[0] <= sw && sw <= r.sw[1]);
   let token = run.token;
   let f0State = null;
-  let f0Address = null;
+  let value = null;
   const candidates = (run.candidates || []).map((c) => ({ ...describe(c.token), f0: c.f0 }));
   if (candidates.some((c) => c.f0 !== null)) {
     f0State = "missing";
-    const bytes = f0Bytes(f0);
-    if (bytes !== null) {
+    value = f0Value(f0);
+    if (value !== null) {
       f0State = "no-match";
-      for (let i = 0; i < bytes.length; i++) {
-        const hit = candidates.find((c) => c.f0 !== null && c.f0[0] <= bytes[i] && bytes[i] <= c.f0[1]);
-        if (hit) {
-          f0State = "matched";
-          token = hit.token;
-          if (bytes.length > 1) f0Address = F0_ADDRESSES[i];
-          break;
-        }
+      const hit = candidates.find((c) => c.f0 !== null && c.f0[0] <= value && value <= c.f0[1]);
+      if (hit) {
+        f0State = "matched";
+        token = hit.token;
       }
     }
   }
@@ -135,12 +126,12 @@ function lookup(data, id, hw, sw, f0) {
     hwCatalogued: Object.keys(entry.hw),
     sw: run.sw,
     f0: f0State,
-    f0Address,
+    f0Value: value,
     candidates,
     unranged: (entry.unranged || []).map(describe),
   };
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { lookup, parseIdentification, parseHex, f0Bytes };
+  module.exports = { lookup, parseIdentification, parseHex, f0Value };
 }

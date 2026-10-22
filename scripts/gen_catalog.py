@@ -128,7 +128,6 @@ from vitocatalog import (  # noqa: E402, F401
     CONVERSION_MAP,
     COUNTER,
     DIV,
-    F0_ADDRESSES,
     FCREAD_TO_GWG_ACCESS,
     FCWRITE_TO_GWG_ACCESS,
     GFA_DIRNAME,
@@ -167,6 +166,7 @@ from vitocatalog import (  # noqa: E402, F401
     _clean_name,
     _codes_lines,
     _declared_unsigned,
+    _decode_ext_value,
     _dedup_option_labels,
     _device_class_for,
     _device_id_lines,
@@ -226,6 +226,7 @@ from vitocatalog import (  # noqa: E402, F401
     _resolve_run_key,
     _resolve_runs,
     _resolve_unit,
+    _rpc_action_parameter,
     _rpc_array_records,
     _rpc_prefix,
     _scale_from_bounds,
@@ -246,7 +247,7 @@ from vitocatalog import (  # noqa: E402, F401
     build_resolve_index,
     emit_entity,
     export_all,
-    f0_bytes,
+    f0_value,
     generate,
     gfa_chip_names,
     gfa_companion,
@@ -267,8 +268,8 @@ def main(argv=None) -> int:
     p.add_argument("--sw", help="software index hex (0xFB), used with --identify")
     p.add_argument(
         "--f0",
-        help="F0, the value at 0x00F0 (hex), optional, used with --identify: one byte, or the "
-        "two raw bytes the hub logs as F0=0xXXYY",
+        help="F0, the value at 0x00F0, optional, used with --identify: decimal as Vitosoft writes it "
+        "(30), or the two raw bytes the hub logs as F0=0xXXYY (1E00 = 30, little-endian)",
     )
     p.add_argument("--list-devices", action="store_true", help="list device tokens (+ identification ranges) and exit")
     p.add_argument(
@@ -434,7 +435,7 @@ def main(argv=None) -> int:
         ident_val = int(args.identify, 16)
         hw_val = int(args.hw, 16)
         sw_val = int(args.sw, 16)
-        # One byte, or the two raw bytes the hub logs as F0=0xXXYY (identify.f0_bytes).
+        # Decimal, or the two raw bytes the hub logs as F0=0xXXYY (identify.f0_value).
         f0_val = args.f0 or None
         token, why = catalog.resolve(ident_val, hw_val, sw_val, f0_val)
         if token is None:

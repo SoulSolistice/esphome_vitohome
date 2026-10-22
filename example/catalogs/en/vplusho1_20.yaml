@@ -5828,6 +5828,7 @@ button:
     id: Konfi_FunktionReset_GWG
     address: 0xA050
     access: rpc  # Vitosoft Remote_Procedure_Call
+    prefix: [0x00]  # Vitosoft FunctionValue 0x00
     entity_category: config
     disabled_by_default: true
 

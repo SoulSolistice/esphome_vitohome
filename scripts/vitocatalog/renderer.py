@@ -41,6 +41,7 @@ from .transforms import (
     _profile_keep,
     _protocol_for_device,
     _read_only_blocks,
+    _rpc_action_parameter,
     _rpc_array_records,
     _rpc_prefix,
 )
@@ -261,6 +262,7 @@ def generate(
     rpc_readings = 0  # emitted with `access: rpc` (P300 remote procedure readings)
     dropped_rpc_readings = 0  # left out by the profile (_profile_keep)
     rpc_actions = 0  # procedures emitted as `type: action` buttons (_is_rpc_action)
+    dropped_bare_actions = 0  # no parameter where siblings take one (_rpc_selector_addresses)
     seen_actions: set[tuple] = set()
     dropped_wide_addr = 0
     history_suppressed = False
@@ -339,12 +341,18 @@ def generate(
 
         # A procedure (P300): one `type: action` button, disabled by default and
         # under a warning, in every profile but minimal -- an action is not a
-        # value, and minimal keeps values. The parameter is PrefixWrite.
+        # value, and minimal keeps values. The parameter is PrefixWrite, else
+        # FunctionValue (_rpc_action_parameter).
         if _is_rpc_action(ev, protocol):
             target = ev.name or ""
             if profile == "minimal" or (inc and not inc.search(target)) or (exc and exc.search(target)):
                 continue
-            prefix = _rpc_prefix(ev, "prefix_write")
+            prefix, prefix_source = _rpc_action_parameter(ev)
+            if not prefix and ev.address in catalog.rpc_selector_addresses():
+                # Its siblings pick their function by the parameter; this one
+                # names none, so a press would call the address blind.
+                dropped_bare_actions += 1
+                continue
             key = (ev.address, tuple(prefix))
             if key in seen_actions:
                 continue
@@ -357,7 +365,7 @@ def generate(
                 access="rpc",
                 access_source=ev.fc_write,
                 prefix=prefix,
-                prefix_source=f"PrefixWrite {ev.prefix_write}" if prefix else None,
+                prefix_source=prefix_source,
                 entity_category="config",
                 disabled_by_default=True,
                 leading_comments=list(ACTION_WARNING),
@@ -554,6 +562,11 @@ def generate(
         out.append("# buttons, all disabled by default. Pressing one RUNS it on the controller")
         out.append("# -- some clear a history, some reset settings or codings to their")
         out.append("# defaults. Read each one's name before you enable it.")
+        out.append("#")
+    if dropped_bare_actions:
+        out.append(f"# Procedures omitted: {dropped_bare_actions} without a parameter at an address where")
+        out.append("# the export calls others with one (e.g. 0xA050, whose parameter picks the")
+        out.append("# function); called without it, the procedure would name no function.")
         out.append("#")
     if dropped_rpc_readings:
         out.append(f"# Remote procedure readings omitted: {dropped_rpc_readings} (the LON participant")

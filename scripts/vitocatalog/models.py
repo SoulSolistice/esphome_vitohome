@@ -77,6 +77,11 @@ class Event:
     # The parameter a Remote_Procedure_Call write -- a procedure's call -- takes
     # (PrefixWrite). Equal to prefix_read wherever both are given.
     prefix_write: str = ""
+    # Vitosoft's value for a function call (table extension FunctionValue, e.g.
+    # "0x00"; only in DPDefinitions' ecnTableExtensionValue). On a procedure
+    # without PrefixWrite it is the call's parameter: see
+    # transforms._rpc_action_parameter().
+    function_value: str = ""
     # Access-layer value transform: value = raw * conv_factor + conv_offset.
     # None when absent or when the export carries its placeholder pair (see
     # _FACTOR_PLACEHOLDERS). Consumed for MultOffset and for identity

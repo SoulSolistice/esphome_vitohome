@@ -11,8 +11,10 @@ const catalogPath = (file) => "example/catalogs/" + lang + "/" + file;
 
 const $ = (id) => document.getElementById(id);
 const fields = { id: $("id"), hw: $("hw"), sw: $("sw"), f0: $("f0"), gfa: $("gfa") };
-const limits = { id: 0xffff, hw: 0xff, sw: 0xff, f0: 0xffff, gfa: 0xff };
-const widths = { id: 4, hw: 2, sw: 2, f0: 2, gfa: 2 };
+// F0 is not a hex byte like the others: f0Value (lookup.js) reads it.
+const limits = { id: 0xffff, hw: 0xff, sw: 0xff, gfa: 0xff };
+const widths = { id: 4, hw: 2, sw: 2, gfa: 2 };
+const readField = (key, text) => key === "f0" ? f0Value(text) : parseHex(text, limits[key]);
 let data = null;
 
 function pickLanguage() {
@@ -80,7 +82,8 @@ function tokenTable(entries, picked, withF0) {
     const row = el("tr", entry.token === picked ? { class: "picked" } : {}, el("td", { class: "mono" }, entry.token));
     if (withF0) {
       const f0 = entry.f0;
-      row.append(el("td", { class: "mono" }, !f0 ? "any" : f0[0] === f0[1] ? hexOf(f0[0], 2) : hexOf(f0[0], 2) + "–" + hexOf(f0[1], 2)));
+      // Decimal, as Vitosoft lists F0 (the _30 of VScotHO1_200_30).
+      row.append(el("td", { class: "mono" }, !f0 ? "any" : f0[0] === f0[1] ? String(f0[0]) : f0[0] + "–" + f0[1]));
     }
     row.append(el("td", {}, catalogCell(entry)));
     body.append(row);
@@ -166,16 +169,13 @@ function render() {
   out.replaceChildren();
   if (!data) return;
   const v = {};
-  for (const key of Object.keys(fields)) v[key] = parseHex(fields[key].value, limits[key]);
-  // F0 is passed on as text: its digit count tells one byte from the two raw
-  // bytes the hub reads (f0Bytes in lookup.js).
-  const f0Text = v.f0 === null ? null : fields.f0.value.trim();
+  for (const key of Object.keys(fields)) v[key] = readField(key, fields[key].value);
   for (const key of Object.keys(fields)) {
     fields[key].setAttribute("aria-invalid", fields[key].value.trim() !== "" && v[key] === null ? "true" : "false");
   }
   if (v.id === null) return;
 
-  const r = lookup(data, v.id, v.hw, v.sw, f0Text);
+  const r = lookup(data, v.id, v.hw, v.sw, v.f0);
   const panel = el("div", { class: "panel" });
   out.append(panel);
   const idText = hexOf(v.id, 4);
@@ -230,13 +230,12 @@ function render() {
   }
   if (r.f0 !== null) {
     panel.append(note(r.f0 === "matched" ? "" : "warn-note",
-      el("p", {}, "For software index " + swRange + " this device has several variants, told apart by the value at address ",
-        el("code", {}, "0x00F0"), " (Vitosoft: Erweiterte Gerätekennung, F0). The hub reads the two bytes there and logs them raw as ",
-        el("code", {}, "F0=0x…"), "; with two bytes the finder tries ", el("code", {}, "0x00F0"), " first, then ", el("code", {}, "0x00F1"),
-        ", since which one carries F0 is not yet confirmed on a unit. ",
+      el("p", {}, "For software index " + swRange + " this device has several variants, told apart by F0 (Vitosoft: Erweiterte Gerätekennung): the two bytes at ",
+        el("code", {}, "0x00F0"), " read as one little-endian number, compared in decimal. The hub logs the raw bytes, e.g. ",
+        el("code", {}, "F0=0x1E00"), " for F0 30, the ", el("code", {}, "_30"), " of ", el("code", {}, "VScotHO1_200_30"), ". ",
         r.f0 === "matched"
-          ? (r.f0Address ? "The byte at " + r.f0Address + " selects the highlighted variant." : "Your F0 value selects the highlighted variant.")
-          : r.f0 === "no-match" ? "Your F0 value matches none of the listed ranges; the generic variant is highlighted."
+          ? "F0 " + r.f0Value + " selects the highlighted variant."
+          : r.f0 === "no-match" ? "F0 " + r.f0Value + " matches none of the listed ranges; the generic variant is highlighted."
           : "Without it, the generic variant is highlighted."),
       tokenTable([...r.candidates].sort((a, b) => (a.f0 ? a.f0[0] : -1) - (b.f0 ? b.f0[0] : -1)), r.token, true)));
   }
@@ -259,9 +258,9 @@ function fromLine() {
 function fromQuery() {
   const params = new URLSearchParams(location.search);
   for (const key of Object.keys(fields)) {
-    const value = parseHex(params.get(key), limits[key]);
+    const value = readField(key, params.get(key));
     if (value === null) continue;
-    // F0 keeps its digits: four are the hub's two raw bytes (f0Bytes).
+    // F0 keeps its digits: four are the hub's two raw bytes (f0Value).
     fields[key].value = key === "f0" ? params.get(key).trim().replace(/^0x/i, "").toUpperCase()
       : value.toString(16).toUpperCase().padStart(widths[key], "0");
   }
@@ -289,7 +288,7 @@ $("line").addEventListener("input", fromLine);
 for (const input of Object.values(fields)) input.addEventListener("input", render);
 fromQuery();
 loadData().then((loaded) => {
-  if (!loaded || loaded.schema !== 1) {
+  if (!loaded || loaded.schema !== 2) {
     $("result").replaceChildren(el("div", { class: "panel" }, el("h2", {}, "Lookup data unavailable"),
       el("p", {}, "resolve.json could not be loaded or has an unexpected format.")));
     return;

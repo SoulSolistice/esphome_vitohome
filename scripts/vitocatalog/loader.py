@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 from collections import defaultdict
 import os
 import re
+import struct
 import sys
 import xml.etree.ElementTree as ET
 
 import units
 
-from .constants import _CONTAINER_PREFIXES, _CULTURES, _FACTOR_PLACEHOLDERS, _WANTED_ROWS
+from .constants import _CONTAINER_PREFIXES, _CULTURES, _FACTOR_PLACEHOLDERS, _WANTED_EXTENSIONS, _WANTED_ROWS
 from .identify import generic_of, resolve_device, resolve_pool
 from .models import Event, EventValue
+from .transforms import _rpc_selector_addresses
 
 
 def _local(tag: str) -> str:
@@ -46,6 +50,65 @@ def _hx(s) -> int | None:
     try:
         return int(s, 16)
     except (ValueError, TypeError):
+        return None
+
+
+def _f0(s) -> int | None:
+    """An F0 / F0Till column: a DECIMAL integer (Vitosoft keeps it as Int32;
+    ``30`` is 30, not 0x30 -- see identify.f0_value). Vitosoft's -1 means no F0."""
+    if not s:
+        return None
+    try:
+        v = int(s.strip(), 10)
+    except (ValueError, TypeError, AttributeError):
+        return None
+    return v if v >= 0 else None
+
+
+def _netbf_string(b: bytes, i: int) -> tuple[str, int]:
+    """A .NET length-prefixed string at *i* (7-bit varint length, UTF-8):
+    (text, index after it)."""
+    n = shift = 0
+    while True:
+        c = b[i]
+        i += 1
+        n |= (c & 0x7F) << shift
+        shift += 7
+        if not c & 0x80:
+            break
+    return b[i : i + n].decode("utf-8"), i + n
+
+
+# PrimitiveTypeEnum -> struct format, for the types table extensions box:
+# Boolean, Double, Int32.
+_NETBF_PRIMITIVES = {1: "<?", 6: "<d", 8: "<i"}
+
+
+def _decode_ext_value(text: str | None) -> str | int | float | bool | None:
+    """One ecnTableExtensionValue.InternalValue: Base64 of a .NET BinaryFormatter
+    stream holding a single string, or a single boxed Int32 / Double / Boolean
+    (the field's InternalDataType). None for anything else.
+
+    After the 17-byte header comes one record: 0x06 BinaryObjectString (object
+    id, then the string), or 0x04 SystemClassWithMembersAndTypes for a boxed
+    primitive (object id, class name, one member name, its binary type
+    Primitive and primitive type, then the value)."""
+    try:
+        b = base64.b64decode((text or "").strip(), validate=True)
+        if len(b) < 18 or b[0] != 0x00:
+            return None
+        i = 17
+        if b[i] == 0x06:
+            return _netbf_string(b, i + 5)[0]
+        if b[i] != 0x04:
+            return None
+        _cls, i = _netbf_string(b, i + 5)
+        if struct.unpack_from("<i", b, i)[0] != 1:
+            return None
+        _member, i = _netbf_string(b, i + 4)
+        fmt = _NETBF_PRIMITIVES.get(b[i + 1]) if b[i] == 0x00 else None
+        return struct.unpack_from(fmt, b, i + 2)[0] if fmt else None
+    except (binascii.Error, IndexError, struct.error, UnicodeDecodeError, ValueError):
         return None
 
 
@@ -344,8 +407,8 @@ def _load_identification(path: str | None) -> list[dict]:
                     "ident": _hx(ident),
                     "ext": _hx(ext),
                     "extt": _hx(extt),
-                    "f0": _hx(_child(e, "F0")),
-                    "f0t": _hx(_child(e, "F0Till")),
+                    "f0": _f0(_child(e, "F0")),
+                    "f0t": _f0(_child(e, "F0Till")),
                     # Vitosoft's fault-code family: 1 Default (Vitotronic),
                     # 2 Vitocom, 3 heat pump, 4 BHKW, 6 WPR3, 7 Vitotwin; absent
                     # on M-Bus/GWG/gateway rows. Gates the generic fault texts.
@@ -379,8 +442,12 @@ class Catalog:
         glinks: dict | None = None,
         german: dict | None = None,
         culture: str = "de",
+        ext: dict | None = None,
     ):
         self.devices = types  # token -> datapoint-type Id
+        # Decoded table-extension values (_WANTED_EXTENSIONS):
+        # (TableName, FieldName) -> {row Id: value}.
+        self._ext = ext or {}
         self._dp_name = dp_name  # Id -> display name
         self._links = links  # dp_id -> [event_id]
         self._vlinks = vlinks  # event_id -> [value_id]
@@ -404,6 +471,7 @@ class Catalog:
         self._menu_cache: dict | None = None
         self._menu_cache_sig: tuple[int, int] | None = None
         self._group_cache: dict = {}
+        self._rpc_selectors: frozenset | None = None  # see rpc_selector_addresses()
         self._values = {vid: self._mk_value(f) for vid, f in raw_values.items()}
         self._events = {eid: self._mk_event(eid, f) for eid, f in raw_events.items()}
 
@@ -533,6 +601,7 @@ class Catalog:
             fc_write=(acc.get("fc_write") or f.get("FCWrite") or ""),
             prefix_read=(acc.get("prefix_read") or f.get("PrefixRead") or "").strip(),
             prefix_write=(acc.get("prefix_write") or f.get("PrefixWrite") or "").strip(),
+            function_value=str(self._ext.get(("ecnEventType", "FunctionValue"), {}).get(eid, "")).strip(),
             parameter_type=(acc.get("parameter_type") or f.get("Parameter") or "").strip(),
             conv_factor=_fval("conversion_factor", "ConversionFactor", is_factor=True),
             conv_offset=_fval("conversion_offset", "ConversionOffset", is_factor=False),
@@ -628,6 +697,13 @@ class Catalog:
             self._fault_index = (dict(per_device), generic, dict(gfa))
         return self._fault_index
 
+    def rpc_selector_addresses(self) -> frozenset:
+        """Addresses the export calls some procedure at with a parameter, over
+        every event (transforms._rpc_selector_addresses). Built on first use."""
+        if self._rpc_selectors is None:
+            self._rpc_selectors = _rpc_selector_addresses(self._events.values())
+        return self._rpc_selectors
+
     def identification_for(self, token: str) -> dict:
         for r in self._ident:
             if r.get("token") == token:
@@ -670,6 +746,12 @@ def load_catalog(data_dir: str, culture: str = "de") -> Catalog:
     raw_values: dict = {}
     groups: dict = {}
     glinks: dict = defaultdict(list)
+    # ecnTableExtensionValue comes before the ecnTableExtension rows that say
+    # which field a RefId is, so the raw values are kept until the end; the
+    # Base64 strings repeat a lot and are shared.
+    ext_fields: dict = {}  # RefId -> (TableName, FieldName)
+    ext_raw: dict = defaultdict(dict)  # RefId -> {row Id: Base64}
+    shared: dict = {}
 
     context = ET.iterparse(dp_path, events=("start", "end"))
     _, root = next(context)
@@ -713,12 +795,26 @@ def load_catalog(data_dir: str, culture: str = "de") -> Catalog:
                 e, gid = f.get("EventTypeId"), f.get("EventTypeGroupId")
                 if e and gid:
                     glinks[e].append((gid, _intval(f.get("EventTypeOrder")) or 0))
+            elif ln == "ecnTableExtension":
+                if f.get("Id"):
+                    ext_fields[f["Id"]] = (f.get("TableName") or "", f.get("FieldName") or "")
+            elif ln == "ecnTableExtensionValue":
+                ref, value = f.get("RefId"), f.get("InternalValue")
+                row_id = (f.get("PkValue") or "").split(";", 1)[0]  # "Id;CompanyId"
+                if ref and row_id and value:
+                    ext_raw[ref][row_id] = shared.setdefault(value, value)
         if ln.startswith(_CONTAINER_PREFIXES):
             # Free the finished row / dataset, and drop finished children from
             # the root so it does not grow with the file.
             el.clear()
             if len(root) > 1000:
                 del root[:-1]
+
+    ext: dict = {}
+    for ref, key in ext_fields.items():
+        if key in _WANTED_EXTENSIONS:
+            decoded = {row_id: _decode_ext_value(v) for row_id, v in ext_raw.get(ref, {}).items()}
+            ext[key] = {row_id: v for row_id, v in decoded.items() if v not in (None, "")}
 
     return Catalog(
         types,
@@ -734,4 +830,5 @@ def load_catalog(data_dir: str, culture: str = "de") -> Catalog:
         glinks=glinks,
         german=german,
         culture=culture,
+        ext=ext,
     )

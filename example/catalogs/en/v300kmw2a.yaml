@@ -17,6 +17,10 @@
 # -- some clear a history, some reset settings or codings to their
 # defaults. Read each one's name before you enable it.
 #
+# Procedures omitted: 1 without a parameter at an address where
+# the export calls others with one (e.g. 0xA050, whose parameter picks the
+# function); called without it, the procedure would name no function.
+#
 # Remote procedure readings omitted: 16 (the LON participant
 # list and LON identity, read by P300 function code 0x07). Without a LON
 # module they hold only the unit's own defaults. --profile full includes them.
@@ -8683,6 +8687,7 @@ button:
     id: Konfi_FunktionReset_GWG
     address: 0xA050
     access: rpc  # Vitosoft Remote_Procedure_Call
+    prefix: [0x00]  # Vitosoft FunctionValue 0x00
     entity_category: config
     disabled_by_default: true
 

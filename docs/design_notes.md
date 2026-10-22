@@ -521,6 +521,29 @@ so `_is_rpc_action` keeps the procedures that take none:
 | borders, a unit or a numeric type | `RPCLesenFehlertabelle` (0..74), `RPCKonfigTrendingZeitintervall*` (seconds), `RPCSetImpulseCounter*` (`Int4`) | no: a setter |
 | read+write that answers | `RPCSetDigitalOutput*` | no: a setter |
 
+Where a procedure has no `PrefixWrite`, its parameter is Vitosoft's
+`FunctionValue`, a table extension the export keeps only in `DPDefinitions.xml`
+(`ecnTableExtensionValue`, Base64 of a .NET BinaryFormatter value;
+`loader._decode_ext_value`). It matters at `0xA050`, one procedure whose
+parameter picks the function: `WPR3_Konfi_FunktionNeustart` (restart) carries
+`15` as `PrefixWrite` and `0x15` as `FunctionValue`, but
+`Konfi_FunktionReset_GWG` ("Anlieferzustand Codierungen", every coding back to
+factory state) and `WPR3_Reset_Parameter_ALZ` name theirs, `0x00` and `0x2E`,
+only in `FunctionValue`. Before, the coding reset was emitted with no
+parameter at all, a call to `0xA050` that names no function. On every action
+that has both fields they agree; a `FunctionValue` that does not parse as one
+byte (hex with `0x`, else decimal) keeps the procedure out, as an unparsable
+`PrefixWrite` does (`_rpc_action_parameter`).
+
+A procedure that names no function in either field is left out where the
+export calls the same address with a parameter anywhere
+(`_rpc_selector_addresses`, over the whole export, since a device may link the
+bare sibling alone): `Konfi_ParameterFunktionReset` at `0xA050` and the
+Vitocom's `RPCLoeschenMBusTrendingKanal` at `0xA0A4`, whose sixteen siblings
+each name a channel. The catalog header counts them ("Procedures omitted").
+Before, the `(address, parameter)` de-duplication hid
+`Konfi_ParameterFunktionReset` behind the bare coding reset by accident.
+
 That is 984 buttons over the 201 shipped catalogs: three to eight on a
 controller (VScotHO1_72: the three circuit resets, the coding reset, clearing
 the fault history and the LON participant list), and most of the rest on the
@@ -1092,8 +1115,8 @@ Then, on P300 and KW too, **`0x00F0`, two bytes: F0** (below). Read on every
 unit the same way and for the same reason; the hub does not interpret it. A
 unit without it answers with an error frame (P300) or `FF FF` fill (KW), which
 leaves it unknown; `00 00` is a value (the generic variant of a family F0
-subdivides). It is logged raw in register order (`F0=0x3000`: `0x30` at
-`0x00F0`, `0x00` at `0x00F1`) and linked as `&f0=3000`.
+subdivides). It is logged raw in register order (`F0=0x1E00`: `0x1E` at
+`0x00F0`, `0x00` at `0x00F1`, which is F0 30) and linked as `&f0=1E00`.
 
 Each field that can't be read is left unknown; the result (`group`,
 `controller`, `hw`, `sw`, the chip and F0) is logged at INFO --
@@ -1111,17 +1134,30 @@ enumerating `Catalog.resolve_pool()` (language-independent: one table serves
 of the table, and never contacts the site itself.
 
 **F0 decides between variants in two families only.** Vitosoft keys a few
-datapoint types on one more byte, "F0" -- the value at `0x00F0`, which its
-own catalog names `HO2B_Erweiterte_Geraetekennung` ("Erweiterte
-Gerätekennung (F0)", 2 bytes, Virtual_READ). Vitosoft's identification
+datapoint types on one more value, "F0" -- read at `0x00F0` by the datapoint
+its own catalog names `HO2B_Erweiterte_Geraetekennung~0x00F0` ("Erweiterte
+Gerätekennung (F0)", Virtual_READ, 2 bytes, `Parameter` Int, NoConversion):
+one signed 16-bit little-endian integer. Vitosoft's identification
 datapoints (`sysDeviceIdent*`) read only `0xF8..0xFF`; F0 is a datapoint of
 the devices that need it. In the 2026 export that is the software-index range
 `0xC8..0xFF` of two families:
 
-| ident | variants (F0 range) |
+| ident | variants (F0 range, decimal) |
 |---|---|
-| `0x20CB` | `VScotHO1_200` (00), `_01` (01..09), `_10` (10), `_11` (11..19), `_20` (20..29), `_30` (30..39) |
-| `0x20C9` | `VScotHC1_200` (00..09), `_10` (10..19), `_30` (30..39) |
+| `0x20CB` | `VScotHO1_200` (0), `_01` (1..9), `_10` (10), `_11` (11..19), `_20` (20..29), `_30` (30..39) |
+| `0x20C9` | `VScotHC1_200` (0..9), `_10` (10..19), `_30` (30..39) |
+
+**The ranges are decimal.** Vitosoft keeps `F0` / `F0Till` as `Int32` table
+extensions (the SQL database's `ecnTableExtensionValue`, `InternalDataType` 3,
+like `BlockLength`), while every hex value -- `Identification`,
+`IdentificationExtension`, an event's `Address` -- is a string. `30..39` is
+30..39 (`0x1E..0x27`), not `0x30..0x39`. Two more signs: read in decimal the
+ranges tile 0..39 without a gap, read in hex they skip `0x0A..0x0F`,
+`0x1A..0x1F` and `0x2A..0x2F`; and a token's suffix is decimal throughout --
+`VScotHO1_72` is software index `0x48`, `VPlusHC1_130` is `0x82`, and the
+`_30` of `VScotHO1_200_30` is F0 30. Up to schema 1 of `resolve.json` the
+generator read the column as hex, so a unit with F0 30 (`F0=0x1E00`) matched no
+variant and one with `0x10` got `_10` instead of `_11`.
 
 (`0x20CA` has a single F0-keyed type, and `0x2621` is OpenTherm, which is not
 driven.) The variants are not interchangeable: `VScotHO1_200_01` declares 74
@@ -1131,26 +1167,22 @@ the generic's.
 **Evaluated in the finder, not on the device.** The hub reads the two bytes at
 `0x00F0` and passes them on raw (above); what they select is decided where the
 catalog knowledge is, by the same rule in two places that the parity test
-(`tests/unit/test_resolve_index.py`) holds together: `f0_bytes()` /
-`resolve_device()` in `scripts/vitocatalog/identify.py` and `f0Bytes()` /
+(`tests/unit/test_resolve_index.py`) holds together: `f0_value()` /
+`resolve_device()` in `scripts/vitocatalog/identify.py` and `f0Value()` /
 `lookup()` in `web/lookup.js`.
 
-- One or two hex digits are one byte -- the export's `F0` column, as a person
-  types it from a catalog (`--f0 30`, or the finder's F0 field).
-- Three or four are the two raw bytes the hub reads. Which of them carries a
-  device's F0 is **not settled on a unit**, so both are tried: the `0x00F0`
-  byte first, the register that carries the name, then `0x00F1`. The first
-  that falls inside a variant's range decides, and the answer names the byte
-  ("F0 match (0x00F0)").
-- Without F0, or when neither byte matches, the lowest-F0 variant is shown and
-  the others listed ("F0 decides: generic variant shown").
+- Four hex digits are the two raw bytes the hub reads, read as Vitosoft reads
+  them: `0x00F0` low, `0x00F1` high, signed. `1E00` is 30; the `FF FF` of a
+  unit without F0 is -1 and inside no range.
+- Up to three decimal digits are the value as Vitosoft writes it, as a person
+  types it from a token or a catalog (`--f0 30`, or the finder's F0 field).
+- The value is compared with the decimal ranges; the answer names it
+  ("F0 match (F0 30)"). Without F0, or when nothing matches, the lowest-F0
+  variant is shown and the others listed ("F0 decides: generic variant
+  shown").
 
-One consequence to keep in mind until a unit settles the byte: `VScotHO1_200`
-owns F0 `00`, so a raw value whose first byte is `00` always selects it, even
-if the second byte would have matched another variant. When a unit of these
-families confirms the byte, the try order (`F0_ADDRESSES`, both files) is the
-one thing to change. Every other family, the reference `VScotHO1_72` (SW
-`0x51`) included, is decided by `0xF8..0xFB` alone, and F0 is ignored there.
+Every other family, the reference `VScotHO1_72` (SW `0x51`) included, is
+decided by `0xF8..0xFB` alone, and F0 is ignored there.
 
 The load-bearing fact for anyone **adding new datapoints**:
 
@@ -2278,10 +2310,11 @@ happen in production.
   257). Left out until the export or a capture says how: `WPR3MldgsHistExtTn1..3`
   (a parameter *and* 30 records) and the `*ErrorIndex` tables.
 - **F0 on a unit (§6).** The hub reads `0x00F0` (2 bytes) at boot and links it
-  raw; the finder and `--identify` try the `0x00F0` byte, then `0x00F1`. Open:
-  which byte carries F0 on a `VScotHO1_200*` / `VScotHC1_200*` unit, and what
-  the other families answer there (the read is fail-soft, but unconfirmed on
-  any unit, the reference one included).
+  raw; the finder and `--identify` read it as Vitosoft's datapoint does, one
+  little-endian Int compared with the decimal ranges. Open: a capture from a
+  `VScotHO1_200*` / `VScotHC1_200*` unit confirming it, and what the other
+  families answer there (the read is fail-soft, but unconfirmed on any unit,
+  the reference one included).
 - **Bit-field writes on hardware (§5b).** Confirmed on VScotHO1_72 (P300) on
   2026-10-14: fail-closed, the read / merge / write / read-back sequence,
   preservation of non-zero neighbouring bits, and adjacency during a poll burst.

@@ -165,9 +165,11 @@ small companion file next to the catalog.
 
 `F0=0xXXYY` appears on units that have Vitosoft's extended identification at
 `0x00F0` (on P300/KW; the link then carries `&f0=XXYY`). The hub passes the two
-bytes on raw; the finder uses them where a software-index range covers several
-variants (the Vitodens/Vitocrossal `VScotHO1_200*` and `VScotHC1_200*` families
-at software index `0xC8` and above) and ignores them everywhere else.
+bytes on raw; the finder reads them as Vitosoft does, one little-endian number
+(`F0=0x1E00` is F0 30, the `_30` of `VScotHO1_200_30`), and uses it where a
+software-index range covers several variants (the Vitodens/Vitocrossal
+`VScotHO1_200*` and `VScotHC1_200*` families at software index `0xC8` and
+above) and ignores it everywhere else.
 
 Open the link, or paste the `Device` line into the finder, to get the catalog
 file for that controller. The device id alone is not enough: most ids cover

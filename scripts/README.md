@@ -27,7 +27,7 @@ reads up to four files from it:
 
 | File | Provides |
 |---|---|
-| `DPDefinitions.xml` | Device types, event links, enum value types, units, borders |
+| `DPDefinitions.xml` | Device types, event links, enum value types, units, borders; from its table extensions (`ecnTableExtensionValue`), the `FunctionValue` a procedure without `PrefixWrite` is called with |
 | `ecnEventType.xml` | Per-event Optolink address, lengths, bit position, read/write access, conversion |
 | `ecnDataPointType.xml` | Identification ranges (group/ident, hardware/software index) used by `--identify` |
 | `Textresource.xml` | ~350 UI strings per language (optional) |
@@ -69,11 +69,12 @@ reads up to four files from it:
 | `--data <dir>` | The Vitosoft XML export directory |
 | `--list-devices` | List the device tokens (and identification ranges) in the export, then exit |
 | `--identify <hex>` | Device identification (`group << 8 \| ident`), e.g. `0x20CB`; auto-selects the revision |
-| `--hw <hex>` / `--sw <hex>` / `--f0 <hex>` | Hardware / software index / protocol offset, used with `--identify` |
+| `--hw <hex>` / `--sw <hex>` | Hardware / software index, used with `--identify` |
+| `--f0 <value>` | F0, Vitosoft's extended identification at `0x00F0`, used with `--identify`: decimal as Vitosoft writes it (`30`), or the four hex digits the hub logs as `F0=0x1E00` (two bytes, little-endian: 30) |
 | `--device <token>` | Generate for a named datapoint-type token, e.g. `VScotHO1_72` |
 | `--profile {minimal,standard,full}` | How many datapoints to emit (default: `standard`). `full`: everything Vitosoft lists for the device. `standard`: the same without LON network-variable inputs (`nvi*`), which only a LON master fills -- without a LON module they read as `0xFF` "invalid" -- and without the LON-bound remote procedure readings (`access: rpc`: the LON participant list, a Vitocom's LON identity). `minimal`: writable values and scaled measurements only |
 | `--include <regex>` / `--exclude <regex>` | Keep / drop events whose name matches |
-| `--[no-]reachable-only` | Emit only datapoints VitoWiFi can read over Optolink; drop `GFA_READ`/`RPC`/`PROZESS`/`KBUS`/`OT` (default: on). Under P300 a `Remote_Procedure_Call` that is a reading -- read-only, one record, an answer of known size -- is kept and emitted with `access: rpc` (and `prefix:` where it has a `PrefixRead`); a procedure that takes no value becomes a `button` of `type: action`, disabled by default under a warning, in every profile but `minimal`; and a heat pump's RPC fault buffer is fanned out into one raw slot per record (the record index as `prefix:`). `--no-reachable-only` adds them back — they need custom decode |
+| `--[no-]reachable-only` | Emit only datapoints VitoWiFi can read over Optolink; drop `GFA_READ`/`RPC`/`PROZESS`/`KBUS`/`OT` (default: on). Under P300 a `Remote_Procedure_Call` that is a reading -- read-only, one record, an answer of known size -- is kept and emitted with `access: rpc` (and `prefix:` where it has a `PrefixRead`); a procedure that takes no value becomes a `button` of `type: action` (called with its `PrefixWrite`, else its `FunctionValue`), disabled by default under a warning, in every profile but `minimal`; and a heat pump's RPC fault buffer is fanned out into one raw slot per record (the record index as `prefix:`). `--no-reachable-only` adds them back — they need custom decode |
 | `--order {address,group}` | Entity order: `address` (sorted by Optolink address) or `group` (by the Vitosoft navigation tree, with a section comment per group). Default: `group` with `--export-all`, `address` otherwise |
 | `--culture {cs,da,de,en,es,fr,hr,hu,it,lt,nl,no,pl,ro,ru,sk,sv,tr}` | Language for entity names, option labels and fault texts (default: `de`); see the label-source note above. Units do not change. Home Assistant derives entity IDs from names, so changing the language of an installed catalog creates new entities |
 | `--[no-]menu-datapoints` | Also take the datapoints a device carries only in its own Vitosoft menu tree, not in its direct datapoint list (default: on); see *Where a device's datapoints come from* below |

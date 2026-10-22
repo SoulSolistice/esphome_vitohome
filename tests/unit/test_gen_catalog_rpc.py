@@ -248,6 +248,137 @@ def test_prefixwrite_may_be_written_with_0x():
     assert gc._rpc_prefix(ev, "prefix_write") == [0x0E]
 
 
+# --- FunctionValue: the parameter of a procedure without PrefixWrite ----------
+
+
+@pytest.mark.parametrize(
+    "prefix_write,function_value,expected",
+    [
+        ("15", "0x15", ([0x15], "PrefixWrite 15")),  # WPR3_Konfi_FunktionNeustart: both, equal
+        ("", "0x00", ([0x00], "FunctionValue 0x00")),  # Konfi_FunktionReset_GWG
+        ("", "0x2E", ([0x2E], "FunctionValue 0x2E")),  # WPR3_Reset_Parameter_ALZ
+        ("", "8", ([8], "FunctionValue 8")),  # decimal without 0x
+        ("", "", ([], None)),  # a call without a parameter
+        ("", "0x100", None),  # more than one byte
+        ("", "zz", None),
+        ("zz", "0x00", None),  # an unparsable PrefixWrite is not rescued
+    ],
+)
+def test_action_parameter_is_prefixwrite_else_functionvalue(prefix_write, function_value, expected):
+    ev = _ev(prefix="", access_type=2, block_length=1)
+    ev.parameter_type = "Array"
+    ev.prefix_write, ev.function_value = prefix_write, function_value
+    assert gc._rpc_action_parameter(ev) == expected
+    # A parameter that does not parse is never sent as a call without one.
+    assert gc._is_rpc_action(ev) is (expected is not None)
+
+
+def _a050_catalog(function_values):
+    """Four procedures behind one address, 0xA050, told apart by the parameter:
+    the coding reset and the ALZ reset name it only in FunctionValue, the restart
+    in PrefixWrite too, and Konfi_ParameterFunktionReset nowhere."""
+    rows = {
+        "1": ("Konfi_FunktionReset_GWG~0xA050", ""),
+        "2": ("WPR3_Konfi_FunktionNeustart~0xA050", "15"),
+        "3": ("WPR3_Reset_Parameter_ALZ~0xA050", ""),
+        "4": ("Konfi_ParameterFunktionReset~0xA050", ""),
+    }
+    raw_events, access = {}, {}
+    for eid, (token, prefix) in rows.items():
+        raw_events[eid] = {"Address": token, "Name": token.split("~")[0], "Type": "2"}
+        access[token] = {
+            "address": "0xA050",
+            "block_length": "1",
+            "byte_length": "1",
+            "byte_position": "0",
+            "conversion": "NoConversion",
+            "fc_read": "Remote_Procedure_Call",
+            "fc_write": "Remote_Procedure_Call",
+            "prefix_write": prefix,
+            "parameter_type": "Array",
+        }
+    ext = {("ecnEventType", "FunctionValue"): function_values}
+    return gc.Catalog(
+        {"VRpcTest_01": "dp1"}, {"dp1": "VRpcTest"}, {"dp1": list(rows)}, raw_events, {}, {}, access, [], {}, ext=ext
+    )
+
+
+def test_a050_procedures_call_with_their_functionvalue():
+    cat = _a050_catalog({"1": "0x00", "2": "0x15", "3": "0x2E"})
+    out = gc.generate(cat, "VRpcTest_01", "standard", None, None, emit_device_id=False, emit_error_history=False)
+    buttons = out.split("\nbutton:\n", 1)[1]
+    assert buttons.count("    address: 0xA050") == 3
+    assert "prefix: [0x00]  # Vitosoft FunctionValue 0x00" in buttons
+    assert "prefix: [0x15]  # Vitosoft PrefixWrite 15" in buttons
+    assert "prefix: [0x2E]  # Vitosoft FunctionValue 0x2E" in buttons
+    # Every press names its function: no call to 0xA050 without a parameter.
+    # The sibling that names none is left out, and the header says so.
+    for block in buttons.split("\n\n"):
+        if "address: 0xA050" in block:
+            assert "    prefix: [" in block
+    assert "Konfi_ParameterFunktionReset" not in buttons
+    assert "# Procedures omitted: 1 without a parameter" in out
+    assert cat.rpc_selector_addresses() == {0xA050}
+
+
+def test_without_functionvalue_no_procedure_calls_a_selector_blind():
+    # An export without the table extension: only the restart names its
+    # function (PrefixWrite 15), and that alone makes 0xA050 a selector. The
+    # three that name none are left out rather than called without one.
+    cat = _a050_catalog({})
+    out = gc.generate(cat, "VRpcTest_01", "standard", None, None, emit_device_id=False, emit_error_history=False)
+    assert out.count("    address: 0xA050") == 1
+    assert "prefix: [0x15]  # Vitosoft PrefixWrite 15" in out
+    assert "# Procedures omitted: 3 without a parameter" in out
+
+
+# Real ecnTableExtensionValue.InternalValue payloads from DPDefinitions.xml
+# (Base64 of a .NET BinaryFormatter stream), plus "0x00" encoded the same way.
+@pytest.mark.parametrize(
+    "payload,value",
+    [
+        ("AAEAAAD/////AQAAAAAAAAAGAQAAAAAL", ""),
+        ("AAEAAAD/////AQAAAAAAAAAGAQAAAANJbnQL", "Int"),
+        ("AAEAAAD/////AQAAAAAAAAAGAQAAAAEwCw==", "0"),
+        ("AAEAAAD/////AQAAAAAAAAAGAQAAAAQweDAwCw==", "0x00"),
+        ("AAEAAAD/////AQAAAAAAAAAEAQAAAAxTeXN0ZW0uSW50MzIBAAAAB21fdmFsdWUACP////8L", -1),
+        ("AAEAAAD/////AQAAAAAAAAAEAQAAAA5TeXN0ZW0uQm9vbGVhbgEAAAAHbV92YWx1ZQABAQs=", True),
+        ("AAEAAAD/////AQAAAAAAAAAEAQAAAA5TeXN0ZW0uQm9vbGVhbgEAAAAHbV92YWx1ZQABAAs=", False),
+        ("AAEAAAD/////AQAAAAAAAAAEAQAAAA1TeXN0ZW0uRG91YmxlAQAAAAdtX3ZhbHVlAAYAAAAAAAAAAAs=", 0.0),
+        ("System.Byte[]", None),  # what a CSV export of the table writes instead
+        ("AAEA", None),  # truncated
+        ("", None),
+    ],
+)
+def test_table_extension_values_decode(payload, value):
+    got = gc._decode_ext_value(payload)
+    assert got == value and type(got) is type(value)
+
+
+_MINI_EXT_EXPORT = """<?xml version="1.0" encoding="utf-8"?>
+<ImportExportDataHolder><ECNDataSet>
+  <ecnDatapointType><Id>1</Id><Name>VRpcTest</Name><Address>VRpcTest_01</Address></ecnDatapointType>
+  <ecnDataPointTypeEventTypeLink><DataPointTypeId>1</DataPointTypeId><EventTypeId>7</EventTypeId></ecnDataPointTypeEventTypeLink>
+  <ecnTableExtensionValue><Id>1</Id><RefId>56</RefId><PkValue>7;24</PkValue>
+    <InternalValue>AAEAAAD/////AQAAAAAAAAAGAQAAAAQweDAwCw==</InternalValue></ecnTableExtensionValue>
+  <ecnTableExtensionValue><Id>2</Id><RefId>11</RefId><PkValue>7;24</PkValue>
+    <InternalValue>AAEAAAD/////AQAAAAAAAAAGAQAAAANJbnQL</InternalValue></ecnTableExtensionValue>
+  <ecnEventType><Id>7</Id><Name>Konfi_FunktionReset_GWG</Name><Address>Konfi_FunktionReset_GWG~0xA050</Address>
+    <Conversion>NoConversion</Conversion><Type>2</Type></ecnEventType>
+  <ecnTableExtension><Id>11</Id><TableName>ecnEventType</TableName><FieldName>Option</FieldName></ecnTableExtension>
+  <ecnTableExtension><Id>56</Id><TableName>ecnEventType</TableName><FieldName>FunctionValue</FieldName></ecnTableExtension>
+</ECNDataSet></ImportExportDataHolder>
+"""
+
+
+def test_functionvalue_is_loaded_from_the_table_extension(tmp_path):
+    # As in the real export, the values come before the rows that name their field.
+    (tmp_path / "DPDefinitions.xml").write_text(_MINI_EXT_EXPORT, encoding="utf-8")
+    cat = gc.load_catalog(str(tmp_path))
+    assert cat._events["7"].function_value == "0x00"
+    assert cat._ext == {("ecnEventType", "FunctionValue"): {"7": "0x00"}}
+
+
 # --- the heat-pump fault history: an RPC array, fanned out per record ----------
 
 

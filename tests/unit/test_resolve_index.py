@@ -59,9 +59,11 @@ _IDENT_ROWS = [
     _row("Boiler", 0x20CB, 0x0100, 0x0103),
     _row("Boiler_4", 0x20CB, 0x0104, 0x0147),
     _row("Boiler_72", 0x20CB, 0x0148, 0x0159),
-    _row("Boiler_200_10", 0x20CB, 0x01C8, 0x01FF, f0=0x10, f0t=0x10),
-    _row("Boiler_200", 0x20CB, 0x01C8, 0x01FF, f0=0x00, f0t=0x00),
-    _row("Boiler_200_01", 0x20CB, 0x01C8, 0x01FF, f0=0x01, f0t=0x09),
+    # F0 ranges are decimal, as Vitosoft keeps them (VScotHO1_200*).
+    _row("Boiler_200_10", 0x20CB, 0x01C8, 0x01FF, f0=10, f0t=10),
+    _row("Boiler_200", 0x20CB, 0x01C8, 0x01FF, f0=0, f0t=0),
+    _row("Boiler_200_01", 0x20CB, 0x01C8, 0x01FF, f0=1, f0t=9),
+    _row("Boiler_200_30", 0x20CB, 0x01C8, 0x01FF, f0=30, f0t=39),
     _row("GWG_A_00", 0x2053, 0x0100),
     _row("GWG_A_21", 0x2053, 0x0121),
     _row("GWG_B_03", 0x2053, 0x0203),
@@ -92,19 +94,24 @@ def _manifest():
         # HW 0x03 is what the reference Vitodens reports; the family lists 0x01 only.
         (0x20CB, 0x03, 0x51, None, "Boiler_72", "HW 0x03 not in catalog"),
         (0x20CB, 0x01, 0x60, None, "Boiler_72", "software-index floor"),
-        (0x20CB, 0x01, 0xC8, 0x10, "Boiler_200_10", "F0 match"),
-        (0x20CB, 0x01, 0xC8, 0x05, "Boiler_200_01", "F0 match"),
+        (0x20CB, 0x01, 0xC8, 10, "Boiler_200_10", "F0 match (F0 10)"),
+        (0x20CB, 0x01, 0xC8, 5, "Boiler_200_01", "F0 match (F0 5)"),
         (0x20CB, 0x01, 0xC8, None, "Boiler_200", "F0 not provided"),
-        (0x20CB, 0x01, 0xC8, 0x77, "Boiler_200", "no F0 match"),
-        # The two raw bytes the hub reads at 0x00F0/0x00F1 (F0=0xXXYY): tried
-        # 0x00F0 first, then 0x00F1; the reason says which one decided.
-        (0x20CB, 0x01, 0xC8, "1000", "Boiler_200_10", "F0 match (0x00F0)"),
-        (0x20CB, 0x01, 0xC8, "7710", "Boiler_200_10", "F0 match (0x00F1)"),
-        (0x20CB, 0x01, 0xC8, "0510", "Boiler_200_01", "F0 match (0x00F0)"),
-        (0x20CB, 0x01, 0xC8, "0x0010", "Boiler_200", "F0 match (0x00F0)"),
-        (0x20CB, 0x01, 0xC8, "7777", "Boiler_200", "no F0 match"),
-        # Two hex digits stay one byte, as a person types the catalog's F0 value.
-        (0x20CB, 0x01, 0xC8, "10", "Boiler_200_10", "F0 match"),
+        (0x20CB, 0x01, 0xC8, 77, "Boiler_200", "no F0 match for F0 77"),
+        # The two raw bytes the hub reads at 0x00F0/0x00F1 (F0=0xXXYY) are one
+        # little-endian 16-bit value, as Vitosoft reads 0x00F0 (Parameter Int).
+        (0x20CB, 0x01, 0xC8, "1E00", "Boiler_200_30", "F0 match (F0 30)"),
+        (0x20CB, 0x01, 0xC8, "0x0A00", "Boiler_200_10", "F0 match (F0 10)"),
+        (0x20CB, 0x01, 0xC8, "0500", "Boiler_200_01", "F0 match (F0 5)"),
+        (0x20CB, 0x01, 0xC8, "0000", "Boiler_200", "F0 match (F0 0)"),
+        # 0x10 is 16, not the "10" of Boiler_200_10; high byte 0x10 is 4096.
+        (0x20CB, 0x01, 0xC8, "1000", "Boiler_200", "no F0 match for F0 16"),
+        (0x20CB, 0x01, 0xC8, "0010", "Boiler_200", "no F0 match for F0 4096"),
+        # A unit without F0 answers FF FF: -1, inside no range.
+        (0x20CB, 0x01, 0xC8, "FFFF", "Boiler_200", "no F0 match for F0 -1"),
+        # Up to three digits are the value in decimal, as Vitosoft writes it.
+        (0x20CB, 0x01, 0xC8, "10", "Boiler_200_10", "F0 match (F0 10)"),
+        (0x20CB, 0x01, 0xC8, "35", "Boiler_200_30", "F0 match (F0 35)"),
         # A family F0 does not subdivide ignores it.
         (0x20CB, 0x01, 0x51, "3000", "Boiler_72", "software-index range"),
         (0x2053, 0x01, 0x7A, None, "GWG_A_21", "software-index floor"),
@@ -123,19 +130,31 @@ def test_resolve(catalog, ident, hw, sw, f0, token, reason):
     "value,expected",
     [
         (None, None),
-        (0x10, [0x10]),
-        (0x3010, [0x30, 0x10]),
-        ("10", [0x10]),
-        ("0x10", [0x10]),
-        ("0010", [0x00, 0x10]),
-        ("3000", [0x30, 0x00]),
+        (30, 30),
+        (-1, -1),
+        (0x8000, None),
+        (True, None),
+        ("30", 30),
+        (" 7 ", 7),
+        ("1E00", 30),
+        ("0x1E00", 30),
+        ("0x1e00", 30),
+        ("0A00", 10),
+        ("0010", 0x1000),
+        ("FFFF", -1),
+        ("8000", 0x80),
+        ("0080", -0x8000),
+        ("1000", 16),
+        # Neither four hex digits nor up to three decimal ones.
+        ("0x1E", None),
+        ("1E", None),
         ("12345", None),
         ("zz", None),
         ("", None),
     ],
 )
-def test_f0_bytes_tells_one_byte_from_the_two_raw_ones(value, expected):
-    assert gc.f0_bytes(value) == expected
+def test_f0_value_reads_the_raw_bytes_little_endian_and_text_as_decimal(value, expected):
+    assert gc.f0_value(value) == expected
 
 
 def test_resolve_unknown_ident(catalog):
@@ -193,8 +212,9 @@ def test_index_candidates_keep_resolve_order(catalog):
     top = index["idents"]["20CB"]["hw"]["01"][-1]
     assert top["sw"] == [0xC8, 0xFF]
     assert top["token"] == "Boiler_200"  # the generic (lowest F0) variant
-    assert [c["token"] for c in top["candidates"]] == ["Boiler_200_10", "Boiler_200", "Boiler_200_01"]
-    assert top["candidates"][2]["f0"] == [0x01, 0x09]
+    assert [c["token"] for c in top["candidates"]] == ["Boiler_200_10", "Boiler_200", "Boiler_200_01", "Boiler_200_30"]
+    assert top["candidates"][2]["f0"] == [1, 9]
+    assert top["candidates"][3]["f0"] == [30, 39]
 
 
 def test_dump_is_stable_json(catalog):
@@ -226,7 +246,7 @@ process.stdout.write(JSON.stringify({
 _LOG_LINES = [
     "[09:25:58.421][C][vitohome:773]:   Device: 0x2053 (GWG_VBEM) HW=0x01 SW=0x7A",
     "[I][vitohome:1409]: Device identification: 0x20CB (VScotHO1) HW=0x03 SW=0x51",
-    "read 0x5525 ok\n[C][vitohome:773]:   Device: 0x20CB HW=0x03 SW=0x51 F0=0x10",
+    "read 0x5525 ok\n[C][vitohome:773]:   Device: 0x20CB HW=0x03 SW=0x51 F0=30",
     "0x20A3",
     "nothing here",
     # A pasted log without a Device line: an address in it is not a device id.
@@ -236,7 +256,9 @@ _LOG_LINES = [
     # Exactly as the hub logs it at boot (ident_string_), chip name included.
     "[I][vitohome:1771]: Device identification: 0x20CB (VScotHO1) HW=0x03 SW=0x51 GFA=0x41 (ÖFA)",
     # The raw F0 bytes at 0x00F0/0x00F1, as ident_string_ appends them.
-    "[I][vitohome:1828]: Device identification: 0x20CB (VScotHO1) HW=0x01 SW=0xC8 GFA=0x24 (NEC) F0=0x1000",
+    "[I][vitohome:1828]: Device identification: 0x20CB (VScotHO1) HW=0x01 SW=0xC8 GFA=0x24 (NEC) F0=0x1E00",
+    # Two hex digits are neither form: not taken.
+    "Device: 0x20CB HW=0x01 SW=0xC8 F0=0x1E",
 ]
 
 
@@ -248,7 +270,7 @@ def test_javascript_lookup_matches_resolve(catalog):
         for ident in (0x20CB, 0x2053, 0x208A, 0x2000, 0x20A3, 0x1234)
         for hw in (0x01, 0x02, 0x03)
         for sw in range(256)
-        for f0 in (None, 0x00, 0x05, 0x10, 0x77, "10", "1000", "7710", "0010", "7777")
+        for f0 in (None, 0, 5, 10, 16, 30, 77, -1, "10", "35", "1E00", "0A00", "1000", "0010", "FFFF", "0x1E")
     ]
     done = subprocess.run(
         [_NODE, "-e", _NODE_DRIVER, _LOOKUP_JS],
@@ -264,14 +286,15 @@ def test_javascript_lookup_matches_resolve(catalog):
     assert out["parsed"] == [
         {"id": 0x2053, "hw": 0x01, "sw": 0x7A, "f0": None, "gfa": None},
         {"id": 0x20CB, "hw": 0x03, "sw": 0x51, "f0": None, "gfa": None},
-        # F0 comes back as text: its digit count tells one byte from two.
-        {"id": 0x20CB, "hw": 0x03, "sw": 0x51, "f0": "10", "gfa": None},
+        # F0 comes back as text: up to three digits are the decimal value.
+        {"id": 0x20CB, "hw": 0x03, "sw": 0x51, "f0": "30", "gfa": None},
         {"id": 0x20A3, "hw": None, "sw": None, "f0": None, "gfa": None},
         {"id": None, "hw": None, "sw": None, "f0": None, "gfa": None},
         {"id": None, "hw": None, "sw": None, "f0": None, "gfa": None},
         {"id": 0x20CB, "hw": 0x03, "sw": 0x51, "f0": None, "gfa": 0x24},
         {"id": 0x20CB, "hw": 0x03, "sw": 0x51, "f0": None, "gfa": 0x41},
-        {"id": 0x20CB, "hw": 0x01, "sw": 0xC8, "f0": "1000", "gfa": 0x24},
+        {"id": 0x20CB, "hw": 0x01, "sw": 0xC8, "f0": "1E00", "gfa": 0x24},
+        {"id": 0x20CB, "hw": 0x01, "sw": 0xC8, "f0": None, "gfa": None},
     ]
     assert out["unknown_without_id"] == {"kind": "unknown", "ident": None}
 

@@ -264,10 +264,58 @@ def _rpc_array_records(ev: Event, protocol: str = PROTO_P300) -> tuple[int, int]
     return (count, length) if length <= MAX_P300_READ_LENGTH else None
 
 
+def _rpc_action_parameter(ev: Event) -> tuple[list[int], str | None] | None:
+    """What a press of an action button sends: (parameter bytes, the Vitosoft
+    field they come from, for the comment), or None when that does not parse.
+
+    PrefixWrite where the row has one. Without it, FunctionValue -- Vitosoft's
+    value for a function call, which the export keeps only in
+    ecnTableExtensionValue. At 0xA050 one procedure serves several functions
+    and its parameter picks one; Konfi_FunktionReset_GWG ("Anlieferzustand
+    Codierungen", FunctionValue 0x00) names its function only there, while its
+    sibling WPR3_Konfi_FunktionNeustart carries 0x15 in both fields. On every
+    action that has both, they agree. FunctionValue is hex with 0x, else
+    decimal ("0x2E", "0"), one byte. ([], None) for a call without a parameter.
+    """
+    prefix = _rpc_prefix(ev, "prefix_write")
+    if prefix is None:
+        return None
+    if prefix:
+        return prefix, f"PrefixWrite {ev.prefix_write}"
+    text = (getattr(ev, "function_value", "") or "").strip()
+    if not text:
+        return [], None
+    try:
+        value = int(text, 16) if text[:2].lower() == "0x" else int(text, 10)
+    except ValueError:
+        return None
+    return ([value], f"FunctionValue {text}") if 0 <= value <= 0xFF else None
+
+
+def _rpc_selector_addresses(events) -> frozenset[int]:
+    """Addresses at which the export calls some procedure WITH a parameter.
+
+    One procedure there serves several functions and the parameter picks one
+    (0xA050: coding reset 0x00, restart 0x15, ALZ reset 0x2E; 0xA051: one
+    circuit each). A procedure at such an address without a parameter of its
+    own names no function -- Konfi_ParameterFunktionReset at 0xA050,
+    RPCLoeschenMBusTrendingKanal at 0xA0A4 -- and is not emitted. Taken over
+    the whole export: a device may link the bare sibling alone.
+    """
+    out = set()
+    for ev in events:
+        if _is_rpc_action(ev):
+            parameter = _rpc_action_parameter(ev)
+            if parameter and parameter[0]:
+                out.add(ev.address)
+    return frozenset(out)
+
+
 def _is_rpc_action(ev: Event, protocol: str = PROTO_P300) -> bool:
     """Whether a Remote_Procedure_Call datapoint is an ACTION, emitted as a
-    `type: action` button: a procedure that a press runs, with PrefixWrite as
-    its parameter and nothing else to send.
+    `type: action` button: a procedure that a press runs, with its parameter
+    (_rpc_action_parameter: PrefixWrite, else FunctionValue) and nothing else
+    to send.
 
     The procedures are the writable RPC rows (AccessMode 2/3), and a call to
     one is the same telegram as an RPC read -- function code 0x07 plus the
@@ -287,7 +335,7 @@ def _is_rpc_action(ev: Event, protocol: str = PROTO_P300) -> bool:
       (RPCSetImpulseCounter*, Int4), or a read+write row that answers
       (RPCSetDigitalOutput*).
 
-    P300 only, not an array, and a PrefixWrite that parses.
+    P300 only, not an array, and a parameter that parses.
     """
     if protocol != PROTO_P300:
         return False
@@ -297,7 +345,7 @@ def _is_rpc_action(ev: Event, protocol: str = PROTO_P300) -> bool:
         return False
     if (ev.block_factor or 0) > 1:
         return False
-    if _rpc_prefix(ev, "prefix_write") is None:
+    if _rpc_action_parameter(ev) is None:
         return False
     answer = ev.block_length or ev.byte_length or 0
     if answer == 0:

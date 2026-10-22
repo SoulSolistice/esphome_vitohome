@@ -3,46 +3,49 @@
 from __future__ import annotations
 
 import json
+import re
 
 from .constants import RESOLVE_SCHEMA
 
-# Where each candidate F0 byte was read, in the order they are tried.
-F0_ADDRESSES = ("0x00F0", "0x00F1")
+# The hub's raw F0 text: the two bytes at 0x00F0/0x00F1 in register order
+# (F0=0x1E00, &f0=1E00). The value as Vitosoft writes it: decimal.
+_F0_RAW_RE = re.compile(r"(?:0[xX])?([0-9a-fA-F]{4})")
+_F0_DEC_RE = re.compile(r"[0-9]{1,3}")
 
 
-def f0_bytes(value: int | str | None) -> list[int] | None:
-    """The candidate F0 bytes for an F0 value, in the order they are tried.
+def f0_value(value: int | str | None) -> int | None:
+    """The F0 value that the export's F0..F0Till ranges are compared against.
 
-    The export's F0 column is one byte (``30`` .. ``39``). The hub reads the two
-    bytes at 0x00F0/0x00F1 and passes them on raw (``F0=0x3000``), because
-    which of the two carries a device's F0 is not settled on a unit. So:
+    Vitosoft reads F0 as the datapoint ``HO2B_Erweiterte_Geraetekennung~0x00F0``:
+    two bytes, ``Parameter`` Int -- a signed 16-bit little-endian integer -- and
+    no conversion. Its F0 / F0Till columns are decimal integers: ``30`` .. ``39``
+    is 30..39, not 0x30..0x39 (read in decimal, the ranges 0-9, 10-19, 20-29,
+    30-39 tile without gaps, and the suffix of ``VScotHO1_200_30`` is decimal
+    like the software-index suffix of ``VScotHO1_72``, SW 0x48). Accepted:
 
-    * one byte -- one or two hex digits, or an int <= 0xFF -- is that byte;
-    * two bytes -- three or four hex digits, or an int > 0xFF -- are tried as
-      the 0x00F0 byte first, the register that carries the name, then 0x00F1.
+    * an int -- the value itself;
+    * four hex digits, with or without 0x -- the two raw bytes the hub logs in
+      register order, read little-endian: ``F0=0x1E00`` (0x1E at 0x00F0, 0x00
+      at 0x00F1) is 30, and the ``FF FF`` fill of a unit without F0 is -1,
+      inside no range;
+    * one to three decimal digits -- the value as Vitosoft writes it (``30``).
 
-    The finder (web/lookup.js, f0Bytes) applies the same rule. None for no F0
-    or text that is not hex.
+    The finder (web/lookup.js, f0Value) applies the same rule. None for no F0
+    or anything else.
     """
-    if value is None:
+    if value is None or isinstance(value, bool):
         return None
-    if isinstance(value, str):
-        text = value.strip()
-        if text[:2].lower() == "0x":
-            text = text[2:]
-        if not text or len(text) > 4:
-            return None
-        try:
-            number = int(text, 16)
-        except ValueError:
-            return None
-        two = len(text) > 2
-    else:
-        number = int(value)
-        if not 0 <= number <= 0xFFFF:
-            return None
-        two = number > 0xFF
-    return [number >> 8, number & 0xFF] if two else [number]
+    if isinstance(value, int):
+        return value if -0x8000 <= value <= 0x7FFF else None
+    text = value.strip()
+    raw = _F0_RAW_RE.fullmatch(text)
+    if raw:
+        lo, hi = bytes.fromhex(raw[1])
+        number = lo | hi << 8
+        return number - 0x10000 if number >= 0x8000 else number
+    if _F0_DEC_RE.fullmatch(text):
+        return int(text)
+    return None
 
 
 def _is_hw_sw_ext(ext: int | None) -> bool:
@@ -150,9 +153,8 @@ def resolve_device(
     ``resolve_pool()`` narrows the family by hardware and software index. If
     several entries share the software-index range, F0 -- the value at 0x00F0,
     Vitosoft's "Erweiterte Gerätekennung (F0)" -- disambiguates; without F0, the
-    generic variant is preferred. *f0* is one byte or the two raw bytes the hub
-    reads (see f0_bytes); the first candidate byte inside a variant's range
-    decides, and the reason names the byte when there were two.
+    generic variant is preferred. *f0* is the value, its decimal text or the two
+    raw bytes the hub reads (see f0_value); the reason names the value.
 
     Returns (token, reason) or (None, reason).
     """
@@ -170,14 +172,14 @@ def resolve_device(
 
     f0_aware = [t for t in pool if t["f0"] is not None]
     if f0_aware:
-        candidates = f0_bytes(f0)
-        # One byte uses the first address only; two use both, 0x00F0 first.
-        for at, byte in zip(F0_ADDRESSES, candidates or (), strict=False):
-            fm = [t for t in f0_aware if t["f0"] <= byte <= (t["f0t"] if t["f0t"] is not None else t["f0"])]
+        number = f0_value(f0)
+        if number is not None:
+            fm = [t for t in f0_aware if t["f0"] <= number <= (t["f0t"] if t["f0t"] is not None else t["f0"])]
             if fm:
-                where = f" ({at})" if len(candidates) > 1 else ""
-                return fm[0]["token"], why + " + F0 match" + where + note
-        tail = " (F0 not provided; generic variant)" if candidates is None else " (no F0 match; generic variant)"
+                return fm[0]["token"], why + f" + F0 match (F0 {number})" + note
+        tail = (
+            " (F0 not provided; generic variant)" if number is None else f" (no F0 match for F0 {number}; generic variant)"
+        )
         return generic_of(pool)["token"], why + tail + note
     return pool[0]["token"], why + note
 

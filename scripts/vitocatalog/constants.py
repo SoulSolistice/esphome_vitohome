@@ -139,7 +139,14 @@ _WANTED_ROWS = {
     "ecnEventValueType",
     "ecnEventTypeGroup",
     "ecnEventTypeEventTypeGroupLink",
+    "ecnTableExtension",
+    "ecnTableExtensionValue",
 }
+
+# Table-extension fields, (TableName, FieldName) of ecnTableExtension, whose
+# values load_catalog decodes from ecnTableExtensionValue. The export keeps
+# them only there, not in ecnEventType.xml.
+_WANTED_EXTENSIONS = {("ecnEventType", "FunctionValue")}
 
 # Platforms this generator emits `access:` on: a subset of the component's
 # _ACCESS_DOMAINS (components/vitohome/__init__.py). `climate` is absent because
@@ -339,6 +346,7 @@ _MANIFEST_COLUMNS = (
 )
 
 # Schema version and file name of the catalog finder's lookup table
-# (build_resolve_index).
-RESOLVE_SCHEMA = 1
+# (build_resolve_index). 2: F0 ranges are Vitosoft's decimal values, compared
+# with the little-endian 16-bit value at 0x00F0 (1 held them as bytes).
+RESOLVE_SCHEMA = 2
 RESOLVE_FILENAME = "resolve.json"

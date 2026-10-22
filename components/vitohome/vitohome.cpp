@@ -1731,8 +1731,9 @@ void VitoHomeComponent::ident_handle_response_(const ResponseView &response) {
       return;
 
     case IdentState::READ_F0:
-      // Raw and uninterpreted: which of the two bytes a device's F0 is, and
-      // what it selects, is the catalog finder's business. FF FF is KW's
+      // Raw and uninterpreted: reading F0 from the two bytes (Vitosoft: one
+      // little-endian Int) and what it selects is the catalog finder's
+      // business. FF FF is KW's
       // answer for an address the unit does not have; 00 00 is a real value
       // (the generic variant of a family F0 subdivides).
       if (length >= 2 && !(data[0] == 0xFF && data[1] == 0xFF))
