@@ -12,6 +12,12 @@
 # that are neither a reading nor an action) were omitted as unreachable.
 # Re-run with --no-reachable-only to include them.
 #
+# Metadata: 79 entities carry a `# vito:` line with Vitosoft's own
+# grouping, for the catalog editor: circuit=hk1..hk6|dhw|solar|boiler|
+# cascade|mbus (the menu they are in), level=td (shown at the service
+# access level only), overview, quickcheck and trend (Vitosoft's overview
+# screen, quick check and trend recorder). ESPHome ignores them.
+#
 # LON inputs omitted: 21 network-variable input(s) (nvi*). A LON
 # master writes them; without a LON module they hold no data (0xFF
 # 'invalid'). --profile full includes them.
@@ -328,6 +334,7 @@ sensor:
     update_interval: 60s
 
   # --- Overview / Allgemein ---
+  # vito: overview trend
   - platform: vitohome
     name: "Cylinder 1"
     id: Speicher1
@@ -340,6 +347,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Cylinder 2"
     id: Speicher2
@@ -352,6 +360,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Cylinder 3"
     id: Speicher3
@@ -364,6 +373,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Cylinder 4"
     id: Speicher4
@@ -376,6 +386,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Cylinder 5"
     id: Speicher5
@@ -388,6 +399,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Cylinder 6"
     id: Speicher6
@@ -400,6 +412,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Boiler flow"
     id: Kesselvorlauf
@@ -412,6 +425,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Set value boiler circuit pump"
     id: SollwertKesselpumpe
@@ -423,6 +437,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Set boiler value"
     id: Kesselsollwert
@@ -435,6 +450,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Outside sensor"
     id: Aussenfuehler
@@ -447,6 +463,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Set value pump CHP module"
     id: SollwertPumpeBHKW
@@ -457,6 +474,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Room temperature sensor"
     id: Raumfuehler
@@ -469,6 +487,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
   - platform: vitohome
     name: "StromzaehlerBHKW"
     id: StromzaehlerBHKW
@@ -481,6 +500,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
   - platform: vitohome
     name: "GaszaehlerBHKW"
     id: GaszaehlerBHKW
@@ -492,6 +512,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
   - platform: vitohome
     name: "GaszaehlerGesamt"
     id: GaszaehlerBHKW_2
@@ -504,6 +525,7 @@ sensor:
     update_interval: 60s
 
   # --- Overview / MBusZaehler1 ---
+  # vito: overview
   - platform: vitohome
     name: "Meter 1 heat volume"
     id: Zaehler1Waermemenge
@@ -516,6 +538,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
   - platform: vitohome
     name: "Meter 1 heat volume 2 (cold energy)"
     id: Zaehler1Waermemenge2
@@ -528,6 +551,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
     # NOTE: converter 'div10' unsupported at 4 bytes -> noconv + multiply filter (0.1)
   - platform: vitohome
     name: "Meter 1 water volume"
@@ -543,6 +567,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
   - platform: vitohome
     name: "Meter 1 heating output"
     id: Zaehler1Waermeleistung
@@ -555,6 +580,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
   - platform: vitohome
     name: "Meter 1 throughput"
     id: Zaehler1Durchfluss
@@ -567,6 +593,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
   - platform: vitohome
     name: "Meter 1 flow temperature"
     id: Zaehler1Vorlauftemperatur
@@ -579,6 +606,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
   - platform: vitohome
     name: "Meter 1 return temperature"
     id: Zaehler1Ruecklauftemperatur
@@ -592,6 +620,7 @@ sensor:
     update_interval: 60s
 
   # --- Overview / MBusZaehler2 ---
+  # vito: overview
   - platform: vitohome
     name: "Meter 2 heat volume"
     id: Zaehler2Waermemenge
@@ -604,6 +633,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
   - platform: vitohome
     name: "Meter 2 heat volume 2 (cold energy)"
     id: Zaehler2Waermemenge2
@@ -616,6 +646,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
     # NOTE: converter 'div10' unsupported at 4 bytes -> noconv + multiply filter (0.1)
   - platform: vitohome
     name: "Meter 2 water volume"
@@ -631,6 +662,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
   - platform: vitohome
     name: "Meter 2 heating output"
     id: Zaehler2Waermeleistung
@@ -643,6 +675,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
   - platform: vitohome
     name: "Meter 2 throughput"
     id: Zaehler2Durchfluss
@@ -655,6 +688,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
   - platform: vitohome
     name: "Meter 2 flow temperature"
     id: Zaehler2Vorlauftemperatur
@@ -667,6 +701,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
   - platform: vitohome
     name: "Meter 2 return temperature"
     id: Zaehler2Ruecklauftemperatur
@@ -679,6 +714,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
   - platform: vitohome
     name: "Meter 2 differential temperature"
     id: Zaehler2Differenztemperatur
@@ -691,6 +727,7 @@ sensor:
     update_interval: 60s
 
   # --- Overview / MBusZaehler3 ---
+  # vito: overview
   - platform: vitohome
     name: "Meter 3 heat volume"
     id: Zaehler3Waermemenge
@@ -703,6 +740,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
   - platform: vitohome
     name: "Meter 3 heat volume 2 (cold energy)"
     id: Zaehler3Waermemenge2
@@ -715,6 +753,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
     # NOTE: converter 'div10' unsupported at 4 bytes -> noconv + multiply filter (0.1)
   - platform: vitohome
     name: "Meter 3 water volume"
@@ -730,6 +769,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
   - platform: vitohome
     name: "Meter 3 heating output"
     id: Zaehler3Waermeleistung
@@ -742,6 +782,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
   - platform: vitohome
     name: "Meter 3 throughput"
     id: Zaehler3Durchfluss
@@ -754,6 +795,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
   - platform: vitohome
     name: "Meter 3 return temperature"
     id: Zaehler3Ruecklauftemperatur
@@ -766,6 +808,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
   - platform: vitohome
     name: "Meter 3 differential temperature"
     id: Zaehler3Differenztemperatur
@@ -1194,6 +1237,7 @@ number:
     update_interval: 3600s
 
   # --- Sommerbetrieb / Kesselanwahlaus ---
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Limit (parasommer_gw_kesselanw_aus)"
     id: parasommer_gw_kesselanw_aus
@@ -1212,6 +1256,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Delay (parasommer_verzoeg_kesselanw_aus)"
     id: parasommer_verzoeg_kesselanw_aus
@@ -1231,6 +1276,7 @@ number:
     update_interval: 3600s
 
   # --- Sommerbetrieb / Kesselanwahlein ---
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Limit (parasommer_gw_kesselanw_ein)"
     id: parasommer_gw_kesselanw_ein
@@ -1249,6 +1295,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Delay (parasommer_verzoeg_kesselanw_ein)"
     id: parasommer_verzoeg_kesselanw_ein
@@ -1268,6 +1315,7 @@ number:
     update_interval: 3600s
 
   # --- Sommerbetrieb / Kesselpumpeneinstellungen ---
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Boiler pump controller set value (parasommer_kesselpumpenreg_sollwert)"
     id: parasommer_kesselpumpenreg_sollwert
@@ -1285,6 +1333,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Boiler pump controller set value tolerance-1 (parasommer_kesselpumpenreg_sollwert_t1)"
     id: parasommer_kesselpumpenreg_sollwert_t1
@@ -1302,6 +1351,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Boiler pump controller set value tolerance-2 (parasommer_kesselpumpenreg_sollwert_t2)"
     id: parasommer_kesselpumpenreg_sollwert_t2
@@ -1319,6 +1369,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Boiler pump controller measurement interval (parasommer_kesselpumpenreg_messintervall)"
     id: parasommer_kesselpumpenreg_messintervall
@@ -1337,6 +1388,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Boiler pump controller Y delta (parasommer_kesselpumpenreg_y_delta)"
     id: parasommer_kesselpumpenreg_y_delta
@@ -1354,6 +1406,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Boiler pump controller Y min (parasommer_kesselpumpenreg_y_min)"
     id: parasommer_kesselpumpenreg_y_min
@@ -1371,6 +1424,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Boiler pump controller Y max (parasommer_kesselpumpenreg_y_max)"
     id: parasommer_kesselpumpenreg_y_max
@@ -1388,6 +1442,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Boiler pump controller Y start (parasommer_kesselpumpenreg_y_start)"
     id: parasommer_kesselpumpenreg_y_start
@@ -1755,6 +1810,7 @@ number:
     update_interval: 3600s
 
   # --- Winterbetrieb / Kesselanwahlaus ---
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Limit (parawinter_gw_kesselanw_aus)"
     id: parawinter_gw_kesselanw_aus
@@ -1773,6 +1829,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Delay (parawinter_verzoeg_kesselanw_aus)"
     id: parawinter_verzoeg_kesselanw_aus
@@ -1792,6 +1849,7 @@ number:
     update_interval: 3600s
 
   # --- Winterbetrieb / Kesselanwahlein ---
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Limit (parawinter_gw_kesselanw_ein)"
     id: parawinter_gw_kesselanw_ein
@@ -1810,6 +1868,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Delay (parawinter_verzoeg_kesselanw_ein)"
     id: parawinter_verzoeg_kesselanw_ein
@@ -1829,6 +1888,7 @@ number:
     update_interval: 3600s
 
   # --- Winterbetrieb / Kesselpumpeneinstellungen ---
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Boiler pump controller set value (parawinter_kesselpumpenreg_sollwert)"
     id: parawinter_kesselpumpenreg_sollwert
@@ -1846,6 +1906,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Boiler pump controller set value tolerance-1 (parawinter_kesselpumpenreg_sollwert_t1)"
     id: parawinter_kesselpumpenreg_sollwert_t1
@@ -1863,6 +1924,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Boiler pump controller set value tolerance-2 (parawinter_kesselpumpenreg_sollwert_t2)"
     id: parawinter_kesselpumpenreg_sollwert_t2
@@ -1880,6 +1942,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Boiler pump controller measurement interval (parawinter_kesselpumpenreg_messintervall)"
     id: parawinter_kesselpumpenreg_messintervall
@@ -1898,6 +1961,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Boiler pump controller Y delta (parawinter_kesselpumpenreg_y_delta)"
     id: parawinter_kesselpumpenreg_y_delta
@@ -1915,6 +1979,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Boiler pump controller Y min (parawinter_kesselpumpenreg_y_min)"
     id: parawinter_kesselpumpenreg_y_min
@@ -1932,6 +1997,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Boiler pump controller Y max (parawinter_kesselpumpenreg_y_max)"
     id: parawinter_kesselpumpenreg_y_max
@@ -1949,6 +2015,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Boiler pump controller Y start (parawinter_kesselpumpenreg_y_start)"
     id: parawinter_kesselpumpenreg_y_start
@@ -2444,6 +2511,7 @@ text_sensor:
       0x0B: "PR_16: HVAC RTN (lowest priority) (BACnet Priority 16)"
 
   # --- Overview / Allgemein ---
+  # vito: overview trend
   - platform: vitohome
     type: enum
     name: "Selection module"
@@ -2456,6 +2524,7 @@ text_sensor:
       0x00: "Not selected"
       0x01: "Selected"
 
+  # vito: overview trend
   - platform: vitohome
     type: enum
     name: "Selection boiler"
@@ -2468,6 +2537,7 @@ text_sensor:
       0x00: "Not selected"
       0x01: "Selected"
 
+  # vito: overview trend
   - platform: vitohome
     type: enum
     name: "Selection butterfly valve"
@@ -2480,6 +2550,7 @@ text_sensor:
       0x00: "Vorlaufanhebung"
       0x01: "Offen"
 
+  # vito: overview trend
   - platform: vitohome
     type: enum
     name: "Selection boiler pump"
@@ -2492,6 +2563,7 @@ text_sensor:
       0x00: "Not selected"
       0x01: "Selected"
 
+  # vito: overview trend
   - platform: vitohome
     type: enum
     name: "Selection CHP module pump"
@@ -2504,6 +2576,7 @@ text_sensor:
       0x00: "Not selected"
       0x01: "Selected"
 
+  # vito: overview trend
   - platform: vitohome
     type: enum
     name: "Operating mode"
@@ -2517,6 +2590,7 @@ text_sensor:
       0x00: "Winter mode"
 
   # --- Overview / MBusZaehler1 ---
+  # vito: overview
   - platform: vitohome
     type: enum
     name: "Meter 1 connected"
@@ -2529,6 +2603,7 @@ text_sensor:
       0x00: "NOT AVAILABLE"
       0x01: "AVAILABLE"
 
+  # vito: overview
   - platform: vitohome
     type: enum
     name: "Meter 1 detail error number"
@@ -2548,6 +2623,7 @@ text_sensor:
       0x6A: "send_error"
 
   # --- Overview / MBusZaehler2 ---
+  # vito: overview
   - platform: vitohome
     type: enum
     name: "Meter 2 connected"
@@ -2560,6 +2636,7 @@ text_sensor:
       0x00: "NOT AVAILABLE"
       0x01: "AVAILABLE"
 
+  # vito: overview
   - platform: vitohome
     type: enum
     name: "Meter 2 detail error number"
@@ -2579,6 +2656,7 @@ text_sensor:
       0x6A: "send_error"
 
   # --- Overview / MBusZaehler3 ---
+  # vito: overview
   - platform: vitohome
     type: enum
     name: "Meter 3 connected"
@@ -2591,6 +2669,7 @@ text_sensor:
       0x00: "NOT AVAILABLE"
       0x01: "AVAILABLE"
 
+  # vito: overview
   - platform: vitohome
     type: enum
     name: "Meter 3 detail error number"
@@ -2670,6 +2749,7 @@ text_sensor:
       0x0C: "12: CHP module coolant"
 
   # --- Sommerbetrieb / Kesselallgemein ---
+  # vito: circuit=boiler
   - platform: vitohome
     type: enum
     name: "Set boiler value (parasommer_kesselsollwert)"
@@ -2690,6 +2770,7 @@ text_sensor:
       0x0C: "12: CHP module coolant"
 
   # --- Sommerbetrieb / Kesselanwahlaus ---
+  # vito: circuit=boiler
   - platform: vitohome
     type: enum
     name: "Sensor (parasommer_fuehl_kesselanw_aus)"
@@ -2710,6 +2791,7 @@ text_sensor:
       0x0C: "12: CHP module coolant"
 
   # --- Sommerbetrieb / Kesselanwahlein ---
+  # vito: circuit=boiler
   - platform: vitohome
     type: enum
     name: "Sensor (parasommer_fuehl_kesselanw_ein)"
@@ -2889,6 +2971,7 @@ text_sensor:
       0x0C: "12: CHP module coolant"
 
   # --- Winterbetrieb / Kesselallgemein ---
+  # vito: circuit=boiler
   - platform: vitohome
     type: enum
     name: "Set boiler value (parawinter_kesselsollwert)"
@@ -2909,6 +2992,7 @@ text_sensor:
       0x0C: "12: CHP module coolant"
 
   # --- Winterbetrieb / Kesselanwahlaus ---
+  # vito: circuit=boiler
   - platform: vitohome
     type: enum
     name: "Sensor (parawinter_fuehl_kesselanw_aus)"
@@ -2929,6 +3013,7 @@ text_sensor:
       0x0C: "12: CHP module coolant"
 
   # --- Winterbetrieb / Kesselanwahlein ---
+  # vito: circuit=boiler
   - platform: vitohome
     type: enum
     name: "Sensor (parawinter_fuehl_kesselanw_ein)"

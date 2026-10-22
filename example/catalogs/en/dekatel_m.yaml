@@ -12,6 +12,12 @@
 # that are neither a reading nor an action) were omitted as unreachable.
 # Re-run with --no-reachable-only to include them.
 #
+# Metadata: 4 entities carry a `# vito:` line with Vitosoft's own
+# grouping, for the catalog editor: circuit=hk1..hk6|dhw|solar|boiler|
+# cascade|mbus (the menu they are in), level=td (shown at the service
+# access level only), overview, quickcheck and trend (Vitosoft's overview
+# screen, quick check and trend recorder). ESPHome ignores them.
+#
 # VERIFY ON HARDWARE: not every address answers on every firmware.
 # Run `esphome config` then `esphome compile`/`run` before relying
 # on any value. number entities whose borders were absent in the
@@ -210,6 +216,7 @@ binary_sensor:
 
 number:
   # --- DEKATEL M / Installation ---
+  # vito: quickcheck
   - platform: vitohome
     name: "Set room temperature reduced mode A1M1"
     id: BedienRTSolltemperaturReduziertA1M1
@@ -225,6 +232,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "Set room temperature reduced mode M2"
     id: BedienRTSolltemperaturReduziertM2
@@ -271,6 +279,7 @@ number:
 
 select:
   # --- DEKATEL M / Installation ---
+  # vito: quickcheck
   # Writable operating-mode (Betriebsart). KNOWN ISSUES on real 0x20CB /
   # VScotHO1 units (see project notes / hardware audit):
   #  * openv/community drives the mode at 0x2301 with 6 options
@@ -295,6 +304,7 @@ select:
       0x03: "Continuous reduced"
       0x04: "Continuous standard"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(D5) Direction external hook-up A1M1"
     id: KD5_WirkungExtBA_UmschaltungA1M1

@@ -1,400 +1,400 @@
-file,token,ident,hw_index,sw_lo,sw_hi,f0_lo,f0_hi,events,entities,bytes,status,ext_raw,gfa_slots
-bess.yaml,BESS,0x2502,,,,,,99,64,29976,ok,,
-cu401b_a.yaml,CU401B_A,0x204C,,,,,,2153,2089,756844,ok,,
-cu401b_g.yaml,CU401B_G,0x204B,,,,,,2168,2101,761456,ok,,
-cu401b_s.yaml,CU401B_S,0x204D,,,,,,2292,2226,800917,ok,,
-,DEKATEL_F,0x2088,,,,,,586,1,,skipped: no Optolink-reachable datapoints,37343530353330,
-,DEKATEL_F_A,0x2088,,,,,,576,1,,skipped: no Optolink-reachable datapoints,37343533353330,
-,DEKATEL_F_CH,0x2088,,,,,,576,1,,skipped: no Optolink-reachable datapoints,37343531353330,
-,DEKATEL_F_ETCPU,0x2088,,,,,,586,1,,skipped: no Optolink-reachable datapoints,37343037303930,
-,DEKATEL_F_I,0x2088,,,,,,576,1,,skipped: no Optolink-reachable datapoints,37343532353330,
-,DEKATEL_F_R1,0x2088,,,,,,597,1,,skipped: no Optolink-reachable datapoints,37343530353333,
-,DEKATEL_F_R1_ETCPU,0x2088,,,,,,597,1,,skipped: no Optolink-reachable datapoints,37343037303931,
-dekatel_m.yaml,DEKATEL_M,0x2081,,,,,,120,44,18415,ok,37343530353336,
-,DEKATEL_M_A,0x2081,,,,,,87,1,,skipped: no Optolink-reachable datapoints,37343533353336,
-,DEKATEL_M_CH,0x2081,,,,,,87,1,,skipped: no Optolink-reachable datapoints,37343531353336,
-,Dekamatik_E,0x2000,,,,,,168,1,,skipped: no Optolink-reachable datapoints,01400e,
-,Dekamatik_HK1,0x2000,,,,,,86,1,,skipped: no Optolink-reachable datapoints,044200,
-,Dekamatik_HK1_5,0x2000,,,,,,86,1,,skipped: no Optolink-reachable datapoints,054200,
-,Dekamatik_HK1_6,0x2000,,,,,,86,1,,skipped: no Optolink-reachable datapoints,064200,
-,Dekamatik_HK1_7,0x2000,,,,,,86,1,,skipped: no Optolink-reachable datapoints,074200,
-,Dekamatik_HK1_8,0x2000,,,,,,86,1,,skipped: no Optolink-reachable datapoints,084200,
-,Dekamatik_HK1_9,0x2000,,,,,,86,1,,skipped: no Optolink-reachable datapoints,094200,
-,Dekamatik_HK1_A,0x2000,,,,,,86,1,,skipped: no Optolink-reachable datapoints,0a4200,
-,Dekamatik_HK1_B,0x2000,,,,,,86,1,,skipped: no Optolink-reachable datapoints,0b4200,
-,Dekamatik_HK2,0x2000,,,,,,129,1,,skipped: no Optolink-reachable datapoints,044100,
-,Dekamatik_HK2_5,0x2000,,,,,,129,1,,skipped: no Optolink-reachable datapoints,054100,
-,Dekamatik_HK2_6,0x2000,,,,,,129,1,,skipped: no Optolink-reachable datapoints,064100,
-,Dekamatik_HK2_7,0x2000,,,,,,129,1,,skipped: no Optolink-reachable datapoints,074100,
-,Dekamatik_HK2_8,0x2000,,,,,,129,1,,skipped: no Optolink-reachable datapoints,084100,
-,Dekamatik_HK2_9,0x2000,,,,,,129,1,,skipped: no Optolink-reachable datapoints,094100,
-,Dekamatik_HK2_A,0x2000,,,,,,129,1,,skipped: no Optolink-reachable datapoints,0a4100,
-,Dekamatik_HK2_B,0x2000,,,,,,129,1,,skipped: no Optolink-reachable datapoints,0b4100,
-,Dekamatik_M1,0x2000,,,,,,133,1,,skipped: no Optolink-reachable datapoints,014001,
-,Dekamatik_M2,0x2000,,,,,,52,1,,skipped: no Optolink-reachable datapoints,024002,
-,Dekamatik_M2_3,0x2000,,,,,,52,1,,skipped: no Optolink-reachable datapoints,034002,
-ea2.yaml,EA2,0x20A3,,,,,,87,87,32638,ok,,
-ecotronic.yaml,Ecotronic,0x2034,,,,,,1146,925,313342,ok,,
-ecotronic_100.yaml,Ecotronic_100,0x2035,,,,,,898,701,225656,ok,,
-gwg_bt2.yaml,GWG_BT2,0x2054,0,255,255,,,111,104,48425,ok,00FF,
-gwg_vbem_00.yaml,GWG_VBEM_00,0x2053,1,0,0,,,220,198,84213,ok,0100,
-gwg_vbem_03.yaml,GWG_VBEM_03,0x2053,1,3,3,,,220,198,84213,ok,0103,
-gwg_vbem_21.yaml,GWG_VBEM_21,0x2053,1,33,33,,,220,198,84213,ok,0121,
-gwg_vbem_35.yaml,GWG_VBEM_35,0x2053,1,53,53,,,220,198,84218,ok,0135,
-gwg_vbem_36.yaml,GWG_VBEM_36,0x2053,1,54,54,,,221,199,84597,ok,0136,
-gwg_vbes_00.yaml,GWG_VBES_00,0x2053,2,0,0,,,195,177,74997,ok,0200,
-gwg_vbes_03.yaml,GWG_VBES_03,0x2053,2,3,3,,,195,177,74997,ok,0203,
-gwg_vbes_21.yaml,GWG_VBES_21,0x2053,2,33,33,,,195,177,74997,ok,0221,
-gwg_vbes_35.yaml,GWG_VBES_35,0x2053,2,53,53,,,195,177,74997,ok,0235,
-gwg_vbes_36.yaml,GWG_VBES_36,0x2053,2,54,54,,,196,178,75376,ok,0236,
-gwg_vbt2_00.yaml,GWG_VBT2_00,0x2053,16,0,0,,,192,175,74252,ok,1000,
-gwg_vbt2_03.yaml,GWG_VBT2_03,0x2053,16,3,3,,,192,175,74252,ok,1003,
-gwg_vbt2_21.yaml,GWG_VBT2_21,0x2053,16,33,33,,,192,175,74252,ok,1021,
-gwg_vbt2_35.yaml,GWG_VBT2_35,0x2053,16,53,53,,,192,175,74252,ok,1035,
-gwg_vbt2_36.yaml,GWG_VBT2_36,0x2053,16,54,54,,,193,176,74631,ok,1036,
-gwg_vwms_00.yaml,GWG_VWMS_00,0x2053,8,0,0,,,192,174,74003,ok,0800,
-gwg_vwms_03.yaml,GWG_VWMS_03,0x2053,8,3,3,,,192,174,74003,ok,0803,
-gwg_vwms_21.yaml,GWG_VWMS_21,0x2053,8,33,33,,,192,174,74003,ok,0821,
-gwg_vwms_35.yaml,GWG_VWMS_35,0x2053,8,53,53,,,192,174,74003,ok,0835,
-gwg_vwms_36.yaml,GWG_VWMS_36,0x2053,8,54,54,,,193,175,74382,ok,0836,
-,HV_GWG,0x2000,,,,,,38,1,,skipped: no Optolink-reachable datapoints,015300,
-,HV_V050HK1M,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,04b400,
-,HV_V050HK1M_5,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,05b400,
-,HV_V050HK1M_6,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,06b400,
-,HV_V050HK1M_7,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,07b400,
-,HV_V050HK1M_8,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,08b400,
-,HV_V050HK1M_9,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,09b400,
-,HV_V050HK1M_A,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,0ab400,
-,HV_V050HK1M_B,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,0bb400,
-,HV_V050HK1S,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,04ac00,
-,HV_V050HK1S_5,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,05ac00,
-,HV_V050HK1S_6,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,06ac00,
-,HV_V050HK1S_7,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,07ac00,
-,HV_V050HK1S_8,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,08ac00,
-,HV_V050HK1S_9,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,09ac00,
-,HV_V050HK1S_A,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,0aac00,
-,HV_V050HK1S_B,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,0bac00,
-,HV_V050HK1W,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,04aa00,
-,HV_V050HK1W_5,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,05aa00,
-,HV_V050HK1W_6,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,06aa00,
-,HV_V050HK1W_7,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,07aa00,
-,HV_V050HK1W_8,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,08aa00,
-,HV_V050HK1W_9,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,09aa00,
-,HV_V050HK1W_A,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,0aaa00,
-,HV_V050HK1W_B,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,0baa00,
-,HV_V050HK3S,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,04ad00,
-,HV_V050HK3S_5,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,05ad00,
-,HV_V050HK3S_6,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,06ad00,
-,HV_V050HK3S_7,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,07ad00,
-,HV_V050HK3S_8,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,08ad00,
-,HV_V050HK3S_9,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,09ad00,
-,HV_V050HK3S_A,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,0aad00,
-,HV_V050HK3S_B,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,0bad00,
-,HV_V050HK3W,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,04ab00,
-,HV_V050HK3W_5,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,05ab00,
-,HV_V050HK3W_6,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,06ab00,
-,HV_V050HK3W_7,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,07ab00,
-,HV_V050HK3W_8,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,08ab00,
-,HV_V050HK3W_9,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,09ab00,
-,HV_V050HK3W_A,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,0aab00,
-,HV_V050HK3W_B,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,0bab00,
-,HV_V100GC1,0x2000,,,,,,16,1,,skipped: no Optolink-reachable datapoints,02a000,
-,HV_V100GC1_3,0x2000,,,,,,16,1,,skipped: no Optolink-reachable datapoints,03a000,
-,HV_V300KW3,0x2000,,,,,,165,1,,skipped: no Optolink-reachable datapoints,019c00,
-,MBus_ABB_01,0x0611,,,,,,21,1,,skipped: no Optolink-reachable datapoints,343230343038,
-,MBus_ABB_02,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,636434653038,
-,MBus_ABB_02_S01,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,636434653038_S01,
-,MBus_ABB_02_S02,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,636434653038_S02,
-,MBus_ABB_03,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,636434653039,
-,MBus_ALL_01,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,373730343039,
-,MBus_AmtronX50_01,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,623430356335,
-,MBus_Calec_01,0x0611,,,,,,25,1,,skipped: no Optolink-reachable datapoints,623430353830,
-,MBus_Calec_02,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,623430356330,
-,MBus_EE_01,0x0611,,,,,,13,1,,skipped: no Optolink-reachable datapoints,613831353030,
-,MBus_EE_02,0x0611,,,,,,13,1,,skipped: no Optolink-reachable datapoints,353233623030,
-,MBus_EngelmannSenso_01,0x0611,,,,,,22,1,,skipped: no Optolink-reachable datapoints,633531343332,
-,MBus_EngelmannSenso_01_S01,0x0611,,,,,,22,1,,skipped: no Optolink-reachable datapoints,633531343332_S01,
-,MBus_Kalorimeter_01,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,373730343062,
-,MBus_KampStrup_01,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,326432633032,
-,MBus_KampStrup_01_S01,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,326432633032_S01,
-,MBus_KampStrup_02,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,326432633031,
-,MBus_KampStrup_03,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,326432633037,
-,MBus_KampStrup_04,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,326432633035,
-,MBus_LUG_04,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,613733323032,
-,MBus_LUG_04_S01,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,613733323032_S01,
-,MBus_LUG_04_S02,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,613733323032_S02,
-,MBus_LUG_04_S03,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,613733323032_S03,
-,MBus_LUG_04_S04,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,613733323032_S04,
-,MBus_LUG_04_S05,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,613733323032_S05,
-,MBus_LUG_04_S06,0x0611,,,,,,19,1,,skipped: no Optolink-reachable datapoints,613733323032_S06,
-,MBus_LUG_04_S07,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,613733323032_S07,
-,MBus_LUG_04_S08,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,613733323032_S08,
-,MBus_LUG_04_S09,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,613733323032_S09,
-,MBus_Metrona_01,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,613733323033,
-,MBus_NZR_01,0x0611,,,,,,17,1,,skipped: no Optolink-reachable datapoints,353233623430,
-,MBus_NZR_01_S01,0x0611,,,,,,17,1,,skipped: no Optolink-reachable datapoints,353233623430_S01,
-,MBus_NZR_02,0x0611,,,,,,17,1,,skipped: no Optolink-reachable datapoints,353233623431,
-,MBus_NZR_02_S01,0x0611,,,,,,17,1,,skipped: no Optolink-reachable datapoints,353233623431_S01,
-,MBus_NZR_02_S02,0x0611,,,,,,17,1,,skipped: no Optolink-reachable datapoints,353233623431_S02,
-,MBus_Pollu_01,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,313834653334,
-,MBus_Pollu_01_S01,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,313834653334_S01,
-,MBus_Pollu_01_S02,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,313834653334_S02,
-,MBus_Pollu_02,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,313834653630,
-,MBus_Pollu_02_S01,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,313834653630_S01,
-,MBus_Pollu_03,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,616534633038,
-,MBus_Pollu_04,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,616534633062,
-,MBus_Pollu_04_S01,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,616534633062_S01,
-,MBus_Schlumberger_01,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,383234643032,
-,MBus_Schlumberger_01_S01,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,383234643032_S01,
-,MBus_Schlumberger_01_S02,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,383234643032_S02,
-,MBus_Schlumberger_01_S03,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,383234643032_S03,
-,MBus_Schlumberger_02,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,373730343061,
-,MBus_Schlumberger_02_S01,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,373730343061_S01,
-,MBus_Siemens_01,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,323534643032,
-,MBus_Siemens_02,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,323534643032,
-,MBus_Siemens_03,0x0611,,,,,,21,1,,skipped: no Optolink-reachable datapoints,323534643031,
-,MBus_Siemens_03_S01,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,323534643031_S01,
-,MBus_Techem_01,0x0611,,,,,,22,1,,skipped: no Optolink-reachable datapoints,363835303236,
-,MBus_Techem_02,0x0611,,,,,,21,1,,skipped: no Optolink-reachable datapoints,643331303031,
-,MBus_Techem_02_S01,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,643331303031_S01,
-,MBus_Techem_03,0x0611,,,,,,21,1,,skipped: no Optolink-reachable datapoints,363835303239,
-,MBus_Techem_04,0x0611,,,,,,19,1,,skipped: no Optolink-reachable datapoints,363835303031,
-,MBus_Techem_04_S01,0x0611,,,,,,19,1,,skipped: no Optolink-reachable datapoints,363835303031_S01,
-,MBus_Techem_05,0x0611,,,,,,22,1,,skipped: no Optolink-reachable datapoints,323432333236,
-,MBus_Techem_06,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,323432333031,
-,MBus_Viterra_01,0x0611,,,,,,22,1,,skipped: no Optolink-reachable datapoints,363534393661,
-,MBus_Viterra_01_S01,0x0611,,,,,,22,1,,skipped: no Optolink-reachable datapoints,363534393661_S01,
-,MBus_X01,0x0611,,,,,,14,1,,skipped: no Optolink-reachable datapoints,346436613831,
-,MBus|0,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|1,,,,,,,51,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|10,,,,,,,21,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|101,,,,,,,59,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|102,,,,,,,72,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|11,,,,,,,21,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|12,,,,,,,21,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|13,,,,,,,21,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|14,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|15,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|16,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|17,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|18,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|19,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|2,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|20,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|21,,,,,,,17,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|22,,,,,,,17,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|23,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|24,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|25,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|26,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|27,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|28,,,,,,,19,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|29,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|3,,,,,,,19,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|30,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|31,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|32,,,,,,,16,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|33,,,,,,,19,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|34,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|35,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|36,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|37,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|38,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|39,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|4,,,,,,,21,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|40,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|41,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|5,,,,,,,21,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|6,,,,,,,23,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|7,,,,,,,28,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|8,,,,,,,24,1,,skipped: no Optolink-reachable datapoints,,
-,MBus|9,,,,,,,18,1,,skipped: no Optolink-reachable datapoints,,
-,OpenTherm_9_84,0x2621,1,9,9,84,84,81,1,,skipped: no Optolink-reachable datapoints,0109,
-,OpenTherm_DEFAULT,0x26FF,,,,,,68,1,,skipped: no Optolink-reachable datapoints,,
-,Solartrol_M,0x2000,,,,,,26,1,,skipped: no Optolink-reachable datapoints,0b6000,
-v050hk1m.yaml,V050HK1M,0x20B4,1,0,6,,,313,247,85998,ok,0100,
-v050hk1m_7.yaml,V050HK1M_7,0x20B4,1,7,7,,,225,191,66889,ok,0107,
-v050hk1m_8.yaml,V050HK1M_8,0x20B4,1,8,8,,,214,197,68560,ok,0108,
-v050hk1m_9.yaml,V050HK1M_9,0x20B4,1,9,15,,,218,201,70034,ok,0109,
-v050hk1s.yaml,V050HK1S,0x20AC,1,0,6,,,356,279,97443,ok,0100,
-v050hk1s_7.yaml,V050HK1S_7,0x20AC,1,7,7,,,273,229,80411,ok,0107,
-v050hk1s_8.yaml,V050HK1S_8,0x20AC,1,8,8,,,280,236,82325,ok,0108,
-v050hk1s_9.yaml,V050HK1S_9,0x20AC,1,9,15,,,280,236,83424,ok,0109,
-v050hk1w.yaml,V050HK1W,0x20AA,1,0,6,,,362,284,99054,ok,0100,
-v050hk1w_7.yaml,V050HK1W_7,0x20AA,1,7,7,,,274,230,81754,ok,0107,
-v050hk1w_8.yaml,V050HK1W_8,0x20AA,1,8,8,,,281,237,83668,ok,0108,
-v050hk1w_9.yaml,V050HK1W_9,0x20AA,1,9,15,,,279,236,83419,ok,0109,
-v050hk3s.yaml,V050HK3S,0x20AD,1,0,6,,,555,490,164660,ok,0100,
-v050hk3s_7.yaml,V050HK3S_7,0x20AD,1,7,7,,,432,404,135185,ok,0107,
-v050hk3s_8.yaml,V050HK3S_8,0x20AD,1,8,8,,,439,411,137126,ok,0108,
-v050hk3s_9.yaml,V050HK3S_9,0x20AD,1,9,15,,,435,410,137021,ok,0109,
-v050hk3w.yaml,V050HK3W,0x20AB,1,0,6,,,555,490,164709,ok,0100,
-v050hk3w_7.yaml,V050HK3W_7,0x20AB,1,7,7,,,432,404,135185,ok,0107,
-v050hk3w_8.yaml,V050HK3W_8,0x20AB,1,8,8,,,439,411,137126,ok,0108,
-v050hk3w_9.yaml,V050HK3W_9,0x20AB,1,9,15,,,435,410,137145,ok,0109,
-v100cc1x.yaml,V100CC1x,0x20A7,,,,,,597,508,185469,ok,,
-v100gc1.yaml,V100GC1,0x20A0,1,0,6,,,405,306,106927,ok,0100,
-v100gc1a.yaml,V100GC1A,0x20A1,,,,,,451,379,135643,ok,,
-v100gc1c.yaml,V100GC1C,0x20A2,,,,,,460,395,139867,ok,,
-v100gc1_7.yaml,V100GC1_7,0x20A0,1,7,7,,,338,276,97578,ok,0107,
-v100gc1_8.yaml,V100GC1_8,0x20A0,1,8,15,,,340,278,97973,ok,0108,
-v100kc2.yaml,V100KC2,0x2091,1,0,5,,,210,203,74072,ok,0100,
-v100kc2_6.yaml,V100KC2_6,0x2091,1,6,15,,,179,174,61998,ok,0106,
-v100kc4b.yaml,V100KC4B,0x209D,,,,,,470,412,159863,ok,,20
-v150kb1.yaml,V150KB1,0x2092,1,0,3,,,258,261,90278,ok,0100,
-v150kb1_4.yaml,V150KB1_4,0x2092,1,4,4,,,233,238,80719,ok,0104,
-v150kb1_5.yaml,V150KB1_5,0x2092,1,5,5,,,230,235,79794,ok,0105,
-v150kb1_6.yaml,V150KB1_6,0x2092,1,6,15,,,245,248,83717,ok,0106,
-v200co1x.yaml,V200CO1x,0x20A9,,,,,,1005,916,335324,ok,,20
-v200gw1.yaml,V200GW1,0x20A4,1,0,6,,,531,426,142294,ok,0100,
-v200gw1_7.yaml,V200GW1_7,0x20A4,1,7,7,,,412,357,121605,ok,0107,
-v200gw1_8.yaml,V200GW1_8,0x20A4,1,8,8,,,421,365,123819,ok,0108,
-v200gw1_9.yaml,V200GW1_9,0x20A4,1,9,15,,,428,373,126381,ok,0109,
-v200hk3a.yaml,V200HK3A,0x20AE,,,,,,593,566,203966,ok,,20
-v200ko2b.yaml,V200KO2B,0x209F,,,,,,623,577,211833,ok,,20
-v200kw1.yaml,V200KW1,0x2094,1,0,3,,,340,335,112944,ok,0100,
-v200kw1_4.yaml,V200KW1_4,0x2094,1,4,4,,,308,306,101331,ok,0104,
-v200kw1_5.yaml,V200KW1_5,0x2094,1,5,5,,,308,306,101331,ok,0105,
-v200kw1_6.yaml,V200KW1_6,0x2094,1,6,15,,,323,319,105266,ok,0106,
-v200kw2.yaml,V200KW2,0x2098,1,0,3,,,437,439,145589,ok,0100,
-v200kw2_4.yaml,V200KW2_4,0x2098,1,4,4,,,391,395,129535,ok,0104,
-v200kw2_5.yaml,V200KW2_5,0x2098,1,5,5,,,391,395,129887,ok,0105,
-v200kw2_6.yaml,V200KW2_6,0x2098,1,6,15,,,404,411,134077,ok,0106,
-v200wo1a.yaml,V200WO1A,0x2048,,,,,,1312,1288,455412,ok,,
-v300cm1x.yaml,V300CM1x,0x20BF,,,,,,1048,935,341423,ok,,20
-v300gw2.yaml,V300GW2,0x20A5,1,0,6,,,714,621,204561,ok,0100,
-v300gw2a.yaml,V300GW2A,0x20A6,,,,,,646,606,218790,ok,,20
-v300gw2_7.yaml,V300GW2_7,0x20A5,1,7,7,,,576,535,176746,ok,0107,
-v300gw2_8.yaml,V300GW2_8,0x20A5,1,8,8,,,566,525,172668,ok,0108,
-v300gw2_9.yaml,V300GW2_9,0x20A5,1,9,15,,,579,541,178681,ok,0109,
-v300gw6b.yaml,V300GW6B,0x20BE,,,,,,766,693,250626,ok,,20
-v300kmw1a.yaml,V300KMW1A,0x20BB,,,,,,672,618,224553,ok,,20
-v300kmw2a.yaml,V300KMW2A,0x20BC,,,,,,694,633,230462,ok,,20
-v300kw3.yaml,V300KW3,0x209C,1,0,3,,,535,543,179297,ok,0100,
-v300kw3_4.yaml,V300KW3_4,0x209C,1,4,4,,,469,480,157506,ok,0104,
-v300kw3_5.yaml,V300KW3_5,0x209C,1,5,5,,,469,480,157509,ok,0105,
-v300kw3_6.yaml,V300KW3_6,0x209C,1,6,15,,,492,502,163605,ok,0106,
-v300mw3b.yaml,V300MW3B,0x20BD,,,,,,758,692,255044,ok,,20
-v333mw1.yaml,V333MW1,0x20B8,1,0,6,,,709,561,188706,ok,0100,
-v333mw1s.yaml,V333MW1S,0x20B9,1,0,6,,,709,561,188722,ok,0100,
-v333mw1s_7.yaml,V333MW1S_7,0x20B9,1,7,7,,,570,475,159867,ok,0107,
-v333mw1s_8.yaml,V333MW1S_8,0x20B9,1,8,8,,,579,483,162087,ok,0108,
-v333mw1s_9.yaml,V333MW1S_9,0x20B9,1,9,15,,,578,482,161945,ok,0109,
-v333mw1_7.yaml,V333MW1_7,0x20B8,1,7,7,,,570,475,159851,ok,0107,
-v333mw1_8.yaml,V333MW1_8,0x20B8,1,8,8,,,579,483,162038,ok,0108,
-v333mw1_9.yaml,V333MW1_9,0x20B8,1,9,15,,,575,482,161932,ok,0109,
-v333mw2.yaml,V333MW2,0x20BA,,,,,,571,479,161249,ok,,
-v333mw2_2.yaml,V333MW2_2,0x20BA,1,2,15,,,568,476,160269,ok,0102,
-vbc550p.yaml,VBC550P,0x2033,,,,,,872,717,235183,ok,,
-vbc550s.yaml,VBC550S,0x2032,,,,,,786,640,211334,ok,,
-vbc700_aw.yaml,VBC700_AW,0x2047,,,,,,912,920,316295,ok,,
-vbc700_bw_ww.yaml,VBC700_BW_WW,0x2046,,,,,,914,921,316552,ok,,
-,VBC701,0x2043,,,,,,5,1,,skipped: no Optolink-reachable datapoints,,
-vbc702_aw.yaml,VBC702_AW,0x2049,,,,,,1310,1287,455195,ok,,
-vbc702_s.yaml,VBC702_S,0x204A,,,,,,1420,1395,489932,ok,,
-vblock-unbekannt.yaml,VBlock-Unbekannt,0x3000,,,,,,112,89,36865,ok,,
-vblockbm123-177.yaml,VBlockBM123-177,0x300D,,,,,,110,87,36690,ok,,
-vblockbm190-238.yaml,VBlockBM190-238,0x300E,,,,,,111,88,36978,ok,,
-vblockbm36-66.yaml,VBlockBM36-66,0x300A,,,,,,106,83,35553,ok,,
-vblockbm366-437.yaml,VBlockBM366-437,0x300F,,,,,,112,89,37267,ok,,
-vblockbm55-80.yaml,VBlockBM55-80,0x300B,,,,,,106,83,35553,ok,,
-vblockbm98-150.yaml,VBlockBM98-150,0x300C,,,,,,106,83,35565,ok,,
-vblockem140-207.yaml,VBlockEM140-207,0x3004,,,,,,106,83,35577,ok,,
-vblockem18-36.yaml,VBlockEM18-36,0x3001,,,,,,106,83,35553,ok,,
-vblockem199-263.yaml,VBlockEM199-263,0x3005,,,,,,111,88,36978,ok,,
-vblockem199-293.yaml,VBlockEM199-293,0x3006,,,,,,111,88,36978,ok,,
-vblockem20-39.yaml,VBlockEM20-39,0x3010,,,,,,106,83,35553,ok,,
-vblockem20-39_18.yaml,VBlockEM20-39_18,0x3012,,,,,,108,84,35836,ok,,
-vblockem238-363.yaml,VBlockEM238-363,0x3007,,,,,,109,86,36408,ok,,
-vblockem363-498.yaml,VBlockEM363-498,0x3008,,,,,,112,89,37267,ok,,
-vblockem401-549.yaml,VBlockEM401-549,0x3009,,,,,,112,89,37267,ok,,
-vblockem5.yaml,VBlockEM5,0x3011,,,,,,107,84,35722,ok,,
-vblockem50-81.yaml,VBlockEM50-81,0x3002,,,,,,106,83,35553,ok,,
-vblockem530-660.yaml,VBlockEM530-660,0x3015,,,,,,112,89,32647,ok,,
-vblockem6-15.yaml,VBlockEM6-15,0x3013,,,,,,107,84,35758,ok,,
-vblockem70-115.yaml,VBlockEM70-115,0x3003,,,,,,106,83,35565,ok,,
-vblockem9-20.yaml,VBlockEM9-20,0x3014,,,,,,107,84,35758,ok,,
-,VCOM100_DEKM_R1,0x2081,,,,,,90,1,,skipped: no Optolink-reachable datapoints,37343530353337,
-,VCOM100_DEKM_R1_EXP,0x2081,,,,,,90,1,,skipped: no Optolink-reachable datapoints,37343135333233,
-,VCOM100_DEKM_R2,0x2081,,,,,,94,1,,skipped: no Optolink-reachable datapoints,37313432303537,
-,VCOM100_DEKM_R3,0x2081,,,,,,91,1,,skipped: no Optolink-reachable datapoints,37313738313838,
-,VCOM300_DEKF_R2,0x2089,,,,,,623,1,,skipped: no Optolink-reachable datapoints,37343530353334,
-,VCOM300_ETCPU,0x2089,,,,,,623,1,,skipped: no Optolink-reachable datapoints,37343035313131,
-,VCOM300_ETCPU2,0x2089,,,,,,623,1,,skipped: no Optolink-reachable datapoints,37383138383434,
-,VCOM300_ETCPU3,0x2089,,,,,,623,1,,skipped: no Optolink-reachable datapoints,37343135323238,
-,VCOM300_ETCPU4,0x2089,,,,,,623,1,,skipped: no Optolink-reachable datapoints,37313738313838,
-,VCOM300_X_Marktmanager,0x0701,,,,,,118,1,,skipped: no Optolink-reachable datapoints,,
-vcaldens.yaml,VCaldens,0x20C9,1,130,149,,,9,15,13473,ok,0182,
-,VCaldens_HO1,0x20CB,1,130,149,,,5,1,,skipped: no Optolink-reachable datapoints,0182,
-vdenshc1.yaml,VDensHC1,0x20C0,1,0,3,,,507,345,127914,ok,0100,20
-vdenshc1_4.yaml,VDensHC1_4,0x20C0,1,4,159,,,465,321,120023,ok,0104,20
-vdenshc2.yaml,VDensHC2,0x20C1,1,0,3,,,480,364,129443,ok,0100,20
-vdenshc2_4.yaml,VDensHC2_4,0x20C1,1,4,159,,,443,346,123311,ok,0104,20
-vdensho1.yaml,VDensHO1,0x20C2,1,0,3,,,585,445,156792,ok,0100,20
-vdensho1_4.yaml,VDensHO1_4,0x20C2,1,4,159,,,562,439,154688,ok,0104,20
-vpendhc1.yaml,VPendHC1,0x20C3,1,0,3,,,502,344,127237,ok,0100,20
-vpendhc1_4.yaml,VPendHC1_4,0x20C3,1,4,19,,,466,322,120393,ok,0104,20
-vpendhc1_40.yaml,VPendHC1_40,0x20C3,1,40,159,,,572,415,153214,ok,0128,20
-vpendhc2.yaml,VPendHC2,0x20C4,1,0,3,,,478,361,128250,ok,0100,20
-vpendhc2_4.yaml,VPendHC2_4,0x20C4,1,4,19,,,444,347,123771,ok,0104,20
-vpendhc2_40.yaml,VPendHC2_40,0x20C4,1,40,159,,,551,441,156882,ok,0128,20
-vpendho1.yaml,VPendHO1,0x20C5,1,0,3,,,584,444,156420,ok,0100,20
-vpendho1_4.yaml,VPendHO1_4,0x20C5,1,4,39,,,568,439,154690,ok,0104,20
-vpendho1_40.yaml,VPendHO1_40,0x20C5,1,40,159,,,771,629,220307,ok,0128,20
-vplushc1.yaml,VPlusHC1,0x20C6,1,0,3,,,494,358,131421,ok,0100,20
-vplushc1_130.yaml,VPlusHC1_130,0x20C6,1,130,149,,,16,18,14959,ok,0182,
-vplushc1_20.yaml,VPlusHC1_20,0x20C6,1,20,39,,,476,358,131778,ok,0114,20
-vplushc1_4.yaml,VPlusHC1_4,0x20C6,1,4,19,,,458,343,126502,ok,0104,20
-vplushc1_40.yaml,VPlusHC1_40,0x20C6,1,40,129,,,561,432,158362,ok,0128,20
-vplushc2.yaml,VPlusHC2,0x20C7,1,0,3,,,456,366,129579,ok,0100,20
-vplushc2_4.yaml,VPlusHC2_4,0x20C7,1,4,19,,,396,330,119426,ok,0104,20
-vplushc2_40.yaml,VPlusHC2_40,0x20C7,1,40,159,,,524,442,157083,ok,0128,20
-vplusho1.yaml,VPlusHO1,0x20C8,1,0,3,,,562,450,158112,ok,0100,20
-vplusho1_20.yaml,VPlusHO1_20,0x20C8,1,20,39,,,545,448,157160,ok,0114,20
-vplusho1_4.yaml,VPlusHO1_4,0x20C8,1,4,19,,,539,445,156459,ok,0104,20
-vplusho1_40.yaml,VPlusHO1_40,0x20C8,1,40,159,,,746,632,221190,ok,0128,20
-vscothc1.yaml,VScotHC1,0x20C9,1,0,3,,,501,339,125749,ok,0100,20
-vscothc1_20.yaml,VScotHC1_20,0x20C9,1,20,39,,,502,355,130938,ok,0114,20
-vscothc1_200.yaml,VScotHC1_200,0x20C9,1,200,255,0,9,535,382,138673,ok,01C8,20
-vscothc1_200_10.yaml,VScotHC1_200_10,0x20C9,1,200,255,10,19,603,447,164284,ok,01C8,20
-vscothc1_200_30.yaml,VScotHC1_200_30,0x20C9,1,200,255,30,39,569,414,152975,ok,01C8,20
-vscothc1_4.yaml,VScotHC1_4,0x20C9,1,4,19,,,481,337,124968,ok,0104,20
-vscothc1_40.yaml,VScotHC1_40,0x20C9,1,40,89,,,587,430,157991,ok,0128,20
-vscothc1_90.yaml,VScotHC1_90,0x20C9,1,90,129,,,586,430,157991,ok,015A,20
-vscothc2.yaml,VScotHC2,0x20CA,1,0,3,,,492,374,132180,ok,0100,20
-vscothc2_200_11.yaml,VScotHC2_200_11,0x20CA,1,200,255,11,19,612,467,168777,ok,01C8,20
-vscothc2_4.yaml,VScotHC2_4,0x20CA,1,4,19,,,473,376,133690,ok,0104,20
-vscothc2_40.yaml,VScotHC2_40,0x20CA,1,40,159,,,564,454,160848,ok,0128,20
-vscotho1.yaml,VScotHO1,0x20CB,1,0,3,,,584,444,156405,ok,0100,20
-vscotho1_20.yaml,VScotHO1_20,0x20CB,1,20,39,,,568,443,155867,ok,0114,20
-vscotho1_200.yaml,VScotHO1_200,0x20CB,1,200,255,0,0,946,766,271252,ok,01C8,20
-vscotho1_200_01.yaml,VScotHO1_200_01,0x20CB,1,200,255,1,9,1059,841,303335,ok,01C8,20
-vscotho1_200_10.yaml,VScotHO1_200_10,0x20CB,1,200,255,10,10,1046,730,257603,ok,01C8,20
-vscotho1_200_11.yaml,VScotHO1_200_11,0x20CB,1,200,255,11,19,1078,738,263319,ok,01C8,20
-vscotho1_200_20.yaml,VScotHO1_200_20,0x20CB,1,200,255,20,29,861,707,248801,ok,01C8,20
-vscotho1_200_30.yaml,VScotHO1_200_30,0x20CB,1,200,255,30,39,860,707,248801,ok,01C8,20
-vscotho1_4.yaml,VScotHO1_4,0x20CB,1,4,19,,,561,438,154452,ok,0104,20
-vscotho1_40.yaml,VScotHO1_40,0x20CB,1,40,69,,,767,625,219209,ok,0128,20
-vscotho1_70.yaml,VScotHO1_70,0x20CB,1,70,71,,,825,673,237267,ok,0146,20
-vscotho1_72.yaml,VScotHO1_72,0x20CB,1,72,89,,,854,699,245777,ok,0148,20
-vscotho1_90.yaml,VScotHO1_90,0x20CB,1,90,129,,,849,695,244746,ok,015A,20
-vsorp.yaml,VSorp,0x20CB,1,150,199,,,917,736,258598,ok,0196,20
-virtualhydrauliccalibration.yaml,VirtualHydraulicCalibration,0xFFFF,,,,,,5,5,3170,ok,,
-vitocom100_lan.yaml,Vitocom100_LAN,0x208D,,,,,,11,4,2419,ok,,
-vitocom200_lan.yaml,Vitocom200_LAN,0x208C,,,,,,421,103,54911,ok,,
-vitocom200_lan_gp.yaml,Vitocom200_LAN_GP,0x208E,,,,,,45,14,8905,ok,,
-vitocom300.yaml,Vitocom300,0x208A,,,,,,621,157,67162,ok,,
-vitocom300_10.yaml,Vitocom300_10,0x208A,1,10,15,,,576,121,57582,ok,010A,
-vitocom300_lan.yaml,Vitocom300_LAN,0x208A,1,16,47,,,989,276,144037,ok,0110,
-vitocom300_lan_gp_analog.yaml,Vitocom300_LAN_GP_Analog,0x208F,,,,,,389,18,10594,ok,,
-vitogate200eib.yaml,Vitogate200EIB,,,,,,,5,4,2103,ok,,
-vitogate200knx.yaml,Vitogate200KNX,0x0820,,,,,,7,6,2732,ok,,
-vitogate300bn.yaml,Vitogate300BN,0x0830,,,,,,7,13,7839,ok,,
-vitotwingw_bati.yaml,VitotwinGW_BATI,0x0810,1,0,1,,,159,156,78105,ok,0100,
-vitotwingw_bati_02.yaml,VitotwinGW_BATI_02,0x0810,1,2,2,,,161,148,70734,ok,0102,
-vitotwingw_bati_03.yaml,VitotwinGW_BATI_03,0x0810,1,3,255,,,163,150,71357,ok,0103,
-vitovalor.yaml,Vitovalor,0x20E3,,,,,,1286,1131,416967,ok,,20
-wilo.yaml,WILO,0x0700,,,,,,79,12,6693,ok,,
-,_VITODATA,,,,,,,3,1,,skipped: no Optolink-reachable datapoints,-,
-,ecnStatusDataPoint,,,,,,,1,1,,skipped: no Optolink-reachable datapoints,,
-puffermgm.yaml,puffermgm,0x30FF,,,,,,230,192,86882,ok,,
+file,token,ident,hw_index,sw_lo,sw_hi,f0_lo,f0_hi,events,entities,bytes,status,ext_raw,gfa_slots,short_name,product_name
+bess.yaml,BESS,0x2502,,,,,,99,64,31581,ok,,,BESS,Battery Energy Storage System
+cu401b_a.yaml,CU401B_A,0x204C,,,,,,2153,2089,783215,ok,,,VT 200 (WO1C),Vitocal xxx-A mit Vitotronic 200 (Typ WO1C)
+cu401b_g.yaml,CU401B_G,0x204B,,,,,,2168,2101,791864,ok,,,VT 200 (WO1C),Vitocal xxx-G mit Vitotronic 200 (Typ WO1C)
+cu401b_s.yaml,CU401B_S,0x204D,,,,,,2292,2226,832902,ok,,,VT 200 (WO1C),"Vitocal xxx-S mit Vitotronic 200 (Typ WO1C), Vitocaldens, Vitolacaldens"
+,DEKATEL_F,0x2088,,,,,,586,1,,skipped: no Optolink-reachable datapoints,37343530353330,,,
+,DEKATEL_F_A,0x2088,,,,,,576,1,,skipped: no Optolink-reachable datapoints,37343533353330,,,
+,DEKATEL_F_CH,0x2088,,,,,,576,1,,skipped: no Optolink-reachable datapoints,37343531353330,,,
+,DEKATEL_F_ETCPU,0x2088,,,,,,586,1,,skipped: no Optolink-reachable datapoints,37343037303930,,,
+,DEKATEL_F_I,0x2088,,,,,,576,1,,skipped: no Optolink-reachable datapoints,37343532353330,,,
+,DEKATEL_F_R1,0x2088,,,,,,597,1,,skipped: no Optolink-reachable datapoints,37343530353333,,,
+,DEKATEL_F_R1_ETCPU,0x2088,,,,,,597,1,,skipped: no Optolink-reachable datapoints,37343037303931,,,
+dekatel_m.yaml,DEKATEL_M,0x2081,,,,,,120,44,18847,ok,37343530353336,,,
+,DEKATEL_M_A,0x2081,,,,,,87,1,,skipped: no Optolink-reachable datapoints,37343533353336,,,
+,DEKATEL_M_CH,0x2081,,,,,,87,1,,skipped: no Optolink-reachable datapoints,37343531353336,,,
+,Dekamatik_E,0x2000,,,,,,168,1,,skipped: no Optolink-reachable datapoints,01400e,,,
+,Dekamatik_HK1,0x2000,,,,,,86,1,,skipped: no Optolink-reachable datapoints,044200,,,
+,Dekamatik_HK1_5,0x2000,,,,,,86,1,,skipped: no Optolink-reachable datapoints,054200,,,
+,Dekamatik_HK1_6,0x2000,,,,,,86,1,,skipped: no Optolink-reachable datapoints,064200,,,
+,Dekamatik_HK1_7,0x2000,,,,,,86,1,,skipped: no Optolink-reachable datapoints,074200,,,
+,Dekamatik_HK1_8,0x2000,,,,,,86,1,,skipped: no Optolink-reachable datapoints,084200,,,
+,Dekamatik_HK1_9,0x2000,,,,,,86,1,,skipped: no Optolink-reachable datapoints,094200,,,
+,Dekamatik_HK1_A,0x2000,,,,,,86,1,,skipped: no Optolink-reachable datapoints,0a4200,,,
+,Dekamatik_HK1_B,0x2000,,,,,,86,1,,skipped: no Optolink-reachable datapoints,0b4200,,,
+,Dekamatik_HK2,0x2000,,,,,,129,1,,skipped: no Optolink-reachable datapoints,044100,,,
+,Dekamatik_HK2_5,0x2000,,,,,,129,1,,skipped: no Optolink-reachable datapoints,054100,,,
+,Dekamatik_HK2_6,0x2000,,,,,,129,1,,skipped: no Optolink-reachable datapoints,064100,,,
+,Dekamatik_HK2_7,0x2000,,,,,,129,1,,skipped: no Optolink-reachable datapoints,074100,,,
+,Dekamatik_HK2_8,0x2000,,,,,,129,1,,skipped: no Optolink-reachable datapoints,084100,,,
+,Dekamatik_HK2_9,0x2000,,,,,,129,1,,skipped: no Optolink-reachable datapoints,094100,,,
+,Dekamatik_HK2_A,0x2000,,,,,,129,1,,skipped: no Optolink-reachable datapoints,0a4100,,,
+,Dekamatik_HK2_B,0x2000,,,,,,129,1,,skipped: no Optolink-reachable datapoints,0b4100,,,
+,Dekamatik_M1,0x2000,,,,,,133,1,,skipped: no Optolink-reachable datapoints,014001,,,
+,Dekamatik_M2,0x2000,,,,,,52,1,,skipped: no Optolink-reachable datapoints,024002,,,
+,Dekamatik_M2_3,0x2000,,,,,,52,1,,skipped: no Optolink-reachable datapoints,034002,,,
+ea2.yaml,EA2,0x20A3,,,,,,87,87,35044,ok,,,EA2,Anschlusserweiterung EA2
+ecotronic.yaml,Ecotronic,0x2034,,,,,,1146,925,327794,ok,,,Ecotronic,"Ecotronic (Typ VL300-C, VL300-H, VL200-S)"
+ecotronic_100.yaml,Ecotronic_100,0x2035,,,,,,898,701,231985,ok,,,Ecotronic 100,Ecotronic 100 (Typ VL150-S)
+gwg_bt2.yaml,GWG_BT2,0x2054,0,255,255,,,111,104,49047,ok,00FF,,,
+gwg_vbem_00.yaml,GWG_VBEM_00,0x2053,1,0,0,,,220,198,85557,ok,0100,,,
+gwg_vbem_03.yaml,GWG_VBEM_03,0x2053,1,3,3,,,220,198,85557,ok,0103,,,
+gwg_vbem_21.yaml,GWG_VBEM_21,0x2053,1,33,33,,,220,198,85557,ok,0121,,,
+gwg_vbem_35.yaml,GWG_VBEM_35,0x2053,1,53,53,,,220,198,85583,ok,0135,,,
+gwg_vbem_36.yaml,GWG_VBEM_36,0x2053,1,54,54,,,221,199,85962,ok,0136,,,
+gwg_vbes_00.yaml,GWG_VBES_00,0x2053,2,0,0,,,195,177,75879,ok,0200,,,
+gwg_vbes_03.yaml,GWG_VBES_03,0x2053,2,3,3,,,195,177,75879,ok,0203,,,
+gwg_vbes_21.yaml,GWG_VBES_21,0x2053,2,33,33,,,195,177,75879,ok,0221,,,
+gwg_vbes_35.yaml,GWG_VBES_35,0x2053,2,53,53,,,195,177,75879,ok,0235,,,
+gwg_vbes_36.yaml,GWG_VBES_36,0x2053,2,54,54,,,196,178,76258,ok,0236,,,
+gwg_vbt2_00.yaml,GWG_VBT2_00,0x2053,16,0,0,,,192,175,75113,ok,1000,,,
+gwg_vbt2_03.yaml,GWG_VBT2_03,0x2053,16,3,3,,,192,175,75113,ok,1003,,,
+gwg_vbt2_21.yaml,GWG_VBT2_21,0x2053,16,33,33,,,192,175,75113,ok,1021,,,
+gwg_vbt2_35.yaml,GWG_VBT2_35,0x2053,16,53,53,,,192,175,75113,ok,1035,,,
+gwg_vbt2_36.yaml,GWG_VBT2_36,0x2053,16,54,54,,,193,176,75492,ok,1036,,,
+gwg_vwms_00.yaml,GWG_VWMS_00,0x2053,8,0,0,,,192,174,74885,ok,0800,,,
+gwg_vwms_03.yaml,GWG_VWMS_03,0x2053,8,3,3,,,192,174,74885,ok,0803,,,
+gwg_vwms_21.yaml,GWG_VWMS_21,0x2053,8,33,33,,,192,174,74885,ok,0821,,,
+gwg_vwms_35.yaml,GWG_VWMS_35,0x2053,8,53,53,,,192,174,74885,ok,0835,,,
+gwg_vwms_36.yaml,GWG_VWMS_36,0x2053,8,54,54,,,193,175,75264,ok,0836,,,
+,HV_GWG,0x2000,,,,,,38,1,,skipped: no Optolink-reachable datapoints,015300,,,
+,HV_V050HK1M,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,04b400,,,
+,HV_V050HK1M_5,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,05b400,,,
+,HV_V050HK1M_6,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,06b400,,,
+,HV_V050HK1M_7,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,07b400,,,
+,HV_V050HK1M_8,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,08b400,,,
+,HV_V050HK1M_9,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,09b400,,,
+,HV_V050HK1M_A,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,0ab400,,,
+,HV_V050HK1M_B,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,0bb400,,,
+,HV_V050HK1S,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,04ac00,,,
+,HV_V050HK1S_5,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,05ac00,,,
+,HV_V050HK1S_6,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,06ac00,,,
+,HV_V050HK1S_7,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,07ac00,,,
+,HV_V050HK1S_8,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,08ac00,,,
+,HV_V050HK1S_9,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,09ac00,,,
+,HV_V050HK1S_A,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,0aac00,,,
+,HV_V050HK1S_B,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,0bac00,,,
+,HV_V050HK1W,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,04aa00,,,
+,HV_V050HK1W_5,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,05aa00,,,
+,HV_V050HK1W_6,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,06aa00,,,
+,HV_V050HK1W_7,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,07aa00,,,
+,HV_V050HK1W_8,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,08aa00,,,
+,HV_V050HK1W_9,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,09aa00,,,
+,HV_V050HK1W_A,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,0aaa00,,,
+,HV_V050HK1W_B,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,0baa00,,,
+,HV_V050HK3S,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,04ad00,,,
+,HV_V050HK3S_5,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,05ad00,,,
+,HV_V050HK3S_6,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,06ad00,,,
+,HV_V050HK3S_7,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,07ad00,,,
+,HV_V050HK3S_8,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,08ad00,,,
+,HV_V050HK3S_9,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,09ad00,,,
+,HV_V050HK3S_A,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,0aad00,,,
+,HV_V050HK3S_B,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,0bad00,,,
+,HV_V050HK3W,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,04ab00,,,
+,HV_V050HK3W_5,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,05ab00,,,
+,HV_V050HK3W_6,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,06ab00,,,
+,HV_V050HK3W_7,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,07ab00,,,
+,HV_V050HK3W_8,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,08ab00,,,
+,HV_V050HK3W_9,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,09ab00,,,
+,HV_V050HK3W_A,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,0aab00,,,
+,HV_V050HK3W_B,0x2000,,,,,,39,1,,skipped: no Optolink-reachable datapoints,0bab00,,,
+,HV_V100GC1,0x2000,,,,,,16,1,,skipped: no Optolink-reachable datapoints,02a000,,,
+,HV_V100GC1_3,0x2000,,,,,,16,1,,skipped: no Optolink-reachable datapoints,03a000,,,
+,HV_V300KW3,0x2000,,,,,,165,1,,skipped: no Optolink-reachable datapoints,019c00,,,
+,MBus_ABB_01,0x0611,,,,,,21,1,,skipped: no Optolink-reachable datapoints,343230343038,,,
+,MBus_ABB_02,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,636434653038,,,
+,MBus_ABB_02_S01,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,636434653038_S01,,,
+,MBus_ABB_02_S02,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,636434653038_S02,,,
+,MBus_ABB_03,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,636434653039,,,
+,MBus_ALL_01,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,373730343039,,,
+,MBus_AmtronX50_01,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,623430356335,,,
+,MBus_Calec_01,0x0611,,,,,,25,1,,skipped: no Optolink-reachable datapoints,623430353830,,,
+,MBus_Calec_02,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,623430356330,,,
+,MBus_EE_01,0x0611,,,,,,13,1,,skipped: no Optolink-reachable datapoints,613831353030,,,
+,MBus_EE_02,0x0611,,,,,,13,1,,skipped: no Optolink-reachable datapoints,353233623030,,,
+,MBus_EngelmannSenso_01,0x0611,,,,,,22,1,,skipped: no Optolink-reachable datapoints,633531343332,,,
+,MBus_EngelmannSenso_01_S01,0x0611,,,,,,22,1,,skipped: no Optolink-reachable datapoints,633531343332_S01,,,
+,MBus_Kalorimeter_01,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,373730343062,,,
+,MBus_KampStrup_01,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,326432633032,,,
+,MBus_KampStrup_01_S01,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,326432633032_S01,,,
+,MBus_KampStrup_02,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,326432633031,,,
+,MBus_KampStrup_03,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,326432633037,,,
+,MBus_KampStrup_04,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,326432633035,,,
+,MBus_LUG_04,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,613733323032,,,
+,MBus_LUG_04_S01,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,613733323032_S01,,,
+,MBus_LUG_04_S02,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,613733323032_S02,,,
+,MBus_LUG_04_S03,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,613733323032_S03,,,
+,MBus_LUG_04_S04,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,613733323032_S04,,,
+,MBus_LUG_04_S05,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,613733323032_S05,,,
+,MBus_LUG_04_S06,0x0611,,,,,,19,1,,skipped: no Optolink-reachable datapoints,613733323032_S06,,,
+,MBus_LUG_04_S07,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,613733323032_S07,,,
+,MBus_LUG_04_S08,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,613733323032_S08,,,
+,MBus_LUG_04_S09,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,613733323032_S09,,,
+,MBus_Metrona_01,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,613733323033,,,
+,MBus_NZR_01,0x0611,,,,,,17,1,,skipped: no Optolink-reachable datapoints,353233623430,,,
+,MBus_NZR_01_S01,0x0611,,,,,,17,1,,skipped: no Optolink-reachable datapoints,353233623430_S01,,,
+,MBus_NZR_02,0x0611,,,,,,17,1,,skipped: no Optolink-reachable datapoints,353233623431,,,
+,MBus_NZR_02_S01,0x0611,,,,,,17,1,,skipped: no Optolink-reachable datapoints,353233623431_S01,,,
+,MBus_NZR_02_S02,0x0611,,,,,,17,1,,skipped: no Optolink-reachable datapoints,353233623431_S02,,,
+,MBus_Pollu_01,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,313834653334,,,
+,MBus_Pollu_01_S01,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,313834653334_S01,,,
+,MBus_Pollu_01_S02,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,313834653334_S02,,,
+,MBus_Pollu_02,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,313834653630,,,
+,MBus_Pollu_02_S01,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,313834653630_S01,,,
+,MBus_Pollu_03,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,616534633038,,,
+,MBus_Pollu_04,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,616534633062,,,
+,MBus_Pollu_04_S01,0x0611,,,,,,18,1,,skipped: no Optolink-reachable datapoints,616534633062_S01,,,
+,MBus_Schlumberger_01,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,383234643032,,,
+,MBus_Schlumberger_01_S01,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,383234643032_S01,,,
+,MBus_Schlumberger_01_S02,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,383234643032_S02,,,
+,MBus_Schlumberger_01_S03,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,383234643032_S03,,,
+,MBus_Schlumberger_02,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,373730343061,,,
+,MBus_Schlumberger_02_S01,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,373730343061_S01,,,
+,MBus_Siemens_01,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,323534643032,,,
+,MBus_Siemens_02,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,323534643032,,,
+,MBus_Siemens_03,0x0611,,,,,,21,1,,skipped: no Optolink-reachable datapoints,323534643031,,,
+,MBus_Siemens_03_S01,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,323534643031_S01,,,
+,MBus_Techem_01,0x0611,,,,,,22,1,,skipped: no Optolink-reachable datapoints,363835303236,,,
+,MBus_Techem_02,0x0611,,,,,,21,1,,skipped: no Optolink-reachable datapoints,643331303031,,,
+,MBus_Techem_02_S01,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,643331303031_S01,,,
+,MBus_Techem_03,0x0611,,,,,,21,1,,skipped: no Optolink-reachable datapoints,363835303239,,,
+,MBus_Techem_04,0x0611,,,,,,19,1,,skipped: no Optolink-reachable datapoints,363835303031,,,
+,MBus_Techem_04_S01,0x0611,,,,,,19,1,,skipped: no Optolink-reachable datapoints,363835303031_S01,,,
+,MBus_Techem_05,0x0611,,,,,,22,1,,skipped: no Optolink-reachable datapoints,323432333236,,,
+,MBus_Techem_06,0x0611,,,,,,20,1,,skipped: no Optolink-reachable datapoints,323432333031,,,
+,MBus_Viterra_01,0x0611,,,,,,22,1,,skipped: no Optolink-reachable datapoints,363534393661,,,
+,MBus_Viterra_01_S01,0x0611,,,,,,22,1,,skipped: no Optolink-reachable datapoints,363534393661_S01,,,
+,MBus_X01,0x0611,,,,,,14,1,,skipped: no Optolink-reachable datapoints,346436613831,,,
+,MBus|0,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|1,,,,,,,51,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|10,,,,,,,21,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|101,,,,,,,59,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|102,,,,,,,72,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|11,,,,,,,21,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|12,,,,,,,21,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|13,,,,,,,21,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|14,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|15,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|16,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|17,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|18,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|19,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|2,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|20,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|21,,,,,,,17,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|22,,,,,,,17,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|23,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|24,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|25,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|26,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|27,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|28,,,,,,,19,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|29,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|3,,,,,,,19,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|30,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|31,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|32,,,,,,,16,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|33,,,,,,,19,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|34,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|35,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|36,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|37,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|38,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|39,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|4,,,,,,,21,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|40,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|41,,,,,,,15,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|5,,,,,,,21,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|6,,,,,,,23,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|7,,,,,,,28,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|8,,,,,,,24,1,,skipped: no Optolink-reachable datapoints,,,,
+,MBus|9,,,,,,,18,1,,skipped: no Optolink-reachable datapoints,,,,
+,OpenTherm_9_84,0x2621,1,9,9,84,84,81,1,,skipped: no Optolink-reachable datapoints,0109,,OT 9_84,OpenTherm Gerät 9_84
+,OpenTherm_DEFAULT,0x26FF,,,,,,68,1,,skipped: no Optolink-reachable datapoints,,,OT DEFAULT,OpenTherm Defaultgerät
+,Solartrol_M,0x2000,,,,,,26,1,,skipped: no Optolink-reachable datapoints,0b6000,,,
+v050hk1m.yaml,V050HK1M,0x20B4,1,0,6,,,313,247,89268,ok,0100,,VT 200-H (HK1M),Vitotronic 200-H / 050 (Typ HK1M)
+v050hk1m_7.yaml,V050HK1M_7,0x20B4,1,7,7,,,225,191,70284,ok,0107,,VT 200-H (HK1M),Vitotronic 200-H / 050 (Typ HK1M)
+v050hk1m_8.yaml,V050HK1M_8,0x20B4,1,8,8,,,214,197,72037,ok,0108,,VT 200-H (HK1M),Vitotronic 200-H / 050 (Typ HK1M)
+v050hk1m_9.yaml,V050HK1M_9,0x20B4,1,9,15,,,218,201,73643,ok,0109,,VT 200-H (HK1M),Vitotronic 200-H / 050 (Typ HK1M)
+v050hk1s.yaml,V050HK1S,0x20AC,1,0,6,,,356,279,102544,ok,0100,,VT 200-H (HK1S),Vitotronic 200-H / 050 (Typ HK1S)
+v050hk1s_7.yaml,V050HK1S_7,0x20AC,1,7,7,,,273,229,85629,ok,0107,,VT 200-H (HK1S),Vitotronic 200-H / 050 (Typ HK1S)
+v050hk1s_8.yaml,V050HK1S_8,0x20AC,1,8,8,,,280,236,87811,ok,0108,,VT 200-H (HK1S),Vitotronic 200-H / 050 (Typ HK1S)
+v050hk1s_9.yaml,V050HK1S_9,0x20AC,1,9,15,,,280,236,88958,ok,0109,,VT 200-H (HK1S),Vitotronic 200-H / 050 (Typ HK1S)
+v050hk1w.yaml,V050HK1W,0x20AA,1,0,6,,,362,284,104176,ok,0100,,VT 200-H (HK1W),Vitotronic 200-H / 050 (Typ HK1W)
+v050hk1w_7.yaml,V050HK1W_7,0x20AA,1,7,7,,,274,230,86972,ok,0107,,VT 200-H (HK1W),Vitotronic 200-H / 050 (Typ HK1W)
+v050hk1w_8.yaml,V050HK1W_8,0x20AA,1,8,8,,,281,237,89154,ok,0108,,VT 200-H (HK1W),Vitotronic 200-H / 050 (Typ HK1W)
+v050hk1w_9.yaml,V050HK1W_9,0x20AA,1,9,15,,,279,236,88941,ok,0109,,VT 200-H (HK1W),Vitotronic 200-H / 050 (Typ HK1W)
+v050hk3s.yaml,V050HK3S,0x20AD,1,0,6,,,555,490,174500,ok,0100,,VT 200-H (HK3S),Vitotronic 200-H / 050 (Typ HK3S)
+v050hk3s_7.yaml,V050HK3S_7,0x20AD,1,7,7,,,432,404,145231,ok,0107,,VT 200-H (HK3S),Vitotronic 200-H / 050 (Typ HK3S)
+v050hk3s_8.yaml,V050HK3S_8,0x20AD,1,8,8,,,439,411,147440,ok,0108,,VT 200-H (HK3S),Vitotronic 200-H / 050 (Typ HK3S)
+v050hk3s_9.yaml,V050HK3S_9,0x20AD,1,9,15,,,435,410,147491,ok,0109,,VT 200-H (HK3S),Vitotronic 200-H / 050 (Typ HK3S)
+v050hk3w.yaml,V050HK3W,0x20AB,1,0,6,,,555,490,174549,ok,0100,,VT 200-H (HK3W),Vitotronic 200-H / 050 (Typ HK3W)
+v050hk3w_7.yaml,V050HK3W_7,0x20AB,1,7,7,,,432,404,145231,ok,0107,,VT 200-H (HK3W),Vitotronic 200-H / 050 (Typ HK3W)
+v050hk3w_8.yaml,V050HK3W_8,0x20AB,1,8,8,,,439,411,147440,ok,0108,,VT 200-H (HK3W),Vitotronic 200-H / 050 (Typ HK3W)
+v050hk3w_9.yaml,V050HK3W_9,0x20AB,1,9,15,,,435,410,147603,ok,0109,,VT 200-H (HK3W),Vitotronic 200-H / 050 (Typ HK3W)
+v100cc1x.yaml,V100CC1x,0x20A7,,,,,,597,508,195381,ok,,,"VT 100 (CC1E, CC1I)","Vitotronic 100 (Typ CC1E, CC1I)"
+v100gc1.yaml,V100GC1,0x20A0,1,0,6,,,405,306,112546,ok,0100,,VT 100 (GC1),Vitotronic 100 (Typ GC1)
+v100gc1a.yaml,V100GC1A,0x20A1,,,,,,451,379,143553,ok,,,"VT 100 (GC1B, GC4B)","Vitotronic 100 (Typ GC1B, GC4B)"
+v100gc1c.yaml,V100GC1C,0x20A2,,,,,,460,395,148232,ok,,,"VT 100 GC1C, GC4C","Vitotronic 100 (Typ GC1C, GC4C)"
+v100gc1_7.yaml,V100GC1_7,0x20A0,1,7,7,,,338,276,103432,ok,0107,,VT 100 (GC1),Vitotronic 100 (Typ GC1)
+v100gc1_8.yaml,V100GC1_8,0x20A0,1,8,15,,,340,278,103869,ok,0108,,VT 100 (GC1),Vitotronic 100 (Typ GC1)
+v100kc2.yaml,V100KC2,0x2091,1,0,5,,,210,203,76982,ok,0100,,VT 100 (KC2),Vitotronic 100 (Typ KC2)
+v100kc2_6.yaml,V100KC2_6,0x2091,1,6,15,,,179,174,65909,ok,0106,,VT 100 (KC2 / KC4),Vitotronic 100 (Typ KC2 / KC4)
+v100kc4b.yaml,V100KC4B,0x209D,,,,,,470,412,167001,ok,,20,VT 100 (KC2B / KC4B),Vitotronic 100 (Typ KC2B / KC4B)
+v150kb1.yaml,V150KB1,0x2092,1,0,3,,,258,261,95210,ok,0100,,VT 150 (KB1),Vitotronic 150 (Typ KB1)
+v150kb1_4.yaml,V150KB1_4,0x2092,1,4,4,,,233,238,85902,ok,0104,,VT 150 (KB1),Vitotronic 150 (Typ KB1)
+v150kb1_5.yaml,V150KB1_5,0x2092,1,5,5,,,230,235,84929,ok,0105,,VT 150 (KB1),Vitotronic 150 (Typ KB1)
+v150kb1_6.yaml,V150KB1_6,0x2092,1,6,15,,,245,248,89012,ok,0106,,VT 150 (KB1 / KB2),Vitotronic 150 (Typ KB1 / KB2)
+v200co1x.yaml,V200CO1x,0x20A9,,,,,,1005,916,354553,ok,,20,VT 200 CO1E / CO1I,"Vitotronic 200 (Typ CO1E, CO1I)"
+v200gw1.yaml,V200GW1,0x20A4,1,0,6,,,531,426,150341,ok,0100,,VT 200 (GW1),Vitotronic 200 (Typ GW1)
+v200gw1_7.yaml,V200GW1_7,0x20A4,1,7,7,,,412,357,129649,ok,0107,,VT 200 (GW1),Vitotronic 200 (Typ GW1)
+v200gw1_8.yaml,V200GW1_8,0x20A4,1,8,8,,,421,365,132103,ok,0108,,VT 200 (GW1),Vitotronic 200 (Typ GW1)
+v200gw1_9.yaml,V200GW1_9,0x20A4,1,9,15,,,428,373,134722,ok,0109,,VT 200 (GW1),Vitotronic 200 (Typ GW1)
+v200hk3a.yaml,V200HK3A,0x20AE,,,,,,593,566,216345,ok,,20,VT 200 (HK1B / HK3B),Vitotronic 200 (Typ HK1B / HK3B)
+v200ko2b.yaml,V200KO2B,0x209F,,,,,,623,577,224693,ok,,20,VT 200 (KO1B / KO2B),Vitotronic 200 (Typ KO1B / KO2B)
+v200kw1.yaml,V200KW1,0x2094,1,0,3,,,340,335,119680,ok,0100,,VT 200 (KW1),Vitotronic 200 (Typ KW1)
+v200kw1_4.yaml,V200KW1_4,0x2094,1,4,4,,,308,306,108208,ok,0104,,VT 200 (KW1),Vitotronic 200 (Typ KW1)
+v200kw1_5.yaml,V200KW1_5,0x2094,1,5,5,,,308,306,108208,ok,0105,,VT 200 (KW1),Vitotronic 200 (Typ KW1)
+v200kw1_6.yaml,V200KW1_6,0x2094,1,6,15,,,323,319,112333,ok,0106,,VT 200 (KW1 / KW4),Vitotronic 200 (Typ KW1 / KW4)
+v200kw2.yaml,V200KW2,0x2098,1,0,3,,,437,439,154541,ok,0100,,VT 200 (KW2),Vitotronic 200 (Typ KW2)
+v200kw2_4.yaml,V200KW2_4,0x2098,1,4,4,,,391,395,138680,ok,0104,,VT 200 (KW2),Vitotronic 200 (Typ KW2)
+v200kw2_5.yaml,V200KW2_5,0x2098,1,5,5,,,391,395,139042,ok,0105,,VT 200 (KW2),Vitotronic 200 (Typ KW2)
+v200kw2_6.yaml,V200KW2_6,0x2098,1,6,15,,,404,411,143489,ok,0106,,VT 200 (KW2 / KW5),Vitotronic 200 (Typ KW2 / KW5)
+v200wo1a.yaml,V200WO1A,0x2048,,,,,,1312,1288,470172,ok,,,VT 200 (WO1A / WO1B),"Vitocal 222 / 242 G mit Vitotronic 200 (Typ WO1A / WO1B), Vitocal 333 / 343 G mit Vitotronic 200 (Typ WO1A / WO1B)"
+v300cm1x.yaml,V300CM1x,0x20BF,,,,,,1048,935,361535,ok,,20,VT 300 CM1E / CM1I,"Vitotronic 300 (Typ CM1E, CM1I)"
+v300gw2.yaml,V300GW2,0x20A5,1,0,6,,,714,621,217003,ok,0100,,VT 300 (GW2),Vitotronic 300 (Typ GW2)
+v300gw2a.yaml,V300GW2A,0x20A6,,,,,,646,606,233253,ok,,20,VT 200/300 (GW1B / GW2B / GW4B / GW5B),Vitotronic 200 GW1B / Vitotronic 300 (GW2B / GW4B / GW5B)
+v300gw2_7.yaml,V300GW2_7,0x20A5,1,7,7,,,576,535,189762,ok,0107,,VT 300 (GW2),Vitotronic 300 (Typ GW2)
+v300gw2_8.yaml,V300GW2_8,0x20A5,1,8,8,,,566,525,185413,ok,0108,,VT 300 (GW2),Vitotronic 300 (Typ GW2)
+v300gw2_9.yaml,V300GW2_9,0x20A5,1,9,15,,,579,541,191947,ok,0109,,VT 300 (GW2),Vitotronic 300 (Typ GW2)
+v300gw6b.yaml,V300GW6B,0x20BE,,,,,,766,693,267287,ok,,20,VT 300 GW6B/GW6C,Vitotronic 300 GW6B / GW6C
+v300kmw1a.yaml,V300KMW1A,0x20BB,,,,,,672,618,238508,ok,,20,VT 300-K MW1B,Vitotronic 300-K (Typ MW1B)
+v300kmw2a.yaml,V300KMW2A,0x20BC,,,,,,694,633,244793,ok,,20,VT 300-K MW2B / MW2C,Vitotronic 300-K (Typ MW2B / MW2C)
+v300kw3.yaml,V300KW3,0x209C,1,0,3,,,535,543,190512,ok,0100,,VT 300 (KW3),Vitotronic 300 (Typ KW3)
+v300kw3_4.yaml,V300KW3_4,0x209C,1,4,4,,,469,480,168924,ok,0104,,VT 300 (KW3),Vitotronic 300 (Typ KW3)
+v300kw3_5.yaml,V300KW3_5,0x209C,1,5,5,,,469,480,168915,ok,0105,,VT 300 (KW3),Vitotronic 300 (Typ KW3)
+v300kw3_6.yaml,V300KW3_6,0x209C,1,6,15,,,492,502,175364,ok,0106,,VT 300 (KW3),Vitotronic 300 (Typ KW3)
+v300mw3b.yaml,V300MW3B,0x20BD,,,,,,758,692,271017,ok,,20,VT 300-K MW3B,Vitotronic 300-K (Typ MW3B)
+v333mw1.yaml,V333MW1,0x20B8,1,0,6,,,709,561,200151,ok,0100,,VT 300-K (MW1),Vitotronic 300-K / 333 (Typ MW1)
+v333mw1s.yaml,V333MW1S,0x20B9,1,0,6,,,709,561,200161,ok,0100,,VT 300-K (MW1S),Vitotronic 300-K / 333 (Typ MW1S)
+v333mw1s_7.yaml,V333MW1S_7,0x20B9,1,7,7,,,570,475,171529,ok,0107,,VT 300-K (MW1S),Vitotronic 300-K / 333 (Typ MW1S)
+v333mw1s_8.yaml,V333MW1S_8,0x20B9,1,8,8,,,579,483,173923,ok,0108,,VT 300-K (MW1S),Vitotronic 300-K / 333 (Typ MW1S)
+v333mw1s_9.yaml,V333MW1S_9,0x20B9,1,9,15,,,578,482,173955,ok,0109,,VT 300-K (MW1S),Vitotronic 300-K / 333 (Typ MW1S)
+v333mw1_7.yaml,V333MW1_7,0x20B8,1,7,7,,,570,475,171507,ok,0107,,VT 300-K (MW1),Vitotronic 300-K / 333 (Typ MW1)
+v333mw1_8.yaml,V333MW1_8,0x20B8,1,8,8,,,579,483,173934,ok,0108,,VT 300-K (MW1),Vitotronic 300-K / 333 (Typ MW1)
+v333mw1_9.yaml,V333MW1_9,0x20B8,1,9,15,,,575,482,173936,ok,0109,,VT 300-K (MW1),Vitotronic 300-K / 333 (Typ MW1)
+v333mw2.yaml,V333MW2,0x20BA,,,,,,571,479,173140,ok,,,VT 300-K (MW2),"Vitotronic 300-K / 333 (Typ MW2), Vitotronic 300-K (Typ MW2S)"
+v333mw2_2.yaml,V333MW2_2,0x20BA,1,2,15,,,568,476,172139,ok,0102,,VT 300-K (MW2),Vitotronic 300-K / 333 (Typ MW2)
+vbc550p.yaml,VBC550P,0x2033,,,,,,872,717,246808,ok,,,VT 200 FO1,Vitotronic 200 Typ FO1
+vbc550s.yaml,VBC550S,0x2032,,,,,,786,640,217749,ok,,,,
+vbc700_aw.yaml,VBC700_AW,0x2047,,,,,,912,920,326770,ok,,,WPR 300,Vitocal 300-A mit WPR 300
+vbc700_bw_ww.yaml,VBC700_BW_WW,0x2046,,,,,,914,921,327040,ok,,,WPR 300,Vitocal 300-G mit WPR 300
+,VBC701,0x2043,,,,,,5,1,,skipped: no Optolink-reachable datapoints,,,,
+vbc702_aw.yaml,VBC702_AW,0x2049,,,,,,1310,1287,469978,ok,,,VT 200 (W01A / WO1B),"Vitocal 2xx-G / 3xx-G mit Vitotronic 200 (Typ WO1A / WO1B), Vitocal 3xx-A mit Vitotronic 200 (Typ WO1A / WO1B)"
+vbc702_s.yaml,VBC702_S,0x204A,,,,,,1420,1395,507616,ok,,,VT 200 (WO1A / WO1B),Vitocal 200-S mit Vitotronic 200 (Typ WO1A / WO1B)
+vblock-unbekannt.yaml,VBlock-Unbekannt,0x3000,,,,,,112,89,38046,ok,,,,
+vblockbm123-177.yaml,VBlockBM123-177,0x300D,,,,,,110,87,37887,ok,,,VBlockBM123-177,Vitobloc test
+vblockbm190-238.yaml,VBlockBM190-238,0x300E,,,,,,111,88,38205,ok,,,VBlockBM190-238,Vitobloc BM190-238
+vblockbm36-66.yaml,VBlockBM36-66,0x300A,,,,,,106,83,36651,ok,,,VBlockBM36-66,Vitobloc BM36-66
+vblockbm366-437.yaml,VBlockBM366-437,0x300F,,,,,,112,89,38519,ok,,,VBlockBM366-437,Vitobloc BM366-437
+vblockbm55-80.yaml,VBlockBM55-80,0x300B,,,,,,106,83,36651,ok,,,VBlockBM55-80,Vitobloc BM55-80
+vblockbm98-150.yaml,VBlockBM98-150,0x300C,,,,,,106,83,36665,ok,,,VBlockBM98-150,Vitobloc BM98-150
+vblockem140-207.yaml,VBlockEM140-207,0x3004,,,,,,106,83,36679,ok,,,VBlockEM140-207,Vitobloc EM140-207
+vblockem18-36.yaml,VBlockEM18-36,0x3001,,,,,,106,83,36651,ok,,,VBlockEM18-36,Vitobloc EM18-36
+vblockem199-263.yaml,VBlockEM199-263,0x3005,,,,,,111,88,38205,ok,,,VBlockEM199-263,Vitobloc EM199-263
+vblockem199-293.yaml,VBlockEM199-293,0x3006,,,,,,111,88,38205,ok,,,VBlockEM199-293,Vitobloc EM199-293
+vblockem20-39.yaml,VBlockEM20-39,0x3010,,,,,,106,83,36651,ok,,,VBlockEM20-39,Vitobloc EM20-39
+vblockem20-39_18.yaml,VBlockEM20-39_18,0x3012,,,,,,108,84,36952,ok,,,VBlockEM20-39r,Vitobloc EM20-39r
+vblockem238-363.yaml,VBlockEM238-363,0x3007,,,,,,109,86,37585,ok,,,VBlockEM238-363,Vitobloc EM238-363
+vblockem363-498.yaml,VBlockEM363-498,0x3008,,,,,,112,89,38519,ok,,,VBlockEM363-498,Vitobloc EM363-498
+vblockem401-549.yaml,VBlockEM401-549,0x3009,,,,,,112,89,38519,ok,,,VBlockEM401-549,Vitobloc EM401-549
+vblockem5.yaml,VBlockEM5,0x3011,,,,,,107,84,36843,ok,,,VBlockEM5-13,Vitobloc EM5-13
+vblockem50-81.yaml,VBlockEM50-81,0x3002,,,,,,106,83,36651,ok,,,VBlockEM50-81,Vitobloc EM50-81
+vblockem530-660.yaml,VBlockEM530-660,0x3015,,,,,,112,89,33899,ok,,,VBlockEM530-660,Vitobloc EM530-660
+vblockem6-15.yaml,VBlockEM6-15,0x3013,,,,,,107,84,36876,ok,,,VBlockEM6,Vitobloc EM6-15
+vblockem70-115.yaml,VBlockEM70-115,0x3003,,,,,,106,83,36665,ok,,,VBlockEM70-115,Vitobloc EM70-115
+vblockem9-20.yaml,VBlockEM9-20,0x3014,,,,,,107,84,36876,ok,,,VBlockEM9,Vitobloc EM9-20
+,VCOM100_DEKM_R1,0x2081,,,,,,90,1,,skipped: no Optolink-reachable datapoints,37343530353337,,,
+,VCOM100_DEKM_R1_EXP,0x2081,,,,,,90,1,,skipped: no Optolink-reachable datapoints,37343135333233,,,
+,VCOM100_DEKM_R2,0x2081,,,,,,94,1,,skipped: no Optolink-reachable datapoints,37313432303537,,,
+,VCOM100_DEKM_R3,0x2081,,,,,,91,1,,skipped: no Optolink-reachable datapoints,37313738313838,,,
+,VCOM300_DEKF_R2,0x2089,,,,,,623,1,,skipped: no Optolink-reachable datapoints,37343530353334,,,
+,VCOM300_ETCPU,0x2089,,,,,,623,1,,skipped: no Optolink-reachable datapoints,37343035313131,,,
+,VCOM300_ETCPU2,0x2089,,,,,,623,1,,skipped: no Optolink-reachable datapoints,37383138383434,,,
+,VCOM300_ETCPU3,0x2089,,,,,,623,1,,skipped: no Optolink-reachable datapoints,37343135323238,,,
+,VCOM300_ETCPU4,0x2089,,,,,,623,1,,skipped: no Optolink-reachable datapoints,37313738313838,,,
+,VCOM300_X_Marktmanager,0x0701,,,,,,118,1,,skipped: no Optolink-reachable datapoints,,,,
+vcaldens.yaml,VCaldens,0x20C9,1,130,149,,,9,15,14067,ok,0182,,Ext. WE Vitocaldens,Ext. WE Vitocaldens (Hybrid WP) mit Vitotronic 100 (Typ HC1C)
+,VCaldens_HO1,0x20CB,1,130,149,,,5,1,,skipped: no Optolink-reachable datapoints,0182,,"Vitocaldens, VT 200 (HO1C)",Vitocaldens (Hybrid WP) mit Vitotronic 200 (Typ HO1C)
+vdenshc1.yaml,VDensHC1,0x20C0,1,0,3,,,507,345,134879,ok,0100,20,VT 100/200 (HC1),"Vitodens 200/300 mit Vitotronic 100 (Typ HC1), Vitodens 333 mit Vitotronic 100/200 (HC1)"
+vdenshc1_4.yaml,VDensHC1_4,0x20C0,1,4,159,,,465,321,127059,ok,0104,20,VT 100/200 (HC1),"Vitodens 200/300 mit Vitotronic 100 (Typ HC1), Vitodens 333 mit Vitotronic 100/200 (HC1)"
+vdenshc2.yaml,VDensHC2,0x20C1,1,0,3,,,480,364,136527,ok,0100,20,VT 100 (HC2),"Vitodens 200 / 300 mit Vitotronic 100 (Typ HC2), Vitodens 333 mit Vitotronic 100 (HC2)"
+vdenshc2_4.yaml,VDensHC2_4,0x20C1,1,4,159,,,443,346,130535,ok,0104,20,VT 100 (HC2),"Vitodens 200 / 300 mit Vitotronic 100 (Typ HC2), Vitodens 333 mit Vitotronic 100 (HC2)"
+vdensho1.yaml,VDensHO1,0x20C2,1,0,3,,,585,445,167411,ok,0100,20,VT 200 (HO1),"Vitodens 200 / 300 mit Vitotronic 200 (Typ HO1), Vitodens 333 mit Vitotronic 200 (HO1)"
+vdensho1_4.yaml,VDensHO1_4,0x20C2,1,4,159,,,562,439,165523,ok,0104,20,VT 200 (HO1),"Vitodens 200 / 300 mit Vitotronic 200 (Typ HO1), Vitodens 333 mit Vitotronic 200 (HO1)"
+vpendhc1.yaml,VPendHC1,0x20C3,1,0,3,,,502,344,134494,ok,0100,20,VT 100/200 (HC1),Vitopend 200 mit Vitotronic 100/200 (Typ HC1)
+vpendhc1_4.yaml,VPendHC1_4,0x20C3,1,4,19,,,466,322,127417,ok,0104,20,VT 100/200 (HC1),Vitopend 200 mit Vitotronic 100/200 (Typ HC1)
+vpendhc1_40.yaml,VPendHC1_40,0x20C3,1,40,159,,,572,415,161796,ok,0128,20,VT 100/200 (HC1A/HC1B),Vitopend 200 mit Vitotronic 100/200 (Typ HC1A/HC1B)
+vpendhc2.yaml,VPendHC2,0x20C4,1,0,3,,,478,361,135245,ok,0100,20,VT 100 (HC2),Vitopend 200 mit Vitotronic 100 (Typ HC2)
+vpendhc2_4.yaml,VPendHC2_4,0x20C4,1,4,19,,,444,347,130948,ok,0104,20,VT 100 (HC2),Vitopend 200 mit Vitotronic 100 (Typ HC2)
+vpendhc2_40.yaml,VPendHC2_40,0x20C4,1,40,159,,,551,441,165962,ok,0128,20,VT 100 (HC2),Vitopend 200 mit Vitotronic 100 (Typ HC2)
+vpendho1.yaml,VPendHO1,0x20C5,1,0,3,,,584,444,166898,ok,0100,20,VT 200 (HO1),Vitopend 200 mit Vitotronic 200 (Typ HO1)
+vpendho1_4.yaml,VPendHO1_4,0x20C5,1,4,39,,,568,439,165328,ok,0104,20,VT 200 (HO1),Vitopend 200 mit Vitotronic 200 (Typ HO1)
+vpendho1_40.yaml,VPendHO1_40,0x20C5,1,40,159,,,771,629,234829,ok,0128,20,VT 200 (HO1A / HO1B),Vitopend 200 mit Vitotronic 200 (Typ HO1A / HO1B)
+vplushc1.yaml,VPlusHC1,0x20C6,1,0,3,,,494,358,138811,ok,0100,20,VT 100/200 (HC1),Vitoplus mit Vitotronic 100/200 (Typ HC1)
+vplushc1_130.yaml,VPlusHC1_130,0x20C6,1,130,149,,,16,18,15582,ok,0182,,Ext. WE Vitolacaldens,Ext. WE Vitolacaldens (Öl-Hybrid WP) mit Vitotronic 100 (Typ HC1C)
+vplushc1_20.yaml,VPlusHC1_20,0x20C6,1,20,39,,,476,358,139501,ok,0114,20,VT 100/200 (HC1A),Vitoplus mit Vitotronic 100/200 (Typ HC1A)
+vplushc1_4.yaml,VPlusHC1_4,0x20C6,1,4,19,,,458,343,134018,ok,0104,20,VT 100/200 (HC1),Vitoplus mit Vitotronic 100/200 (Typ HC1)
+vplushc1_40.yaml,VPlusHC1_40,0x20C6,1,40,129,,,561,432,167230,ok,0128,20,VT 100/200 (HC1B),Vitoplus mit Vitotronic 100/200 (Typ HC1B)
+vplushc2.yaml,VPlusHC2,0x20C7,1,0,3,,,456,366,136742,ok,0100,20,VT 100 (HC2),Vitoplus mit Vitotronic 100 (Typ HC2)
+vplushc2_4.yaml,VPlusHC2_4,0x20C7,1,4,19,,,396,330,126361,ok,0104,20,VT 100 (HC2),Vitoplus mit Vitotronic 100 (Typ HC2)
+vplushc2_40.yaml,VPlusHC2_40,0x20C7,1,40,159,,,524,442,166159,ok,0128,20,VT 100 (HC2),Vitoplus mit Vitotronic 100 (Typ HC2)
+vplusho1.yaml,VPlusHO1,0x20C8,1,0,3,,,562,450,168751,ok,0100,20,VT 200 (HO1),Vitoplus 300 / Vitoladens 300 mit Vitotronic 200 (Typ HO1)
+vplusho1_20.yaml,VPlusHO1_20,0x20C8,1,20,39,,,545,448,167824,ok,0114,20,VT 200 (HO1),Vitoplus 300 / Vitoladens 300 mit Vitotronic 200 (Typ HO1)
+vplusho1_4.yaml,VPlusHO1_4,0x20C8,1,4,19,,,539,445,167313,ok,0104,20,VT 200 (HO1),Vitoplus 300 / Vitoladens 300 mit Vitotronic 200 (Typ HO1)
+vplusho1_40.yaml,VPlusHO1_40,0x20C8,1,40,159,,,746,632,235893,ok,0128,20,VT 200 (HO1A / HO1B),"Vitoladens 333-F mit Vitotronic 200 (Typ HO1A / HO1B), Vitoloadens 300-C mit Vitotronic 200 (Typ KW6A / KW6B)"
+vscothc1.yaml,VScotHC1,0x20C9,1,0,3,,,501,339,132710,ok,0100,20,VT 100 (HC1),Vitodens 200 / 300 mit Vitotronic 100 (Typ HC1)
+vscothc1_20.yaml,VScotHC1_20,0x20C9,1,20,39,,,502,355,138606,ok,0114,20,VT 100 (HC1A),"Vitodens 222-F, 242-F, 333-F mit Vitotronic 100 (Typ HC1A)"
+vscothc1_200.yaml,VScotHC1_200,0x20C9,1,200,255,0,9,535,382,141080,ok,01C8,20,VT 100/200 (HC1B),"Vitodens 200 (2015,2016) mit Vitotronic 100/200 (Typ HC1B)"
+vscothc1_200_10.yaml,VScotHC1_200_10,0x20C9,1,200,255,10,19,603,447,173377,ok,01C8,20,VT 100/200 (HC1B),Vitodens 200 (2015) mit Vitotronic 100/200 (Typ HC1B)
+vscothc1_200_30.yaml,VScotHC1_200_30,0x20C9,1,200,255,30,39,569,414,161337,ok,01C8,20,VT 100 (GC7B),Vitocrossal 100 mit Vitotronic 100 (Typ GC7B)
+vscothc1_4.yaml,VScotHC1_4,0x20C9,1,4,19,,,481,337,132309,ok,0104,20,VT 100 (HC1),Vitodens 200 / 300 mit Vitotronic 100 (Typ HC1)
+vscothc1_40.yaml,VScotHC1_40,0x20C9,1,40,89,,,587,430,166941,ok,0128,20,VT 100 (HC1A / HC1B),"Vitodens 200 / 300 mit Vitotronic 100 (Typ HC1A / HC1B), Vitodens 222-F, 242-F, 333-F mit Vitotronic 100 (Typ HC1A / HC1B)"
+vscothc1_90.yaml,VScotHC1_90,0x20C9,1,90,129,,,586,430,166879,ok,015A,20,VT 100 (HC1B),Vitodens 2xx-W/F B2HA/B2KA/B2LA/B2TA/B2SA mit Vitotronic 100 (Typ HC1B)
+vscothc2.yaml,VScotHC2,0x20CA,1,0,3,,,492,374,139466,ok,0100,20,VT 100 (HC2),Vitodens 200 mit Vitotronic 100 (Typ HC2)
+vscothc2_200_11.yaml,VScotHC2_200_11,0x20CA,1,200,255,11,19,612,467,178355,ok,01C8,20,VT 100 (HC2B),Vitodens 200 (2016) mit Vitotronic 100 (Typ HC2B)
+vscothc2_4.yaml,VScotHC2_4,0x20CA,1,4,19,,,473,376,141234,ok,0104,20,VT 100 (HC2),Vitodens 200 mit Vitotronic 100 (Typ HC2)
+vscothc2_40.yaml,VScotHC2_40,0x20CA,1,40,159,,,564,454,170168,ok,0128,20,VT 100 (HC2),Vitodens 200 mit Vitotronic 100 (Typ HC2)
+vscotho1.yaml,VScotHO1,0x20CB,1,0,3,,,584,444,166860,ok,0100,20,VT 200 (HO1),Vitodens200 / 300 mit Vitotronic 200 (Typ HO1)
+vscotho1_20.yaml,VScotHO1_20,0x20CB,1,20,39,,,568,443,166492,ok,0114,20,VT 200 (HO1A / HO1B),"Vitodens 222-F, 242-F, 333-F mit Vitotronic 200 (Typ HO1A / HO1B)"
+vscotho1_200.yaml,VScotHO1_200,0x20CB,1,200,255,0,0,946,766,288073,ok,01C8,20,VT 200 (HO2B),Vitodens 3xx-W/F mit Vitotronic 200 (Typ HO2B)
+vscotho1_200_01.yaml,VScotHO1_200_01,0x20CB,1,200,255,1,9,1059,841,320215,ok,01C8,20,VT 200 (HO2B),"Vitodens 3xx-W/F mit Vitotronic 200 (Typ HO2B, 2016)"
+vscotho1_200_10.yaml,VScotHO1_200_10,0x20CB,1,200,255,10,10,1046,730,273821,ok,01C8,20,VT 200 (HO1B),Vitodens 200 (2015) mit Vitotronic 200 (Typ HO1B)
+vscotho1_200_11.yaml,VScotHO1_200_11,0x20CB,1,200,255,11,19,1078,738,279646,ok,01C8,20,VT 200 (HO1B/HO2B),Vitodens 200 (2016) mit Vitotronic 200 (Typ HO1B / HO2B)
+vscotho1_200_20.yaml,VScotHO1_200_20,0x20CB,1,200,255,20,29,861,707,264563,ok,01C8,20,VT 200 (KW6B),Vitocrossal 300 CU3A (CA/US) mit Vitotronic 200 (Typ KW6B)
+vscotho1_200_30.yaml,VScotHO1_200_30,0x20CB,1,200,255,30,39,860,707,264550,ok,01C8,20,VT 200 (GW7B),Vitocrossal 100 mit Vitotronic 200 (Typ GW7B)
+vscotho1_4.yaml,VScotHO1_4,0x20CB,1,4,19,,,561,438,165065,ok,0104,20,VT 200 (HO1),Vitodens200 / 300 mit Vitotronic 200 (Typ HO1)
+vscotho1_40.yaml,VScotHO1_40,0x20CB,1,40,69,,,767,625,233740,ok,0128,20,VT 200 (HO1A / HO1B),"Vitodens 200 / 300 mit Vitotronic 200 (Typ HO1A / HO1B), Vitodens 222-F, 242-F, 333-F mit Vitotronic 200 (Typ HO1A / HO1B), Vitocrossal 300 mit Vitotronic 200 (Typ KW6A / KW6B)"
+vscotho1_70.yaml,VScotHO1_70,0x20CB,1,70,71,,,825,673,252701,ok,0146,20,VT 200 (HO1C),Vitodens 300-W WB3E mit Vitotronic 200 (Typ HO1B)
+vscotho1_72.yaml,VScotHO1_72,0x20CB,1,72,89,,,854,699,261501,ok,0148,20,VT 200 (HO1C),"Vitodens 3xx-W/F mit Vitotronic 200 (Typ HO1C), Vitodens 2xx-W mit Vitotronic 200 (Typ HO1C),Vitocrossal 300 mit Vitotronic 200 (Typ KW6B)"
+vscotho1_90.yaml,VScotHO1_90,0x20CB,1,90,129,,,849,695,260311,ok,015A,20,VT 200 (HO1B),Vitodens 2xx-W/F B2HA/B2KA/B2LA/B2TA/B2SA mit Vitotronic 200 (Typ HO1B)
+vsorp.yaml,VSorp,0x20CB,1,150,199,,,917,736,275108,ok,0196,20,Vitosorp 200-F,Vitosorp 200-F mit Vitotronic 200 Typ HO1D
+virtualhydrauliccalibration.yaml,VirtualHydraulicCalibration,0xFFFF,,,,,,5,5,3605,ok,,,,
+vitocom100_lan.yaml,Vitocom100_LAN,0x208D,,,,,,11,4,2877,ok,,,VC 100 LAN1,Vitocom 100 LAN1
+vitocom200_lan.yaml,Vitocom200_LAN,0x208C,,,,,,421,103,55575,ok,,,VC 200 GP1,Vitocom 200 GP1
+vitocom200_lan_gp.yaml,Vitocom200_LAN_GP,0x208E,,,,,,45,14,9367,ok,,,VC 200 LAN2,Vitocom 200 Typ LAN2
+vitocom300.yaml,Vitocom300,0x208A,,,,,,621,157,68080,ok,,,VC 300 FA3/FI1/FE1,Vitocom 300 FA3/FI1/FE1
+vitocom300_10.yaml,Vitocom300_10,0x208A,1,10,15,,,576,121,58643,ok,010A,,VC 300 FA3/FI1/FE1,Vitocom 300 FA3/FI1/FE1
+vitocom300_lan.yaml,Vitocom300_LAN,0x208A,1,16,47,,,989,276,144793,ok,0110,,VC 300 FA5/FI2/GP2,Vitocom 300 FA5/FI2/GP2
+vitocom300_lan_gp_analog.yaml,Vitocom300_LAN_GP_Analog,0x208F,,,,,,389,18,11056,ok,,,VC 300 LAN3,Vitocom 300 Typ LAN3
+vitogate200eib.yaml,Vitogate200EIB,,,,,,,5,4,2584,ok,,,VG 200 (EIB),Vitogate 200 EIB
+vitogate200knx.yaml,Vitogate200KNX,0x0820,,,,,,7,6,3256,ok,,,VG 200 (KNX),"Vitogate 200, Typ KNX"
+vitogate300bn.yaml,Vitogate300BN,0x0830,,,,,,7,13,8304,ok,,,VG 300 (BN),Vitogate 300 BN / MB
+vitotwingw_bati.yaml,VitotwinGW_BATI,0x0810,1,0,1,,,159,156,81145,ok,0100,,Vitotwin-GW BATI_01,Vitotwin-Gateway BATI (01)
+vitotwingw_bati_02.yaml,VitotwinGW_BATI_02,0x0810,1,2,2,,,161,148,73899,ok,0102,,Vitotwin-GW BATI_02,Vitotwin-Gateway BATI (02)
+vitotwingw_bati_03.yaml,VitotwinGW_BATI_03,0x0810,1,3,255,,,163,150,74623,ok,0103,,Vitotwin-GW BATI_03,Vitotwin-Gateway BATI (03)
+vitovalor.yaml,Vitovalor,0x20E3,,,,,,1286,1131,441410,ok,,20,Vitovalor 300-P,Vitovalor 300-P mit Vitotronic 200 Typ HO1E
+wilo.yaml,WILO,0x0700,,,,,,79,12,6693,ok,,,,
+,_VITODATA,,,,,,,3,1,,skipped: no Optolink-reachable datapoints,-,,,
+,ecnStatusDataPoint,,,,,,,1,1,,skipped: no Optolink-reachable datapoints,,,,
+puffermgm.yaml,puffermgm,0x30FF,,,,,,230,192,89020,ok,,,,

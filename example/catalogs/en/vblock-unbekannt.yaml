@@ -12,6 +12,12 @@
 # that are neither a reading nor an action) were omitted as unreachable.
 # Re-run with --no-reachable-only to include them.
 #
+# Metadata: 34 entities carry a `# vito:` line with Vitosoft's own
+# grouping, for the catalog editor: circuit=hk1..hk6|dhw|solar|boiler|
+# cascade|mbus (the menu they are in), level=td (shown at the service
+# access level only), overview, quickcheck and trend (Vitosoft's overview
+# screen, quick check and trend recorder). ESPHome ignores them.
+#
 # LON inputs omitted: 21 network-variable input(s) (nvi*). A LON
 # master writes them; without a LON module they hold no data (0xFF
 # 'invalid'). --profile full includes them.
@@ -271,6 +277,7 @@ sensor:
     update_interval: 60s
 
   # --- Overview / Batteriespannung ---
+  # vito: overview trend
   - platform: vitohome
     name: "Battery voltage"
     id: batteriespannung
@@ -283,6 +290,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Oil pressure"
     id: oeldruck
@@ -295,6 +303,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Lambda probe voltage"
     id: lambdasondenspannung
@@ -307,6 +316,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Speed"
     id: drehzahl
@@ -319,6 +329,7 @@ sensor:
     update_interval: 60s
 
   # --- Overview / Frequenz ---
+  # vito: overview trend
   - platform: vitohome
     name: "Output"
     id: leistung
@@ -332,6 +343,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Mains frequency"
     id: netzfrequenz
@@ -344,6 +356,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Generator frequency"
     id: generatorfrequenz
@@ -356,6 +369,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "CosPhi"
     id: cosphi
@@ -368,6 +382,7 @@ sensor:
     update_interval: 60s
 
   # --- Overview / L1 ---
+  # vito: overview trend
   - platform: vitohome
     name: "Mains voltage L1"
     id: netzspannung_l1
@@ -380,6 +395,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Generator voltage L1"
     id: generatorspannung_l1
@@ -392,6 +408,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Generator current L1"
     id: generatorstrom_l1
@@ -405,6 +422,7 @@ sensor:
     update_interval: 60s
 
   # --- Overview / L2 ---
+  # vito: overview trend
   - platform: vitohome
     name: "Mains voltage L2"
     id: netzspannung_l2
@@ -417,6 +435,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Generator voltage L2"
     id: generatorspannung_l2
@@ -429,6 +448,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Generator current L2"
     id: generatorstrom_l2
@@ -442,6 +462,7 @@ sensor:
     update_interval: 60s
 
   # --- Overview / L3 ---
+  # vito: overview trend
   - platform: vitohome
     name: "Mains voltage L3"
     id: netzspannung_l3
@@ -454,6 +475,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Generator voltage L3"
     id: generatorspannung_l3
@@ -466,6 +488,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Generator current L3"
     id: generatorstrom_l3
@@ -479,6 +502,7 @@ sensor:
     update_interval: 60s
 
   # --- Overview / Modus ---
+  # vito: overview
   - platform: vitohome
     name: "Hours run"
     id: betriebsstunden
@@ -491,6 +515,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
   - platform: vitohome
     name: "Maintenance due in"
     id: wartung_faellig_in
@@ -505,6 +530,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview
   - platform: vitohome
     name: "Number of starts"
     id: anzahlstarts
@@ -515,6 +541,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "Description: Set value for modulating mode"
     id: sollwert_gleitende_fahrweise
@@ -527,6 +554,7 @@ sensor:
     update_interval: 60s
 
   # --- Overview / NiCrNI ---
+  # vito: overview trend
   - platform: vitohome
     name: "NiCrNi ⁄ A"
     id: nicrni_A_0
@@ -540,6 +568,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "NiCrNi ⁄ B"
     id: nicrni_B_0
@@ -553,6 +582,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "NiCrNi ⁄ C"
     id: nicrni_C_0
@@ -566,6 +596,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "NiCrNi ⁄ D"
     id: nicrni_D_0
@@ -580,6 +611,7 @@ sensor:
     update_interval: 60s
 
   # --- Overview / PT100 ---
+  # vito: overview trend
   - platform: vitohome
     name: "PT 100 ⁄ 1"
     id: pt100_1_0
@@ -592,6 +624,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "PT 100 ⁄ 2"
     id: pt100_2_0
@@ -604,6 +637,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "PT 100 ⁄ 3"
     id: pt100_3_0
@@ -616,6 +650,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "PT 100 ⁄ 4"
     id: pt100_4_0
@@ -628,6 +663,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "PT 100 ⁄ 5"
     id: pt100_5_0
@@ -640,6 +676,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: overview trend
   - platform: vitohome
     name: "PT 100 ⁄ 6"
     id: pt100_6_0
@@ -1012,6 +1049,7 @@ text_sensor:
       0x0B: "PR_16: HVAC RTN (lowest priority) (BACnet Priority 16)"
 
   # --- Overview / Modus ---
+  # vito: overview trend
   - platform: vitohome
     type: enum
     name: "Description: Module mode"
@@ -1025,6 +1063,7 @@ text_sensor:
       0x01: "1: Manual"
       0x02: "2: Auto"
 
+  # vito: overview trend
   - platform: vitohome
     type: enum
     name: "Description: Module status"
@@ -1041,6 +1080,7 @@ text_sensor:
       0x03: "3: Operation"
       0x04: "4: Fault"
 
+  # vito: overview trend
   - platform: vitohome
     type: enum
     name: "Description: Module operating mode"

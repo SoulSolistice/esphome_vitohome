@@ -12,6 +12,12 @@
 # that are neither a reading nor an action) were omitted as unreachable.
 # Re-run with --no-reachable-only to include them.
 #
+# Metadata: 4 entities carry a `# vito:` line with Vitosoft's own
+# grouping, for the catalog editor: circuit=hk1..hk6|dhw|solar|boiler|
+# cascade|mbus (the menu they are in), level=td (shown at the service
+# access level only), overview, quickcheck and trend (Vitosoft's overview
+# screen, quick check and trend recorder). ESPHome ignores them.
+#
 # VERIFY ON HARDWARE: not every address answers on every firmware.
 # Run `esphome config` then `esphome compile`/`run` before relying
 # on any value. number entities whose borders were absent in the
@@ -21,6 +27,7 @@
 
 sensor:
   # --- Installation / HK / Parameter HK A1M1 ---
+  # vito: circuit=hk1
   - platform: vitohome
     name: "Set room temperature A1M1"
     id: HK_RaumsolltemperaturaktuellA1M1
@@ -37,6 +44,7 @@ sensor:
     update_interval: 60s
 
   # --- Installation / HK / Parameter HK A2M2 ---
+  # vito: circuit=hk2
   - platform: vitohome
     name: "Set room temperature M2"
     id: HK_RaumsolltemperaturaktuellM2
@@ -53,6 +61,7 @@ sensor:
     update_interval: 60s
 
   # --- Installation / HK / Parameter HK A3M3 ---
+  # vito: circuit=hk3
   - platform: vitohome
     name: "Set room temperature M3"
     id: HK_RaumsolltemperaturaktuellM3
@@ -70,6 +79,7 @@ sensor:
 
 select:
   # --- Installation / Parameter Allgemein ---
+  # vito: quickcheck
   - platform: vitohome
     name: "(00) Heating circuit DHW scheme"
     id: K00_KonfiAnlagenschemaV300_V333

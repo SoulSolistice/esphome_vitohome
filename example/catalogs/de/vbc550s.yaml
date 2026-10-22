@@ -12,6 +12,12 @@
 # that are neither a reading nor an action) were omitted as unreachable.
 # Re-run with --no-reachable-only to include them.
 #
+# Metadata: 239 entities carry a `# vito:` line with Vitosoft's own
+# grouping, for the catalog editor: circuit=hk1..hk6|dhw|solar|boiler|
+# cascade|mbus (the menu they are in), level=td (shown at the service
+# access level only), overview, quickcheck and trend (Vitosoft's overview
+# screen, quick check and trend recorder). ESPHome ignores them.
+#
 # Actions: 4 procedures (P300 function code 0x07) as `type: action`
 # buttons, all disabled by default. Pressing one RUNS it on the controller
 # -- some clear a history, some reset settings or codings to their
@@ -38,6 +44,7 @@
 
 sensor:
   # --- Information / Kessel ---
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Vorlauftemperatur M1"
     id: NRF_TiefpassTemperaturwert_VTSM1
@@ -50,6 +57,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Betriebszeit Brenner 1"
     id: NRF_BetriebszeitBrenner1Be
@@ -63,6 +71,7 @@ sensor:
     disabled_by_default: true
     update_interval: 600s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Aussentemperatur (NRF_TiefpassTemperaturwert_ATS)"
     id: NRF_TiefpassTemperaturwert_ATS
@@ -75,6 +84,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Puffertemperatur Unten"
     id: NRF_TiefpassTemperaturwert_PTSU
@@ -87,6 +97,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Brennerstarts"
     id: NRF_K8A_Brennerstarts
@@ -98,6 +109,7 @@ sensor:
     update_interval: 60s
 
   # --- Information / HeizkreisA1 ---
+  # vito: circuit=hk1
   - platform: vitohome
     name: "Vorlauftemperatur A1M1"
     id: VorlauftemperaturM1
@@ -112,6 +124,7 @@ sensor:
     update_interval: 60s
 
   # --- Information / HeizkreisM2 ---
+  # vito: circuit=hk2
   - platform: vitohome
     name: "Vorlauftemperatur M2"
     id: VorlauftemperaturM2
@@ -126,6 +139,7 @@ sensor:
     update_interval: 60s
 
   # --- Information / Warmwasser ---
+  # vito: circuit=dhw
   - platform: vitohome
     name: "Speichertemperatur"
     id: NRF_TiefpassTemperaturwert_STS
@@ -177,6 +191,7 @@ sensor:
     update_interval: 60s
 
   # --- Diagnose 1 / Kessel ---
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Brennerleistung"
     id: RKR_04PIst_Kessel
@@ -190,6 +205,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Externer Sollwert über 0-10V Schnittstelle"
     id: ExternSollwert0_10V
@@ -203,6 +219,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Aussentemperatur (TiefpassTemperaturwert_ATS)"
     id: TiefpassTemperaturwert_ATS
@@ -215,6 +232,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Drehzahl Gebläse Soll"
     id: SC100_DrehzahlSoll
@@ -226,6 +244,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Drehzahl Gebläse Ist"
     id: SC100_DrehzahlIst
@@ -237,6 +256,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Kessel Leistung"
     id: SC100_KesselLeistung
@@ -248,6 +268,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Kesselsolltemperatur (effektiv)"
     id: RKR_11KTSolleff_Kessel
@@ -261,6 +282,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Lambdasonde"
     id: SC100_Lambdasonde
@@ -273,6 +295,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Flammtemperatur"
     id: SC100_Flammtemperatur
@@ -285,6 +308,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Aussentemperatur gedämpft"
     id: Gemischte_AT
@@ -326,6 +350,7 @@ sensor:
     update_interval: 60s
 
   # --- Diagnose 1 / HeizkreisA1 ---
+  # vito: circuit=hk1
   - platform: vitohome
     name: "Vorlaufsolltemperatur A1M1 inkl. DTK"
     id: VT_SollKesselA1M1
@@ -338,6 +363,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=hk1
   - platform: vitohome
     name: "Raumsolltemperatur A1M1"
     id: NRF_HK_RaumsolltemperaturaktuellA1M1
@@ -352,6 +378,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=hk1
   - platform: vitohome
     name: "VorlaufsolltemperaturA1M1"
     id: NRF_HK_VT_Solltemperatur_A1M1
@@ -366,6 +393,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=hk1
   - platform: vitohome
     name: "Mischerposition M1"
     id: HK_Mischerposition_akt_M1
@@ -378,6 +406,7 @@ sensor:
     update_interval: 60s
 
   # --- Diagnose 1 / HeizkreisM2 ---
+  # vito: circuit=hk2
   - platform: vitohome
     name: "Raumtemperatur M2"
     id: NRF_Raumtemperatur_M2
@@ -390,6 +419,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=hk2
   - platform: vitohome
     name: "Vorlaufsolltemperatur M2 inkl. DTK"
     id: VT_SollKesselM2
@@ -402,6 +432,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=hk2
   - platform: vitohome
     name: "Vorlaufsolltemperatur M2"
     id: NRF_HK_VT_Solltemperatur_M2
@@ -416,6 +447,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=hk2
   - platform: vitohome
     name: "Raumtemperatur Soll M2"
     id: HK_RaumsolltemperaturaktuellM2
@@ -928,6 +960,7 @@ sensor:
     update_interval: 60s
 
   # --- LON Objekte / HCCObjektM2 ---
+  # vito: circuit=hk2
   - platform: vitohome
     name: "Effektive Raumsolltemperatur HK2"
     id: nvoHCC2_EffRoomSetpt
@@ -2479,6 +2512,7 @@ sensor:
 
 binary_sensor:
   # --- Information / HeizkreisA1 ---
+  # vito: circuit=hk1
   - platform: vitohome
     name: "Heizkreispumpe A1M1"
     id: nvoRelayState_Heizkreispumpe
@@ -2881,6 +2915,7 @@ binary_sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "Ferienprogramm A1M1"
     id: HK_FerienbetriebA1M1
@@ -2935,6 +2970,7 @@ binary_sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "Ferienprogramm M2"
     id: HK_FerienbetriebM2
@@ -3016,6 +3052,7 @@ binary_sensor:
 
 number:
   # --- BedienungA1 / Betriebsdaten ---
+  # vito: circuit=hk1 quickcheck
   - platform: vitohome
     name: "Neigung der Heizkennlinie A1M1"
     id: BedienNeigungA1M1
@@ -3030,6 +3067,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk1,hk2 quickcheck
   - platform: vitohome
     name: "Warmwasser-Solltemperatur (Bedien_WW_Solltemperatur)"
     id: Bedien_WW_Solltemperatur
@@ -3045,6 +3083,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk1 quickcheck
   - platform: vitohome
     name: "Raumtemperatur Soll Normalbetrieb A1M1"
     id: BedienRTSolltemperaturA1M1
@@ -3060,6 +3099,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk1 quickcheck
   - platform: vitohome
     name: "Niveau der Heizkennlinie A1M1"
     id: BedienNiveauA1M1
@@ -3075,6 +3115,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk1 quickcheck
   - platform: vitohome
     name: "Raumtemperatur Soll Reduzierter Betrieb A1M1"
     id: BedienRTSolltemperaturReduziertA1M1
@@ -3091,6 +3132,7 @@ number:
     update_interval: 3600s
 
   # --- BedienungM2 / Betriebsdaten ---
+  # vito: circuit=hk2 quickcheck
   - platform: vitohome
     name: "Raumtemperatur Soll Normalbetrieb M2"
     id: BedienRTSolltemperaturM2
@@ -3106,6 +3148,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk2 quickcheck
   - platform: vitohome
     name: "Neigung der Heizkennlinie M2"
     id: BedienNeigungM2
@@ -3120,6 +3163,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk2 quickcheck
   - platform: vitohome
     name: "Raumtemperatur Soll Reduzierter Betrieb M2"
     id: BedienRTSolltemperaturReduziertM2
@@ -3135,6 +3179,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk2 quickcheck
   - platform: vitohome
     name: "Niveau der Heizkennlinie M2"
     id: BedienNiveauM2
@@ -3151,6 +3196,7 @@ number:
     update_interval: 3600s
 
   # --- Information / Warmwasser ---
+  # vito: circuit=dhw
   - platform: vitohome
     name: "Warmwasser-Solltemperatur (NRF_WW_SolltemperaturAktuell)"
     id: NRF_WW_SolltemperaturAktuell
@@ -3168,6 +3214,7 @@ number:
     update_interval: 3600s
 
   # --- Codierungen / Allgemein ---
+  # vito: quickcheck
   - platform: vitohome
     name: "(80) Verzögerung Fehleranzeige"
     id: NRF_K80_KonfiFehlerDelay
@@ -3183,6 +3230,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(77) Viessmann - Teilnehmernummer"
     id: K77_KonfiVI_TeilnehmernummerV100_V300
@@ -3196,6 +3244,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(9B) VT_Solltemperatur bei externer Anforderung"
     id: K9B_KonfiVT_SolltemperaturExternV100_V333
@@ -3211,6 +3260,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: conversion 'MultOffset' (factor 10) -> mult10
   - platform: vitohome
     name: "(90) Zeitkonstante Aussentemperatur"
@@ -3227,6 +3277,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(9F) Differenztemperatur VT-Erzeugung"
     id: K9F_KonfiDTKMischerkreise
@@ -3242,6 +3293,7 @@ number:
     update_interval: 3600s
 
   # --- Codierungen / Kessel ---
+  # vito: circuit=boiler quickcheck
   - platform: vitohome
     name: "(32) Überwachungsintegral Wärmeabnahme-begrenzung"
     id: NRF_K32_KonfiUeberwachungsintegralWAB
@@ -3256,6 +3308,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler quickcheck
   - platform: vitohome
     name: "(31) Oberer Abschaltpunkt Wärmeabnahme-begrenzung"
     id: NRF_K31_KonfiAbschaltpunktWABoben
@@ -3270,6 +3323,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler quickcheck
   - platform: vitohome
     name: "(30) Relativer unterer Einschaltpunkt Wärmeabnahme-begrenzung"
     id: NRF_K30_KonfiEinschaltpunktWABunten
@@ -3284,6 +3338,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler quickcheck
   - platform: vitohome
     name: "(23) Zeitintervall für Wartung"
     id: K23_KonfiZeitintervallWartung
@@ -3298,6 +3353,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler quickcheck
   - platform: vitohome
     name: "(06) Maximaltemperatur"
     id: NRF_K06_KonfiKTMax
@@ -3313,6 +3369,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=boiler quickcheck
   - platform: vitohome
     name: "(21) Betriebsstunden Brenner für Wartung"
     id: K21_KonfiBetriebsstdBrennerWart100
@@ -3329,6 +3386,7 @@ number:
     update_interval: 3600s
 
   # --- Codierungen / Pufferspeicher ---
+  # vito: quickcheck
   - platform: vitohome
     name: "(34) Relativer Einschaltpunkt Pufferladevorrang"
     id: NRF_K34_KonfiRelEinpunktPuffervorrang
@@ -3343,6 +3401,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(35) Relativer Ausschaltpunkt Pufferladevorrang"
     id: NRF_K35_KonfiRelAuspunktPuffervorrang
@@ -3357,6 +3416,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(5F) Zeit bis Pufferladung mit Maximaltemperatur"
     id: NRF_K5F_KonfiMaxtemperaturLadungTimer
@@ -3372,6 +3432,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(46) Einschaltpunkt Rücklaufanhebepumpe"
     id: NRF_K46_KonfiEinschaltpunktPumpeMinTemp
@@ -3388,6 +3449,7 @@ number:
     update_interval: 3600s
 
   # --- Codierungen / Warmwasser ---
+  # vito: circuit=dhw quickcheck
   - platform: vitohome
     name: "(62) Speichernachlaufzeit"
     id: NRF_K62_KonfiLpumpeNachlauf
@@ -3403,6 +3465,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=dhw quickcheck
   - platform: vitohome
     name: "(84) Einschaltpunkt Speicherladepumpe ⁄ Umschaltventil"
     id: NRF_K84_KonfiWW_Einschaltpunkt
@@ -3417,6 +3480,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=dhw quickcheck
   - platform: vitohome
     name: "(85) Ausschaltpunkt Speicherladepumpe ⁄ Umschaltventil"
     id: NRF_K85_KonfiWW_Ausschaltpunkt
@@ -3431,6 +3495,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=dhw quickcheck
   - platform: vitohome
     name: "(58) Zweiter Speichersollwert"
     id: NRF_K58_KonfiWW_Solltemperatur2
@@ -3446,6 +3511,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=dhw quickcheck
   - platform: vitohome
     name: "(60) Kesselsollwert bei Speicherladung"
     id: NRF_K60_KonfiWW_KesselOffset
@@ -3460,6 +3526,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=dhw quickcheck
   - platform: vitohome
     name: "(67) WW-Solltemperatur bei Nachladeunterdrückung Solar"
     id: NRF_K67_KonfiWW_Solltemperatur3
@@ -3476,6 +3543,7 @@ number:
     update_interval: 3600s
 
   # --- Codierungen / HeizkreisM1 ---
+  # vito: circuit=hk1,hk2 quickcheck
   - platform: vitohome
     name: "(A3) Frostgrenze A1M1"
     id: KA3_KonfiFrostgrenzeA1M1
@@ -3492,6 +3560,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk1,hk2 quickcheck
   - platform: vitohome
     name: "(A9) Pumpenstillstand A1M1 bei Übergang in reduzierten Betrieb"
     id: KA9_KonfiHKpumpeBeiReduziertA1M1
@@ -3507,6 +3576,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk1,hk2 quickcheck
   - platform: vitohome
     name: "(FA) Überhöhung Vorlauftemperatur Soll HK1"
     id: KFA_KonfiUeberhoehungVTSollA1
@@ -3521,6 +3591,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk1,hk2 quickcheck
   - platform: vitohome
     name: "(F2) Partyfunktion Zeitbegrenzung HK1"
     id: KF2_KonfiPartyzeitA1M1
@@ -3536,6 +3607,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk1,hk2 quickcheck
   - platform: vitohome
     name: "(C5) Vorlauf - Minimalbegrenzung A1M1"
     id: KC5_KonfiMinimalbegrenzungA1M1
@@ -3551,6 +3623,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk1,hk2 quickcheck
   - platform: vitohome
     name: "(A6) Absolute Sommersparschaltung A1M1"
     id: KA6_KonfiAbsolutSommersparA1M1
@@ -3567,6 +3640,7 @@ number:
     update_interval: 3600s
 
   # --- Codierungen / FernbedienungM1 ---
+  # vito: circuit=hk1 quickcheck
   - platform: vitohome
     name: "(B2) Raumgerät Raumeinfluß HK1"
     id: KB2_KonfiRaumeinflussA1M1
@@ -3580,6 +3654,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk1 quickcheck
   - platform: vitohome
     name: "(C8) Raumgerät Begrenzung A1M1"
     id: KC8_KonfiBegrenzungRaumeinflussA1M1
@@ -3593,6 +3668,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk1 quickcheck
   - platform: vitohome
     name: "(E2) Raumgerät Istwertkorrektur A1M1"
     id: KE2_KonfiRT_KorrekturFernbedienungA1M1
@@ -3606,6 +3682,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk1 quickcheck
   - platform: vitohome
     name: "(B5) Raumgerät Sommersparfunktion A1M1"
     id: NRF_KB5_KonfiRaumSommersparA1M1
@@ -3620,6 +3697,7 @@ number:
     update_interval: 3600s
 
   # --- Codierungen / FernbedienungM2 ---
+  # vito: circuit=hk2 quickcheck
   - platform: vitohome
     name: "(E2) Raumgerät Istwertkorrektur M2"
     id: KE2_KonfiRT_KorrekturFernbedienungM2
@@ -3633,6 +3711,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk2 quickcheck
   - platform: vitohome
     name: "(B5) Raumgerät Sommersparfunktion M2"
     id: NRF_KB5_KonfiRaumSommersparM2
@@ -3646,6 +3725,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk2 quickcheck
   - platform: vitohome
     name: "(B2) Raumgerät Raumeinfluß HK2"
     id: KB2_KonfiRaumeinflussM2
@@ -3659,6 +3739,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk2 quickcheck
   - platform: vitohome
     name: "(C8) Raumgerät Begrenzung M2"
     id: KC8_KonfiBegrenzungRaumeinflussM2
@@ -3673,6 +3754,7 @@ number:
     update_interval: 3600s
 
   # --- Codierungen / Solar intern ---
+  # vito: quickcheck
   - platform: vitohome
     name: "(6F) Hysterese Kollektoranfahrtemperatur MAX"
     id: NRF_K6F_KonfiHystKollektoranfahrtemp
@@ -3687,6 +3769,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(69) Kollektor Minmaltemperatur-begrenzung"
     id: NRF_K69_KonfiKollektorminimalbegrenzung
@@ -3702,6 +3785,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(86) Kollektorgrenztemperatur"
     id: NRF_K86_KonfiKollektorgrenztemperatur
@@ -3717,6 +3801,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(6D) Frostschutztemperatur"
     id: NRF_K6D_KonfiFrostschutztemperatur
@@ -3733,6 +3818,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(6B) Relativer Ausschaltpunkt Solarpumpe"
     id: NRF_K6B_KonfiAusschalttempDifferenz
@@ -3747,6 +3833,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(6E) Kollektoranfahrtemperatur MAX"
     id: NRF_K6E_KonfiKollektoranfahrtempMAX
@@ -3762,6 +3849,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(6C) Speicher Maximaltemperatur"
     id: NRF_K6C_KonfiSpeichermaximaltemperatur
@@ -3777,6 +3865,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(68) Kollektor Maximaltemperatur-begrenzung"
     id: NRF_K68_KonfiKollektormaximaltemperatur
@@ -3792,6 +3881,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(6A) Einschaltpunkt Solarpumpe"
     id: NRF_K6A_KonfiEinschalttempDifferenz
@@ -3806,6 +3896,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(66) Volumenstrom"
     id: NRF_K66_KonfiVolumenstrom
@@ -3821,6 +3912,7 @@ number:
     update_interval: 3600s
 
   # --- Funktionskontrolle / Kaskade ---
+  # vito: circuit=cascade quickcheck
   - platform: vitohome
     name: "(3A) Integralschwelle Sperrung Zusatzkessel"
     id: NRF_K3A_KonfiAbschaltintegralschwelleZK
@@ -3835,6 +3927,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=cascade quickcheck
   - platform: vitohome
     name: "(37) Vorlaufmaximal-temperatur Anlage"
     id: K37_KonfiVTMaxKaskade
@@ -3850,6 +3943,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=cascade quickcheck
   - platform: vitohome
     name: "(39) Integralschwelle Freigabe Zusatzkessel"
     id: NRF_K39_KonfiZuschaltintegralschwelleZK
@@ -3864,6 +3958,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=cascade quickcheck
   - platform: vitohome
     name: "(3B) Schalthysterese Zusatzkessel"
     id: NRF_K3B_KonfiSchalthystereseZK
@@ -3878,6 +3973,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=cascade quickcheck
   - platform: vitohome
     name: "(3D) Relativer Einschaltpunkt des Umschaltventils"
     id: NRF_K3D_KonfiEinschaltpunktUV
@@ -3892,6 +3988,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=cascade quickcheck
   - platform: vitohome
     name: "(3E) Relativer Ausschaltpunkt des Umschaltventils"
     id: NRF_K3E_KonfiAusschaltpunktUV
@@ -3906,6 +4003,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=cascade quickcheck
   - platform: vitohome
     name: "(36) Vorlaufminimal-temperatur Anlage"
     id: K36_KonfiVTMinKaskade
@@ -3921,6 +4019,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=cascade quickcheck
   - platform: vitohome
     name: "(3F) Schalthysterese Umschaltventils"
     id: NRF_K3F_KonfiSchalthystereseUV
@@ -4123,6 +4222,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(AB) Minimale Mischerposition A1M1"
     id: NRF_KAB_KonfiMINMischerpositionA1M1
@@ -4138,6 +4238,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(C3) Laufzeit Heizkreis Mischer A1M1"
     id: NRF_KC3_KonfiLaufzeitHKMischerA1M1
@@ -4153,6 +4254,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(C6) Maximalbegrenzung VT-Sollwert A1M1"
     id: NRF_KC6_KonfiVTMaxA1M1
@@ -4168,6 +4270,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(F8) Start Modifizierung Raumtemp. Soll red. HK1"
     id: KF8_KonfiStartModTRSollredA1
@@ -4184,6 +4287,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(F9) Ende Modifizierung Raumtemp. Soll red. HK1"
     id: KF9_KonfiEndeModTRSollredA1
@@ -4200,6 +4304,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(FB) Dauer Überhöhung Vorlauftemperatur Soll HK1"
     id: KFB_KonfiDauerUeberhoehungVTSollA1
@@ -4230,6 +4335,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(A3) Frostgrenze M2"
     id: KA3_KonfiFrostgrenzeM2
@@ -4246,6 +4352,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(A6) Absolute Sommersparschaltung M2"
     id: KA6_KonfiAbsolutSommersparM2
@@ -4261,6 +4368,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(A9) Pumpenstillstand M2 bei Übergang in reduzierten Betrieb"
     id: KA9_KonfiHKpumpeBeiReduziertM2
@@ -4276,6 +4384,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(AB) Minimale Mischerposition M2"
     id: NRF_KAB_KonfiMINMischerpositionM2
@@ -4291,6 +4400,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(C3) Laufzeit Heizkreis Mischer M2"
     id: NRF_KC3_KonfiLaufzeitHKMischerM2
@@ -4306,6 +4416,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(C5) Vorlauf - Minimalbegrenzung M2"
     id: KC5_KonfiMinimalbegrenzungM2
@@ -4321,6 +4432,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(C6) Maximalbegrenzung VT-Sollwert M2"
     id: NRF_KC6_KonfiVTMaxM2
@@ -4336,6 +4448,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(F2) Partyfunktion Zeitbegrenzung HK2"
     id: KF2_KonfiPartyzeitM2
@@ -4351,6 +4464,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(F8) Start Modifizierung Raumtemp. Soll red. HK2"
     id: KF8_KonfiStartModTRSollredM2
@@ -4367,6 +4481,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(F9) Ende Modifizierung Raumtemp. Soll red. HK2"
     id: KF9_KonfiEndeModTRSollredM2
@@ -4383,6 +4498,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(FA) Überhöhung Vorlauftemperatur Soll HK2"
     id: KFA_KonfiUeberhoehungVTSollM2
@@ -4397,6 +4513,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(FB) Dauer Überhöhung Vorlauftemperatur Soll HK2"
     id: KFB_KonfiDauerUeberhoehungVTSollM2
@@ -4425,6 +4542,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(0A) Minimaltemperatur"
     id: NRF_K0A_KonifiMinimaltemperatur
@@ -4680,6 +4798,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(47) Einschaltintegralschwelle"
     id: NRF_K47_KonfiEinschaltIntegralPufferOben
@@ -4694,6 +4813,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(48) Ausschaltpunkt Puffer oben"
     id: NRF_K48_KonfiAusschaltpunktPufferOben
@@ -4708,6 +4828,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(49) Auschaltpunkt Puffer unten"
     id: NRF_K49_KonfiAusschaltpunktPufferUnten
@@ -4722,6 +4843,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(4B) Einschaltpunkt Schichtladebetrieb Oben"
     id: NRF_K4B_KonfiSchichtladenObenEIN
@@ -4736,6 +4858,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(4C) Ausschaltpunkt Schichtladebetrieb Oben"
     id: NRF_K4C_KonfiSchichtladenObenAus
@@ -4750,6 +4873,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(4D) Einschaltpunkt Schichtladebetrieb Unten"
     id: NRF_K4D_KonfiEinschaltpunktPufferUnten
@@ -4764,6 +4888,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(4E) Nachlaufzeit RL-Pumpe"
     id: NRF_K4E_KonfiNachlaufzeitRLPumpe
@@ -4779,6 +4904,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(4F) Integralschwelle Leistungsreduktion"
     id: NRF_K4F_KonfiIntegralLeistungssenkung
@@ -4793,6 +4919,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(50) Ausschaltpunkt Schichtladung"
     id: NRF_K50_KonfiKesseltempSchichtladungEnde
@@ -4807,6 +4934,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(51) Integralschwelle Leistungserhöhung"
     id: NRF_K51_KonfiIntegralLeistungserhoehung
@@ -4821,6 +4949,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(52) Abschaltpunkt RL-Pumpe"
     id: NRF_K52_KonfiAbschaltpunktLadepumpe
@@ -4942,6 +5071,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(82) Aktive Funktionen im Standbybetrieb"
     id: NRF_K82_KonfiFunktionenStandby
@@ -5009,6 +5139,7 @@ number:
 
 select:
   # --- Information / Kessel ---
+  # vito: circuit=boiler quickcheck
   - platform: vitohome
     name: "(09) Hydraulische Verschaltung 2. Wärmeerzeuger"
     id: NRF_K09_Konfinacherwaermung
@@ -5021,6 +5152,7 @@ select:
       0x01: "1 Nacherwaermung durch 2. Waermeerzeuger"
 
   # --- Diagnose 1 / HeizkreisA1 ---
+  # vito: circuit=hk1,hk2 quickcheck
   - platform: vitohome
     name: "(D5) Richtung externe Aufschaltung A1M1"
     id: KD5_WirkungExtBA_UmschaltungA1M1
@@ -5033,6 +5165,7 @@ select:
       0x01: "1 Heizbetrieb"
 
   # --- Diagnose 1 / HeizkreisM2 ---
+  # vito: circuit=hk2
   - platform: vitohome
     name: "(D5) Richtung externe Aufschaltung M2"
     id: KD5_WirkungExtBA_UmschaltungM2
@@ -5045,6 +5178,7 @@ select:
       0x01: "Heizbetrieb"
 
   # --- Diagnose 2 / Regelung ---
+  # vito: quickcheck
   - platform: vitohome
     name: "(96) KM-Bus Teilnehmer Mischerheizkreis M2"
     id: NRF_K96_KonfiKM_Mischer2
@@ -5056,6 +5190,7 @@ select:
       0x00: "0 ohne"
       0x01: "1 mit KM-Bus Mischerkreis M1"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(94) KM-Bus Teilnehmer Mischerheizkreis M1"
     id: NRF_K94_KonfiKM_Mischer1
@@ -5067,6 +5202,7 @@ select:
       0x00: "0 ohne"
       0x01: "1 mit KM-Bus Mischerkreis M1"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(9D) Konfiguration Funktionserweiterung 0 - 10 V"
     id: K9D_KonfiKennungKAE0_10V
@@ -5079,6 +5215,7 @@ select:
       0x01: "1 vorhanden"
 
   # --- Diagnose 2 / Kommunikation ---
+  # vito: quickcheck
   - platform: vitohome
     name: "(97) Konfiguration Aussentemperatur"
     id: K97_Konfi_Aussentemperatur
@@ -5122,6 +5259,7 @@ select:
       0x13: "Relais externe AE"
 
   # --- Codierungen / Allgemein ---
+  # vito: quickcheck
   - platform: vitohome
     name: "(91) Zuordnen Betriebsarten-umschalten auf Heizkreis"
     id: NRF_K91_KonfiZuordnungExtBA_Umschaltung
@@ -5135,6 +5273,7 @@ select:
       0x02: "2  M2"
       0x03: "3  A1/M1 + M2"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(03) Verwendung interener Mischer M2"
     id: NRF_K03_KonfiVerwendung_M2
@@ -5147,6 +5286,7 @@ select:
       0x01: "1 Heizkreismischer M2"
       0x02: "2 Solarregler"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(9E) Aussentemperatursensor vorhanden"
     id: NRF_K9E_KonfiATSVorhanden
@@ -5158,6 +5298,7 @@ select:
       0x00: "0 ohne"
       0x01: "1 vorhanden"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(9A) Zuordnung ext. Eingang Mischer AUF auf Heizkreis"
     id: NRF_K9A_KonfiZuordnungExtMischerAUF
@@ -5171,6 +5312,7 @@ select:
       0x02: "2 AUF M2"
       0x03: "3 AUF M1+M2"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(54) Solarregelung"
     id: K54_Solar
@@ -5183,6 +5325,7 @@ select:
       0x01: "1 Vitosolic 100"
       0x02: "2 Vitosolic 200"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(7F) Unterscheidung Einfamilienhaus - Mehrparteienhaus"
     id: K7F_KonfiEinfamilienhaus
@@ -5194,6 +5337,7 @@ select:
       0x00: "0 Mehrparteienhaus"
       0x01: "1 Einfamilienhaus"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(76) Kennung Kommunikationsmodul"
     id: NRF_K76_KonfiKommunikationsmodul
@@ -5205,6 +5349,7 @@ select:
       0x00: "0 Ohne LON Modul"
       0x01: "1 Mit LON Modul"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(08) Verwendung Ausgang 50"
     id: NRF_K08_KonfiVerwendungAusgang50
@@ -5216,6 +5361,7 @@ select:
       0x00: "0 Sammelstörmeldeausgang"
       0x01: "1 Ausgang Kontakt Anfahrentlastung Kessel"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(9C) Receive-Heart-Beat-Zeit"
     id: NRF_K9C_KonfiReceiveHeartBeat
@@ -5282,6 +5428,7 @@ select:
       0x3B: "59 Minuten"
       0x3C: "60 Minuten"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(02) Verwendung interner Mischer M1"
     id: NRF_K02_KonfiVerwendung_M1
@@ -5297,6 +5444,7 @@ select:
       0x04: "4 Ansteuerung Beimischventil in der Anwendung"
       0x05: "5 Drosselklappe in einer Mehrkesselanlage"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(05) Sonderfunktion Ausgang 20 interner Mischer M1"
     id: NRF_K05_KonfiSonderfunktionAusgang20_M1
@@ -5308,6 +5456,7 @@ select:
       0x00: "0 keineVerwendung"
       0x01: "1 WW-Bereitungaktiv"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(04) Sonderfunktion VTS interner Mischer M1"
     id: NRF_K04_KonfiSonderfunktionVTS_M1
@@ -5319,6 +5468,7 @@ select:
       0x00: "0 Keine Sonderverwendung"
       0x01: "1 Kesseltemperatursensor im 2. Wärmeerzeuger"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(99) Zuordnung ext. Eingang Mischer ZU auf Heizkreis"
     id: NRF_K99_KonfiZuordnungExtMischerZU
@@ -5336,6 +5486,7 @@ select:
       0x06: "6 ExtSp und ZU M2"
       0x07: "7 ExtSp und ZU M1+M2"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(79) Zentraler Fehlermanager der Anlage"
     id: K79_KonfiFehlerManagerV300_V333
@@ -5348,6 +5499,7 @@ select:
       0x01: "1 Fehlermanager"
 
   # --- Codierungen / Pufferspeicher ---
+  # vito: quickcheck
   - platform: vitohome
     name: "(45) Heizwasserpufferspeicher"
     id: NRF_K45_KonfiPufferspeicher
@@ -5361,6 +5513,7 @@ select:
       0x02: "2 Kombispeicher"
 
   # --- Codierungen / Warmwasser ---
+  # vito: circuit=dhw quickcheck
   - platform: vitohome
     name: "(61) Temperaturabhänigkeit der Speicherladung"
     id: NRF_K61_KonfiWW_Ladeabhaengig
@@ -5373,6 +5526,7 @@ select:
       0x01: "1 Temperaturabhaenig"
       0x02: "2 KT-abhaengig"
 
+  # vito: circuit=dhw quickcheck
   - platform: vitohome
     name: "(59) Einschaltpunkt Speicher"
     id: K59_KonfiWW_EinschaltOffset
@@ -5393,6 +5547,7 @@ select:
       0x09: "9 K unter Soll"
       0x0A: "10 K unter Soll"
 
+  # vito: circuit=dhw quickcheck
   - platform: vitohome
     name: "(56) Speichertemperatur-Sollwertbereich"
     id: NRF_K56_KonfiWW_SolltemperaturBereich
@@ -5404,6 +5559,7 @@ select:
       0x00: "0 Bereich 10-60 °C"
       0x01: "1 Berich 10-90 °C"
 
+  # vito: circuit=dhw quickcheck
   - platform: vitohome
     name: "(70) Zirk.-pumpenausgang als Relaisausgang"
     id: K70_KonfiZpumpeRelaisausgang
@@ -5415,6 +5571,7 @@ select:
       0x00: "0 Regelfunktion"
       0x01: "1 Relaisausgang"
 
+  # vito: circuit=dhw quickcheck
   - platform: vitohome
     name: "(64) WW-Bereitung bei Party- oder dauernd Normalbetrieb"
     id: K64_KonfiWW_BeiPartyDNormal
@@ -5427,6 +5584,7 @@ select:
       0x01: "1 nach Schaltuhr"
       0x02: "2 EIN"
 
+  # vito: circuit=dhw quickcheck
   - platform: vitohome
     name: "(72) Zirkulationspumpe bei Speicherladung 2. WW-Sollwert"
     id: K72_KonfiZpumpeBeiWW_Soll2
@@ -5439,6 +5597,7 @@ select:
       0x01: "1 AUS"
       0x02: "2 EIN"
 
+  # vito: circuit=dhw quickcheck
   - platform: vitohome
     name: "(71) Zirkulationspumpe bei Speicherladung 1. WW-Sollwert"
     id: K71_KonfiZpumpeBeiWW_Soll1
@@ -5451,6 +5610,7 @@ select:
       0x01: "1 AUS"
       0x02: "2 EIN"
 
+  # vito: circuit=dhw quickcheck
   - platform: vitohome
     name: "(75) Zirkulationspumpe bei Sparbetrieb"
     id: K75_KonfiZpumpeBeiSparbetrieb
@@ -5463,6 +5623,7 @@ select:
       0x01: "1 AUS"
 
   # --- Codierungen / HeizkreisM1 ---
+  # vito: circuit=hk1 quickcheck
   - platform: vitohome
     name: "(F1) Estrichfunktion A1M1"
     id: KF1_KonfiTemperaturprogrammM1
@@ -5488,6 +5649,7 @@ select:
       0x0E: "Default (0x0E)"
       0x0F: "Default (0x0F)"
 
+  # vito: circuit=hk1,hk2 quickcheck
   - platform: vitohome
     name: "(A0) Kennung Fernbedienung A1M1"
     id: KA0_KonfiKennungFernbedienungA1M1
@@ -5500,6 +5662,7 @@ select:
       0x01: "1 mit Vitotrol 200"
       0x02: "2 mit Vitotrol 300"
 
+  # vito: circuit=hk1,hk2 quickcheck
   - platform: vitohome
     name: "(A5) Sommersparschaltung Schaltschwelle A1M1"
     id: KA5_KonfSommersparSchaltschwelleA1M1
@@ -5525,6 +5688,7 @@ select:
       0x0E: "14 AT > RTsoll - 8 K"
       0x0F: "15 AT > RTsoll - 9 K"
 
+  # vito: circuit=hk1,hk2 quickcheck
   - platform: vitohome
     name: "(A7) Mischersparfunktion M1"
     id: KA7_KonfiMischersparfunktionM1
@@ -5536,6 +5700,7 @@ select:
       0x00: "0 ohne"
       0x01: "1 Mischersparfunktion"
 
+  # vito: circuit=hk1,hk2 quickcheck
   - platform: vitohome
     name: "(A4) Frostschutzfunktion A1M1"
     id: KA4_KonfiKeineFrostschutzfunktionA1M1
@@ -5547,6 +5712,7 @@ select:
       0x00: "0 aktiv"
       0x01: "1 blockiert"
 
+  # vito: circuit=hk1,hk2 quickcheck
   - platform: vitohome
     name: "(A2) Speichervorrang A1M1"
     id: KA2_KonfiSpeichervorrangA1M1
@@ -5572,6 +5738,7 @@ select:
       0x0E: "14 gleitender Vorrang"
       0x0F: "15 gleitender Vorrang"
 
+  # vito: circuit=hk1,hk2 quickcheck
   - platform: vitohome
     name: "(C4) Anlagendynamik Heizkreis Mischer M1"
     id: KC4_KonfiMischerAnlagendynamikM1
@@ -5586,6 +5753,7 @@ select:
       0x03: "Parametersatz 3"
 
   # --- Codierungen / FernbedienungM1 ---
+  # vito: circuit=hk1 quickcheck
   - platform: vitohome
     name: "(B0) Raumaufschaltung A1M1"
     id: KB0_KonfiRaumaufschaltungA1M1
@@ -5599,6 +5767,7 @@ select:
       0x02: "2 RS - WS"
       0x03: "3 RS - RS"
 
+  # vito: circuit=hk1 quickcheck
   - platform: vitohome
     name: "(E1) Bereich Tagsolltemperatur Fernbedienung A1M1"
     id: KE1_KonfiOffsetRT_SolltemperaturA1M1
@@ -5612,6 +5781,7 @@ select:
       0x02: "2 Bereich 17 bis 37 °C"
 
   # --- Codierungen / FernbedienungM2 ---
+  # vito: circuit=hk2 quickcheck
   - platform: vitohome
     name: "(B0) Raumaufschaltung M2"
     id: KB0_KonfiRaumaufschaltungM2
@@ -5625,6 +5795,7 @@ select:
       0x02: "2 RS - WS"
       0x03: "3 RS - RS"
 
+  # vito: circuit=hk2 quickcheck
   - platform: vitohome
     name: "(E1) Bereich Tagsolltemperatur Fernbedienung M2"
     id: KE1_KonfiOffsetRT_SolltemperaturM2
@@ -5638,6 +5809,7 @@ select:
       0x02: "2 Bereich 17 bis 37 °C"
 
   # --- Codierungen / Solar intern ---
+  # vito: quickcheck
   - platform: vitohome
     name: "(65) Wärmeträgermedium"
     id: NRF_K65_KonfiWaermetraegermedium
@@ -5650,6 +5822,7 @@ select:
       0x01: "1 Viessmann Wärmeträgermedium"
 
   # --- (ohne Gruppenzuordnung) ---
+  # vito: quickcheck
   # Writable operating-mode (Betriebsart). KNOWN ISSUES on real 0x20CB /
   # VScotHO1 units (see project notes / hardware audit):
   #  * openv/community drives the mode at 0x2301 with 6 options
@@ -5675,6 +5848,7 @@ select:
       0x04: "4 NORMAL_ABSCHALT"
       0x05: "5 DAUERND_ABSCHALT"
 
+  # vito: quickcheck
   # Writable operating-mode (Betriebsart). KNOWN ISSUES on real 0x20CB /
   # VScotHO1 units (see project notes / hardware audit):
   #  * openv/community drives the mode at 0x2301 with 6 options
@@ -5699,6 +5873,7 @@ select:
       0x03: "Dauernd Reduziert"
       0x04: "Dauernd Normal"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(AA) Anfahrentlastung A1M1"
     id: NRF_KAA_KonfiAnfahrentlastungA1M1
@@ -5711,6 +5886,7 @@ select:
       0x01: "1 Anfahrentlastung wird bei Brennereinschaltung berücksichtigt"
       0x02: "2 Anfahrentlastung wird bei Brenner in Betrieb berücksichtigt"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(BC) Erzwungene Wärmeaufnahme A1M1"
     id: NRF_KBC_KonfiErzwungeneWaermeaufnahmeA1M1
@@ -5771,6 +5947,7 @@ select:
       0x04: "Heizen + WW (0x04)"
       0x05: "Abschalt"
 
+  # vito: quickcheck
   # Writable operating-mode (Betriebsart). KNOWN ISSUES on real 0x20CB /
   # VScotHO1 units (see project notes / hardware audit):
   #  * openv/community drives the mode at 0x2301 with 6 options
@@ -5807,6 +5984,7 @@ select:
       0x01: "Vitotrol 200"
       0x02: "Vitotrol 300"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(A2) Speichervorrang M2"
     id: KA2_KonfiSpeichervorrangM2
@@ -5832,6 +6010,7 @@ select:
       0x0E: "14 gleitender Vorrang"
       0x0F: "15 gleitender Vorrang"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(A4) Frostschutzfunktion M2"
     id: KA4_KonfiKeineFrostschutzfunktionM2
@@ -5843,6 +6022,7 @@ select:
       0x00: "0 aktiv"
       0x01: "1 blockiert"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(A5) Sommersparschaltung Schaltschwelle M2"
     id: KA5_KonfSommersparSchaltschwelleM2
@@ -5868,6 +6048,7 @@ select:
       0x0E: "14 AT > RTsoll - 8 K"
       0x0F: "15 AT > RTsoll - 9 K"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(A7) Mischersparfunktion M2"
     id: KA7_KonfiMischersparfunktionM2
@@ -5879,6 +6060,7 @@ select:
       0x00: "0 ohne"
       0x01: "1 Mischersparfunktion"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(AA) Anfahrentlastung M2"
     id: NRF_KAA_KonfiAnfahrentlastungM2
@@ -5891,6 +6073,7 @@ select:
       0x01: "1 Anfahrentlastung wird bei Brennereinschaltung berücksichtigt"
       0x02: "2 Anfahrentlastung wird bei Brenner in Betrieb berücksichtigt"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(BC) Erzwungene Wärmeaufnahme M2"
     id: NRF_KBC_KonfiErzwungeneWaermeaufnahmeM2
@@ -5902,6 +6085,7 @@ select:
       0x00: "0 keine Reaktion der Verbraucher auf Force-Signal"
       0x01: "1 Reaktion der Verbraucher auf Force-Signal"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(C4) Anlagendynamik Heizkreis Mischer M2"
     id: KC4_KonfiMischerAnlagendynamikM2
@@ -5915,6 +6099,7 @@ select:
       0x02: "Parametersatz 2"
       0x03: "Parametersatz 3"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(F1) Estrichfunktion M2"
     id: KF1_KonfiTemperaturprogrammM2
@@ -5951,6 +6136,7 @@ select:
       0x00: "0 Passiv"
       0x01: "1 Aktiv"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(24) Status der Wartung"
     id: K24_KonfiStatusWartung
@@ -5998,6 +6184,7 @@ select:
       0x01: "Speicher (0x01)"
       0x02: "Speicher (0x02)"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(73) Intervall-Freigabe Zirkulationspumpe"
     id: K73_KonfiZpumpeIntervallFreigabe
@@ -6138,6 +6325,7 @@ select:
 
 switch:
   # --- Information / HeizkreisA1 ---
+  # vito: circuit=hk1
   - platform: vitohome
     name: "Extern Mischer AUF M1"
     id: ExtMischerauf_M1
@@ -6147,6 +6335,7 @@ switch:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk1
   - platform: vitohome
     name: "extern Mischer ZU M1"
     id: ExtMischerzu_M1
@@ -6177,6 +6366,7 @@ switch:
     update_interval: 3600s
 
   # --- Diagnose 2 / Kommunikation ---
+  # vito: quickcheck
   - platform: vitohome
     name: "(7B) Uhrzeit auf LON"
     id: K7B_KonfiFunktionUhrSenden
@@ -6207,6 +6397,7 @@ switch:
     update_interval: 3600s
 
   # --- Codierungen / Warmwasser ---
+  # vito: circuit=dhw quickcheck
   - platform: vitohome
     name: "(5A) Warmwassersollwert ist Maximalwert"
     id: K5A_KonfiSpeichersollwertMax
@@ -6244,6 +6435,7 @@ switch:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(BB) Pufferladevorgang A1M1"
     id: NRF_KBB_PufferladevorgangA1M1
@@ -6253,6 +6445,7 @@ switch:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(BB) Pufferladevorgang M2"
     id: NRF_KBB_PufferladevorgangM2
@@ -6324,6 +6517,7 @@ switch:
 
 text:
   # --- BedienungA1 / Heizzeiten ---
+  # vito: circuit=hk1
   - platform: vitohome
     name: "Schaltzeit A1M1 HK Montag"
     id: schaltzeit_a1m1_hk_mo
@@ -6331,6 +6525,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk1
   - platform: vitohome
     name: "Schaltzeit A1M1 HK Dienstag"
     id: schaltzeit_a1m1_hk_di
@@ -6338,6 +6533,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk1
   - platform: vitohome
     name: "Schaltzeit A1M1 HK Mittwoch"
     id: schaltzeit_a1m1_hk_mi
@@ -6345,6 +6541,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk1
   - platform: vitohome
     name: "Schaltzeit A1M1 HK Donnerstag"
     id: schaltzeit_a1m1_hk_do
@@ -6352,6 +6549,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk1
   - platform: vitohome
     name: "Schaltzeit A1M1 HK Freitag"
     id: schaltzeit_a1m1_hk_fr
@@ -6359,6 +6557,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk1
   - platform: vitohome
     name: "Schaltzeit A1M1 HK Samstag"
     id: schaltzeit_a1m1_hk_sa
@@ -6366,6 +6565,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk1
   - platform: vitohome
     name: "Schaltzeit A1M1 HK Sonntag"
     id: schaltzeit_a1m1_hk_so
@@ -6374,6 +6574,7 @@ text:
     update_interval: 3600s
 
   # --- BedienungA1 / Warmwasser ---
+  # vito: circuit=dhw
   - platform: vitohome
     name: "Schaltzeit NRF Schaltzeiten M1 Montag"
     id: schaltzeit_nrf_schaltzeiten_m1_mo
@@ -6381,6 +6582,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=dhw
   - platform: vitohome
     name: "Schaltzeit NRF Schaltzeiten M1 Dienstag"
     id: schaltzeit_nrf_schaltzeiten_m1_di
@@ -6388,6 +6590,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=dhw
   - platform: vitohome
     name: "Schaltzeit NRF Schaltzeiten M1 Mittwoch"
     id: schaltzeit_nrf_schaltzeiten_m1_mi
@@ -6395,6 +6598,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=dhw
   - platform: vitohome
     name: "Schaltzeit NRF Schaltzeiten M1 Donnerstag"
     id: schaltzeit_nrf_schaltzeiten_m1_do
@@ -6402,6 +6606,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=dhw
   - platform: vitohome
     name: "Schaltzeit NRF Schaltzeiten M1 Freitag"
     id: schaltzeit_nrf_schaltzeiten_m1_fr
@@ -6409,6 +6614,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=dhw
   - platform: vitohome
     name: "Schaltzeit NRF Schaltzeiten M1 Samstag"
     id: schaltzeit_nrf_schaltzeiten_m1_sa
@@ -6416,6 +6622,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=dhw
   - platform: vitohome
     name: "Schaltzeit NRF Schaltzeiten M1 Sonntag"
     id: schaltzeit_nrf_schaltzeiten_m1_so
@@ -6424,6 +6631,7 @@ text:
     update_interval: 3600s
 
   # --- BedienungM2 / Heizzeiten ---
+  # vito: circuit=hk2
   - platform: vitohome
     name: "Schaltzeit M2 HK Montag"
     id: schaltzeit_m2_hk_mo
@@ -6431,6 +6639,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk2
   - platform: vitohome
     name: "Schaltzeit M2 HK Dienstag"
     id: schaltzeit_m2_hk_di
@@ -6438,6 +6647,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk2
   - platform: vitohome
     name: "Schaltzeit M2 HK Mittwoch"
     id: schaltzeit_m2_hk_mi
@@ -6445,6 +6655,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk2
   - platform: vitohome
     name: "Schaltzeit M2 HK Donnerstag"
     id: schaltzeit_m2_hk_do
@@ -6452,6 +6663,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk2
   - platform: vitohome
     name: "Schaltzeit M2 HK Freitag"
     id: schaltzeit_m2_hk_fr
@@ -6459,6 +6671,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk2
   - platform: vitohome
     name: "Schaltzeit M2 HK Samstag"
     id: schaltzeit_m2_hk_sa
@@ -6466,6 +6679,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk2
   - platform: vitohome
     name: "Schaltzeit M2 HK Sonntag"
     id: schaltzeit_m2_hk_so
@@ -6474,6 +6688,7 @@ text:
     update_interval: 3600s
 
   # --- BedienungM2 / Warmwasser ---
+  # vito: circuit=dhw
   - platform: vitohome
     name: "Schaltzeit NRF Schaltzeiten M2 WW Montag"
     id: schaltzeit_nrf_schaltzeiten_m2_ww_mo
@@ -6481,6 +6696,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=dhw
   - platform: vitohome
     name: "Schaltzeit NRF Schaltzeiten M2 WW Dienstag"
     id: schaltzeit_nrf_schaltzeiten_m2_ww_di
@@ -6488,6 +6704,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=dhw
   - platform: vitohome
     name: "Schaltzeit NRF Schaltzeiten M2 WW Mittwoch"
     id: schaltzeit_nrf_schaltzeiten_m2_ww_mi
@@ -6495,6 +6712,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=dhw
   - platform: vitohome
     name: "Schaltzeit NRF Schaltzeiten M2 WW Donnerstag"
     id: schaltzeit_nrf_schaltzeiten_m2_ww_do
@@ -6502,6 +6720,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=dhw
   - platform: vitohome
     name: "Schaltzeit NRF Schaltzeiten M2 WW Freitag"
     id: schaltzeit_nrf_schaltzeiten_m2_ww_fr
@@ -6509,6 +6728,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=dhw
   - platform: vitohome
     name: "Schaltzeit NRF Schaltzeiten M2 WW Samstag"
     id: schaltzeit_nrf_schaltzeiten_m2_ww_sa
@@ -6516,6 +6736,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=dhw
   - platform: vitohome
     name: "Schaltzeit NRF Schaltzeiten M2 WW Sonntag"
     id: schaltzeit_nrf_schaltzeiten_m2_ww_so
@@ -6524,6 +6745,7 @@ text:
     update_interval: 3600s
 
   # --- BedienungM2 / Zirkulation ---
+  # vito: circuit=hk2
   - platform: vitohome
     name: "Schaltzeit NRF Schaltzeiten M2 ZP Montag"
     id: schaltzeit_nrf_schaltzeiten_m2_zp_mo
@@ -6531,6 +6753,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk2
   - platform: vitohome
     name: "Schaltzeit NRF Schaltzeiten M2 ZP Dienstag"
     id: schaltzeit_nrf_schaltzeiten_m2_zp_di
@@ -6538,6 +6761,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk2
   - platform: vitohome
     name: "Schaltzeit NRF Schaltzeiten M2 ZP Mittwoch"
     id: schaltzeit_nrf_schaltzeiten_m2_zp_mi
@@ -6545,6 +6769,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk2
   - platform: vitohome
     name: "Schaltzeit NRF Schaltzeiten M2 ZP Donnerstag"
     id: schaltzeit_nrf_schaltzeiten_m2_zp_do
@@ -6552,6 +6777,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk2
   - platform: vitohome
     name: "Schaltzeit NRF Schaltzeiten M2 ZP Freitag"
     id: schaltzeit_nrf_schaltzeiten_m2_zp_fr
@@ -6559,6 +6785,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk2
   - platform: vitohome
     name: "Schaltzeit NRF Schaltzeiten M2 ZP Samstag"
     id: schaltzeit_nrf_schaltzeiten_m2_zp_sa
@@ -6566,6 +6793,7 @@ text:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: circuit=hk2
   - platform: vitohome
     name: "Schaltzeit NRF Schaltzeiten M2 ZP Sonntag"
     id: schaltzeit_nrf_schaltzeiten_m2_zp_so
@@ -6632,6 +6860,7 @@ text_sensor:
     entity_category: diagnostic
 
   # --- Information / Kessel ---
+  # vito: circuit=boiler
   - platform: vitohome
     type: enum
     name: "Brenner"
@@ -6645,6 +6874,7 @@ text_sensor:
       0x00: "AUS"
       0x01: "EIN"
 
+  # vito: circuit=boiler
   - platform: vitohome
     type: enum
     name: "Multifunktionsausgang M1 Auf"
@@ -6658,6 +6888,7 @@ text_sensor:
       0x01: "EIN"
 
   # --- Information / HeizkreisA1 ---
+  # vito: circuit=hk1,hk2
   - platform: vitohome
     type: enum
     name: "Partybetrieb A1M1"
@@ -6670,6 +6901,7 @@ text_sensor:
       0x00: "AUS"
       0x01: "EIN"
 
+  # vito: circuit=hk1,hk2
   - platform: vitohome
     type: enum
     name: "Sparbetrieb A1M1"
@@ -6682,6 +6914,7 @@ text_sensor:
       0x00: "AUS"
       0x01: "EIN"
 
+  # vito: circuit=hk1
   - platform: vitohome
     type: enum
     name: "Externe Betriebsarten-umschaltung A1M1"
@@ -6694,6 +6927,7 @@ text_sensor:
       0x00: "AUS"
       0x01: "EIN"
 
+  # vito: circuit=hk1
   - platform: vitohome
     type: enum
     name: "Aktuelle Betriebsart A1M1"
@@ -6710,6 +6944,7 @@ text_sensor:
       0x03: "Normalbetrieb (0x03)"
 
   # --- Information / HeizkreisM2 ---
+  # vito: circuit=hk2
   - platform: vitohome
     type: enum
     name: "Externe Betriebsarten-umschaltung M2"
@@ -6722,6 +6957,7 @@ text_sensor:
       0x00: "AUS"
       0x01: "EIN"
 
+  # vito: circuit=hk2
   - platform: vitohome
     type: enum
     name: "extern Mischer AUF M2"
@@ -6734,6 +6970,7 @@ text_sensor:
       0x00: "AUS"
       0x01: "EIN"
 
+  # vito: circuit=hk2
   - platform: vitohome
     type: enum
     name: "extern Mischer ZU M2"
@@ -6746,6 +6983,7 @@ text_sensor:
       0x00: "AUS"
       0x01: "EIN"
 
+  # vito: circuit=hk2
   - platform: vitohome
     type: enum
     name: "Aktuelle Betriebsart M2"
@@ -6761,6 +6999,7 @@ text_sensor:
       0x02: "Normalbetrieb"
       0x03: "Normalbetrieb (0x03)"
 
+  # vito: circuit=hk2
   - platform: vitohome
     type: enum
     name: "Sparbetrieb M2"
@@ -6773,6 +7012,7 @@ text_sensor:
       0x00: "AUS"
       0x01: "EIN"
 
+  # vito: circuit=hk2
   - platform: vitohome
     type: enum
     name: "Partybetrieb M2"
@@ -6786,6 +7026,7 @@ text_sensor:
       0x01: "EIN"
 
   # --- Information / Warmwasser ---
+  # vito: circuit=dhw
   - platform: vitohome
     type: enum
     name: "Speicherladepumpe"
@@ -6798,6 +7039,7 @@ text_sensor:
       0x00: "AUS"
       0x01: "EIN"
 
+  # vito: circuit=dhw
   - platform: vitohome
     type: enum
     name: "Warmwasserbereitung"
@@ -7020,6 +7262,7 @@ text_sensor:
       0x06: "nicht vorhanden (0x06)"
 
   # --- Funktionskontrolle / Kaskade ---
+  # vito: circuit=cascade quickcheck
   - platform: vitohome
     type: enum
     name: "(3C) Schaltbedingung des Umschaltventils"
@@ -7048,6 +7291,7 @@ text_sensor:
       0x01: "EIN"
 
   # --- LON Objekte / HCCObjektM2 ---
+  # vito: circuit=hk2
   - platform: vitohome
     type: enum
     name: "Aktuelle Betriebsart HK2"
@@ -7946,6 +8190,7 @@ text_sensor:
       0x24: "40 kW"
       0x25: "48 kW"
 
+  # vito: quickcheck
   - platform: vitohome
     type: enum
     name: "Heizkreis-Warmwasserschema (nur lesen)"

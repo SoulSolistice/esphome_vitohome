@@ -38,6 +38,12 @@
 # 1 datapoint(s) with an address above 0xFF were dropped
 # (GWG addresses a single byte).
 #
+# Metadata: 13 entities carry a `# vito:` line with Vitosoft's own
+# grouping, for the catalog editor: circuit=hk1..hk6|dhw|solar|boiler|
+# cascade|mbus (the menu they are in), level=td (shown at the service
+# access level only), overview, quickcheck and trend (Vitosoft's overview
+# screen, quick check and trend recorder). ESPHome ignores them.
+#
 # System error history omitted: this unit has NO Optolink-reachable
 # datapoints (KBUS/GFA/RPC-only device), so the generic 0x7507 fault
 # archive can never answer. Re-run with --no-reachable-only to force it.
@@ -1165,6 +1171,7 @@ binary_sensor:
 
 number:
   # --- Codierungen / Allgemein ---
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion': display value = raw * 2 + 6; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(S1) Nachlauf der Umwälzpumpe bei Speicherladung"
@@ -1182,6 +1189,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion': display value = raw * 2 + 6; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(S3) Maximale Kesseltemperatur bei Trinkwasserbereitung"
@@ -1200,6 +1208,7 @@ number:
     update_interval: 3600s
 
   # --- (ohne Gruppenzuordnung) ---
+  # vito: quickcheck
   - platform: vitohome
     name: "(01) Min. Einstellwert Kessel"
     id: GWG_BT2MinEinstellwertKTSoll
@@ -1216,6 +1225,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(02) Max. Einstellwert Kessel"
     id: GWG_BT2MaxEinstellwertKTSoll
@@ -1232,6 +1242,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(03) Min. Einstellwert Speicher"
     id: GWG_BT2MinEinstellwertBWSoll
@@ -1248,6 +1259,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(04) Max. Einstellwert Speicher"
     id: GWG_BT2MaxEinstellwertBWSoll
@@ -1266,6 +1278,7 @@ number:
 
 select:
   # --- Codierungen / Allgemein ---
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion': display value = raw * 2 + 6; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(S5) Trinkwassererwaermung durch"
@@ -1283,6 +1296,7 @@ select:
       0x04: "4 Nicht belegt"
       0x05: "5 Plattenwaermetauscher"
 
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion': display value = raw * 2 + 6; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(S6) Anlagenfrostschutz"
@@ -1319,6 +1333,7 @@ select:
       0x17: "23 mal pro Tag"
       0x18: "24 mal pro Tag"
 
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion': display value = raw * 2 + 6; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(S2) Extern Sperren wirkt auf"
@@ -1335,6 +1350,7 @@ select:
       0x03: "3 Trinkwasser"
       0x04: "4 Komfortbetrieb"
 
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion': display value = raw * 2 + 6; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(S4) Zusatzfunktion Trinkwassererwaermung"
@@ -1377,6 +1393,7 @@ select:
       0x1D: "29 Jede Ladung"
       0x1E: "30 Jede Ladung"
 
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion': display value = raw * 2 + 6; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(S7) Uhrenthermostat-M ist eingestellt auf"
@@ -1411,6 +1428,7 @@ select:
 
 switch:
   # --- (ohne Gruppenzuordnung) ---
+  # vito: quickcheck
   - platform: vitohome
     name: "(05) Sollwertanzeige"
     id: GWG_BT2Sollwertanzeige
@@ -1423,6 +1441,7 @@ switch:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(06) Einstellgrenzen BT2 bei VR10"
     id: GWG_BT2Einstellgrenzen

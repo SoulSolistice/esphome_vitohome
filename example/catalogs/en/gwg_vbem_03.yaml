@@ -38,6 +38,12 @@
 # 1 datapoint(s) with an address above 0xFF were dropped
 # (GWG addresses a single byte).
 #
+# Metadata: 47 entities carry a `# vito:` line with Vitosoft's own
+# grouping, for the catalog editor: circuit=hk1..hk6|dhw|solar|boiler|
+# cascade|mbus (the menu they are in), level=td (shown at the service
+# access level only), overview, quickcheck and trend (Vitosoft's overview
+# screen, quick check and trend recorder). ESPHome ignores them.
+#
 # System error history omitted: this unit has NO Optolink-reachable
 # datapoints (KBUS/GFA/RPC-only device), so the generic 0x7507 fault
 # archive can never answer. Re-run with --no-reachable-only to force it.
@@ -144,6 +150,7 @@ sensor:
     update_interval: 60s
 
   # --- Information / Warmwasser ---
+  # vito: circuit=dhw
   - platform: vitohome
     name: "DHW temperature sensor 2"
     id: GWG_TrinkwassertemperaturSensor2
@@ -158,6 +165,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=dhw
   - platform: vitohome
     name: "DHW temperature sensor 1"
     id: GWG_TrinkwassertemperaturSensor1
@@ -231,6 +239,7 @@ sensor:
     update_interval: 60s
 
   # --- Diagnose1 / Warmwasser ---
+  # vito: circuit=dhw
   - platform: vitohome
     name: "DHW temperature with auxiliary function"
     id: GWG_TrinkwassertemperaturZusatz
@@ -244,6 +253,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=dhw
   - platform: vitohome
     name: "Set DHW temperature"
     id: GWG_Trinkwasser_Solltemperatur
@@ -709,6 +719,7 @@ sensor:
     update_interval: 60s
 
   # --- Codierungen / Anlage ---
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion' with fractional stepping: borders -5..5 step 0.125 imply value = raw * 0.125 + -5 (raw 0..80); export factor/offset (5, 35) ignored. UNVERIFIED inference -- read-only until a hardware write confirms it (writable in the export; not a number until confirmed)
   - platform: vitohome
     name: "(55) Value for correction of the actual room temperature"
@@ -727,6 +738,7 @@ sensor:
     update_interval: 3600s
 
   # --- Codierungen / Warmwasser ---
+  # vito: quickcheck
     # NOTE: export factor/offset (0.5, -16) ignored (stale on NoConversion bit fields)
     # NOTE: fractional stepping: borders imply value = field * 0.1 (field 0..10). UNVERIFIED inference -- read-only until a hardware write confirms it
   - platform: vitohome
@@ -743,6 +755,7 @@ sensor:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: export factor/offset (0.5, -16) ignored (stale on NoConversion bit fields)
     # NOTE: fractional stepping: borders imply value = field * 0.1 (field 0..10). UNVERIFIED inference -- read-only until a hardware write confirms it
   - platform: vitohome
@@ -1361,6 +1374,7 @@ binary_sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=dhw
   - platform: vitohome
     name: "DHW mode"
     id: GWG_Anlage_Trinkwasserbetrieb
@@ -1402,6 +1416,7 @@ binary_sensor:
     update_interval: 60s
 
   # --- Information / Warmwasser ---
+  # vito: circuit=dhw
   - platform: vitohome
     name: "Diverter valve is set to"
     id: GWG_AusgangUmschaltventil
@@ -1412,6 +1427,7 @@ binary_sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=dhw
   - platform: vitohome
     name: "DHW circulation pump"
     id: GWG_AusgangZirkulationspumpe
@@ -1422,6 +1438,7 @@ binary_sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=dhw
   - platform: vitohome
     name: "Cylinder primary pump"
     id: GWG_AusgangLadepumpe
@@ -1762,6 +1779,7 @@ number:
     update_interval: 3600s
 
   # --- Codierungen / Anlage ---
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(46) Speed of heating circuit pump in reduced mode"
@@ -1778,6 +1796,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(38) Minimum flow temperature"
@@ -1812,6 +1831,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: export factor/offset (0.125, -5) ignored (stale on NoConversion bit fields)
   - platform: vitohome
     name: "(C1) Frost protection point"
@@ -1828,6 +1848,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: export factor/offset (5, 35) ignored (stale on NoConversion bit fields)
   - platform: vitohome
     name: "(C2) Amplification factor RTD hook-up"
@@ -1845,6 +1866,7 @@ number:
     update_interval: 3600s
 
   # --- Codierungen / Warmwasser ---
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(A0) Boiler offset temperature during DHW heating"
@@ -1861,6 +1883,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: export factor/offset (5, 35) ignored (stale on NoConversion bit fields)
   - platform: vitohome
     name: "(B5) Integral component control unit inst. water heater"
@@ -1877,6 +1900,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(A7) Temperature with auxiliary function"
@@ -1894,6 +1918,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(A1) Run-on time primary pump"
@@ -1911,6 +1936,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: conversion 'MultOffset': display value = raw * 0.5 + -16; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(86) Offset SPR 30L top"
@@ -1928,6 +1954,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: conversion 'MultOffset': display value = raw * 0.5 + -16; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(85) Offset SPR 30L bottom"
@@ -1945,6 +1972,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: export factor/offset (5, 35) ignored (stale on NoConversion bit fields)
   - platform: vitohome
     name: "(B6) Differential component control unit inst. water heater"
@@ -1961,6 +1989,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(B4) Proportional component control unit inst. water heater"
@@ -1992,6 +2021,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(45) Maximum speed of heating circuit pump"
@@ -2008,6 +2038,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(44) Minimum speed of heating circuit pump"
@@ -2118,6 +2149,7 @@ number:
 
 select:
   # --- Codierungen / Anlage ---
+  # vito: quickcheck
   - platform: vitohome
     name: "(06) Heating circuit pump speed in reduced range"
     id: GWG_BEMK06HKPDrehzahlreduziert
@@ -2131,6 +2163,7 @@ select:
       0: "0 According to code 044"
       1: "1 According to code 046"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(00) Heating system scheme"
     id: GWG_BEMK00Anlagenschema
@@ -2146,6 +2179,7 @@ select:
       2: "2 One HC w/o m. one HC w m. without DHW"
       3: "3 One HC w/o m one HC with m. with DHW"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(99) Function output X2"
     id: GWG_BEMK99FunktionX2
@@ -2159,6 +2193,7 @@ select:
       0: "0 DHW circulation pump"
       1: "1 Output signal DHW heating"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(B8) DHW scheme"
     id: GWG_BEMKB8Trinkwasserschema
@@ -2178,6 +2213,7 @@ select:
       14: "14 Screed drying to DIN4725"
       15: "15 Screed drying to ZV P+F"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(27) Input plug X4.1⁄X4.2 acts as"
     id: GWG_BEMK27ExterneUmschaltung
@@ -2191,6 +2227,7 @@ select:
       0: "0 External operating mode changeover"
       1: "1 External demand"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(14) Party key has an effect on"
     id: GWG_BEMK14Partytaste
@@ -2204,6 +2241,7 @@ select:
       0: "0 Heating circuit B"
       1: "1 Heating circuit A and B"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(33) Connection time switch levels"
     id: GWG_BEMK33VerknuepfungSUEbenen
@@ -2220,6 +2258,7 @@ select:
       3: "3 SU level 1-2-3 linked"
 
   # --- Codierungen / Warmwasser ---
+  # vito: quickcheck
   - platform: vitohome
     name: "(07) Setting range DHW temperature"
     id: GWG_BEMK07Speichersollbereich
@@ -2233,6 +2272,7 @@ select:
       0: "0: 32 to 60 °C"
       1: "1: 52 to 80 °C (gas system boiler)"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(17) Start condition for cylinder heating"
     id: GWG_BEMK17BedingungSLP
@@ -2246,6 +2286,7 @@ select:
       0: "0 Boiler water temperature dependent"
       1: "1 Immediate start"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(15) DHW heating via"
     id: GWG_BEMK15WWBereitung
@@ -2259,6 +2300,7 @@ select:
       0: "0 Diverter valve"
       1: "1 Primary pump"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(28) Set boiler water temperature during cylinder heating"
     id: GWG_BEMK28KTSollbeiSpeicherladung
@@ -2272,6 +2314,7 @@ select:
       0: "0 Set cylinder temp + 20 K"
       1: "1 Set boiler water temperature 78 °C"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(18) Run-on of circulation pump during cylinder heating"
     id: GWG_BEMK18Speichernachlauf
@@ -2285,6 +2328,7 @@ select:
       0: "0 With run-on up to 10 min."
       1: "1 Without run-on"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(03) DHW priority control"
     id: GWG_BEMK03Speichervorrang
@@ -2299,6 +2343,7 @@ select:
       1: "1 With DHW priority control"
 
   # --- Codierungen / Sonstiges ---
+  # vito: quickcheck
   - platform: vitohome
     name: "(13) Type of heating circuit pump"
     id: GWG_BEMK13HKPDrehzahlgeregelt
@@ -2312,6 +2357,7 @@ select:
       0: "0 Multi stage heating circuit pump"
       1: "1 Variable speed heating circuit pump"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(05) Heating circuit pump logic function for the heating circuits"
     id: GWG_BEMK05Heizkreispumpenlogik
@@ -2325,6 +2371,7 @@ select:
       0: "0 Without heating circuit pump logic"
       1: "1 With heating circuit pump logic"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(09) Value in standard display"
     id: GWG_BEMK09Grundanzeige
@@ -2566,6 +2613,7 @@ switch:
     update_interval: 3600s
 
   # --- Codierungen / Anlage ---
+  # vito: quickcheck
   - platform: vitohome
     name: "(11) External demand or external operating mode changeover"
     id: GWG_BEMK11FreigabeExterneAufschaltungen
@@ -2577,6 +2625,7 @@ switch:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(20) Remote control unit WC or RTD (GWG_BEMK20FernbedienungAnalog)"
     id: GWG_BEMK20FernbedienungAnalog
@@ -2588,6 +2637,7 @@ switch:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(08) Direct heating circuit at 04:02 or 04:03"
     id: GWG_BEMK08DirekterHeizkreis
@@ -2600,6 +2650,7 @@ switch:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(04) Return temperature sensor"
     id: GWG_BEMK04Ruecklaufsensor
@@ -2612,6 +2663,7 @@ switch:
     update_interval: 3600s
 
   # --- Codierungen / Warmwasser ---
+  # vito: quickcheck
   - platform: vitohome
     name: "(29) Set at time switch level"
     id: GWG_BEMK29FestaufSUEbene
@@ -2624,6 +2676,7 @@ switch:
     update_interval: 3600s
 
   # --- Codierungen / Sonstiges ---
+  # vito: quickcheck
   - platform: vitohome
     name: "(10) Pressure sensor"
     id: GWG_BEMK10Drucksensor

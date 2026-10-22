@@ -38,6 +38,12 @@
 # 1 datapoint(s) with an address above 0xFF were dropped
 # (GWG addresses a single byte).
 #
+# Metadata: 24 entities carry a `# vito:` line with Vitosoft's own
+# grouping, for the catalog editor: circuit=hk1..hk6|dhw|solar|boiler|
+# cascade|mbus (the menu they are in), level=td (shown at the service
+# access level only), overview, quickcheck and trend (Vitosoft's overview
+# screen, quick check and trend recorder). ESPHome ignores them.
+#
 # System error history omitted: this unit has NO Optolink-reachable
 # datapoints (KBUS/GFA/RPC-only device), so the generic 0x7507 fault
 # archive can never answer. Re-run with --no-reachable-only to force it.
@@ -141,6 +147,7 @@ sensor:
     update_interval: 60s
 
   # --- Information / Warmwasser ---
+  # vito: circuit=dhw
   - platform: vitohome
     name: "DHW temperature sensor 2"
     id: GWG_TrinkwassertemperaturSensor2
@@ -155,6 +162,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=dhw
   - platform: vitohome
     name: "DHW temperature sensor 1"
     id: GWG_TrinkwassertemperaturSensor1
@@ -185,6 +193,7 @@ sensor:
     update_interval: 60s
 
   # --- Diagnose1 / Warmwasser ---
+  # vito: circuit=dhw
   - platform: vitohome
     name: "DHW temperature with auxiliary function"
     id: GWG_TrinkwassertemperaturZusatz
@@ -198,6 +207,7 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=dhw
   - platform: vitohome
     name: "Set DHW temperature (GWG_Trinkwasser_Solltemperatur)"
     id: GWG_Trinkwasser_Solltemperatur
@@ -731,6 +741,7 @@ sensor:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion' with fractional stepping: borders -5..5 step 0.125 imply value = raw * 0.125 + -5 (raw 0..80); export factor/offset (5, 35) ignored. UNVERIFIED inference -- read-only until a hardware write confirms it (writable in the export; not a number until confirmed)
   - platform: vitohome
     name: "(55) Value for correction of the actual room temperature"
@@ -748,6 +759,7 @@ sensor:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: export factor/offset (0.5, -16) ignored (stale on NoConversion bit fields)
     # NOTE: fractional stepping: borders imply value = field * 0.1 (field 0..10). UNVERIFIED inference -- read-only until a hardware write confirms it
   - platform: vitohome
@@ -764,6 +776,7 @@ sensor:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: export factor/offset (0.5, -16) ignored (stale on NoConversion bit fields)
     # NOTE: fractional stepping: borders imply value = field * 0.1 (field 0..10). UNVERIFIED inference -- read-only until a hardware write confirms it
   - platform: vitohome
@@ -1387,6 +1400,7 @@ binary_sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=dhw
   - platform: vitohome
     name: "DHW mode"
     id: GWG_Anlage_Trinkwasserbetrieb
@@ -1428,6 +1442,7 @@ binary_sensor:
     update_interval: 60s
 
   # --- Information / Warmwasser ---
+  # vito: circuit=dhw
   - platform: vitohome
     name: "Diverter valve is set to"
     id: GWG_AusgangUmschaltventil
@@ -1438,6 +1453,7 @@ binary_sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=dhw
   - platform: vitohome
     name: "DHW circulation pump"
     id: GWG_AusgangZirkulationspumpe
@@ -1448,6 +1464,7 @@ binary_sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=dhw
   - platform: vitohome
     name: "Cylinder primary pump"
     id: GWG_AusgangLadepumpe
@@ -1675,6 +1692,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(45) Maximum speed of heating circuit pump"
@@ -1708,6 +1726,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(A7) Temperature with auxiliary function"
@@ -1742,6 +1761,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: export factor/offset (5, 35) ignored (stale on NoConversion bit fields)
   - platform: vitohome
     name: "(C2) Amplification factor RTD hook-up"
@@ -1758,6 +1778,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: export factor/offset (0.125, -5) ignored (stale on NoConversion bit fields)
   - platform: vitohome
     name: "(C1) Frost protection point"
@@ -1822,6 +1843,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(44) Minimum speed of heating circuit pump"
@@ -1854,6 +1876,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(A1) Run-on time primary pump"
@@ -1871,6 +1894,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(A0) Boiler offset temperature during DHW heating"
@@ -1887,6 +1911,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: conversion 'MultOffset': display value = raw * 0.5 + -16; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(85) Offset SPR 30L bottom"
@@ -1904,6 +1929,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: conversion 'MultOffset': display value = raw * 0.5 + -16; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(86) Offset SPR 30L top"
@@ -1950,6 +1976,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: export factor/offset (5, 35) ignored (stale on NoConversion bit fields)
   - platform: vitohome
     name: "(B6) Differential component control unit inst. water heater"
@@ -1966,6 +1993,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: export factor/offset (5, 35) ignored (stale on NoConversion bit fields)
   - platform: vitohome
     name: "(B5) Integral component control unit inst. water heater"
@@ -1982,6 +2010,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
+  # vito: quickcheck
     # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
   - platform: vitohome
     name: "(B4) Proportional component control unit inst. water heater"
@@ -2254,6 +2283,7 @@ select:
       2: "2 For reduced mode"
       3: "3 Invalid setting"
 
+  # vito: quickcheck
   - platform: vitohome
     name: "(99) Function output X2"
     id: GWG_BEMK99FunktionX2
