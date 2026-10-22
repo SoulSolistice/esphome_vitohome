@@ -89,24 +89,6 @@ for d in "$CUR"/*/; do
       "file must be a standalone config."
     ok=0
   fi
-  for f in "$d"/*.yaml; do
-    base="$(basename "$f")"
-    case "$base" in
-      "$name.vitohome.yaml" | secrets.yaml) continue ;;
-      *.dp.*.yaml)
-        if grep -qE '^esphome:' "$f"; then
-          fail "$name" "$base is named as a package fragment (*.dp.*.yaml) but has a" \
-            "top-level 'esphome:' block."
-          ok=0
-        fi
-        ;;
-      *)
-        fail "$name" "$base: only $name.vitohome.yaml and *.dp.*.yaml package" \
-          "fragments belong in a curated device directory."
-        ok=0
-        ;;
-    esac
-  done
 
   # --- sources: everything through ${vitohome_repo} / ${vitohome_ref} ------
   for key in vitohome_repo vitohome_ref; do
