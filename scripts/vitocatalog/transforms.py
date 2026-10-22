@@ -150,11 +150,13 @@ def _protocol_for_device(token: str, override: str | None = None) -> str:
 def _is_reachable(ev: Event, protocol: str = PROTO_P300) -> bool:
     """Whether the configured protocol can read this datapoint.
 
-    P300/KW: the only read function code VitoWiFi's datapoint read issues over
-    Optolink is Virtual_READ (VS2/P300 FunctionCode 0x01). Datapoints with any
-    other access method -- GFA_READ (0x6B), Remote_Procedure_Call (0x07),
-    PROZESS_READ (0x7B), KBUS_*/OT_*/Physical_READ -- are not reachable through
-    that read: the device NAKs or returns unrelated virtual-space data.
+    P300/KW: the datapoint read issues Virtual_READ (VS2/P300 FunctionCode
+    0x01), plus, on P300, Remote_Procedure_Call (0x07) for the procedures that
+    are readings (_is_rpc_reading). Datapoints with any other access method --
+    GFA_READ (0x6B), PROZESS_READ (0x7B), KBUS_*/OT_*/Physical_READ, or a
+    procedure that is no reading -- are not reachable: the device NAKs or
+    returns unrelated virtual-space data. Procedures that are actions are
+    emitted as buttons on their own path (_is_rpc_action), not as reads.
 
     GWG: Virtual_READ is only a small share of a GWG device's datapoints (6 of
     195 on GWG_VBES_00); the bulk are physical/eeprom/kmbus_eeprom/be/xram/port,

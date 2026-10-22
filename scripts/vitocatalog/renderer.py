@@ -507,9 +507,10 @@ def generate(
             out.append("# method is not one this engine can select via `access:` (KBUS_VIRTUAL_READ")
             out.append("# and friends) were omitted. Re-run with --no-reachable-only to include them.")
         else:
-            out.append(f"# FCRead filter ON: {dropped_unreachable} datapoint(s) requiring a non-Optolink")
-            out.append("# access method (GFA_READ/RPC/PROZESS/KBUS/OT) were omitted as unreachable")
-            out.append("# via VitoWiFi's read. Re-run with --no-reachable-only to include them.")
+            out.append(f"# FCRead filter ON: {dropped_unreachable} datapoint(s) whose access method this")
+            out.append("# engine has no read for (GFA_READ/PROZESS/KBUS/OT, and remote procedures")
+            out.append("# that are neither a reading nor an action) were omitted as unreachable.")
+            out.append("# Re-run with --no-reachable-only to include them.")
         out.append("#")
     if gwg_system_history_suppressed:
         out.append("# The generic system fault archive (0x7507..0x7558) is NOT emitted: those")

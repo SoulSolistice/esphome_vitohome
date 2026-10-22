@@ -30,6 +30,7 @@ const BASE_COLUMNS = [
   { key: "on_value",            label: "On Value",          mono: true },
   { key: "off_value",           label: "Off Value",         mono: true },
   { key: "_map_summary",        label: "Options / Codes",   mono: false, isMap: true },
+  { key: "_filters",            label: "Filters",           mono: true,  isMap: true },
   { key: "disabled_by_default", label: "Default Disabled",  mono: true },
   { key: "_notes",              label: "Notes / Comments",  mono: false }
 ];
@@ -62,6 +63,13 @@ function splitValAndComment(rawVal) {
   return { value: rawVal.trim(), comment: "" };
 }
 
+// A `type: action` button RUNS a procedure on the controller when pressed
+// (Vitosoft Remote_Procedure_Call). The catalog ships it disabled, and the
+// export keeps it that way.
+function isActionEntity(ent) {
+  return ent.component === "button" && ent.props.type === "action";
+}
+
 // Parses an esphome_vitohome catalog YAML into structured entities while
 // preserving raw YAML lines and YAML anchors for lossless export.
 function parseCatalogYaml(yamlText) {
@@ -91,6 +99,9 @@ function parseCatalogYaml(yamlText) {
       } else {
         currentEntity.props._map_summary = "*" + currentEntity.usesAnchor;
       }
+    }
+    if (currentEntity.filterEntries.length > 0) {
+      currentEntity.props._filters = currentEntity.filterEntries.join("\n");
     }
     currentEntity.props._notes = currentEntity.notes.join("\n");
     parsedEntities.push(currentEntity);
@@ -168,6 +179,7 @@ function parseCatalogYaml(yamlText) {
         },
         mapName: null,
         mapEntries: [],
+        filterEntries: [],
         definesAnchor: null,
         anchorBlockLines: [],
         usesAnchor: null,
@@ -184,6 +196,14 @@ function parseCatalogYaml(yamlText) {
 
     if (!currentEntity) continue;
     currentEntity.rawLines.push(line);
+
+    // A block list (`filters:` and its `- multiply: 0.1` items) is not a map of
+    // options or codes; it gets its own column.
+    if (inNestedMap && /^\s{6,}-\s+/.test(line)) {
+      const { value: item } = splitValAndComment(line.trim().replace(/^-\s+/, ""));
+      currentEntity.filterEntries.push(inNestedMap === "filters" ? item : inNestedMap + ": " + item);
+      continue;
+    }
 
     if (inNestedMap && /^\s{6,}([^:]+):\s*(.*)$/.test(line)) {
       const m = /^\s{6,}([^:]+):\s*(.*)$/.exec(line);
@@ -208,7 +228,9 @@ function parseCatalogYaml(yamlText) {
       }
 
       if (valPart === "" || valPart.startsWith("&") || valPart.startsWith("*")) {
-        currentEntity.mapName = key;
+        // mapName names the alias line export expands; a later `filters:` block
+        // must not take it over.
+        if (key !== "filters") currentEntity.mapName = key;
         if (valPart.startsWith("&")) {
           const anchorName = valPart.slice(1).trim();
           currentEntity.definesAnchor = anchorName;
@@ -232,23 +254,32 @@ function parseCatalogYaml(yamlText) {
 }
 
 // Generates a new ESPHome YAML containing only the selected entities,
-// omitting `disabled_by_default: true` and promoting YAML anchors if needed.
+// omitting `disabled_by_default: true` (except on action buttons) and
+// promoting YAML anchors if needed.
 function buildExportYaml(allEntities, anchorRegistry, meta = {}) {
   const selected = allEntities.filter((e) => e.selected).sort((a, b) => a.index - b.index);
   if (selected.length === 0) return "";
 
   const fileLabel = meta.file || "local YAML";
   const langLabel = meta.lang || "de";
+  const actionCount = selected.filter(isActionEntity).length;
 
   const out = [
     "# ============================================================",
     `# Custom vitohome catalog export from: ${fileLabel} (${langLabel})`,
     `# Selected entities: ${selected.length} / ${allEntities.length}`,
     "# Note: 'disabled_by_default: true' has been omitted so all",
-    "# selected entities are enabled by default in Home Assistant.",
-    "# ============================================================",
-    ""
+    "# selected entities are enabled by default in Home Assistant."
   ];
+  if (actionCount > 0) {
+    out.push(
+      `# Except: ${actionCount} action button(s) (type: action) keep it. Pressing`,
+      "# one RUNS a procedure on the controller -- some clear a history, some",
+      "# reset settings or codings. Enable each in Home Assistant only once you",
+      "# know what it does."
+    );
+  }
+  out.push("# ============================================================", "");
 
   const byDomain = new Map();
   for (const ent of selected) {
@@ -277,8 +308,9 @@ function buildExportYaml(allEntities, anchorRegistry, meta = {}) {
       }
 
       const updatedKeys = new Set();
+      const keepDisabled = isActionEntity(ent);
       for (const rawLine of ent.rawLines) {
-        if (/^\s*disabled_by_default:\s*true\b/i.test(rawLine)) {
+        if (!keepDisabled && /^\s*disabled_by_default:\s*true\b/i.test(rawLine)) {
           continue;
         }
 
@@ -680,11 +712,22 @@ function initEditorUI() {
       return createBadge("muted-badge", val);
     }
     if (col.key === "disabled_by_default") {
+      if (isActionEntity(ent)) {
+        const kept = createBadge("ok", val + " (kept on export)");
+        kept.title = "An action button stays disabled by default: pressing it runs a procedure on the controller";
+        return kept;
+      }
       const span = document.createElement("span");
       span.className = "badge warn";
       span.title = "Will be omitted when exported so the entity is enabled by default";
       span.textContent = val + " (omitted on export)";
       return span;
+    }
+    if (col.key === "type" && isActionEntity(ent)) {
+      const badge = createBadge("stop", "action · runs a procedure");
+      badge.title = "Pressing this button RUNS a procedure on the controller (Vitosoft Remote_Procedure_Call), " +
+        "at once and without asking. Some clear a history, some reset settings or codings.";
+      return badge;
     }
     if (col.isMap) {
       const lines = String(val).split("\n");
