@@ -1191,12 +1191,14 @@ The load-bearing fact for anyone **adding new datapoints**:
   (`VScotHO1` vs `VScotHO1_72`, "ab Softwareindex 72 / Projekt Neptun") is the
   **software index at `0xFB`** — it is *not* encoded in `0x20CB` and cannot be
   recovered by decoding `0x20CB` differently.
-- **`VScotHO1` is a Vitosoft internal token, not a marketing name.** The 2026
-  export carries no product names (§8), so the token alone does not tell you the
-  product. On the reference unit `VScotHO1_72` ("Projekt Neptun") is the
+- **`VScotHO1` is a Vitosoft internal token, not a marketing name.** The product
+  name is not in the token; it is a table extension of the type
+  (`ProductName` / `ShortName`, §8k), and for about half the types only. On the
+  reference unit `VScotHO1_72` ("Projekt Neptun") is the
   **Vitotronic 200 controller in a Vitodens 300-W (type B3HA)** — corroborated by
   the `Neptun_Durchfluss_*` / `Neptun_Volumenstromgrenzwert_*` flow-sensor
-  datapoints in its catalog, a Vitodens-300-W feature. Its fault texts now come
+  datapoints in its catalog, a Vitodens-300-W feature, and by Vitosoft's own
+  `ProductName`: "Vitodens 3xx-W/F mit Vitotronic 200 (Typ HO1C), ...". Its fault texts now come
   from Vitosoft itself (§8i); the hand-curated Vitodens 300-W B3HA set
   (`fault_codes.VITOTRONIC_VD300_B3HA`) is the fallback for exports without
   them.
@@ -1931,6 +1933,46 @@ only the unit's own defaults and empty slots (VScotHO1_72, 2026-10-21: own
 number `01 01`, entry `01` empty), which carries no information. `full` keeps
 them. The unit's own readings (boiler sequence, M-Bus module state) stay in
 `standard`.
+
+### 8k. Table extensions: what Vitosoft keeps outside its columns
+
+Vitosoft adds fields to its tables without new columns: `ecnTableExtension`
+names a field (table, field name, data type) and `ecnTableExtensionValue` holds
+one value per row (`RefId` = the field, `PkValue` = `"<row Id>;24"`), as Base64
+of a .NET BinaryFormatter stream -- a string, or a boxed `Int32` / `Double` /
+`Boolean` (`loader._decode_ext_value`). `DPDefinitions.xml` carries all
+248,587 of them, the same rows as the SQL Server database Vitosoft installs, so
+the generator needs no database. `ecnEventType.xml` and `ecnDataPointType.xml`
+are flattened copies of some of these fields (Address, FCRead, BlockLength,
+Identification, F0, ...), and miss the rest. What the catalog uses from the
+extensions (`_WANTED_EXTENSIONS`):
+
+| Field | Use |
+|---|---|
+| `ecnEventType.FunctionValue` | the parameter of a procedure without `PrefixWrite` (§P300 remote procedure calls) |
+| `ecnEventType.Option` | `Schnellcheck` -> the `quickcheck` tag |
+| `ecnEventTypeGroup.LogicalGroupMapping` | a menu's circuit -> `circuit=` tag |
+| `ecnDatapointType.ShortName` / `ProductName` | the catalog header, `index.csv`, `resolve.json`, the finder |
+
+**Metadata tags.** `Catalog.tags_for` writes one `# vito:` line above every
+entity Vitosoft hangs in one of the device's menus, which the editor filters
+on: `circuit=` from `LogicalGroupMapping` (Vitosoft sets it on the menus right
+below a section, e.g. `VScotHO1_72~35_Information~20_Heizkreis_A1` = 1, and
+leaves their sub-menus unset, so a menu inherits its nearest parent's; an
+explicit 0 means none), and a flag for each of the device's own system menus
+(`ecnsysEventTypeGroup~<token>~<kind>`) that carries one: `Overview` (Vitosoft's
+overview screen), `Trending` (its trend recorder) and `CodeAccessLevelTD`
+(shown at the service access level only, readings and writables alike: 174 + 49
+on VScotHO1_72). On VScotHO1_72, 514 of the 699 `standard` entities get a tag.
+Not used yet: `CodeLevelArea` on menus (TD on 1,492 of them; the device's own
+TD list is taken instead),
+`VIAAddress` (one name per meaning across all devices, e.g.
+`konf_raumsolltemp_rw`, which could wire climate entities per circuit), and the
+display conditions (`ecnDisplayCondition*`, 5,737 rules that show or hide menus
+by coding values such as `K00` Anlagenschema). Which way a condition type and
+operator act is not settled, and the rules are partly shared across device
+families -- on VScotHO1_72 they reference an Ecotronic solar address -- so they
+would be hints at best.
 
 ---
 

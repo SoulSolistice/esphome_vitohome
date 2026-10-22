@@ -13,7 +13,15 @@ import xml.etree.ElementTree as ET
 
 import units
 
-from .constants import _CONTAINER_PREFIXES, _CULTURES, _FACTOR_PLACEHOLDERS, _WANTED_EXTENSIONS, _WANTED_ROWS
+from .constants import (
+    _CONTAINER_PREFIXES,
+    _CULTURES,
+    _FACTOR_PLACEHOLDERS,
+    _WANTED_EXTENSIONS,
+    _WANTED_ROWS,
+    CIRCUIT_TAGS,
+    SYSTEM_MENU_TAGS,
+)
 from .identify import generic_of, resolve_device, resolve_pool
 from .models import Event, EventValue
 from .transforms import _rpc_selector_addresses
@@ -472,8 +480,89 @@ class Catalog:
         self._menu_cache_sig: tuple[int, int] | None = None
         self._group_cache: dict = {}
         self._rpc_selectors: frozenset | None = None  # see rpc_selector_addresses()
+        self._tag_index: dict | None = None  # see tags_for()
         self._values = {vid: self._mk_value(f) for vid, f in raw_values.items()}
         self._events = {eid: self._mk_event(eid, f) for eid, f in raw_events.items()}
+
+    def product_for(self, device_token: str) -> tuple[str, str]:
+        """(ShortName, ProductName) Vitosoft gives a datapoint type, "" each when
+        it gives none (about half the types): "VT 200 (HO1C)", "Vitodens 3xx-W/F
+        mit Vitotronic 200 (Typ HO1C), ...". German in every language."""
+        dp_id = self.devices.get(device_token)
+        short = self._ext.get(("ecnDatapointType", "ShortName"), {}).get(dp_id, "")
+        product = self._ext.get(("ecnDatapointType", "ProductName"), {}).get(dp_id, "")
+        return " ".join(str(short).split()), " ".join(str(product).split())
+
+    def _build_tag_index(self) -> dict:
+        """(dp_id, event id) -> set of tags, from the menus each device hangs the
+        event on (ecnEventTypeEventTypeGroupLink), in one pass over all links:
+
+        * circuit -- LogicalGroupMapping of the menu, or of its nearest ancestor
+          that has one (Vitosoft sets it on the menus right below a section and
+          leaves their children unset); 0 or a value CIRCUIT_TAGS lacks gives none;
+        * a flag per system menu in SYSTEM_MENU_TAGS, for a menu under the
+          device's own ecnsysEventTypeGroup~<token>~<kind>."""
+        mapping = self._ext.get(("ecnEventTypeGroup", "LogicalGroupMapping"), {})
+
+        def system_flag(gid: str) -> str | None:
+            """The flag of a system menu ("" for one without), None otherwise."""
+            parts = self._groups[gid]["path"].split("~")
+            if parts[0] == "ecnsysEventTypeGroup" and len(parts) >= 3:
+                return SYSTEM_MENU_TAGS.get(parts[2], "")
+            return None
+
+        def circuit(gid: str) -> str | None:
+            """The circuit tag of a menu that sets one ("" for 0), None otherwise."""
+            if gid not in mapping:
+                return None
+            tag = CIRCUIT_TAGS.get(mapping[gid])
+            return "circuit=" + tag if tag else ""
+
+        def resolve(gid: str, own, memo: dict, seen: tuple = ()) -> str:
+            """*own*'s answer for the menu, else its parent's ("" at the top)."""
+            if gid in memo:
+                return memo[gid]
+            if gid not in self._groups or gid in seen:  # a ParentId cycle reads as untagged
+                return ""
+            answer = own(gid)
+            if answer is None:
+                answer = resolve(self._groups[gid]["parent"], own, memo, (*seen, gid))
+            memo[gid] = answer
+            return answer
+
+        flags: dict = {}
+        circuits: dict = {}
+        index: dict = defaultdict(set)
+        for eid, links in self._glinks.items():
+            for gid, _order in links:
+                dp_id = self._groups.get(gid, {}).get("dp")
+                if not dp_id:
+                    continue
+                found = index[(dp_id, eid)]
+                for tag in (resolve(gid, system_flag, flags), resolve(gid, circuit, circuits)):
+                    if tag:
+                        found.add(tag)
+        return index
+
+    def tags_for(self, ev: Event, device_token: str) -> list[str]:
+        """The metadata tags of one event on one device, in output order:
+        ``circuit=hk1,hk2`` (several when Vitosoft shows it under several
+        circuits), ``level=td``, then the flags ``overview``, ``quickcheck``
+        (ecnEventType Option "Schnellcheck"; the device's own Quickcheck menu is
+        empty throughout the export) and ``trend``. The renderer writes them as
+        one ``# vito:`` comment above the entity (TAG_PREFIX)."""
+        if self._tag_index is None:
+            self._tag_index = self._build_tag_index()
+        found = set(self._tag_index.get((self.devices.get(device_token), ev.id), ()))
+        if "schnellcheck" in str(self._ext.get(("ecnEventType", "Option"), {}).get(ev.id, "")).lower():
+            found.add("quickcheck")
+        circuits = sorted(
+            (t.split("=", 1)[1] for t in found if t.startswith("circuit=")),
+            key=lambda c: list(CIRCUIT_TAGS.values()).index(c),
+        )
+        out = ["circuit=" + ",".join(circuits)] if circuits else []
+        out += [t for t in ("level=td", "overview", "quickcheck", "trend") if t in found]
+        return out
 
     def group_for(self, ev: Event, device_token: str) -> tuple[tuple, str]:
         """(sort_key, label) of the event's Vitosoft navigation group for this
@@ -790,6 +879,7 @@ def load_catalog(data_dir: str, culture: str = "de") -> Catalog:
                         "path": f.get("Address") or "",  # readable "TOKEN~10_Bedienung~..."
                         "dp": f.get("DataPointTypeId") or "",
                         "order": _intval(f.get("OrderIndex")) or 0,
+                        "parent": f.get("ParentId") or "",
                     }
             elif ln == "ecnEventTypeEventTypeGroupLink":
                 e, gid = f.get("EventTypeId"), f.get("EventTypeGroupId")
@@ -797,7 +887,12 @@ def load_catalog(data_dir: str, culture: str = "de") -> Catalog:
                     glinks[e].append((gid, _intval(f.get("EventTypeOrder")) or 0))
             elif ln == "ecnTableExtension":
                 if f.get("Id"):
-                    ext_fields[f["Id"]] = (f.get("TableName") or "", f.get("FieldName") or "")
+                    # Older fields are named "label.tableextension.<table>.<field>"
+                    # (Option, FCRead, Identification), newer ones bare
+                    # (FunctionValue, LogicalGroupMapping).
+                    table = f.get("TableName") or ""
+                    field = (f.get("FieldName") or "").removeprefix(f"label.tableextension.{table}.")
+                    ext_fields[f["Id"]] = (table, field)
             elif ln == "ecnTableExtensionValue":
                 ref, value = f.get("RefId"), f.get("InternalValue")
                 row_id = (f.get("PkValue") or "").split(";", 1)[0]  # "Id;CompanyId"

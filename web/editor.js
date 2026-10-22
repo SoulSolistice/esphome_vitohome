@@ -6,6 +6,7 @@ const RAW_BASE = "https://raw.githubusercontent.com/SoulSolistice/esphome_vitoho
 const BASE_COLUMNS = [
   { key: "component",           label: "Component",         mono: true },
   { key: "group",               label: "Group",             mono: false },
+  { key: "_tags",               label: "Tags",              mono: true },
   { key: "name",                label: "Name",              mono: false, editable: true },
   { key: "id",                  label: "ID",                mono: true },
   { key: "address",             label: "Address",           mono: true,  numericHex: true },
@@ -61,6 +62,31 @@ function splitValAndComment(rawVal) {
     }
   }
   return { value: rawVal.trim(), comment: "" };
+}
+
+// The `# vito:` line the generator writes above an entity: Vitosoft's own
+// grouping, e.g. "circuit=hk1,dhw level=td overview quickcheck trend". Each
+// becomes one tag ("hk1", "dhw", "level=td", "overview", ...), in TAG_ORDER.
+const TAG_LINE = /^\s*#\s*vito:\s*(.*)$/;
+const TAG_LABELS = {
+  hk1: "HK1", hk2: "HK2", hk3: "HK3", hk4: "HK4", hk5: "HK5", hk6: "HK6",
+  dhw: "DHW", solar: "Solar", boiler: "Boiler", cascade: "Cascade", mbus: "M-Bus",
+  overview: "Overview", quickcheck: "Quick check", trend: "Trend", "level=td": "Service level"
+};
+const TAG_ORDER = Object.keys(TAG_LABELS);
+
+function parseTagLine(text) {
+  const tags = [];
+  for (const word of text.trim().split(/\s+/)) {
+    if (word.startsWith("circuit=")) tags.push(...word.slice(8).split(",").filter(Boolean));
+    else if (word) tags.push(word);
+  }
+  return tags;
+}
+
+function sortTags(tags) {
+  const rank = (t) => (TAG_ORDER.includes(t) ? TAG_ORDER.indexOf(t) : TAG_ORDER.length);
+  return [...tags].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
 }
 
 // A `type: action` button RUNS a procedure on the controller when pressed
@@ -151,6 +177,11 @@ function parseCatalogYaml(yamlText) {
     }
 
     if (trimmed.startsWith("#")) {
+      // The tag line stays in the raw lines (an export keeps it) but is no note.
+      if (TAG_LINE.test(line) && !currentEntity) {
+        pendingComments.push(line);
+        continue;
+      }
       const cleanComment = trimmed.replace(/^#\s?/, "");
       if (currentEntity) {
         currentEntity.rawLines.push(line);
@@ -165,7 +196,9 @@ function parseCatalogYaml(yamlText) {
     // "- id: !extend ...".
     if (/^\s*-\s+(platform|id):\s*/.test(line)) {
       finalizeEntity();
-      const preNotes = pendingComments.map((c) => c.trim().replace(/^#\s?/, ""));
+      const tagLine = pendingComments.map((c) => TAG_LINE.exec(c)).find(Boolean);
+      const tags = tagLine ? sortTags(parseTagLine(tagLine[1])) : [];
+      const preNotes = pendingComments.filter((c) => !TAG_LINE.test(c)).map((c) => c.trim().replace(/^#\s?/, ""));
       currentEntity = {
         index: parsedEntities.length,
         selected: false,
@@ -173,9 +206,11 @@ function parseCatalogYaml(yamlText) {
         group: currentGroup,
         preComments: [...pendingComments],
         rawLines: [line],
+        tags,
         props: {
           component: currentDomain,
-          group: currentGroup
+          group: currentGroup,
+          _tags: tags.join(" ")
         },
         mapName: null,
         mapEntries: [],
@@ -394,6 +429,7 @@ function initEditorUI() {
   let sortAsc = true;
   let lastCheckedIndex = null;
   let columnFilters = {};
+  let activeTags = new Set(); // tag chips switched on: an entity must carry all of them
 
   function initParams() {
     const params = new URLSearchParams(location.search);
@@ -439,7 +475,8 @@ function initEditorUI() {
     for (const [token, info] of entries) {
       if (seenFiles.has(info.file)) continue;
       seenFiles.add(info.file);
-      const opt = new Option(`${token} (${info.file})`, info.file);
+      const opt = new Option(`${token}${info.short ? " — " + info.short : ""} (${info.file})`, info.file);
+      if (info.product) opt.title = info.product;
       mainGroup.append(opt);
     }
     sel.append(mainGroup);
@@ -551,6 +588,9 @@ function initEditorUI() {
     filteredEntities = entities.filter((ent) => {
       if (selFilter === "selected" && !ent.selected) return false;
       if (selFilter === "unselected" && ent.selected) return false;
+      for (const tag of activeTags) {
+        if (!(ent.tags || []).includes(tag)) return false;
+      }
 
       for (const col of activeColumns) {
         const cf = columnFilters[col.key];
@@ -867,10 +907,42 @@ function initEditorUI() {
     box.style.borderColor = isError ? "var(--stop)" : "var(--line)";
   }
 
+  // One toggle chip per tag the loaded catalog carries, with its count.
+  function buildTagChips() {
+    const box = $("tag-chips");
+    const counts = new Map();
+    for (const ent of entities) for (const tag of ent.tags || []) counts.set(tag, (counts.get(tag) || 0) + 1);
+    activeTags = new Set([...activeTags].filter((t) => counts.has(t)));
+    box.replaceChildren();
+    box.classList.toggle("hidden", counts.size === 0);
+    if (counts.size === 0) return;
+    const caption = document.createElement("span");
+    caption.className = "tag-caption";
+    caption.textContent = "Vitosoft tags:";
+    caption.title = "From the catalog's '# vito:' lines: the circuit an entity's menu belongs to, " +
+      "Vitosoft's overview screen, quick check and trend recorder, and the service access level. " +
+      "Switched-on chips must all match.";
+    box.append(caption);
+    for (const tag of sortTags([...counts.keys()])) {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "tag-chip" + (activeTags.has(tag) ? " active" : "");
+      chip.setAttribute("aria-pressed", activeTags.has(tag) ? "true" : "false");
+      chip.textContent = `${TAG_LABELS[tag] || tag} (${counts.get(tag)})`;
+      chip.addEventListener("click", () => {
+        if (activeTags.has(tag)) activeTags.delete(tag); else activeTags.add(tag);
+        buildTagChips();
+        refreshTableBody();
+      });
+      box.append(chip);
+    }
+  }
+
   function loadYamlContent(yamlText, label) {
     const parsed = parseCatalogYaml(yamlText);
     entities = parsed.entities;
     anchorRegistry = parsed.anchors;
+    buildTagChips();
 
     $("catalog-title").textContent = label;
     document.title = `${label} — vitohome catalog editor`;
@@ -933,6 +1005,8 @@ function initEditorUI() {
   $("clear-filters-btn").addEventListener("click", () => {
     $("global-search").value = "";
     columnFilters = {};
+    activeTags = new Set();
+    buildTagChips();
     buildTableHeader();
     refreshTableBody();
   });

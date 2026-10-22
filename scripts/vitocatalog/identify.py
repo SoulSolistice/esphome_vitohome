@@ -256,6 +256,9 @@ def build_resolve_index(catalog, manifest: list[dict], gfa_chips_fn=None) -> dic
         entry = {"file": rec["file"], "status": rec["status"].split(":", 1)[0], "detail": rec["status"]}
         if rec.get("gfa_slots"):
             entry["gfa"] = True  # takes a GFA companion (gfa/chip_<XX>.yaml)
+        for key, field in (("short", "short_name"), ("product", "product_name")):
+            if rec.get(field):
+                entry[key] = rec[field]  # Vitosoft's name for the type, for the finder
         tokens[rec["token"]] = entry
     out: dict = {"schema": RESOLVE_SCHEMA, "idents": idents, "tokens": tokens}
     if gfa_chips_fn is not None and any(rec.get("gfa_slots") for rec in manifest):

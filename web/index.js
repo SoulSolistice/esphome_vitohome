@@ -46,6 +46,8 @@ function el(tag, attrs, ...children) {
 
 const hexOf = (value, width) => "0x" + value.toString(16).toUpperCase().padStart(width, "0");
 const badge = (kind, text) => el("span", { class: "badge " + kind }, text);
+// Vitosoft's name for a type (resolve.json "product" / "short"), "" without one.
+const productOf = (c) => (c.product && c.short ? c.product + " [" + c.short + "]" : c.product || c.short || "");
 const note = (kind, ...children) => el("div", { class: "note " + kind }, ...children);
 
 function openInEditorBtn(file, small = false, token = "") {
@@ -79,7 +81,10 @@ function tokenTable(entries, picked, withF0) {
   const table = el("table", {}, el("thead", {}, head));
   const body = el("tbody");
   for (const entry of entries) {
-    const row = el("tr", entry.token === picked ? { class: "picked" } : {}, el("td", { class: "mono" }, entry.token));
+    const tokenCell = el("td", { class: "mono" }, entry.token);
+    const product = productOf(entry.catalog);
+    if (product) tokenCell.append(el("div", { class: "product" }, product));
+    const row = el("tr", entry.token === picked ? { class: "picked" } : {}, tokenCell);
     if (withF0) {
       const f0 = entry.f0;
       // Decimal, as Vitosoft lists F0 (the _30 of VScotHO1_200_30).
@@ -214,6 +219,7 @@ function render() {
   if (r.f0 === "missing" || r.f0 === "no-match") badges.append(badge("warn", "F0 decides: generic variant shown"));
   if (r.f0 === "matched") badges.append(badge("ok", "F0 matched"));
   panel.append(badges, el("div", { class: "token" }, r.token));
+  if (productOf(r.catalog)) panel.append(el("div", { class: "product" }, "Vitosoft: " + productOf(r.catalog)));
 
   if (r.how !== "range") {
     panel.append(note("warn-note", el("p", {},

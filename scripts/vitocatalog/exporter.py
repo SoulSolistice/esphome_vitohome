@@ -148,6 +148,7 @@ def export_all(
             "file": "",
             "token": token,
             **_identity_fields(row),
+            **dict(zip(("short_name", "product_name"), catalog.product_for(token), strict=True)),
             "events": n_events,
             "entities": "",
             "bytes": "",

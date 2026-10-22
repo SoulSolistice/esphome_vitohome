@@ -162,6 +162,33 @@ devices carry datapoints only in their menus -- for `V200CO1x` its whole
 performance factors -- so the generator takes both. `--no-menu-datapoints`
 limits it to the direct table. Details: design_notes §8j.
 
+### Metadata tags and product names
+
+Every entity Vitosoft places in a menu gets one comment line above it with
+Vitosoft's own grouping, for the catalog editor (`web/editor.html`, which shows
+them as a *Tags* column and as filter chips; ESPHome ignores them):
+
+```yaml
+  # vito: circuit=hk1 overview trend
+  - platform: vitohome
+    name: "Raumtemperatur A1M1"
+```
+
+| Tag | From |
+|---|---|
+| `circuit=hk1`..`hk6`, `dhw`, `solar`, `boiler`, `cascade`, `mbus` | `LogicalGroupMapping` of the device's menu holding the datapoint, or of its nearest parent menu that sets one; several when Vitosoft shows it under several (`circuit=hk1,dhw`). `cascade` is value 25, which Vitosoft does not list but uses only on the cascade menus |
+| `level=td` | the device's `ecnsysEventTypeGroup~<token>~CodeAccessLevelTD` menu: shown at the service access level only |
+| `overview` / `trend` | the device's `~Overview` / `~Trending` system menu: Vitosoft's overview screen and trend recorder |
+| `quickcheck` | the datapoint's `Option` carries `Schnellcheck` (the devices' own `~Quickcheck` menus are empty in the 2026 export) |
+
+They come from the table extensions in `DPDefinitions.xml` and the menu tree;
+the catalog header counts the tagged entities. The same extensions give a
+type's `ShortName` / `ProductName` ("VT 200 (HO1C)", "Vitodens 3xx-W/F mit
+Vitotronic 200 (Typ HO1C), ..."; 177 of 399 types, German in every language):
+the catalog header shows them, and `index.csv` (`short_name`, `product_name`)
+and `resolve.json` (`short`, `product`) carry them for the finder and the
+editor.
+
 ### Signedness
 
 `div2` and `div10` decode signed in the component. Where Vitosoft declares the
@@ -277,7 +304,8 @@ python3 scripts/gen_catalog.py --data <export-dir> \
 
 `index.csv` maps every token to its file and identification signature (`ident`,
 `hw_index`, software-index and F0 ranges), the linked-event and emitted-entity
-counts, and a `status` (`ok` / `skipped: …` / `error: …`).
+counts, a `status` (`ok` / `skipped: …` / `error: …`), and Vitosoft's short and
+product name where it has them.
 
 `resolve.json` is written alongside. It holds the answer of the `--identify`
 matching rules for every device id, hardware index and software index, plus

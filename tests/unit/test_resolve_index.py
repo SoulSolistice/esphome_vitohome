@@ -363,6 +363,9 @@ def test_committed_catalogs_agree_with_manifest_and_lookup(lang):
         expected = {"file": row["file"], "status": row["status"].split(":", 1)[0], "detail": row["status"]}
         if row.get("gfa_slots"):
             expected["gfa"] = True
+        for key, field in (("short", "short_name"), ("product", "product_name")):
+            if row.get(field):
+                expected[key] = row[field]
         assert lookup["tokens"][token] == expected
 
     # Every chip the finder offers has its companion in this language.

@@ -146,7 +146,36 @@ _WANTED_ROWS = {
 # Table-extension fields, (TableName, FieldName) of ecnTableExtension, whose
 # values load_catalog decodes from ecnTableExtensionValue. The export keeps
 # them only there, not in ecnEventType.xml.
-_WANTED_EXTENSIONS = {("ecnEventType", "FunctionValue")}
+_WANTED_EXTENSIONS = {
+    ("ecnEventType", "FunctionValue"),
+    ("ecnEventType", "Option"),  # "Schnellcheck" -> the quickcheck tag
+    ("ecnEventTypeGroup", "LogicalGroupMapping"),  # a menu's circuit -> circuit=
+    ("ecnDatapointType", "ShortName"),
+    ("ecnDatapointType", "ProductName"),
+}
+
+# --- metadata tags (`# vito:` above each entity, Catalog.tags_for) ---------
+# ecnEventTypeGroup LogicalGroupMapping -> circuit tag. Vitosoft lists 0 None,
+# 1..6 Heizkreis1..6, 20 Warmwasser, 21 Solar, 22 Kessel, 42 MBus; 25 is not
+# in its list but sits only on the Kaskade menus (V333MW*, VBC550*).
+CIRCUIT_TAGS = {
+    1: "hk1",
+    2: "hk2",
+    3: "hk3",
+    4: "hk4",
+    5: "hk5",
+    6: "hk6",
+    20: "dhw",
+    21: "solar",
+    22: "boiler",
+    25: "cascade",
+    42: "mbus",
+}
+# A device's own system menus (ecnsysEventTypeGroup~<token>~<kind>) that become
+# flags: Vitosoft's overview screen, its trend recorder, and the datapoints it
+# shows only at the technical-service access level.
+SYSTEM_MENU_TAGS = {"Overview": "overview", "Trending": "trend", "CodeAccessLevelTD": "level=td"}
+TAG_PREFIX = "# vito: "
 
 # Platforms this generator emits `access:` on: a subset of the component's
 # _ACCESS_DOMAINS (components/vitohome/__init__.py). `climate` is absent because
@@ -343,6 +372,8 @@ _MANIFEST_COLUMNS = (
     "status",
     "ext_raw",
     "gfa_slots",  # GFA burner-control history slots (companion packages, gfa/)
+    "short_name",  # Vitosoft ShortName / ProductName of the type (Catalog.product_for)
+    "product_name",
 )
 
 # Schema version and file name of the catalog finder's lookup table

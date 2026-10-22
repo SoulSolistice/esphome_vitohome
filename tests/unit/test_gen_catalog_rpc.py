@@ -365,7 +365,8 @@ _MINI_EXT_EXPORT = """<?xml version="1.0" encoding="utf-8"?>
     <InternalValue>AAEAAAD/////AQAAAAAAAAAGAQAAAANJbnQL</InternalValue></ecnTableExtensionValue>
   <ecnEventType><Id>7</Id><Name>Konfi_FunktionReset_GWG</Name><Address>Konfi_FunktionReset_GWG~0xA050</Address>
     <Conversion>NoConversion</Conversion><Type>2</Type></ecnEventType>
-  <ecnTableExtension><Id>11</Id><TableName>ecnEventType</TableName><FieldName>Option</FieldName></ecnTableExtension>
+  <ecnTableExtension><Id>11</Id><TableName>ecnEventType</TableName>
+    <FieldName>label.tableextension.ecnEventType.Option</FieldName></ecnTableExtension>
   <ecnTableExtension><Id>56</Id><TableName>ecnEventType</TableName><FieldName>FunctionValue</FieldName></ecnTableExtension>
 </ECNDataSet></ImportExportDataHolder>
 """
@@ -376,7 +377,9 @@ def test_functionvalue_is_loaded_from_the_table_extension(tmp_path):
     (tmp_path / "DPDefinitions.xml").write_text(_MINI_EXT_EXPORT, encoding="utf-8")
     cat = gc.load_catalog(str(tmp_path))
     assert cat._events["7"].function_value == "0x00"
-    assert cat._ext == {("ecnEventType", "FunctionValue"): {"7": "0x00"}}
+    # Each value lands under the field its RefId names, not under the other's.
+    assert cat._ext[("ecnEventType", "FunctionValue")] == {"7": "0x00"}
+    assert cat._ext[("ecnEventType", "Option")] == {"7": "Int"}
 
 
 # --- the heat-pump fault history: an RPC array, fanned out per record ----------

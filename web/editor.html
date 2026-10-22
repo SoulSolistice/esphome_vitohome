@@ -39,6 +39,13 @@
     display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 0.65rem;
   }
   .toolbar-spacer { flex: 1 1 auto; }
+  .tag-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin-top: 0.5rem; }
+  .tag-caption { font-size: 0.8rem; color: var(--muted); margin-right: 0.2rem; }
+  .tag-chip { font-size: 0.78rem; padding: 0.15rem 0.6rem; border-radius: 999px; }
+  .tag-chip.active { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+  @media (prefers-color-scheme: dark) {
+    .tag-chip.active { color: #15171a; }
+  }
   a { color: var(--accent); }
   code, pre, input, select, textarea { font-family: var(--mono); font-size: 0.84rem; }
   button, .btn {
@@ -184,7 +191,7 @@
 
   <div class="toolbar">
     <input id="global-search" type="search" placeholder="Global search across all columns…" style="min-width:16rem;">
-    <button id="clear-filters-btn" type="button" title="Reset global search and all column filters">Clear Filters</button>
+    <button id="clear-filters-btn" type="button" title="Reset global search, all column filters and tag chips">Clear Filters</button>
     <label style="display:inline-flex; align-items:center; gap:0.3rem; font-size:0.82rem; color:var(--muted); cursor:pointer;">
       <input id="show-empty-cols" type="checkbox"> Show empty columns
     </label>
@@ -197,6 +204,7 @@
     <button id="preview-export-btn" type="button" disabled>Preview / Copy YAML</button>
     <button id="download-export-btn" type="button" class="btn-accent" disabled>Export Selected YAML</button>
   </div>
+  <div id="tag-chips" class="tag-chips hidden" role="group" aria-label="Filter by Vitosoft tag"></div>
 </header>
 
 <main>
