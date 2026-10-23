@@ -97,6 +97,10 @@ class Event:
     # (e.g. ecnsysEventType~Error: BlockLength 90, BlockFactor 10 -> ten 9-byte
     # fault slots). 0/None when the datapoint is not an array.
     block_factor: int | None = None
+    # Vitosoft's MappingType: the reader it uses for the block (PhaseCT 1 for a
+    # boiler weekly program, HydroCT / HydroPhaseCT* for a heat pump's, 3/4 for
+    # fault histories; constants.HYDRO_SCHEDULE_MAPPINGS). None when absent.
+    mapping_type: int | None = None
     values: list[EventValue] = field(default_factory=list)
 
 

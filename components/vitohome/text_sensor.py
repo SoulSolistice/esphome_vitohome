@@ -4,7 +4,6 @@ import esphome.config_validation as cv
 from esphome.const import CONF_ADDRESS, CONF_NAME, CONF_OPTIONS, CONF_TYPE, CONF_UPDATE_INTERVAL
 
 from . import (
-    ACCESS_RPC,
     BIT_MASK_SCHEMA,
     CONF_ACCESS,
     CONF_BIT_MASK,
@@ -182,29 +181,16 @@ def _addressed(extra: dict) -> cv.Schema:
     )
 
 
-def _validate_raw_length(config):
-    """A raw read asks for `length` bytes, so it stays a 1..4-byte value. An
-    `access: rpc` call sends its prefix instead, and the controller answers
-    with the whole record -- a heat-pump fault record is 8 or 9 bytes -- so
-    there `length` only states the record, up to MAX_P300_READ_LENGTH."""
-    if config[CONF_LENGTH] > 4 and str(config.get(CONF_ACCESS)) != ACCESS_RPC:
-        raise cv.Invalid(
-            f"raw length must be between 1 and 4 bytes (got {config[CONF_LENGTH]}); a longer "
-            f"record is only shown for an 'access: {ACCESS_RPC}' answer",
-            path=[CONF_LENGTH],
-        )
-    return config
-
-
 CONFIG_SCHEMA = cv.typed_schema(
     {
-        "raw": cv.All(
-            _addressed(
-                {
-                    cv.Optional(CONF_LENGTH, default=1): validate_length_in(1, MAX_P300_READ_LENGTH),
-                }
-            ),
-            _validate_raw_length,
+        # A hex dump of `length` bytes: a value, a block read as one (a heat
+        # pump's weekly-program day, 24 bytes) or, with `access: rpc`, the
+        # record a procedure answers (a heat-pump fault record, 8 or 9 bytes).
+        # Up to the hub's block-read ceiling, like the enum and string reads.
+        "raw": _addressed(
+            {
+                cv.Optional(CONF_LENGTH, default=1): validate_length_in(1, MAX_P300_READ_LENGTH),
+            }
         ),
         "enum": cv.All(
             _addressed(

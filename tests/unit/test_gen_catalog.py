@@ -976,6 +976,88 @@ def test_schaltzeiten_nonstandard_shapes_are_rejected(token, addr, blen, bf):
     assert gc._is_schaltzeiten(ev) is False
 
 
+def test_phasect_mapping_takes_programs_not_named_schaltzeiten():
+    # Vitosoft reads Vitotwin_2100_Zeitprogramm_HK1 as PhaseCT (MappingType 1),
+    # the boiler weekly program: the 56/7 shape is decoded although the token
+    # does not say Schaltzeit. Without a MappingType the token rule still holds.
+    ev = _schaltzeiten_event("Vitotwin_2100_Zeitprogramm_HK1", 0x2100, 56, 7)
+    assert gc._is_schaltzeiten(ev) is False
+    ev.mapping_type = 1
+    assert gc._is_schaltzeiten(ev) is True
+    # Another mapping is not the boiler format, whatever the token says.
+    named = _schaltzeiten_event("Schaltzeiten_A1M1_HK", 0x2000, 56, 7)
+    named.mapping_type = 5
+    assert gc._is_schaltzeiten(named) is False
+
+
+@pytest.mark.parametrize(
+    "mapping,addr,blen,bf,shape",
+    [
+        (5, 0x9200, 168, 56, (8, 3)),  # HydroPhaseCT: 56 records of 3 bytes
+        (6, 0x92E0, 168, 56, (8, 3)),  # ...WW
+        (2, 0x9000, 168, 7, (1, 24)),  # HydroCT: 7 records of 24 bytes
+        (10, 0xCA00, 168, 7, (1, 24)),  # HydroPhaseCTLF (ventilation)
+        (1, 0x2000, 56, 7, None),  # PhaseCT: the boiler program, not this path
+        (None, 0x9200, 168, 56, None),  # no MappingType: nothing to go by
+        (5, 0x9200, 168, 50, None),  # records do not split into 7 days
+        (5, 0x9200, 170, 56, None),  # bytes do not split into records
+        (2, 0x9000, 7 * 56, 7, None),  # a day wider than one read
+    ],
+)
+def test_hydro_schedule_shape(mapping, addr, blen, bf, shape):
+    ev = _schaltzeiten_event("NKU_Tagesprogramm_HK1", addr, blen, bf)
+    ev.mapping_type = mapping
+    assert gc._hydro_schedule_shape(ev) == shape
+
+
+def test_hydro_schedule_days_are_addressed_per_record():
+    # HydroPhaseCT: the next program starts 56 addresses on (0x9238), so the
+    # 168 bytes are 56 addresses of 3 bytes and day n starts at base + n*8.
+    ev = _schaltzeiten_event("NKU_Tagesprogramm_HK1", 0x9200, 168, 56)
+    ev.mapping_type = 5
+    entries = gc._hydro_schedule_entries(ev)
+    assert [e["address"] for e in entries] == [0x9200 + n * 8 for n in range(7)]
+    assert {e["length"] for e in entries} == {24}
+    assert entries[2]["name"].endswith(" Mittwoch")
+    assert len({e["seed"] for e in entries}) == 7
+    # HydroCT: one 24-byte record per address, the next program 7 on.
+    ev = _schaltzeiten_event("WPR_Tagesprogramm_HK2", 0x9007, 168, 7)
+    ev.mapping_type = 2
+    assert [e["address"] for e in gc._hydro_schedule_entries(ev, "en")] == list(range(0x9007, 0x900E))
+    lines = gc._hydro_schedule_lines(gc._hydro_schedule_entries(ev, "en")[0], "wpr_tagesprogramm_hk2_mo")
+    body = "\n".join(lines)
+    assert "Vitosoft HydroCT weekly program: one 24-byte record per day" in body
+    assert "type: raw" in body and "length: 24" in body and "address: 0x9007" in body
+
+
+def test_generate_emits_hydro_programs_as_read_only_raw_days():
+    token = "NKU_Tagesprogramm_HK1~0x9200"
+    access = {
+        token: {
+            "address": "0x9200",
+            "block_length": "168",
+            "byte_length": "168",
+            "byte_position": "0",
+            "block_factor": "56",
+            "mapping_type": "5",
+            "conversion": "NoConversion",
+            "fc_read": "Virtual_READ",
+            "fc_write": "Virtual_WRITE",
+            "parameter_type": "Array",
+        }
+    }
+    raw_events = {"1": {"Address": token, "Name": "NKU_Tagesprogramm_HK1", "Type": "3"}}
+    cat = gc.Catalog({"VHeatPump_01": "dp1"}, {"dp1": "VHeatPump"}, {"dp1": ["1"]}, raw_events, {}, {}, access, [], {})
+    out = gc.generate(cat, "VHeatPump_01", "standard", None, None, emit_device_id=False, emit_error_history=False)
+    sensors = out.split("\ntext_sensor:\n", 1)[1]
+    assert sensors.count("    type: raw") == 7
+    assert sensors.count("    length: 24") == 7
+    assert "address: 0x9230" in sensors  # Sunday: 0x9200 + 6*8
+    # Read-only: no writable `text` entity, and the header says why.
+    assert "\ntext:\n" not in out
+    assert "# Heat-pump weekly programs: 1, each as seven read-only raw day" in out
+
+
 def test_schaltzeiten_text_entity_yaml_is_valid():
     ev = _schaltzeiten_event("Schaltzeiten_M2_WW", 0x3100, 56, 7)
     entry = gc._schaltzeiten_entries(ev)[2]  # Wednesday

@@ -183,8 +183,10 @@ void VitoClock::handle_read_(const ResponseView &response) {
       ESP_LOGD(TAG, "System-time sync: device counts weekdays from %s",
                base == WeekdayBase::MONDAY_0 ? "Monday" : "Sunday");
     } else {
-      ESP_LOGW(TAG, "System-time sync: device weekday byte 0x%02X fits neither Sunday- nor Monday-based counting; "
-               "writing it Sunday-based", response.data[4]);
+      ESP_LOGW(TAG,
+               "System-time sync: device weekday byte 0x%02X fits neither Sunday- nor Monday-based counting; "
+               "writing it Sunday-based",
+               response.data[4]);
     }
   }
 

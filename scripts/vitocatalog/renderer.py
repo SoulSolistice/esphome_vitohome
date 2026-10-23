@@ -23,6 +23,9 @@ from .special import (
     _error_history_entries,
     _error_history_lines,
     _error_history_slot,
+    _hydro_schedule_entries,
+    _hydro_schedule_lines,
+    _hydro_schedule_shape,
     _is_error_history,
     _is_identification,
     _is_schaltzeiten,
@@ -272,6 +275,7 @@ def generate(
     dropped_rpc_readings = 0  # left out by the profile (_profile_keep)
     rpc_actions = 0  # procedures emitted as `type: action` buttons (_is_rpc_action)
     dropped_bare_actions = 0  # no parameter where siblings take one (_rpc_selector_addresses)
+    hydro_programs = 0  # heat-pump weekly programs fanned out per day (_hydro_schedule_shape)
     seen_actions: set[tuple] = set()
     dropped_wide_addr = 0
     history_suppressed = False
@@ -346,6 +350,26 @@ def generate(
                 _add_chunk("text", ev, _schaltzeiten_lines(entry, oid, sz_access))
                 kept += 1
                 real_entities += 1
+            continue
+
+        # A heat pump's weekly program (Vitosoft MappingType HydroCT /
+        # HydroPhaseCT*): seven read-only raw day entities, each at its day's
+        # first record (_hydro_schedule_shape). Not decoded: the export does
+        # not describe the record layout.
+        if _hydro_schedule_shape(ev) is not None:
+            if (reachable_only and not _is_reachable(ev, protocol)) or _access_for(ev, protocol) == "rpc":
+                dropped_unreachable += 1
+                continue
+            if _field_key(ev) in seen_addr:
+                continue
+            seen_addr.add(_field_key(ev))
+            hs_access = _access_for(ev, protocol)
+            for entry in _hydro_schedule_entries(ev, lang):
+                oid = _make_obj_id(entry["seed"], used_ids)
+                _add_chunk("text_sensor", ev, _hydro_schedule_lines(entry, oid, hs_access))
+                kept += 1
+                real_entities += 1
+            hydro_programs += 1
             continue
 
         # A procedure (P300): one `type: action` button, disabled by default and
@@ -583,6 +607,12 @@ def generate(
         out.append("# buttons, all disabled by default. Pressing one RUNS it on the controller")
         out.append("# -- some clear a history, some reset settings or codings to their")
         out.append("# defaults. Read each one's name before you enable it.")
+        out.append("#")
+    if hydro_programs:
+        out.append(f"# Heat-pump weekly programs: {hydro_programs}, each as seven read-only raw day")
+        out.append("# entities (Vitosoft HydroCT / HydroPhaseCT*: addressed per record, so a day")
+        out.append("# starts at base + day * records-per-day). The export does not describe the")
+        out.append("# record layout; the programs are shown as hex and not written.")
         out.append("#")
     if dropped_bare_actions:
         out.append(f"# Procedures omitted: {dropped_bare_actions} without a parameter at an address where")

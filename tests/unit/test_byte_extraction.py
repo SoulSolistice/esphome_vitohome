@@ -406,6 +406,17 @@ def test_enum_text_sensor_block_read_capped_at_p300_telegram():
         TEXT_SENSOR_SCHEMA(_enum_ts(length=MAX_P300_READ_LENGTH + 1, byte_offset=0))
 
 
+def test_raw_text_sensor_reads_a_block_up_to_one_read():
+    # A raw text sensor is a hex dump of `length` bytes: a value, or a block
+    # read as one -- a heat pump's weekly-program day is 24 bytes at a record
+    # address. Up to the hub's block-read ceiling, like enum and string reads.
+    for length in (1, 4, 24, MAX_P300_READ_LENGTH):
+        cfg = TEXT_SENSOR_SCHEMA({"type": "raw", "name": _name(), "address": 0x9200, "length": length})
+        assert cfg["length"] == length
+    with pytest.raises(cv.Invalid, match="between 1 and"):
+        TEXT_SENSOR_SCHEMA({"type": "raw", "name": _name(), "address": 0x9200, "length": MAX_P300_READ_LENGTH + 1})
+
+
 def test_enum_text_sensor_plain_length_still_capped_at_four():
     with pytest.raises(cv.Invalid, match="between 1 and 4"):
         TEXT_SENSOR_SCHEMA(_enum_ts(length=22))

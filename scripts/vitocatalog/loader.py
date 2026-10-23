@@ -695,6 +695,7 @@ class Catalog:
             conv_factor=_fval("conversion_factor", "ConversionFactor", is_factor=True),
             conv_offset=_fval("conversion_offset", "ConversionOffset", is_factor=False),
             block_factor=pick("block_factor", "BlockFactor"),
+            mapping_type=pick("mapping_type", "MappingType") or None,
             values=values,
         )
 

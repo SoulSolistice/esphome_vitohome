@@ -1985,6 +1985,32 @@ operator act is not settled, and the rules are partly shared across device
 families -- on VScotHO1_72 they reference an Ecotronic solar address -- so they
 would be hints at best.
 
+### 8l. Weekly programs by MappingType
+
+Vitosoft names the reader it uses for a block in `MappingType` (an
+`ecnEventType` table extension, flattened into `ecnEventType.xml`). Its weekly
+programs come in three shapes, all 7 days:
+
+| MappingType | Events | Block | Addressing | Catalog |
+|---|---|---|---|---|
+| 1 PhaseCT | 25 (boiler `Schaltzeiten_*`, `Vitotwin_*_Zeitprogramm_*`, Ecotronic, OpenTherm) | 56 bytes, 7 records of 8 | per byte: day n at base + n*8 | `text`, decoded and writable (§ Schaltzeiten) |
+| 2 HydroCT, 10 HydroPhaseCTLF | 5 + 1 (`WPR_Tagesprogramm_*` at 0x9000..0x901C, `HO2B_Lueftung_Schaltzeiten`) | 168 bytes, 7 records of 24 | per record: day n at base + n | read-only `type: raw` per day |
+| 5..8 HydroPhaseCT(WW/ZP/PSP) | 10 (`NKU_Tagesprogramm_*` 0x9200..0x9318, `WPR3_*` 0x9350..0x93F8) | 168 bytes, 56 records of 3 | per record: day n at base + n*8 | read-only `type: raw` per day |
+
+The heat-pump programs are addressed per **record**, not per byte: the export's
+next program starts BlockFactor addresses on (HydroCT `0x9000`, `0x9007`,
+`0x900E`, ...; HydroPhaseCT `0x9200`, `0x9238`, `0x9270`, ...), 7 or 56 where
+a byte-addressed 168-byte block would need 168. So a day is BlockFactor / 7
+records from base + day * (BlockFactor / 7), 24 bytes either way, one read
+(`_hydro_schedule_shape`). The export does not describe what a record holds,
+so these days are emitted as raw hex, disabled and never written; whether a
+unit answers a 24-byte read at a record address is unconfirmed. PhaseCT now
+decides the boiler path by itself, so programs not named `Schaltzeit` are
+decoded too (Vitotwin: 5 programs); without a MappingType (older exports) the
+token rule still applies. V200WO1A and its siblings link both the HydroCT and
+the HydroPhaseCT programs; which one a unit uses is not in the export, so both
+are emitted.
+
 ---
 
 ## 9. Per-entity polling

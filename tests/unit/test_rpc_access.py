@@ -121,13 +121,10 @@ def test_a_refresh_button_needs_no_access():
     _validate("KW", {"button": [_entity({"type": "refresh"})]})
 
 
-def test_a_raw_rpc_record_may_be_longer_than_a_raw_read():
-    # A heat-pump fault record (8 or 9 bytes) is one RPC answer; `length` is not
-    # sent, so it may state the record. A plain raw read asks for `length` bytes
-    # and stays 1..4.
-    from components.vitohome.text_sensor import _validate_raw_length
+def test_a_raw_rpc_record_is_shown_whole():
+    # A heat-pump fault record (8 or 9 bytes) is one RPC answer, shown as hex
+    # like any raw block (test_byte_extraction: up to one read).
+    from components.vitohome.text_sensor import CONFIG_SCHEMA as TEXT_SENSOR_SCHEMA
 
-    _validate_raw_length({"length": 9, CONF_ACCESS: ACCESS_RPC})
-    _validate_raw_length({"length": 4})
-    with pytest.raises(cv.Invalid, match="only shown for an 'access: rpc' answer"):
-        _validate_raw_length({"length": 9})
+    raw = {"type": "raw", "name": "WPR fault record", "address": 0xA801, CONF_ACCESS: ACCESS_RPC, "prefix": [0]}
+    assert TEXT_SENSOR_SCHEMA({**raw, "length": 9})["length"] == 9

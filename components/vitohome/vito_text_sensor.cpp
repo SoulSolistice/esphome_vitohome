@@ -63,9 +63,9 @@ const char *VitoTextSensor::lookup_(uint32_t value) const {
 }
 
 void VitoTextSensor::publish_raw_hex_(const uint8_t *data, uint8_t len) {
-  // The raw schema caps CONF_LENGTH at 1..4, but size for the widest response
-  // the parser could ever hand back (a P300 read at MAX_P300_READ_LENGTH = 48)
-  // so an over-length reply is rendered, not silently cut. format_hex_pretty_to
+  // The raw schema caps CONF_LENGTH at MAX_P300_READ_LENGTH (48), the widest
+  // response the parser could ever hand back, so the buffer fits any reply and
+  // an over-length one is rendered, not silently cut. format_hex_pretty_to
   // NUL-terminates and hard-clamps the write to the buffer, so this is
   // overflow-safe regardless. A space separator with no length suffix
   // reproduces the previous "%02X"-joined output byte-for-byte, and

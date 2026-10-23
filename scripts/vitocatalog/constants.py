@@ -351,6 +351,22 @@ _SCHALTZEITEN_RECORD_LEN = 8
 _SCHALTZEITEN_DAYS = 7
 _SCHALTZEITEN_BLOCK_LEN = _SCHALTZEITEN_RECORD_LEN * _SCHALTZEITEN_DAYS  # 56
 
+# Vitosoft's MappingType (ecnEventType): which reader Vitosoft uses for a block.
+# 1 PhaseCT is the boiler weekly program, 7 day records of 8 bytes -- what the
+# `text` platform decodes (_is_schaltzeiten). The heat-pump weekly programs
+# below are 168-byte blocks addressed per RECORD, not per byte: the next
+# program starts BlockFactor addresses on (HydroCT 0x9000, 0x9007, ...;
+# HydroPhaseCT 0x9200, 0x9238, ...). The record layout is not in the export.
+MAPPING_PHASE_CT = 1
+HYDRO_SCHEDULE_MAPPINGS = {
+    2: "HydroCT",  # 7 records of 24 bytes: one address per day
+    5: "HydroPhaseCT",  # 56 records of 3 bytes: 8 per day
+    6: "HydroPhaseCTWW",
+    7: "HydroPhaseCTZP",
+    8: "HydroPhaseCTPSP",
+    10: "HydroPhaseCTLF",  # 7 records of 24 bytes (ventilation)
+}
+
 # Subdirectory of --export-all output for the GFA companion packages, one per
 # burner-control chip. The GFA fault texts are keyed by the chip the installed
 # unit reports at 0x7650, not by the device type, so a catalog cannot carry

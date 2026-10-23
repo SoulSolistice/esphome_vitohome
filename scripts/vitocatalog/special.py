@@ -14,6 +14,9 @@ from .constants import (
     _SCHALTZEITEN_RECORD_LEN,
     _WEEKDAYS,
     GFA_DIRNAME,
+    HYDRO_SCHEDULE_MAPPINGS,
+    MAPPING_PHASE_CT,
+    MAX_P300_READ_LENGTH,
     POLL_ERROR,
     _ui,
 )
@@ -46,18 +49,98 @@ def _device_id_lines(oid: str, lang: str = "de") -> list[str]:
 
 def _is_schaltzeiten(ev: Event) -> bool:
     """A weekday switching-time program the component's `text` platform can
-    decode: the token names a Schaltzeiten block AND the access layer declares
-    the 56-byte / BlockFactor-7 / 8-byte-record shape. Other Schaltzeiten
-    shapes (heat pump, ventilation, LON group, pre-decomposed KBUS) return
-    False and take the generic path (custom-decode comment)."""
+    decode: Vitosoft reads it as PhaseCT (MappingType 1) AND the access layer
+    declares the 56-byte / BlockFactor-7 / 8-byte-record shape. That takes in
+    the programs not named Schaltzeiten (Vitotwin_2100_Zeitprogramm_HK1 and
+    siblings). Without a MappingType (older exports) the token must name a
+    Schaltzeiten block instead. Other shapes and mappings (the heat-pump
+    programs, _hydro_schedule_shape; LON group, pre-decomposed KBUS) return
+    False."""
     if ev.address is None:
         return False
-    tok = getattr(ev, "token", "") or getattr(ev, "tech", "") or getattr(ev, "name", "") or ""
-    if "Schaltzeit" not in tok:
-        return False
+    mapping = getattr(ev, "mapping_type", None)
+    if mapping:
+        if mapping != MAPPING_PHASE_CT:
+            return False
+    else:
+        tok = getattr(ev, "token", "") or getattr(ev, "tech", "") or getattr(ev, "name", "") or ""
+        if "Schaltzeit" not in tok:
+            return False
     blen = ev.byte_length or ev.block_length or 0
     bf = getattr(ev, "block_factor", 0) or 0
     return blen == _SCHALTZEITEN_BLOCK_LEN and bf == _SCHALTZEITEN_DAYS
+
+
+def _hydro_schedule_shape(ev: Event) -> tuple[int, int] | None:
+    """(records per day, record length) of a heat-pump weekly program, or None.
+
+    Vitosoft reads these with a Hydro* MappingType (HYDRO_SCHEDULE_MAPPINGS):
+    168 bytes in BlockFactor records, one ADDRESS per record -- the export's
+    next program starts BlockFactor addresses on, not 168. So a day is
+    BlockFactor / 7 records starting at base + day * (BlockFactor / 7): one
+    24-byte record per address for HydroCT (0x9000, 0x9001, ...), eight 3-byte
+    records for HydroPhaseCT (0x9200, 0x9208, ...). None for any other
+    mapping, a shape that does not split into 7 days of whole records, or a
+    day wider than one read."""
+    if ev.address is None or getattr(ev, "mapping_type", None) not in HYDRO_SCHEDULE_MAPPINGS:
+        return None
+    blen = ev.block_length or ev.byte_length or 0
+    bf = getattr(ev, "block_factor", 0) or 0
+    if blen <= 0 or bf <= 0 or blen % bf or bf % _SCHALTZEITEN_DAYS:
+        return None
+    per_day, record_len = bf // _SCHALTZEITEN_DAYS, blen // bf
+    return (per_day, record_len) if per_day * record_len <= MAX_P300_READ_LENGTH else None
+
+
+def _hydro_schedule_entries(ev: Event, lang: str = "de") -> list[dict]:
+    """One read-only raw entity per day of a heat-pump weekly program (see
+    _hydro_schedule_shape), Monday first: dicts with address, length, name,
+    seed and the comment line naming the shape."""
+    per_day, record_len = _hydro_schedule_shape(ev)
+    stem = (getattr(ev, "token", "") or getattr(ev, "tech", "") or "").split("~", 1)[0]
+    seed_prog = re.sub(r"[^a-z0-9]+", "_", stem.lower()).strip("_")
+    base = ev.address or 0
+    mapping = HYDRO_SCHEDULE_MAPPINGS[ev.mapping_type]
+    shape = f"{per_day} x {record_len}-byte records" if per_day > 1 else f"one {record_len}-byte record"
+    comment = [
+        f"# Vitosoft {mapping} weekly program: {shape} per day, one",
+        f"# address per record (day n at 0x{base:04X} + n*{per_day}). Raw hex: the export",
+        "# does not describe the record layout.",
+    ]
+    entries: list[dict] = []
+    for day, (_label, sfx) in enumerate(_WEEKDAYS):
+        entries.append(
+            {
+                "address": base + day * per_day,
+                "length": per_day * record_len,
+                "name": f"{ev.name or stem} {_ui(lang, 'weekdays')[day]}",
+                "seed": f"{seed_prog}_{sfx}",
+                "comment": comment,
+            }
+        )
+    return entries
+
+
+def _hydro_schedule_lines(entry: dict, oid: str, access: str = "") -> list[str]:
+    """YAML lines for one day of a heat-pump weekly program: a read-only raw
+    `text_sensor`, polled hourly like the boiler programs."""
+    lines = [
+        *entry["comment"],
+        "- platform: vitohome",
+        "  type: raw",
+        f"  name: {_yaml_str(entry['name'])}",
+        f"  id: {oid}",
+        f"  address: 0x{entry['address']:04X}",
+    ]
+    if access:
+        lines.append(f"  access: {access}")
+    lines += [
+        f"  length: {entry['length']}",
+        "  entity_category: diagnostic",
+        "  disabled_by_default: true",
+        "  update_interval: 3600s",
+    ]
+    return lines
 
 
 def _schaltzeiten_program_label(ev: Event) -> str:
