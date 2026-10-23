@@ -699,6 +699,46 @@ static void test_clock_helpers() {
   CHECK(!encode_datetime_bcd(2026, 6, 28, 0, 24, 30, 45, buf));  // hour 24
 }
 
+// --- clock_weekday_base: the clock's own weekday convention --------------
+static void test_clock_weekday_base() {
+  // 2026-10-07 is a Wednesday: 0x03 counted from Sunday, 0x02 from Monday.
+  uint8_t clock[] = {0x20, 0x26, 0x10, 0x07, 0x03, 0x12, 0x00, 0x00};
+  WeekdayBase base = WeekdayBase::MONDAY_0;
+  CHECK(clock_weekday_base(clock, 8, 0, &base));
+  CHECK(base == WeekdayBase::SUNDAY_0);
+  clock[4] = 0x02;
+  CHECK(clock_weekday_base(clock, 8, 0, &base));
+  CHECK(base == WeekdayBase::MONDAY_0);
+
+  // A byte that fits neither (a clock never set) leaves *out alone.
+  clock[4] = 0x05;
+  base = WeekdayBase::SUNDAY_0;
+  CHECK(!clock_weekday_base(clock, 8, 0, &base));
+  CHECK(base == WeekdayBase::SUNDAY_0);
+  clock[4] = 0x0A;  // not BCD
+  CHECK(!clock_weekday_base(clock, 8, 0, &base));
+  // Short or undecodable blocks, and a null out pointer.
+  clock[4] = 0x03;
+  CHECK(!clock_weekday_base(clock, 7, 0, &base));
+  CHECK(!clock_weekday_base(clock, 8, 0, nullptr));
+  const uint8_t empty[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+  CHECK(!clock_weekday_base(empty, 8, 0, &base));
+
+  // Sunday and Saturday at the wrap: 2026-10-11 is a Sunday (0 / 6),
+  // 2026-10-10 a Saturday (6 / 5).
+  uint8_t sunday[] = {0x20, 0x26, 0x10, 0x11, 0x06, 0x08, 0x00, 0x00};
+  CHECK(clock_weekday_base(sunday, 8, 0, &base) && base == WeekdayBase::MONDAY_0);
+  uint8_t saturday[] = {0x20, 0x26, 0x10, 0x10, 0x06, 0x08, 0x00, 0x00};
+  CHECK(clock_weekday_base(saturday, 8, 0, &base) && base == WeekdayBase::SUNDAY_0);
+
+  // Writing in the device's convention: ESPHome Wednesday is 4 (sunday=1).
+  CHECK(device_weekday_from_esptime(4, WeekdayBase::SUNDAY_0) == 3);
+  CHECK(device_weekday_from_esptime(4, WeekdayBase::MONDAY_0) == 2);
+  CHECK(device_weekday_from_esptime(2, WeekdayBase::MONDAY_0) == 0);  // Monday
+  CHECK(device_weekday_from_esptime(1, WeekdayBase::MONDAY_0) == 6);  // Sunday
+  CHECK(device_weekday_from_esptime(7, WeekdayBase::MONDAY_0) == 5);  // Saturday
+}
+
 // --- RotateBytes: read_be / decode_scaled_be ------------------------------
 static void test_rotate_bytes() {
   // Big-endian assembly is MSB-first: {0x12,0x34} -> 0x1234 (vs read_le 0x3412).
@@ -797,6 +837,7 @@ int main() {
   test_timebyte();
   test_schaltzeiten_day();
   test_clock_helpers();
+  test_clock_weekday_base();
   test_datetime();
   test_masked_bit();
   test_bit_field();

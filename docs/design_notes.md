@@ -784,6 +784,17 @@ datapoint that isn't the clock, compute nonsense drift, and then **blind-write a
 BCD timestamp to it**. Only the address is configurable: both `DateTimeBCD`
 variants are 8 bytes, and 8 is exactly `write_buf_`.
 
+**The weekday byte's convention is not assumed either.** `0x088E` counts
+`sunday = 0` (hardware-confirmed on `0x20CB`: Wednesday reads `0x03`); nothing
+in the export says how `0x08E0` counts, and a clock that counted from Monday
+would be moved a day by a Sunday-based write, every weekly program with it. The
+sync reads the clock before it writes anyway, and that read answers the
+question: the weekday byte, judged against the clock's own date, matches
+exactly one of the two conventions, since one date's Sunday- and Monday-based
+weekdays always differ by one (`clock_weekday_base`, decode.h). The write uses
+that one. A byte that fits neither (a clock never set) or an unreadable clock
+falls back to `sunday = 0` with a warning.
+
 GWG is not served by that option, because its clock is a different *shape*, not
 a different address — so `_final_validate` rejects `time_id` under `protocol:
 GWG` outright. (The default 0x088E is over GWG's 8-bit space anyway, and

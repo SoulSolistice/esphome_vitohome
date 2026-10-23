@@ -78,7 +78,9 @@ class VitoClock final : public VitoEntityBase {
   // uses 0x088E (the schema default, hardware-confirmed on a Vitodens 300-W),
   // while the WPR heat-pump controllers use 0x08E0 for the same 8-byte
   // DateTimeBCD shape. Both are 8 bytes, so only the address moves -- which is
-  // why one option covers it. GWG is a different shape entirely (three 1-byte
+  // why one option covers it. Where a clock counts its weekday byte from is
+  // not assumed: each sync reads it off the device's own clock
+  // (clock_weekday_base, decode.h). GWG is a different shape entirely (three 1-byte
   // registers) and is rejected at config time rather than mis-served here.
   //
   // Called from to_code() before setup(), so the datapoint is rebuilt here

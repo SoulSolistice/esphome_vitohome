@@ -105,7 +105,8 @@ provides several things you would otherwise have to build by hand:
   merely carried over a reboot is not trusted. It reads the device clock,
   compares it, and writes the corrected time **only when the drift exceeds a
   configurable threshold** — then reads it back to verify. The Viessmann
-  weekday byte is written with the device's own convention. So the heater's
+  weekday byte is written with the device's own convention, read off its
+  clock (counted from Sunday or from Monday). So the heater's
   built-in clock (which drives its Schaltzeiten) stays correct without ever
   touching the front panel.
 - **Native `climate` entity.** A heating circuit is exposed as a Home

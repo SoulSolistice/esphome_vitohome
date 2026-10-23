@@ -278,7 +278,8 @@ struct BcdDateTime {
 
 // Viessmann DateTimeBCD, 8 bytes starting at data[offset]:
 //   [0]=year-hi BCD (e.g. 0x20)  [1]=year-lo BCD (e.g. 0x26)
-//   [2]=month BCD  [3]=day BCD  [4]=weekday (sunday=0..saturday=6, IGNORED)
+//   [2]=month BCD  [3]=day BCD  [4]=weekday (IGNORED here; its convention
+//   differs by clock, see clock_weekday_base)
 //   [5]=hour BCD  [6]=minute BCD  [7]=second BCD
 // Layout source: InsideViessmannVitosoft, Viessmann2MQTT.py
 // DateTimeFromBCD() — i.e. the reverse-engineering repo's own decoder, NOT
@@ -343,20 +344,51 @@ inline int64_t civil_seconds(const BcdDateTime &dt) {
          static_cast<int64_t>(dt.minute) * 60 + dt.second;
 }
 
-// ESPHome ESPTime::day_of_week is sunday=1..saturday=7; the Vitotronic stores
-// the weekday byte as sunday=0..saturday=6 -- the strftime %w convention that
-// vcontrold writes. Hardware-confirmed on 0x20CB: a read of 0x088E on a
-// Wednesday returns weekday byte 0x03. Map ESPTime -> device.
-inline uint8_t device_weekday_from_esptime(uint8_t dow_sun1) { return static_cast<uint8_t>((dow_sun1 + 6) % 7); }
+// Where a clock's weekday byte starts counting. SUNDAY_0 (sunday=0..saturday=6)
+// is the strftime %w convention vcontrold writes, hardware-confirmed on 0x20CB:
+// a read of 0x088E on a Wednesday returns weekday byte 0x03. A clock may count
+// from Monday instead; the clock itself tells which (clock_weekday_base).
+enum class WeekdayBase : uint8_t { SUNDAY_0, MONDAY_0 };
+
+// ESPHome ESPTime::day_of_week is sunday=1..saturday=7. Map ESPTime -> the
+// device's weekday byte in its convention.
+inline uint8_t device_weekday_from_esptime(uint8_t dow_sun1, WeekdayBase base = WeekdayBase::SUNDAY_0) {
+  return static_cast<uint8_t>((dow_sun1 + (base == WeekdayBase::MONDAY_0 ? 5 : 6)) % 7);
+}
+
+// The convention of a DateTimeBCD block's weekday byte ([4]), judged against
+// the block's own date: counted from Sunday and from Monday, one date's
+// weekday differs by exactly one, so at most one convention matches the byte.
+// Returns false, leaving *out alone, when the block does not decode or the
+// byte matches neither (a clock never set, a non-BCD byte).
+inline bool clock_weekday_base(const uint8_t *data, std::size_t data_len, std::size_t offset, WeekdayBase *out) {
+  BcdDateTime dt{};
+  uint8_t weekday;
+  if (out == nullptr || !decode_datetime_bcd(data, data_len, offset, &dt) || !bcd_to_int(data[offset + 4], &weekday))
+    return false;
+  // 1970-01-01, civil day 0, was a Thursday: 4 counted from Sunday. The decode
+  // rejects years before 1990, so the day count is positive.
+  const auto from_sunday = static_cast<uint8_t>((civil_days(dt.year, dt.month, dt.day) + 4) % 7);
+  if (weekday == from_sunday) {
+    *out = WeekdayBase::SUNDAY_0;
+    return true;
+  }
+  if (weekday == (from_sunday + 6) % 7) {
+    *out = WeekdayBase::MONDAY_0;
+    return true;
+  }
+  return false;
+}
 
 // Encode a datetime into the 8-byte Viessmann DateTimeBCD wire layout (the
 // inverse of decode_datetime_bcd):
 //   [0]=century BCD  [1]=year-of-century BCD  [2]=month  [3]=day
-//   [4]=weekday (sunday=0..saturday=6)  [5]=hour  [6]=minute  [7]=second
-// The device validates the weekday against the date, so it must match the
-// sunday=0 convention (see device_weekday_from_esptime). Builds into a local
-// and only commits on success, so a bad field leaves buf8 unchanged. Returns
-// false on any out-of-range field.
+//   [4]=weekday (0..6, in the device's WeekdayBase)  [5]=hour  [6]=minute
+//   [7]=second
+// The device validates the weekday against the date, so it must be counted the
+// way the device counts (device_weekday_from_esptime, clock_weekday_base).
+// Builds into a local and only commits on success, so a bad field leaves buf8
+// unchanged. Returns false on any out-of-range field.
 inline bool encode_datetime_bcd(uint16_t year, uint8_t month, uint8_t day, uint8_t weekday, uint8_t hour,
                                 uint8_t minute, uint8_t second, uint8_t *buf8) {
   if (buf8 == nullptr)
