@@ -1,20 +1,30 @@
 # =============================================================================
 # vitohome — RAW SCAN CONSOLE  (uses the hub raw-lane addition)
 # =============================================================================
-# This config drives the hub feature: queue_raw_read / queue_raw_write and a
-# hub-fed `text_sensor: type: scan_result`:
+# This config drives the hub feature: queue_raw_read / queue_raw_write /
+# queue_raw_rpc and a hub-fed `text_sensor: type: scan_result`:
 #   * READ-NOW  — an immediate one-off read, not "next poll tick".
 #   * RAW HEX    — the response as bytes + exact 64-bit integer views (no
 #                  float32 narrowing on 4-byte values).
 #   * RAW WRITE  — an arbitrary byte payload (not just one LE integer).
+#   * RAW RPC    — a remote procedure call (P300 function code 0x07) with a
+#                  parameter, e.g. one record of a heat pump's fault buffer
+#                  (0xA801, parameter = record index). Disabled by default:
+#                  a procedure that is not a reading RUNS at once.
 #   * RANGE SWEEP— scan a contiguous block from a Home Assistant action.
+#
+# GWG units: set `protocol: GWG` and pass the access mode as the last argument,
+# e.g. queue_raw_read(0x05, 1, optolink::GWGAccessMode::EEPROM) or
+# queue_raw_write(0x05, bytes, optolink::GWGAccessMode::EEPROM). Modes:
+# PHYSICAL (default), VIRTUAL, EEPROM, XRAM, PORT, BE, KMBUS_RAM, KMBUS_EEPROM --
+# the catalog's `access:` value for that datapoint. RPC does not exist there.
 #
 # =============================================================================
 
 substitutions:
   friendly_name: "Viessmann Optolink (vitohome RAW CONSOLE)"
   device_name: viessmann-optolink-raw
-  device_description: "vitohome raw scan console (queue_raw_read/write)"
+  device_description: "vitohome raw scan console (queue_raw_read/write/rpc)"
 
 esphome:
   name: ${device_name}
@@ -142,6 +152,16 @@ text:
     initial_value: ""
     entity_category: config
 
+  # The parameter of a remote procedure call: the catalog's `prefix:` for an
+  # `access: rpc` entity (e.g. 00 for the newest record at 0xA801). May be empty.
+  - platform: template
+    id: scan_rpc_parameter
+    name: "Scan · RPC parameter (hex, may be empty)"
+    optimistic: true
+    mode: text
+    initial_value: "00"
+    entity_category: config
+
 number:
   # 1..48 is the hub's own cap (RAW_READ_MAX). (The old max of 9 mirrored
   # vcontrold's XML limit, which is a vcontrold limitation, not a protocol one.)
@@ -197,3 +217,31 @@ button:
           }
           ESP_LOGW("scan", "RAW WRITE 0x%04X (%u bytes)", (unsigned)(uint16_t)a, (unsigned)bytes.size());
           id(vito).queue_raw_write((uint16_t) a, bytes);
+
+  # Remote procedure call (P300): address + parameter; the answer lands on
+  # "Scan ▸ Raw result" like a read. Only call addresses the catalog emits as
+  # readings (`access: rpc`): a procedure with an effect -- clearing a history,
+  # a reset -- RUNS on the controller at once. Disabled by default for that.
+  - platform: template
+    name: "Scan ▸ Raw RPC (P300)"
+    entity_category: config
+    disabled_by_default: true
+    on_press:
+      - lambda: |-
+          long a = strtol(id(scan_addr).state.c_str(), nullptr, 16);
+          if (a < 0 || a > 0xFFFF) { ESP_LOGW("scan", "address out of range: %s", id(scan_addr).state.c_str()); return; }
+          auto ishex = [](char c) {
+            return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+          };
+          std::string hex;
+          for (char ch : id(scan_rpc_parameter).state) { if (ishex(ch)) hex.push_back(ch); }
+          if ((hex.size() % 2) != 0) {
+            ESP_LOGW("scan", "RPC parameter: need an even number of hex digits, got '%s'", id(scan_rpc_parameter).state.c_str());
+            return;
+          }
+          std::vector<uint8_t> parameter;
+          for (size_t i = 0; i + 1 < hex.size(); i += 2) {
+            parameter.push_back((uint8_t) strtol(hex.substr(i, 2).c_str(), nullptr, 16));
+          }
+          ESP_LOGW("scan", "RAW RPC 0x%04X (%u parameter bytes)", (unsigned)(uint16_t)a, (unsigned)parameter.size());
+          id(vito).queue_raw_rpc((uint16_t) a, parameter);

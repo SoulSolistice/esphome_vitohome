@@ -588,8 +588,9 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
     bool is_write;
     uint8_t bytes[RAW_WRITE_MAX];
     uint8_t bytes_len;
-    // GWG access mode (2026-08-24); ignored for writes and for every other
-    // protocol. See queue_raw_read().
+    // GWG access mode (2026-08-24): selects the TYPE byte of a raw read AND of
+    // a raw write on GWG builds; ignored by every other protocol. See
+    // queue_raw_read() / queue_raw_write() and dispatch_raw_front_().
     //
     // NO default member initializer here (bug fixed 2026-08-24, found on a
     // real ESP32-C3/ESP-IDF build, not caught by the native proof suite

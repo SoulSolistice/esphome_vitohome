@@ -1031,7 +1031,7 @@ bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
   operation.length = length;
   operation.is_write = is_write;
   operation.bytes_len = bytes_len;
-  operation.access = access;  // ignored by dispatch for writes / non-GWG builds
+  operation.access = access;  // read and write TYPE byte on GWG; ignored on other builds
   operation.is_rpc = is_rpc;
 
   if ((is_write || is_rpc) && bytes_len != 0)
