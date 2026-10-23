@@ -1,8 +1,8 @@
 file,token,ident,hw_index,sw_lo,sw_hi,f0_lo,f0_hi,events,entities,bytes,status,ext_raw,gfa_slots,short_name,product_name
 bess.yaml,BESS,0x2502,,,,,,99,64,31581,ok,,,BESS,Battery Energy Storage System
-cu401b_a.yaml,CU401B_A,0x204C,,,,,,2153,2089,783215,ok,,,VT 200 (WO1C),Vitocal xxx-A mit Vitotronic 200 (Typ WO1C)
-cu401b_g.yaml,CU401B_G,0x204B,,,,,,2168,2101,791864,ok,,,VT 200 (WO1C),Vitocal xxx-G mit Vitotronic 200 (Typ WO1C)
-cu401b_s.yaml,CU401B_S,0x204D,,,,,,2292,2226,832902,ok,,,VT 200 (WO1C),"Vitocal xxx-S mit Vitotronic 200 (Typ WO1C), Vitocaldens, Vitolacaldens"
+cu401b_a.yaml,CU401B_A,0x204C,,,,,,2153,2194,830167,ok,,,VT 200 (WO1C),Vitocal xxx-A mit Vitotronic 200 (Typ WO1C)
+cu401b_g.yaml,CU401B_G,0x204B,,,,,,2168,2206,838816,ok,,,VT 200 (WO1C),Vitocal xxx-G mit Vitotronic 200 (Typ WO1C)
+cu401b_s.yaml,CU401B_S,0x204D,,,,,,2292,2324,876671,ok,,,VT 200 (WO1C),"Vitocal xxx-S mit Vitotronic 200 (Typ WO1C), Vitocaldens, Vitolacaldens"
 ,DEKATEL_F,0x2088,,,,,,586,1,,skipped: no Optolink-reachable datapoints,37343530353330,,,
 ,DEKATEL_F_A,0x2088,,,,,,576,1,,skipped: no Optolink-reachable datapoints,37343533353330,,,
 ,DEKATEL_F_CH,0x2088,,,,,,576,1,,skipped: no Optolink-reachable datapoints,37343531353330,,,
@@ -260,7 +260,7 @@ v200kw2.yaml,V200KW2,0x2098,1,0,3,,,437,439,154541,ok,0100,,VT 200 (KW2),Vitotro
 v200kw2_4.yaml,V200KW2_4,0x2098,1,4,4,,,391,395,138680,ok,0104,,VT 200 (KW2),Vitotronic 200 (Typ KW2)
 v200kw2_5.yaml,V200KW2_5,0x2098,1,5,5,,,391,395,139042,ok,0105,,VT 200 (KW2),Vitotronic 200 (Typ KW2)
 v200kw2_6.yaml,V200KW2_6,0x2098,1,6,15,,,404,411,143489,ok,0106,,VT 200 (KW2 / KW5),Vitotronic 200 (Typ KW2 / KW5)
-v200wo1a.yaml,V200WO1A,0x2048,,,,,,1312,1288,470172,ok,,,VT 200 (WO1A / WO1B),"Vitocal 222 / 242 G mit Vitotronic 200 (Typ WO1A / WO1B), Vitocal 333 / 343 G mit Vitotronic 200 (Typ WO1A / WO1B)"
+v200wo1a.yaml,V200WO1A,0x2048,,,,,,1312,1365,504317,ok,,,VT 200 (WO1A / WO1B),"Vitocal 222 / 242 G mit Vitotronic 200 (Typ WO1A / WO1B), Vitocal 333 / 343 G mit Vitotronic 200 (Typ WO1A / WO1B)"
 v300cm1x.yaml,V300CM1x,0x20BF,,,,,,1048,935,361535,ok,,20,VT 300 CM1E / CM1I,"Vitotronic 300 (Typ CM1E, CM1I)"
 v300gw2.yaml,V300GW2,0x20A5,1,0,6,,,714,621,217003,ok,0100,,VT 300 (GW2),Vitotronic 300 (Typ GW2)
 v300gw2a.yaml,V300GW2A,0x20A6,,,,,,646,606,233253,ok,,20,VT 200/300 (GW1B / GW2B / GW4B / GW5B),Vitotronic 200 GW1B / Vitotronic 300 (GW2B / GW4B / GW5B)
@@ -287,11 +287,11 @@ v333mw2.yaml,V333MW2,0x20BA,,,,,,571,479,173140,ok,,,VT 300-K (MW2),"Vitotronic 
 v333mw2_2.yaml,V333MW2_2,0x20BA,1,2,15,,,568,476,172139,ok,0102,,VT 300-K (MW2),Vitotronic 300-K / 333 (Typ MW2)
 vbc550p.yaml,VBC550P,0x2033,,,,,,872,717,246808,ok,,,VT 200 FO1,Vitotronic 200 Typ FO1
 vbc550s.yaml,VBC550S,0x2032,,,,,,786,640,217749,ok,,,,
-vbc700_aw.yaml,VBC700_AW,0x2047,,,,,,912,920,326770,ok,,,WPR 300,Vitocal 300-A mit WPR 300
-vbc700_bw_ww.yaml,VBC700_BW_WW,0x2046,,,,,,914,921,327040,ok,,,WPR 300,Vitocal 300-G mit WPR 300
+vbc700_aw.yaml,VBC700_AW,0x2047,,,,,,912,955,341928,ok,,,WPR 300,Vitocal 300-A mit WPR 300
+vbc700_bw_ww.yaml,VBC700_BW_WW,0x2046,,,,,,914,956,342198,ok,,,WPR 300,Vitocal 300-G mit WPR 300
 ,VBC701,0x2043,,,,,,5,1,,skipped: no Optolink-reachable datapoints,,,,
-vbc702_aw.yaml,VBC702_AW,0x2049,,,,,,1310,1287,469978,ok,,,VT 200 (W01A / WO1B),"Vitocal 2xx-G / 3xx-G mit Vitotronic 200 (Typ WO1A / WO1B), Vitocal 3xx-A mit Vitotronic 200 (Typ WO1A / WO1B)"
-vbc702_s.yaml,VBC702_S,0x204A,,,,,,1420,1395,507616,ok,,,VT 200 (WO1A / WO1B),Vitocal 200-S mit Vitotronic 200 (Typ WO1A / WO1B)
+vbc702_aw.yaml,VBC702_AW,0x2049,,,,,,1310,1364,504123,ok,,,VT 200 (W01A / WO1B),"Vitocal 2xx-G / 3xx-G mit Vitotronic 200 (Typ WO1A / WO1B), Vitocal 3xx-A mit Vitotronic 200 (Typ WO1A / WO1B)"
+vbc702_s.yaml,VBC702_S,0x204A,,,,,,1420,1472,541761,ok,,,VT 200 (WO1A / WO1B),Vitocal 200-S mit Vitotronic 200 (Typ WO1A / WO1B)
 vblock-unbekannt.yaml,VBlock-Unbekannt,0x3000,,,,,,112,89,38046,ok,,,,
 vblockbm123-177.yaml,VBlockBM123-177,0x300D,,,,,,110,87,37887,ok,,,VBlockBM123-177,Vitobloc test
 vblockbm190-238.yaml,VBlockBM190-238,0x300E,,,,,,111,88,38205,ok,,,VBlockBM190-238,Vitobloc BM190-238
@@ -368,7 +368,7 @@ vscothc2_40.yaml,VScotHC2_40,0x20CA,1,40,159,,,564,454,170168,ok,0128,20,VT 100 
 vscotho1.yaml,VScotHO1,0x20CB,1,0,3,,,584,444,166860,ok,0100,20,VT 200 (HO1),Vitodens200 / 300 mit Vitotronic 200 (Typ HO1)
 vscotho1_20.yaml,VScotHO1_20,0x20CB,1,20,39,,,568,443,166492,ok,0114,20,VT 200 (HO1A / HO1B),"Vitodens 222-F, 242-F, 333-F mit Vitotronic 200 (Typ HO1A / HO1B)"
 vscotho1_200.yaml,VScotHO1_200,0x20CB,1,200,255,0,0,946,766,288073,ok,01C8,20,VT 200 (HO2B),Vitodens 3xx-W/F mit Vitotronic 200 (Typ HO2B)
-vscotho1_200_01.yaml,VScotHO1_200_01,0x20CB,1,200,255,1,9,1059,841,320215,ok,01C8,20,VT 200 (HO2B),"Vitodens 3xx-W/F mit Vitotronic 200 (Typ HO2B, 2016)"
+vscotho1_200_01.yaml,VScotHO1_200_01,0x20CB,1,200,255,1,9,1059,848,323427,ok,01C8,20,VT 200 (HO2B),"Vitodens 3xx-W/F mit Vitotronic 200 (Typ HO2B, 2016)"
 vscotho1_200_10.yaml,VScotHO1_200_10,0x20CB,1,200,255,10,10,1046,730,273821,ok,01C8,20,VT 200 (HO1B),Vitodens 200 (2015) mit Vitotronic 200 (Typ HO1B)
 vscotho1_200_11.yaml,VScotHO1_200_11,0x20CB,1,200,255,11,19,1078,738,279646,ok,01C8,20,VT 200 (HO1B/HO2B),Vitodens 200 (2016) mit Vitotronic 200 (Typ HO1B / HO2B)
 vscotho1_200_20.yaml,VScotHO1_200_20,0x20CB,1,200,255,20,29,861,707,264563,ok,01C8,20,VT 200 (KW6B),Vitocrossal 300 CU3A (CA/US) mit Vitotronic 200 (Typ KW6B)
@@ -390,9 +390,9 @@ vitocom300_lan_gp_analog.yaml,Vitocom300_LAN_GP_Analog,0x208F,,,,,,389,18,11056,
 vitogate200eib.yaml,Vitogate200EIB,,,,,,,5,4,2584,ok,,,VG 200 (EIB),Vitogate 200 EIB
 vitogate200knx.yaml,Vitogate200KNX,0x0820,,,,,,7,6,3256,ok,,,VG 200 (KNX),"Vitogate 200, Typ KNX"
 vitogate300bn.yaml,Vitogate300BN,0x0830,,,,,,7,13,8304,ok,,,VG 300 (BN),Vitogate 300 BN / MB
-vitotwingw_bati.yaml,VitotwinGW_BATI,0x0810,1,0,1,,,159,156,81145,ok,0100,,Vitotwin-GW BATI_01,Vitotwin-Gateway BATI (01)
-vitotwingw_bati_02.yaml,VitotwinGW_BATI_02,0x0810,1,2,2,,,161,148,73899,ok,0102,,Vitotwin-GW BATI_02,Vitotwin-Gateway BATI (02)
-vitotwingw_bati_03.yaml,VitotwinGW_BATI_03,0x0810,1,3,255,,,163,150,74623,ok,0103,,Vitotwin-GW BATI_03,Vitotwin-Gateway BATI (03)
+vitotwingw_bati.yaml,VitotwinGW_BATI,0x0810,1,0,1,,,159,191,89528,ok,0100,,Vitotwin-GW BATI_01,Vitotwin-Gateway BATI (01)
+vitotwingw_bati_02.yaml,VitotwinGW_BATI_02,0x0810,1,2,2,,,161,183,82107,ok,0102,,Vitotwin-GW BATI_02,Vitotwin-Gateway BATI (02)
+vitotwingw_bati_03.yaml,VitotwinGW_BATI_03,0x0810,1,3,255,,,163,185,82830,ok,0103,,Vitotwin-GW BATI_03,Vitotwin-Gateway BATI (03)
 vitovalor.yaml,Vitovalor,0x20E3,,,,,,1286,1131,441410,ok,,20,Vitovalor 300-P,Vitovalor 300-P mit Vitotronic 200 Typ HO1E
 wilo.yaml,WILO,0x0700,,,,,,79,12,6693,ok,,,,
 ,_VITODATA,,,,,,,3,1,,skipped: no Optolink-reachable datapoints,-,,,
