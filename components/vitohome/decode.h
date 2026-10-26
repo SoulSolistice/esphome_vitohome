@@ -344,23 +344,33 @@ inline int64_t civil_seconds(const BcdDateTime &dt) {
          static_cast<int64_t>(dt.minute) * 60 + dt.second;
 }
 
-// Where a clock's weekday byte starts counting. SUNDAY_0 (sunday=0..saturday=6)
-// is the strftime %w convention vcontrold writes, hardware-confirmed on 0x20CB:
-// a read of 0x088E on a Wednesday returns weekday byte 0x03. A clock may count
-// from Monday instead; the clock itself tells which (clock_weekday_base).
-enum class WeekdayBase : uint8_t { SUNDAY_0, MONDAY_0 };
+// How a clock's weekday byte counts. Three conventions are known:
+//   SUNDAY_0  sunday=0 .. saturday=6 (strftime %w, what vcontrold writes)
+//   MONDAY_0  monday=0 .. sunday=6
+//   MONDAY_1  monday=1 .. sunday=7 (ISO 8601; SaulGoodman1337/optolink writes
+//             it to 0x088E on a Vitodens 200-W WB2A)
+// On 0x20CB the Wednesday read of 0x088E (0x03) fits SUNDAY_0 and MONDAY_1
+// alike. What tells them apart is a Sunday, and the unit's own fault records
+// (0x7507 / 0x7590, 2026-10-26 log) carry 0x07 for Sunday 2026-03-29: MONDAY_1.
+// The clock itself says which (clock_weekday_base).
+enum class WeekdayBase : uint8_t { SUNDAY_0, MONDAY_0, MONDAY_1 };
 
 // ESPHome ESPTime::day_of_week is sunday=1..saturday=7. Map ESPTime -> the
 // device's weekday byte in its convention.
 inline uint8_t device_weekday_from_esptime(uint8_t dow_sun1, WeekdayBase base = WeekdayBase::SUNDAY_0) {
+  if (base == WeekdayBase::MONDAY_1)
+    return static_cast<uint8_t>(dow_sun1 == 1 ? 7 : dow_sun1 - 1);
   return static_cast<uint8_t>((dow_sun1 + (base == WeekdayBase::MONDAY_0 ? 5 : 6)) % 7);
 }
 
 // The convention of a DateTimeBCD block's weekday byte ([4]), judged against
-// the block's own date: counted from Sunday and from Monday, one date's
-// weekday differs by exactly one, so at most one convention matches the byte.
+// the block's own date. SUNDAY_0 and MONDAY_0 differ on every day, so the byte
+// picks one of them; MONDAY_1 equals SUNDAY_0 from Monday to Saturday and
+// differs only on a Sunday (7 against 0). So on Monday..Saturday a matching
+// byte reports SUNDAY_0, which writes exactly the byte a MONDAY_1 clock
+// expects; on a Sunday the byte decides between all three.
 // Returns false, leaving *out alone, when the block does not decode or the
-// byte matches neither (a clock never set, a non-BCD byte).
+// byte matches none (a clock never set, a non-BCD byte).
 inline bool clock_weekday_base(const uint8_t *data, std::size_t data_len, std::size_t offset, WeekdayBase *out) {
   BcdDateTime dt{};
   uint8_t weekday;
@@ -377,13 +387,29 @@ inline bool clock_weekday_base(const uint8_t *data, std::size_t data_len, std::s
     *out = WeekdayBase::MONDAY_0;
     return true;
   }
+  if (from_sunday == 0 && weekday == 7) {
+    *out = WeekdayBase::MONDAY_1;
+    return true;
+  }
   return false;
+}
+
+// Name of a WeekdayBase for log lines.
+inline const char *weekday_base_name(WeekdayBase base) {
+  switch (base) {
+    case WeekdayBase::MONDAY_0:
+      return "monday=0";
+    case WeekdayBase::MONDAY_1:
+      return "monday=1..sunday=7";
+    default:
+      return "sunday=0";
+  }
 }
 
 // Encode a datetime into the 8-byte Viessmann DateTimeBCD wire layout (the
 // inverse of decode_datetime_bcd):
 //   [0]=century BCD  [1]=year-of-century BCD  [2]=month  [3]=day
-//   [4]=weekday (0..6, in the device's WeekdayBase)  [5]=hour  [6]=minute
+//   [4]=weekday (0..7, in the device's WeekdayBase)  [5]=hour  [6]=minute
 //   [7]=second
 // The device validates the weekday against the date, so it must be counted the
 // way the device counts (device_weekday_from_esptime, clock_weekday_base).
@@ -393,7 +419,7 @@ inline bool encode_datetime_bcd(uint16_t year, uint8_t month, uint8_t day, uint8
                                 uint8_t minute, uint8_t second, uint8_t *buf8) {
   if (buf8 == nullptr)
     return false;
-  if (year > 9999 || month < 1 || month > 12 || day < 1 || day > 31 || weekday > 6 || hour > 23 || minute > 59 ||
+  if (year > 9999 || month < 1 || month > 12 || day < 1 || day > 31 || weekday > 7 || hour > 23 || minute > 59 ||
       second > 59) {
     return false;
   }

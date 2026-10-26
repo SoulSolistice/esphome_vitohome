@@ -4,26 +4,48 @@
 # Needs `protocol: KW` on the hub and the UART id `uart_optolink`
 # (as in vscotho1_72.vitohome.yaml). Add this file to `packages:`.
 #
-# What it does: one blocking lambda takes the bus away from the hub for a
-# moment (the hub's loop cannot run while the lambda runs, so nothing
-# collides), waits for the device's sync byte 0x05, sends
-#     01 <cmd> <addr_hi> <addr_lo> 01
-# and reads the one answer byte. <cmd> is 0xF7 (normal read) for the control
-# button and 0x6B for the others.
+# How: one blocking lambda takes the bus away from the hub (the hub's loop
+# cannot run while the lambda runs, so nothing collides), waits for the
+# device's sync byte 0x05, answers it with STX 0x01 and then sends a whole
+# SERIES of telegrams back to back in that one session -- KW keeps a session
+# open after an answer, as the hub's own chained polling does:
+#     <cmd> <addr_hi> <addr_lo> <len>      -> <len> answer bytes
+# <cmd> is 0xF7 (normal read) or 0x6B (GFA_READ, per SaulGoodman1337/optolink:
+# Vitosoft switches to VS1 and sends 0x6B to read the burner control).
 #
-# Run in this order:
-#   1. "GFA-Test · Kontrolle F7 0x7650"  -> expect 24 (GFA_Kennung, NEC). If
-#      this fails, the lambda path itself does not work; stop there.
-#   2. "GFA-Test · P80 0x4050 (6B)"      -> expect 24 if GFA_READ works on
-#      this unit (the same chip id via the GFA space).
-#   3. P06 / P09 with the burner off and on.
-# A raw FF is not a valid value:
-# press again. "keine Antwort" means the device did not answer the command.
+# What the series settles (first run, 2026-10-26, burner on: F7 7650 = 24,
+# 6B 4050 = 24, 6B 4006 = 0F, 6B 4009 = 11):
+#   1. Separate address space. Each 0x6B address is also read with 0xF7.
+#      In normal memory 0x4000..0x4037 is the M3 schedule (Schaltzeiten_M3_HK),
+#      so F7 0x4006 should be a schedule byte (FF on a unit without M3) and
+#      F7 0x4050 something unrelated. 6B != F7 on the same address proves the
+#      0x6B telegram reaches a different space; 6B == F7 everywhere would mean
+#      the device treats 0x6B like 0xF7.
+#   2. Identity. 6B 4050 (P80) must equal F7 7650 (GFA_Kennung, 0x24 = NEC).
+#   3. Repeatability. P80 and P06 are read again at the end of the series.
+#   4. Scaling, by correlation. P06/P09/P10 sit in the same ~1 s snapshot as
+#      the modulation 0xA305, the burner-control power 0xA38F and the open
+#      [NO-VS] byte 0x55D3. Run it with the burner OFF and ON. The factors in
+#      the log (P06 x30 rpm, P09 x0.3922 %, P10 x0.4 %) are the WB2A's (GFA
+#      chip 0x20); this unit has the NEC chip 0x24 and Vitosoft keeps separate
+#      VSKO_Scot / _CES / _NEC rows -- treat them as hypotheses. Note VScotHO1_72
+#      lists P9 twice: VSKO_GFA_P9 in %, VSKO_Scot_CES_P9 in U/min.
+#   5. NEC-only parameters P31..P33 (0x401F..0x4021) and P84 / P87 (0x4054,
+#      0x4057), raw, for the record.
+#   6. Weekday convention. F7 088E (8 bytes, the system clock): byte [4] on a
+#      SUNDAY is 07 (monday=1..sunday=7) or 00 (sunday=0). Any other day both
+#      conventions read the same byte. Run the series once on a Sunday.
 #
-# Side effects: up to ~4 s of blocked loop per press (the log will warn that a
-# component took too long); the hub's request in flight, if any, times out
-# once and is retried on its next poll. Read-only: never put 0x68 / 0x78 /
-# 0xF4 into `cmd`.
+# Reading the result: every telegram is one log line under the `gfa` tag; the
+# "GFA-Test · Ergebnis" text sensor holds a compact summary. A raw FF from
+# 0x6B is not a valid value (the optolink repo saw it intermittently): the
+# series retries it once after 150 ms and logs both. If a telegram gets no
+# answer the session is broken and the series stops there -- press again.
+#
+# Side effects: one blocked loop of about 2-4 s per press (the log will warn
+# that a component took too long); a hub request in flight times out once and
+# is retried on its next poll. Read-only: the series only ever sends 0xF7 and
+# 0x6B. Never add 0x68 (GFA_WRITE), 0x78 (PROZESS_WRITE) or 0xF4.
 # ============================================================
 
 text_sensor:
@@ -34,16 +56,61 @@ text_sensor:
     entity_category: diagnostic
 
 script:
-  - id: gfa_probe
+  - id: gfa_series
     mode: single
-    parameters:
-      cmd: int
-      addr: int
     then:
       - lambda: |-
+          struct Probe {
+            uint8_t cmd;
+            uint16_t addr;
+            uint8_t len;
+            const char *label;
+          };
+          static const Probe SERIES[] = {
+              {0xF7, 0x7650, 1, "GFA_Kennung (Kontrolle)"},
+              {0xF7, 0x4050, 1, "F7 an P80-Adresse"},
+              {0x6B, 0x4050, 1, "P80 Kennung"},
+              {0xF7, 0x4006, 1, "F7 an P06-Adresse"},
+              {0x6B, 0x4006, 1, "P06 Geblaese (WB2A: x30 rpm)"},
+              {0xF7, 0x4009, 1, "F7 an P09-Adresse"},
+              {0x6B, 0x4009, 1, "P09 (WB2A: x0.3922 %)"},
+              {0x6B, 0x400A, 1, "P10 (WB2A: x0.4 %)"},
+              {0x6B, 0x4054, 1, "P84"},
+              {0x6B, 0x4057, 1, "P87"},
+              {0x6B, 0x401F, 1, "P31 NEC"},
+              {0x6B, 0x4020, 1, "P32 NEC"},
+              {0x6B, 0x4021, 1, "P33 NEC"},
+              {0xF7, 0xA305, 2, "Modulation x0.5 / Brenner"},
+              {0xF7, 0xA38F, 1, "Brennerleistung x0.5"},
+              {0xF7, 0x55D3, 1, "0x55D3 [NO-VS]"},
+              {0x6B, 0x4006, 1, "P06 Wiederholung"},
+              {0x6B, 0x4050, 1, "P80 Wiederholung"},
+              {0xF7, 0x088E, 8, "Systemzeit, [4]=Wochentag"},
+          };
           auto *u = id(uart_optolink);
           uint8_t b;
-          char line[96];
+          std::string summary;
+
+          // Read exactly n bytes into buf within timeout_ms.
+          auto read_n = [&](uint8_t *buf, uint8_t n, uint32_t timeout_ms) -> bool {
+            uint8_t got = 0;
+            const uint32_t t0 = millis();
+            while (got < n && millis() - t0 < timeout_ms) {
+              if (u->available() && u->read_byte(&buf[got])) {
+                ++got;
+                continue;
+              }
+              App.feed_wdt();
+              delay(1);
+            }
+            return got == n;
+          };
+          auto send = [&](const Probe &p) {
+            const uint8_t tx[4] = {p.cmd, (uint8_t) (p.addr >> 8), (uint8_t) p.addr, p.len};
+            u->write_array(tx, sizeof(tx));
+            u->flush();
+          };
+
           // 1. Let the bus go quiet: no byte for 120 ms (at most 1 s), so a
           //    reply to the hub's last request is not mistaken for the sync.
           uint32_t t0 = millis(), last = millis();
@@ -69,64 +136,64 @@ script:
             delay(1);
           }
           if (!enq) {
-            snprintf(line, sizeof(line), "%02X %04X: kein ENQ in 3 s", cmd & 0xFF, addr & 0xFFFF);
-            ESP_LOGW("gfa", "%s", line);
-            id(gfa_result).publish_state(line);
+            ESP_LOGW("gfa", "kein ENQ in 3 s -- Serie nicht gestartet");
+            id(gfa_result).publish_state("kein ENQ");
             return;
           }
-          // 3. Answer the sync with STX and the telegram, then one byte back.
-          const uint8_t tx[5] = {0x01, (uint8_t) cmd, (uint8_t) (addr >> 8), (uint8_t) addr, 0x01};
-          u->write_array(tx, sizeof(tx));
-          u->flush();
-          const uint32_t sent = millis();
-          bool got = false;
-          while (millis() - sent < 1000) {
-            if (u->available() && u->read_byte(&b)) {
-              got = true;
+          // 3. STX, then the series in one session.
+          const uint8_t stx = 0x01;
+          u->write_array(&stx, 1);
+          for (const auto &p : SERIES) {
+            if (p.cmd != 0xF7 && p.cmd != 0x6B)
+              continue;  // read-only guard
+            if (p.cmd == 0x6B)
+              delay(25);  // GFA gap, as in the optolink repo
+            uint8_t rx[8] = {0};
+            uint32_t sent = millis();
+            send(p);
+            bool ok = read_n(rx, p.len, 1000);
+            uint32_t ms = millis() - sent;
+            char line[160];
+            if (ok && p.cmd == 0x6B && rx[0] == 0xFF) {
+              ESP_LOGW("gfa", "6B %04X -> FF (%u ms), ungueltig; Wiederholung nach 150 ms", (unsigned) p.addr, (unsigned) ms);
+              delay(150);
+              sent = millis();
+              send(p);
+              ok = read_n(rx, p.len, 1000);
+              ms = millis() - sent;
+            }
+            if (!ok) {
+              snprintf(line, sizeof(line), "%02X %04X: keine Antwort in 1 s -- Serie abgebrochen", p.cmd,
+                       (unsigned) p.addr);
+              ESP_LOGW("gfa", "%s", line);
+              summary += " ABBRUCH@";
+              snprintf(line, sizeof(line), "%02X%04X", p.cmd, (unsigned) p.addr);
+              summary += line;
               break;
             }
-            App.feed_wdt();
-            delay(1);
+            char hex[28] = {0};
+            std::size_t pos = 0;
+            for (uint8_t i = 0; i < p.len && pos < sizeof(hex); ++i)
+              pos += snprintf(hex + pos, sizeof(hex) - pos, i ? ":%02X" : "%02X", rx[i]);
+            ESP_LOGI("gfa", "%02X %04X len %u -> %s (%u ms)  %s", p.cmd, (unsigned) p.addr, p.len, hex, (unsigned) ms, p.label);
+            // Compact summary: 6B values plain, F7 values with an F prefix;
+            // the clock contributes its weekday byte only.
+            if (p.addr == 0x088E) {
+              snprintf(line, sizeof(line), " WT=%02X", rx[4]);
+            } else {
+              snprintf(line, sizeof(line), " %s%04X=%02X", p.cmd == 0xF7 ? "F" : "", (unsigned) p.addr,
+                       rx[0]);
+            }
+            summary += line;
           }
-          if (got) {
-            snprintf(line, sizeof(line), ">>> 01 %02X %02X %02X 01  <<< %02X (%u ms)%s", tx[1], tx[2], tx[3], b,
-                     (unsigned) (millis() - sent), b == 0xFF ? "  FF: ungueltig, erneut" : "");
-          } else {
-            snprintf(line, sizeof(line), ">>> 01 %02X %02X %02X 01  keine Antwort in 1 s", tx[1], tx[2], tx[3]);
-          }
-          ESP_LOGI("gfa", "%s", line);
-          id(gfa_result).publish_state(line);
+          if (summary.size() > 250)
+            summary.resize(250);
+          id(gfa_result).publish_state(summary);
 
 button:
   - platform: template
-    name: "GFA-Test · Kontrolle F7 0x7650"
+    name: "GFA-Test · Serie (ein Sync)"
+    icon: "mdi:playlist-play"
     entity_category: diagnostic
     on_press:
-      - script.execute:
-          id: gfa_probe
-          cmd: 0xF7
-          addr: 0x7650
-  - platform: template
-    name: "GFA-Test · P80 0x4050 (6B)"
-    entity_category: diagnostic
-    on_press:
-      - script.execute:
-          id: gfa_probe
-          cmd: 0x6B
-          addr: 0x4050
-  - platform: template
-    name: "GFA-Test · P06 Geblaese 0x4006 (6B)"
-    entity_category: diagnostic
-    on_press:
-      - script.execute:
-          id: gfa_probe
-          cmd: 0x6B
-          addr: 0x4006
-  - platform: template
-    name: "GFA-Test · P09 Modulation 0x4009 (6B)"
-    entity_category: diagnostic
-    on_press:
-      - script.execute:
-          id: gfa_probe
-          cmd: 0x6B
-          addr: 0x4009
+      - script.execute: gfa_series

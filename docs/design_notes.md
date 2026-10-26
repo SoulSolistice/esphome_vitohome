@@ -784,16 +784,25 @@ datapoint that isn't the clock, compute nonsense drift, and then **blind-write a
 BCD timestamp to it**. Only the address is configurable: both `DateTimeBCD`
 variants are 8 bytes, and 8 is exactly `write_buf_`.
 
-**The weekday byte's convention is not assumed either.** `0x088E` counts
-`sunday = 0` (hardware-confirmed on `0x20CB`: Wednesday reads `0x03`); nothing
-in the export says how `0x08E0` counts, and a clock that counted from Monday
-would be moved a day by a Sunday-based write, every weekly program with it. The
-sync reads the clock before it writes anyway, and that read answers the
-question: the weekday byte, judged against the clock's own date, matches
-exactly one of the two conventions, since one date's Sunday- and Monday-based
-weekdays always differ by one (`clock_weekday_base`, decode.h). The write uses
-that one. A byte that fits neither (a clock never set) or an unreadable clock
-falls back to `sunday = 0` with a warning.
+**The weekday byte's convention is not assumed either.** Three are known:
+`sunday = 0` (strftime %w, what vcontrold writes), `monday = 0`, and
+`monday = 1 .. sunday = 7` (ISO; optolink writes it to `0x088E`
+on a Vitodens 200-W WB2A). On `0x20CB` the Wednesday read of `0x088E` (`0x03`)
+fits `sunday = 0` and ISO alike. What separates them is a Sunday, and the
+unit's own fault records do: every slot of both archives on the 2026-10-26 log
+is stamped Sunday 2026-03-29 with weekday byte `0x07`
+(`38:20:26:03:29:07:10:50:04` at `0x7507`). So `0x20CB` most likely counts ISO
+-- likely, not confirmed: those are the controller's record timestamps, not a
+Sunday read of `0x088E` itself. Nothing in the export says how `0x08E0` counts.
+A write in the wrong convention moves the clock a day, every weekly program
+with it. The sync reads the clock before it writes anyway, and that read
+answers the question: the weekday byte, judged against the clock's own date
+(`clock_weekday_base`, decode.h). `sunday = 0` and `monday = 0` differ on every
+day, so the byte picks one; ISO equals `sunday = 0` from Monday to Saturday --
+the same byte read, the same byte written, so there is nothing to decide -- and
+differs only on Sunday (`7` against `0`), where the byte read decides. A byte
+that fits none (a clock never set) or an unreadable clock falls back to
+`sunday = 0` with a warning.
 
 GWG is not served by that option, because its clock is a different *shape*, not
 a different address — so `_final_validate` rejects `time_id` under `protocol:
@@ -1237,8 +1246,9 @@ code, followed by an 8-byte packed-BCD timestamp:
 |------|---|---|---|---|---|---|---|---|---|
 | field | code | year-hi | year-lo | month | day | weekday* | hour | minute | second |
 
-\* weekday is `sunday = 0` (strftime %w; hardware-confirmed) and is ignored on
-decode.
+\* weekday is counted as the controller's clock counts it -- `0x07` for a Sunday
+in the `0x20CB` records, i.e. `monday = 1 .. sunday = 7` (see the clock sync,
+section 5) -- and is ignored on decode.
 
 `decode.h::decode_datetime_bcd()` validates that every nibble is BCD (so
 `0xFF`-filled empty slots fail cleanly), range-checks the fields, and rejects

@@ -695,7 +695,8 @@ static void test_clock_helpers() {
   std::memcpy(buf, want, 8);
   CHECK(!encode_datetime_bcd(2026, 13, 28, 0, 14, 30, 45, buf));  // month 13
   CHECK(std::memcmp(buf, seed, 8) == 0);
-  CHECK(!encode_datetime_bcd(2026, 6, 28, 7, 14, 30, 45, buf));  // weekday 7
+  CHECK(!encode_datetime_bcd(2026, 6, 28, 8, 14, 30, 45, buf));  // weekday 8
+  CHECK(std::memcmp(buf, seed, 8) == 0);
   CHECK(!encode_datetime_bcd(2026, 6, 28, 0, 24, 30, 45, buf));  // hour 24
 }
 
@@ -737,6 +738,37 @@ static void test_clock_weekday_base() {
   CHECK(device_weekday_from_esptime(2, WeekdayBase::MONDAY_0) == 0);  // Monday
   CHECK(device_weekday_from_esptime(1, WeekdayBase::MONDAY_0) == 6);  // Sunday
   CHECK(device_weekday_from_esptime(7, WeekdayBase::MONDAY_0) == 5);  // Saturday
+
+  // monday=1..sunday=7 (ISO). Hardware evidence on 0x20CB: the fault records
+  // carry 0x07 for Sunday 2026-03-29, e.g. 0x7507 slot 1
+  // `38:20:26:03:29:07:10:50:04` (code byte first, then the DateTimeBCD).
+  const uint8_t record[] = {0x38, 0x20, 0x26, 0x03, 0x29, 0x07, 0x10, 0x50, 0x04};
+  base = WeekdayBase::SUNDAY_0;
+  CHECK(clock_weekday_base(record, 9, 1, &base) && base == WeekdayBase::MONDAY_1);
+  // The 2026-10-11 Sunday as a clock: 07 is monday=1, 00 sunday=0, 06 monday=0.
+  sunday[4] = 0x07;
+  CHECK(clock_weekday_base(sunday, 8, 0, &base) && base == WeekdayBase::MONDAY_1);
+  sunday[4] = 0x00;
+  CHECK(clock_weekday_base(sunday, 8, 0, &base) && base == WeekdayBase::SUNDAY_0);
+  // 7 on any other day fits nothing (Saturday 2026-10-10).
+  saturday[4] = 0x07;
+  base = WeekdayBase::MONDAY_0;
+  CHECK(!clock_weekday_base(saturday, 8, 0, &base) && base == WeekdayBase::MONDAY_0);
+  // Monday..Saturday a monday=1 clock reads like sunday=0 (today's 0x088E,
+  // Monday 2026-10-26, read `20:26:10:26:01:15:30:15`), and both write the same.
+  const uint8_t monday[] = {0x20, 0x26, 0x10, 0x26, 0x01, 0x15, 0x30, 0x15};
+  CHECK(clock_weekday_base(monday, 8, 0, &base) && base == WeekdayBase::SUNDAY_0);
+  for (uint8_t dow = 2; dow <= 7; ++dow)
+    CHECK(device_weekday_from_esptime(dow, WeekdayBase::MONDAY_1) == device_weekday_from_esptime(dow));
+  CHECK(device_weekday_from_esptime(1, WeekdayBase::MONDAY_1) == 7);  // Sunday
+  CHECK(device_weekday_from_esptime(2, WeekdayBase::MONDAY_1) == 1);  // Monday
+  // ... and encodes: Sunday 2026-11-01 08:00:00 with weekday byte 0x07.
+  uint8_t buf[8];
+  CHECK(encode_datetime_bcd(2026, 11, 1, device_weekday_from_esptime(1, WeekdayBase::MONDAY_1), 8, 0, 0, buf));
+  const uint8_t want[] = {0x20, 0x26, 0x11, 0x01, 0x07, 0x08, 0x00, 0x00};
+  CHECK(std::memcmp(buf, want, 8) == 0);
+
+  CHECK(std::strcmp(weekday_base_name(WeekdayBase::MONDAY_1), "monday=1..sunday=7") == 0);
 }
 
 // --- RotateBytes: read_be / decode_scaled_be ------------------------------
