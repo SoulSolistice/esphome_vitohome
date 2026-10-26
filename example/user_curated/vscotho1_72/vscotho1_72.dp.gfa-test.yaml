@@ -1,0 +1,132 @@
+# ============================================================
+# GFA_READ test over KW (VS1) -- lambda only, no firmware change.
+#
+# Needs `protocol: KW` on the hub and the UART id `uart_optolink`
+# (as in vscotho1_72.vitohome.yaml). Add this file to `packages:`.
+#
+# What it does: one blocking lambda takes the bus away from the hub for a
+# moment (the hub's loop cannot run while the lambda runs, so nothing
+# collides), waits for the device's sync byte 0x05, sends
+#     01 <cmd> <addr_hi> <addr_lo> 01
+# and reads the one answer byte. <cmd> is 0xF7 (normal read) for the control
+# button and 0x6B for the others.
+#
+# Run in this order:
+#   1. "GFA-Test · Kontrolle F7 0x7650"  -> expect 24 (GFA_Kennung, NEC). If
+#      this fails, the lambda path itself does not work; stop there.
+#   2. "GFA-Test · P80 0x4050 (6B)"      -> expect 24 if GFA_READ works on
+#      this unit (the same chip id via the GFA space).
+#   3. P06 / P09 with the burner off and on.
+# A raw FF is not a valid value:
+# press again. "keine Antwort" means the device did not answer the command.
+#
+# Side effects: up to ~4 s of blocked loop per press (the log will warn that a
+# component took too long); the hub's request in flight, if any, times out
+# once and is retried on its next poll. Read-only: never put 0x68 / 0x78 /
+# 0xF4 into `cmd`.
+# ============================================================
+
+text_sensor:
+  - platform: template
+    id: gfa_result
+    name: "GFA-Test · Ergebnis"
+    icon: "mdi:test-tube"
+    entity_category: diagnostic
+
+script:
+  - id: gfa_probe
+    mode: single
+    parameters:
+      cmd: int
+      addr: int
+    then:
+      - lambda: |-
+          auto *u = id(uart_optolink);
+          uint8_t b;
+          char line[96];
+          // 1. Let the bus go quiet: no byte for 120 ms (at most 1 s), so a
+          //    reply to the hub's last request is not mistaken for the sync.
+          uint32_t t0 = millis(), last = millis();
+          while (millis() - t0 < 1000) {
+            if (u->available()) {
+              u->read_byte(&b);
+              last = millis();
+            } else if (millis() - last >= 120) {
+              break;
+            }
+            App.feed_wdt();
+            delay(1);
+          }
+          // 2. Wait for the device's ENQ (0x05); it repeats about every 2 s.
+          bool enq = false;
+          t0 = millis();
+          while (millis() - t0 < 3000) {
+            if (u->available() && u->read_byte(&b) && b == 0x05) {
+              enq = true;
+              break;
+            }
+            App.feed_wdt();
+            delay(1);
+          }
+          if (!enq) {
+            snprintf(line, sizeof(line), "%02X %04X: kein ENQ in 3 s", cmd & 0xFF, addr & 0xFFFF);
+            ESP_LOGW("gfa", "%s", line);
+            id(gfa_result).publish_state(line);
+            return;
+          }
+          // 3. Answer the sync with STX and the telegram, then one byte back.
+          const uint8_t tx[5] = {0x01, (uint8_t) cmd, (uint8_t) (addr >> 8), (uint8_t) addr, 0x01};
+          u->write_array(tx, sizeof(tx));
+          u->flush();
+          const uint32_t sent = millis();
+          bool got = false;
+          while (millis() - sent < 1000) {
+            if (u->available() && u->read_byte(&b)) {
+              got = true;
+              break;
+            }
+            App.feed_wdt();
+            delay(1);
+          }
+          if (got) {
+            snprintf(line, sizeof(line), ">>> 01 %02X %02X %02X 01  <<< %02X (%u ms)%s", tx[1], tx[2], tx[3], b,
+                     (unsigned) (millis() - sent), b == 0xFF ? "  FF: ungueltig, erneut" : "");
+          } else {
+            snprintf(line, sizeof(line), ">>> 01 %02X %02X %02X 01  keine Antwort in 1 s", tx[1], tx[2], tx[3]);
+          }
+          ESP_LOGI("gfa", "%s", line);
+          id(gfa_result).publish_state(line);
+
+button:
+  - platform: template
+    name: "GFA-Test · Kontrolle F7 0x7650"
+    entity_category: diagnostic
+    on_press:
+      - script.execute:
+          id: gfa_probe
+          cmd: 0xF7
+          addr: 0x7650
+  - platform: template
+    name: "GFA-Test · P80 0x4050 (6B)"
+    entity_category: diagnostic
+    on_press:
+      - script.execute:
+          id: gfa_probe
+          cmd: 0x6B
+          addr: 0x4050
+  - platform: template
+    name: "GFA-Test · P06 Geblaese 0x4006 (6B)"
+    entity_category: diagnostic
+    on_press:
+      - script.execute:
+          id: gfa_probe
+          cmd: 0x6B
+          addr: 0x4006
+  - platform: template
+    name: "GFA-Test · P09 Modulation 0x4009 (6B)"
+    entity_category: diagnostic
+    on_press:
+      - script.execute:
+          id: gfa_probe
+          cmd: 0x6B
+          addr: 0x4009
