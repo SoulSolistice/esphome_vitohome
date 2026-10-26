@@ -71,10 +71,10 @@ async def to_code(config):
     # Filtered here rather than rejected in the schema ON PURPOSE. The fault-code
     # map is legitimately SHARED with the `error_history` text_sensor, where 0x00
     # IS meaningful and IS looked up (publish_error_history_ prints its label for
-    # a healthy device) -- example/vscotho1_72.dp.curated.yaml defines the map
-    # once as a YAML anchor in the text_sensor and reuses it here via
-    # `codes: *vd300_codes`. Rejecting 0x00 would force that ~200-entry map to be
-    # duplicated just to drop one key.
+    # a healthy device) -- example/user_curated/vscotho1_72/vscotho1_72.dp.faults.yaml
+    # defines the map once as a YAML anchor in the text_sensor and reuses it here
+    # via `codes: *vscotho1_72_fault_codes`. Rejecting 0x00 would force that
+    # ~110-entry map to be duplicated just to drop one key.
     fault_codes = {code: label for code, label in config[CONF_CODES].items() if code != 0x00}
 
     event_types = [f"0x{code:02X}" for code in fault_codes]

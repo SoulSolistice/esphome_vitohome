@@ -136,7 +136,8 @@ from `vscotho1_72.vitohome.yaml`, which already does):
 ```yaml
 packages:
   heater: !include vscotho1_72.dp.curated.yaml   # or catalogs/de/<your-unit>.yaml
-  # gfa: !include catalogs/de/gfa/chip_24.yaml   # GFA texts for chip 0x24 (a generated catalog only)
+  faults: !include vscotho1_72.dp.faults.yaml    # curated set only: fault histories + texts
+  # gfa: !include catalogs/de/gfa/chip_24.yaml   # GFA texts for chip 0x24 (needs gfa_fehler_01..20)
 ```
 
 Every generated entity is `disabled_by_default: true`, so you opt in to each one

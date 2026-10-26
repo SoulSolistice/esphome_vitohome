@@ -1,11 +1,18 @@
 # ============================================================================
 # vitohome — full device config for the reference unit (device 0x20CB / VScotHO1)
 #
-# Pulls example/user_curated/vscotho1_72/vscotho1_72.dp.curated.yaml as its
-# package: the comprehensive monitoring + control set exercising every
-# platform (sensor, binary_sensor incl. connectivity, text_sensor, number,
-# select, switch, climate, text, event, template water_heater). This file adds the board specifics plus
-# time_sync so the device clock follows Home Assistant time.
+# Pulls three packages from this repo (see `packages:` at the bottom):
+#   * vscotho1_72.dp.curated.yaml -- the comprehensive monitoring + control set
+#     exercising every platform (sensor, binary_sensor incl. connectivity,
+#     text_sensor, number, select, switch, climate, text, template
+#     water_heater), with a TEST block per platform for the datapoints
+#     Viessmann does not define for this device;
+#   * vscotho1_72.dp.faults.yaml -- the system + GFA fault histories and the
+#     fault event, with Vitosoft's VScotHO1_72 fault texts;
+#   * example/catalogs/de/gfa/chip_24.yaml -- the generated GFA fault texts
+#     for burner-control chip 0x24, linked onto the GFA slots by id.
+# This file adds the board specifics plus time_sync so the device clock
+# follows Home Assistant time.
 # ============================================================================
 
 substitutions:
@@ -162,3 +169,10 @@ packages:
     refresh: 0s
     files:
       - example/user_curated/vscotho1_72/vscotho1_72.dp.curated.yaml
+      # Fault texts specific to this unit, as links rather than copies:
+      # the fault histories with Vitosoft's VScotHO1_72 system texts ...
+      - example/user_curated/vscotho1_72/vscotho1_72.dp.faults.yaml
+      # ... and the GFA texts for the chip the hub logs at boot ("GFA=0x24").
+      # A unit reporting another GFA=0x.. takes gfa/chip_<XX>.yaml instead;
+      # use catalogs/en/gfa/ for English texts.
+      - example/catalogs/de/gfa/chip_24.yaml
