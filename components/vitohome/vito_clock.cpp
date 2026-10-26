@@ -174,18 +174,19 @@ void VitoClock::handle_read_(const ResponseView &response) {
     return;
 
   // Count the weekday the way this clock does. The read above carries the
-  // answer: its weekday byte against its own date. Sunday-based is the
-  // hardware-confirmed 0x088E convention and the fallback for a clock that is
-  // unreadable or whose byte fits neither (a clock never set).
+  // answer: its weekday byte against its own date. On Monday..Saturday a
+  // sunday=0 and a monday=1..sunday=7 clock read the same byte, and both take
+  // the same write; only a Sunday tells them apart (0 against 7), and then the
+  // byte read here decides. Sunday-based is the fallback for a clock that is
+  // unreadable or whose byte fits none (a clock never set).
   WeekdayBase base = WeekdayBase::SUNDAY_0;
   if (device_time_ok) {
     if (clock_weekday_base(response.data, response.data_length, 0, &base)) {
-      ESP_LOGD(TAG, "System-time sync: device counts weekdays from %s",
-               base == WeekdayBase::MONDAY_0 ? "Monday" : "Sunday");
+      ESP_LOGD(TAG, "System-time sync: device weekday byte 0x%02X fits %s", response.data[4], weekday_base_name(base));
     } else {
       ESP_LOGW(TAG,
-               "System-time sync: device weekday byte 0x%02X fits neither Sunday- nor Monday-based counting; "
-               "writing it Sunday-based",
+               "System-time sync: device weekday byte 0x%02X fits no known weekday counting; "
+               "writing it sunday=0",
                response.data[4]);
     }
   }
