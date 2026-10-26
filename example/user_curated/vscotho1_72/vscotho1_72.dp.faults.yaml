@@ -1,0 +1,512 @@
+# ============================================================
+# vitohome - VScotHO1_72 fault histories (companion of vscotho1_72.dp.curated.yaml)
+#
+# Both fault archives of the unit, with the fault texts that are SPECIFIC to
+# it. Neither text set is hand-typed; each is linked from where Viessmann's data
+# put it:
+#
+#   SYSTEM history (Vitotronic): ecnsysEventType~Error, BlockLength 90 /
+#   BlockFactor 10 -> ten 9-byte slots at 0x7507 + n*9, newest first
+#   (hardware-confirmed, docs/design_notes.md section 7). Texts: Vitosoft's own
+#   set for this device, viessmann.errorcode.VScotHO1_72.* (110 codes), copied
+#   verbatim from the generated catalog example/catalogs/de/vscotho1_72.yaml
+#   (entity `letzter_fehler`). Written ONCE below as &vscotho1_72_fault_codes and
+#   linked (*vscotho1_72_fault_codes) into all ten slots and the fault event.
+#
+#   GFA history (Feuerungsautomat / burner control): FehlerHisFA01..20, 9-byte
+#   slots at 0x7590 + n*9. Its code space belongs to the burner-control CHIP,
+#   not to the device type, so this file carries NO texts for it. The ids
+#   gfa_fehler_01..20 are the ones the generated chip companion extends:
+#   vscotho1_72.vitohome.yaml links example/catalogs/de/gfa/chip_24.yaml
+#   (Vitosoft viessmann.errorcode.fa.24.*), the chip the reference unit reports
+#   at boot ("GFA=0x24 (NEC)", read from 0x7650 GFA_Kennung). On a unit that
+#   logs a different GFA=0x.., link gfa/chip_<XX>.yaml instead. Linking a chip
+#   companion REQUIRES all twenty ids below: `!extend` fails on a missing id.
+#
+# Replaces the hand-curated `vd300` map (B3HA Serviceanleitung, 94 codes) the
+# curated package used before. Vitosoft's set contains every one of those 94
+# codes plus 16 more, and gives several a DIFFERENT meaning, e.g.
+#   0x1D  vd300: "Keine Kommunikation mit Sensor"
+#         Vitosoft: "Störung Volumenstromsensor (STRS1)"
+#   0x49  vd300: "Codierung Erweiterung Mischer Heizkreis 2 falsch eingestellt"
+#         Vitosoft: "Rücklauftemperatur HK2 Unterbrechung"
+# (also 0x4D, 0x93, 0x9B). The vd300 map stays available in
+# scripts/fault_codes.py (VITOTRONIC_VD300_B3HA) if you prefer the manual's
+# wording.
+#
+# Bus cost: slot 1 of each archive polls every 300 s; the older slots only
+# change when a new fault pushes the archive down, so they poll hourly and are
+# hidden in Home Assistant by default (`disabled_by_default` is a UI hint only --
+# they are still read). The GFA slot reads are model-derived: the layout comes
+# from the export, and no GFA slot has been confirmed on hardware yet
+# (design_notes section 7). If the device NAKs a 9-byte slot read, drop
+# `length:` to 1 for a code-only entity.
+# ============================================================
+
+text_sensor:
+  # --- System fault history (Vitotronic) ---------------------------------
+  - platform: vitohome
+    type: error_history
+    name: "Letzter Fehler"
+    id: letzter_fehler
+    address: 0x7507
+    length: 9
+    icon: "mdi:alert-circle"
+    entity_category: diagnostic
+    update_interval: 300s
+    codes: &vscotho1_72_fault_codes
+      0x00: "Anlage ohne Fehler"
+      0x0F: "Wartung durchführen"
+      0x10: "Kurzschluss Außentemperatursensor"
+      0x18: "Unterbrechung Außentemperatursensor"
+      0x19: "Fehler externer Außentemperatursensor (Anschlusserweiterung ATS1)"
+      0x1D: "Störung Volumenstromsensor (STRS1)"
+      0x1E: "Störung Volumenstromsensor (STRS1)"
+      0x1F: "Störung Volumenstromsensor (STRS1)"
+      0x20: "Kurzschluss Vorlaufsensor Anlage"
+      0x28: "Unterbrechung Vorlaufsensor Anlage"
+      0x30: "Kurzschluss Kesseltemperatursensor"
+      0x38: "Unterbrechung Kesseltemperatursensor"
+      0x40: "Kurzschluss Vorlaufsensor HK2"
+      0x41: "Rücklauftemperatur HK2 Kurzschluss"
+      0x44: "Kurzschluss Vorlaufsensor HK3"
+      0x45: "Rücklauftemperatur HK3 Kurzschluss"
+      0x48: "Unterbrechung Vorlaufsensor HK2"
+      0x49: "Rücklauftemperatur HK2 Unterbrechung"
+      0x4C: "Unterbrechung Vorlaufsensor HK3"
+      0x4D: "Rücklauftemperatur HK3 Unterbrechung"
+      0x50: "Kurzschluss Speichertemperatursensor / Komfortsensor / Ladesensor"
+      0x51: "Kurzschluss Auslauftemperatursensor"
+      0x58: "Unterbrechung Speichertemperatursensor/ Komfortsensor/ Ladesensor"
+      0x59: "Unterbrechung Auslauftemperatursensor"
+      0x90: "Solarmodul: Kurzschluss Sensor 7"
+      0x91: "Solarmodul: Kurzschluss Sensor 10"
+      0x92: "Solarregelung: Kurzschluss Kollektortemp.Sensor"
+      0x93: "Solarregelung: Kurzschluss Kollektorrücklauf-Sensor"
+      0x94: "Solarregelung: Kurzschluss Speichertemp.Sensor"
+      0x98: "Solarmodul: Unterbrechung Sensor 7"
+      0x99: "Solarmodul: Unterbrechung Sensor 10"
+      0x9A: "Solar: Unterbrech. Kollektortemp.Sensor"
+      0x9B: "Vitosolic: Unterbrech. Kollektorrücklauf"
+      0x9C: "Solar: Unterbrech. Speichertemp.Sensor"
+      0x9E: "Solarmodul: Delta-T Überwachung"
+      0x9F: "Solarregelung: allgemeiner Fehler"
+      0xA2: "Fehler niedriger Wasserdruck Regelung"
+      0xA3: "Abgastemperatursensor gesteckt"
+      0xA4: "Überschreitung Anlagenmaximaldruck"
+      0xA6: "Fehler Fremdstromanode nicht in Ordnung"
+      0xA7: "Fehler Uhrenbaustein Bedienteil"
+      0xA8: "Interne Pumpe meldet Luft"
+      0xA9: "Interne Pumpe blockiert"
+      0xB0: "Kurzschluss Abgastemperatursensor"
+      0xB1: "Fehler Bedienteil"
+      0xB4: "interner Fehler Temperaturmessung"
+      0xB5: "interner Fehler EEPROM"
+      0xB7: "Kesselcodierkarte falsch/fehlerhaft"
+      0xB8: "Unterbrechung Abgastemperatursensor"
+      0xB9: "Fehlerhafte Übertragung Codiersteckerdaten"
+      0xBA: "Kommunikationsfehler Mischer HK2"
+      0xBB: "Kommunikationsfehler Mischer HK3"
+      0xBC: "Fehler Fernbedienung HK1"
+      0xBD: "Fehler Fernbedienung HK2"
+      0xBE: "Fehler Fernbedienung HK3"
+      0xBF: "LON-Modul falsch/fehlerhaft"
+      0xC1: "Kommunikationsfehler Anschl.Erw. EA1"
+      0xC2: "Kommunikationsfehler Solarregelung"
+      0xC3: "Kommunikationsfehler Anschl.Erw. AM1"
+      0xC4: "Kommunikationsfehler Anschl.Erw. OT"
+      0xC5: "Fehler Drehzahlgeregelte Pumpe - Interne Pumpe"
+      0xC6: "Fehler Drehzahlgeregelte Pumpe Heizkreis 2"
+      0xC7: "Fehler Drehzahlgeregelte Pumpe Heizkreis 1"
+      0xC8: "Fehler Drehzahlgeregelte Pumpe Heizkreis 3"
+      0xC9: "Komm.-fehler KM-Bus Gerät DAP1"
+      0xCA: "Komm.-fehler KM-Bus Gerät DAP2"
+      0xCD: "Kommunikationsfehler Vitocom 100"
+      0xCE: "Kommunikationsfehler Anschlußerweiterung extern"
+      0xCF: "Kommunikationsfehler LON-Modul"
+      0xD1: "Brennerstörung"
+      0xD6: "Störung Digitaler Eingang 1"
+      0xD7: "Störung Digitaler Eingang 2"
+      0xD8: "Störung Digitaler Eingang 3"
+      0xDA: "Kurzschluss Raumtemperatursensor HK1"
+      0xDB: "Kurzschluss Raumtemperatursensor HK2"
+      0xDC: "Kurzschluss Raumtemperatursensor HK3"
+      0xDD: "Unterbrechung Raumtemperatursensor HK1"
+      0xDE: "Unterbrechung Raumtemperatursensor HK2"
+      0xDF: "Unterbrechung Raumtemperatursensor HK3"
+      0xE0: "Fehler externer Teilnehmer LON"
+      0xE1: "SCOT Kalibrationswert Grenzverletzung O"
+      0xE2: "Keine Kalibration wg mangelnder Strömung"
+      0xE3: "Kalibrationsfehler thermisch"
+      0xE4: "Fehler in Spannungsversorgung 24V - Feuerungsautomat"
+      0xE5: "Fehler Flammenverstärker - Feuerungsautomat"
+      0xE6: "Min. Luft-/Wasserdruck nicht erreicht"
+      0xE7: "SCOT Kalibrationswert Grenzverletzung U"
+      0xE8: "SCOT Ionisationssignal weicht ab"
+      0xEA: "SCOT Kalibrationswert abw. von Vorgänger"
+      0xEB: "SCOT Kalibration nicht ausgeführt"
+      0xEC: "SCOT Ionisationssollwert fehlerhaft"
+      0xED: "SCOT Systemfehler"
+      0xEE: "Keine Flammbildung"
+      0xEF: "Flammenausfall in Sicherheitszeit"
+      0xF0: "Kommunikationsfehler zum Feuerungsatomat"
+      0xF1: "Abgastemperaturbegrenzer ausgelöst"
+      0xF2: "TB ausgelöst - Übertemperatur"
+      0xF3: "Flammenvortäuschung"
+      0xF4: "Keine Flammenbildung"
+      0xF5: "Fehler Luftdruckwächter"
+      0xF6: "Fehler Gasdruckschalter"
+      0xF7: "Fehler Luftdruckschalter"
+      0xF8: "Fehler Gasventil"
+      0xF9: "Fehler Gebläse - Drehzahl nicht erreicht"
+      0xFA: "Fehler Gebläse - Stillstand nicht erreicht"
+      0xFB: "Flammenausfall im Betrieb"
+      0xFC: "Fehler in der elektrischen Ansteuerung der Gasarmatur"
+      0xFD: "Interner Fehler Feuerungsautomat"
+      0xFE: "Vorwarnung Wartung fällig (Warnung)"
+      0xFF: "Fehler Feuerungsautomat ohne eigenen Fehlercode"
+
+  - platform: vitohome
+    type: error_history
+    name: "Fehler 02"
+    id: fehler_02
+    address: 0x7510
+    length: 9
+    icon: "mdi:alert-circle"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+    codes: *vscotho1_72_fault_codes
+
+  - platform: vitohome
+    type: error_history
+    name: "Fehler 03"
+    id: fehler_03
+    address: 0x7519
+    length: 9
+    icon: "mdi:alert-circle"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+    codes: *vscotho1_72_fault_codes
+
+  - platform: vitohome
+    type: error_history
+    name: "Fehler 04"
+    id: fehler_04
+    address: 0x7522
+    length: 9
+    icon: "mdi:alert-circle"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+    codes: *vscotho1_72_fault_codes
+
+  - platform: vitohome
+    type: error_history
+    name: "Fehler 05"
+    id: fehler_05
+    address: 0x752B
+    length: 9
+    icon: "mdi:alert-circle"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+    codes: *vscotho1_72_fault_codes
+
+  - platform: vitohome
+    type: error_history
+    name: "Fehler 06"
+    id: fehler_06
+    address: 0x7534
+    length: 9
+    icon: "mdi:alert-circle"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+    codes: *vscotho1_72_fault_codes
+
+  - platform: vitohome
+    type: error_history
+    name: "Fehler 07"
+    id: fehler_07
+    address: 0x753D
+    length: 9
+    icon: "mdi:alert-circle"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+    codes: *vscotho1_72_fault_codes
+
+  - platform: vitohome
+    type: error_history
+    name: "Fehler 08"
+    id: fehler_08
+    address: 0x7546
+    length: 9
+    icon: "mdi:alert-circle"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+    codes: *vscotho1_72_fault_codes
+
+  - platform: vitohome
+    type: error_history
+    name: "Fehler 09"
+    id: fehler_09
+    address: 0x754F
+    length: 9
+    icon: "mdi:alert-circle"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+    codes: *vscotho1_72_fault_codes
+
+  - platform: vitohome
+    type: error_history
+    name: "Fehler 10"
+    id: fehler_10
+    address: 0x7558
+    length: 9
+    icon: "mdi:alert-circle"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+    codes: *vscotho1_72_fault_codes
+
+  # --- GFA fault history (burner control) -- texts linked per chip -----------
+  # Named "GFA Fehler NN", not "Letzter": newest-first is confirmed for the
+  # system archive only.
+  - platform: vitohome
+    type: error_history
+    name: "GFA Fehler 01"
+    id: gfa_fehler_01
+    address: 0x7590
+    length: 9
+    icon: "mdi:alert-circle-outline"
+    entity_category: diagnostic
+    update_interval: 300s
+
+  - platform: vitohome
+    type: error_history
+    name: "GFA Fehler 02"
+    id: gfa_fehler_02
+    address: 0x7599
+    length: 9
+    icon: "mdi:alert-circle-outline"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+
+  - platform: vitohome
+    type: error_history
+    name: "GFA Fehler 03"
+    id: gfa_fehler_03
+    address: 0x75A2
+    length: 9
+    icon: "mdi:alert-circle-outline"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+
+  - platform: vitohome
+    type: error_history
+    name: "GFA Fehler 04"
+    id: gfa_fehler_04
+    address: 0x75AB
+    length: 9
+    icon: "mdi:alert-circle-outline"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+
+  - platform: vitohome
+    type: error_history
+    name: "GFA Fehler 05"
+    id: gfa_fehler_05
+    address: 0x75B4
+    length: 9
+    icon: "mdi:alert-circle-outline"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+
+  - platform: vitohome
+    type: error_history
+    name: "GFA Fehler 06"
+    id: gfa_fehler_06
+    address: 0x75BD
+    length: 9
+    icon: "mdi:alert-circle-outline"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+
+  - platform: vitohome
+    type: error_history
+    name: "GFA Fehler 07"
+    id: gfa_fehler_07
+    address: 0x75C6
+    length: 9
+    icon: "mdi:alert-circle-outline"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+
+  - platform: vitohome
+    type: error_history
+    name: "GFA Fehler 08"
+    id: gfa_fehler_08
+    address: 0x75CF
+    length: 9
+    icon: "mdi:alert-circle-outline"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+
+  - platform: vitohome
+    type: error_history
+    name: "GFA Fehler 09"
+    id: gfa_fehler_09
+    address: 0x75D8
+    length: 9
+    icon: "mdi:alert-circle-outline"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+
+  - platform: vitohome
+    type: error_history
+    name: "GFA Fehler 10"
+    id: gfa_fehler_10
+    address: 0x75E1
+    length: 9
+    icon: "mdi:alert-circle-outline"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+
+  - platform: vitohome
+    type: error_history
+    name: "GFA Fehler 11"
+    id: gfa_fehler_11
+    address: 0x75EA
+    length: 9
+    icon: "mdi:alert-circle-outline"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+
+  - platform: vitohome
+    type: error_history
+    name: "GFA Fehler 12"
+    id: gfa_fehler_12
+    address: 0x75F3
+    length: 9
+    icon: "mdi:alert-circle-outline"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+
+  - platform: vitohome
+    type: error_history
+    name: "GFA Fehler 13"
+    id: gfa_fehler_13
+    address: 0x75FC
+    length: 9
+    icon: "mdi:alert-circle-outline"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+
+  - platform: vitohome
+    type: error_history
+    name: "GFA Fehler 14"
+    id: gfa_fehler_14
+    address: 0x7605
+    length: 9
+    icon: "mdi:alert-circle-outline"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+
+  - platform: vitohome
+    type: error_history
+    name: "GFA Fehler 15"
+    id: gfa_fehler_15
+    address: 0x760E
+    length: 9
+    icon: "mdi:alert-circle-outline"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+
+  - platform: vitohome
+    type: error_history
+    name: "GFA Fehler 16"
+    id: gfa_fehler_16
+    address: 0x7617
+    length: 9
+    icon: "mdi:alert-circle-outline"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+
+  - platform: vitohome
+    type: error_history
+    name: "GFA Fehler 17"
+    id: gfa_fehler_17
+    address: 0x7620
+    length: 9
+    icon: "mdi:alert-circle-outline"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+
+  - platform: vitohome
+    type: error_history
+    name: "GFA Fehler 18"
+    id: gfa_fehler_18
+    address: 0x7629
+    length: 9
+    icon: "mdi:alert-circle-outline"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+
+  - platform: vitohome
+    type: error_history
+    name: "GFA Fehler 19"
+    id: gfa_fehler_19
+    address: 0x7632
+    length: 9
+    icon: "mdi:alert-circle-outline"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+
+  - platform: vitohome
+    type: error_history
+    name: "GFA Fehler 20"
+    id: gfa_fehler_20
+    address: 0x763B
+    length: 9
+    icon: "mdi:alert-circle-outline"
+    entity_category: diagnostic
+    disabled_by_default: true
+    update_interval: 3600s
+
+# Fires a Home Assistant logbook event when the newest SYSTEM fault code
+# CHANGES: hex type ("0x38") for a mapped code, "cleared" on a transition to
+# 0x00, "unknown" otherwise. The first poll only records a baseline (no
+# stale-fault spam at boot); read errors keep the baseline. Same slot and same
+# linked texts as "Letzter Fehler" above (0x00 is dropped from the event types
+# by the component, see components/vitohome/event.py).
+event:
+  - platform: vitohome
+    name: "Heizung Störung"
+    id: fault_event
+    address: 0x7507   # SYSTEM history slot 1 -- same slot as "Letzter Fehler"
+    length: 9
+    update_interval: 300s
+    codes: *vscotho1_72_fault_codes
