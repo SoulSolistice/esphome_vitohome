@@ -4,6 +4,7 @@
 #include <cstring>
 #include <vector>
 
+#include "address_space.h"
 #include "optolink/optolink.h"
 #include "response_view.h"
 
@@ -71,19 +72,16 @@ class VitoEntityBase {
 
   void set_vitohome_parent(VitoHomeComponent *parent) { this->vh_parent_ = parent; }
 
-  // GWG access mode for this entity (2026-08-24). Drives BOTH directions --
-  // its polls/read-backs and its writes -- because the mode is a property of
-  // the datapoint, not of the direction: Vitosoft pairs every writable GWG
-  // datapoint as (EEPROM_READ, EEPROM_WRITE) or (BE_READ, BE_WRITE), never
-  // across modes. See GWGAccessMode in constants.h.
-  //
-  // Meaningless outside protocol: GWG, and unused (compiled but never read)
-  // unless VITOHOME_PROTOCOL_GWG is the selected build, so setting it under
-  // another protocol has no effect. The default (PHYSICAL) is the pre-existing,
-  // only-ever-emitted behaviour, so an entity that never sets this is
-  // unaffected.
-  void set_access(optolink::GWGAccessMode access) { this->access_ = access; }
-  optolink::GWGAccessMode access() const { return this->access_; }
+  // Where the datapoint lives, and so which telegram reads it (and writes it,
+  // on a writable platform): the YAML `access:`. See AddressSpace
+  // (address_space.h). One space drives both directions -- Vitosoft pairs
+  // every writable GWG datapoint as (EEPROM_READ, EEPROM_WRITE) or (BE_READ,
+  // BE_WRITE), never across modes. OWN, the protocol's own read and write,
+  // until codegen sets another; the setters below are what it calls.
+  AddressSpace space() const { return this->space_; }
+
+  // A GWG access mode (meaningless, and OWN, outside protocol: GWG).
+  void set_access(optolink::GWGAccessMode access) { this->space_ = space_from_gwg(access); }
 
   // `access: rpc` (P300 only). The datapoint is read as a remote procedure
   // call: function code 0x07 with `prefix:` as the call's parameter -- the
@@ -91,27 +89,26 @@ class VitoEntityBase {
   // controller keeps behind one address, so several entities share an address
   // and differ only in their prefix. A call without a parameter has an empty
   // prefix. The answer is decoded like a read of datapoint_'s length. Set only
-  // on read-only platforms (the codegen refuses it elsewhere), so an RPC entity
-  // never writes. Never set: an ordinary read.
+  // on read-only platforms and the action button (the codegen refuses it
+  // elsewhere).
   static constexpr uint8_t RPC_PREFIX_MAX = 4;
   void set_rpc_prefix(const std::vector<uint8_t> &prefix) {
-    this->rpc_ = true;
+    this->space_ = AddressSpace::RPC;
     this->rpc_prefix_len_ = static_cast<uint8_t>(std::min<std::size_t>(prefix.size(), RPC_PREFIX_MAX));
     if (this->rpc_prefix_len_ != 0)
       std::memcpy(this->rpc_prefix_, prefix.data(), this->rpc_prefix_len_);
   }
-  bool is_rpc() const { return this->rpc_; }
+  bool is_rpc() const { return this->space_ == AddressSpace::RPC; }
   const uint8_t *rpc_prefix() const { return this->rpc_prefix_; }
   uint8_t rpc_prefix_len() const { return this->rpc_prefix_len_; }
 
-  // `access: gfa` (KW only). The datapoint lives in the burner control's
-  // address space and is read with type 0x6B (Vitosoft's GFA_READ, see
-  // PacketVS1Type) instead of 0xF7; the answer is decoded like any read. The
-  // same address in the Vitotronic's own space is a different datapoint. Set
-  // only on read-only platforms: Vitosoft defines no GFA write. Never set: an
-  // ordinary read.
-  void set_gfa() { this->gfa_ = true; }
-  bool is_gfa() const { return this->gfa_; }
+  // `access: gfa` (KW and P300). The datapoint lives in the burner control's
+  // address space and is read with the KW telegram 0x6B (Vitosoft's GFA_READ,
+  // see PacketVS1Type); the answer is decoded like any read. The same address
+  // in the Vitotronic's own space is a different datapoint. Set only on
+  // read-only platforms: Vitosoft defines no GFA write.
+  void set_gfa() { this->space_ = AddressSpace::GFA; }
+  bool is_gfa() const { return this->space_ == AddressSpace::GFA; }
 
   // --- scheduling -----------------------------------------------------------
   // 0 (default) = poll on every hub update cycle. Anything else is a minimum
@@ -233,11 +230,9 @@ class VitoEntityBase {
   uint8_t block_field_width_{0};
   bool read_back_{true};
   uint32_t poll_interval_ms_{0};
-  optolink::GWGAccessMode access_{optolink::GWGAccessMode::PHYSICAL};
+  AddressSpace space_{AddressSpace::OWN};
   uint8_t rpc_prefix_[RPC_PREFIX_MAX]{0, 0, 0, 0};
   uint8_t rpc_prefix_len_{0};
-  bool rpc_{false};
-  bool gfa_{false};
 
  private:
   // Hub-side bookkeeping. Private, not public: only VitoHomeComponent (the

@@ -57,6 +57,13 @@ for sel in "P300:" "KW:-DVITOHOME_PROTOCOL_KW" "GWG:-DVITOHOME_PROTOCOL_GWG"; do
   ./engine_proof
 done
 
+echo "== address-space table (address_space.h), per protocol =="
+for sel in "P300:" "KW:-DVITOHOME_PROTOCOL_KW" "GWG:-DVITOHOME_PROTOCOL_GWG"; do
+  flag="${sel#*:}"
+  g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread ${flag:+"$flag"} -I"$ROOT" -I"$OPTO"     proof_address_space.cpp "${SRCS[@]}" -o address_space
+  ./address_space
+done
+
 echo "== GWG read/write completion (THIRD_PARTY.md #8 fix) =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
   proof_gwg_read.cpp "${SRCS[@]}" -o gwg_read

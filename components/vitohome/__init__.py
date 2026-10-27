@@ -256,13 +256,51 @@ ACCESS_GFA = "gfa"
 _GFA_DOMAINS = _RPC_DOMAINS
 _GFA_PROTOCOLS = ("KW", "P300")
 
-# `access:` values that are not GWG access modes.
-_NON_GWG_ACCESS = (ACCESS_RPC, ACCESS_GFA)
+
+@dataclass(frozen=True)
+class AccessSpace:
+    """One `access:` value: where a datapoint lives, which protocols have a
+    telegram for it (PROTOCOLS values), whether it is written, and how a config
+    that uses it under another protocol is refused (it completes "... but
+    protocol 'X' ", and may name it as {protocol})."""
+
+    protocols: tuple[str, ...]
+    writable: bool
+    refusal: str
+
+
+# Every `access:` value, mirroring AddressSpace (address_space.h, where the hub
+# turns it into a telegram). _validate_access_spaces() checks every entity
+# against this table; a new access function is a row here, its enumerator and
+# telegram on the C++ side, and its codegen in emit_access().
+ACCESS_SPACES = {
+    ACCESS_RPC: AccessSpace(
+        ("P300",),
+        False,
+        "has no remote procedure call telegram -- it is function code 0x07 of P300 (VS2) only. Remove it, or "
+        "read the datapoint another way.",
+    ),
+    ACCESS_GFA: AccessSpace(
+        _GFA_PROTOCOLS,
+        False,
+        "has no GFA read telegram -- the burner control is read with the KW telegram 0x6B, on KW (VS1) and, "
+        "through KW, P300 (VS2) only. Remove it, or set the protocol the unit speaks.",
+    ),
+    **{
+        mode: AccessSpace(
+            ("GWG",),
+            mode not in _READ_ONLY_ACCESS_MODES,
+            "has no such access mode: it selects a GWG TYPE byte and has no effect under protocol '{protocol}'. "
+            "Remove it or set protocol: GWG on the vitohome hub.",
+        )
+        for mode in GWG_ACCESS_MODES
+    },
+}
 
 
 def read_access(value):
     """`access:` on a read-only platform: a GWG access mode, `rpc` or `gfa`."""
-    if isinstance(value, str) and value.strip().lower() in _NON_GWG_ACCESS:
+    if isinstance(value, str) and value.strip().lower() in (ACCESS_RPC, ACCESS_GFA):
         return value.strip().lower()
     try:
         return cv.enum(GWG_ACCESS_MODES, lower=True)(value)
@@ -1010,7 +1048,7 @@ def _entity_gwg_addresses(entity):
                 yield f"{_CLIMATE_OPERATING_MODE}.{key}", addr
 
 
-def _entity_gwg_access_slots(entity):
+def _entity_access_slots(entity):
     """Yield (key_path, access_or_None) for every place this entity config COULD
     carry an access mode -- present or not.
 
@@ -1028,46 +1066,46 @@ def _entity_gwg_access_slots(entity):
         yield f"{_CLIMATE_OPERATING_MODE}.{CONF_ACCESS}", operating_mode.get(CONF_ACCESS)
 
 
-def _entity_gwg_access_modes(entity):
-    """The subset of _entity_gwg_access_slots that is actually set to a GWG mode."""
-    for key, access in _entity_gwg_access_slots(entity):
-        if access is not None and str(access) not in _NON_GWG_ACCESS:
-            yield key, access
-
-
-def _validate_rpc_access(full, hub_id, protocol):
-    """`prefix:` only with `access: rpc`, and `access: rpc` only where P300 can send it."""
+def _validate_rpc_prefix(full, hub_id):
+    """`prefix:` only with `access: rpc`."""
     for domain, entity in _entities_for_hub(full, _RPC_CHECK_DOMAINS, hub_id):
-        is_rpc = str(entity.get(CONF_ACCESS)) == ACCESS_RPC
-        if CONF_PREFIX in entity and not is_rpc:
+        if CONF_PREFIX in entity and str(entity.get(CONF_ACCESS)) != ACCESS_RPC:
             raise cv.Invalid(
                 f"{domain} '{_entity_name(entity)}' sets '{CONF_PREFIX}', which is the parameter of a "
                 f"remote procedure call and means nothing without 'access: {ACCESS_RPC}'.",
                 path=[CONF_PREFIX],
             )
-        if not is_rpc:
-            continue
-        if protocol != "P300":
-            raise cv.Invalid(
-                f"{domain} '{_entity_name(entity)}' sets 'access: {ACCESS_RPC}', but protocol "
-                f"'{protocol}' has no remote procedure call telegram -- it is function code 0x07 of "
-                f"P300 (VS2) only. Remove it, or read the datapoint another way.",
-                path=[CONF_ACCESS],
-            )
 
 
-def _validate_gfa_access(full, hub_id, protocol):
-    """`access: gfa` only where KW or P300 can send the burner control's read."""
-    if protocol in _GFA_PROTOCOLS:
-        return
-    for domain, entity in _entities_for_hub(full, _GFA_DOMAINS, hub_id):
-        if str(entity.get(CONF_ACCESS)) == ACCESS_GFA:
-            raise cv.Invalid(
-                f"{domain} '{_entity_name(entity)}' sets 'access: {ACCESS_GFA}', but protocol "
-                f"'{protocol}' has no GFA read telegram -- the burner control is read with 0x6B over "
-                f"KW (VS1) or P300 (VS2) only. Remove it, or set the protocol the unit speaks.",
-                path=[CONF_ACCESS],
-            )
+def _validate_access_spaces(full, hub_id, protocol):
+    """Every `access:` against ACCESS_SPACES: only under a protocol that has a
+    telegram for it, and on a platform that writes only where it is written.
+
+    The second half is a config error rather than a runtime one: the hub refuses
+    a write in a space without a write telegram permanently (send_write_), and
+    the write lane drops a permanent refusal and logs -- so the entity would
+    look completely normal in Home Assistant and just never reach the device.
+    GWG's KMBUS modes are such spaces (the wiki gives no write TYPE byte for
+    either); `rpc` and `gfa` never reach a writing platform's schema."""
+    for domain, entity in _entities_for_hub(full, (*_ACCESS_DOMAINS, "button"), hub_id):
+        for key, access in _entity_access_slots(entity):
+            if access is None:
+                continue
+            space = ACCESS_SPACES[str(access)]
+            if protocol not in space.protocols:
+                raise cv.Invalid(
+                    f"{domain} '{_entity_name(entity)}' sets '{key}: {access}', but protocol '{protocol}' "
+                    f"{space.refusal.format(protocol=protocol)}",
+                    path=key.split("."),
+                )
+            if domain in _WRITE_DOMAINS and not space.writable:
+                raise cv.Invalid(
+                    f"{domain} '{_entity_name(entity)}' sets {key}: {access}, but that access mode is read-only -- "
+                    f"the protocol defines no write telegram for it, so the engine would refuse every write and "
+                    f"the entity would silently never reach the device. Use a writable access mode, or declare "
+                    f"this datapoint as a read-only sensor.",
+                    path=key.split("."),
+                )
 
 
 def _entities_for_hub(full, domains, hub_id):
@@ -1121,8 +1159,8 @@ def _final_validate(config):
     full = fv.full_config.get()
     hub_id = config[CONF_ID]
 
-    _validate_rpc_access(full, hub_id, PROTOCOLS[protocol])
-    _validate_gfa_access(full, hub_id, PROTOCOLS[protocol])
+    _validate_rpc_prefix(full, hub_id)
+    _validate_access_spaces(full, hub_id, PROTOCOLS[protocol])
 
     if protocol == "GWG":
         # System-time sync cannot work under GWG, at any address.
@@ -1177,7 +1215,7 @@ def _final_validate(config):
         # generated writable GWG entity always carries an explicit access:.
         # Only hand-written configs are affected.
         for domain, entity in _entities_for_hub(full, _WRITE_DOMAINS, hub_id):
-            for key, access in _entity_gwg_access_slots(entity):
+            for key, access in _entity_access_slots(entity):
                 if access is None:
                     raise cv.Invalid(
                         f"{domain} '{_entity_name(entity)}' writes but does not set '{key}'. "
@@ -1194,26 +1232,6 @@ def _final_validate(config):
                         path=key.split("."),
                     )
 
-        # A writable entity in an access mode that has no write telegram type
-        # is a config error, not a runtime one. GWG's KMBUS modes are read-only
-        # (the wiki gives no write TYPE byte for either), so GWGEngine::write()
-        # refuses them permanently; the write lane drops a permanent refusal and
-        # logs, which means the entity would look completely normal in Home
-        # Assistant and just never reach the device. Catch it here, where the
-        # message can name the option.
-        for domain, entity in _entities_for_hub(full, _WRITE_DOMAINS, hub_id):
-            for key, access in _entity_gwg_access_modes(entity):
-                if str(access) in _READ_ONLY_ACCESS_MODES:
-                    raise cv.Invalid(
-                        f"{domain} '{_entity_name(entity)}' sets {key}: {access}, but that GWG "
-                        f"access mode is read-only -- the protocol defines no write telegram type "
-                        f"for it, so the engine would refuse every write and the entity would "
-                        f"silently never reach the device. Use a writable access mode (physical, "
-                        f"virtual, eeprom, xram, port, be), or declare this datapoint as a "
-                        f"read-only sensor.",
-                        path=key.split("."),
-                    )
-
         # Read-only entities: WARN rather than reject. Unlike the write case
         # above, defaulting to physical here is defensible -- Vitosoft emits
         # rows with a blank FCRead, and gen_catalog.py deliberately maps blank
@@ -1227,7 +1245,7 @@ def _final_validate(config):
         # they have not thought about.
         _readonly_access_domains = tuple(d for d in _ACCESS_DOMAINS if d not in _WRITE_DOMAINS)
         for domain, entity in _entities_for_hub(full, _readonly_access_domains, hub_id):
-            for key, access in _entity_gwg_access_slots(entity):
+            for key, access in _entity_access_slots(entity):
                 if access is None:
                     _LOGGER.warning(
                         "%s '%s' does not set '%s'; assuming physical. Under GWG the same "
@@ -1241,21 +1259,6 @@ def _final_validate(config):
                         _entity_name(entity),
                         key,
                     )
-    else:
-        # access: selects a GWG TYPE byte (GWGAccessMode, constants.h) and is
-        # meaningless -- and silently a no-op at runtime, since VitoEntityBase::
-        # access_ is compiled but never read outside a GWG build -- under
-        # any other protocol. Reject at config time rather than let it look
-        # configurable. `access: rpc` and `access: gfa` are not GWG modes and
-        # were checked above.
-        for domain, entity in _entities_for_hub(full, _ACCESS_DOMAINS, hub_id):
-            for key, _access in _entity_gwg_access_modes(entity):
-                raise cv.Invalid(
-                    f"{domain} '{_entity_name(entity)}' sets '{key}', which selects a GWG "
-                    f"TYPE byte and has no effect under protocol '{protocol}'. Remove it "
-                    f"or set protocol: GWG on the vitohome hub.",
-                    path=key.split("."),
-                )
 
     # There is deliberately NO P300 read-length check here. The warning that used
     # to live at this spot cited a 40-byte read at 0x7362 failing on hardware.

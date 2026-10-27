@@ -17,6 +17,7 @@
 #endif
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/component.h"
+#include "address_space.h"
 #include "optolink/optolink.h"
 #include "protocol_select.h"
 #include "response_view.h"
@@ -389,8 +390,17 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   //
   // Returns false for invalid arguments or queue overflow.
   bool enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes, uint8_t bytes_len,
-                    optolink::GWGAccessMode access = optolink::GWGAccessMode::PHYSICAL, bool is_rpc = false,
-                    bool is_gfa = false);
+                    AddressSpace space = AddressSpace::OWN);
+
+  // The telegram for a read (or an RPC call) / a write of `address` in
+  // `space`, on the selected engine: the one place an AddressSpace becomes an
+  // engine call. False when the engine does not take it -- busy (transient) or
+  // never (permanent; the callers tell them apart with isBusy()), which is
+  // also the answer for a space the protocol does not have.
+  bool send_read_(uint16_t address, uint8_t length, AddressSpace space, const uint8_t *parameter = nullptr,
+                  uint8_t parameter_len = 0);
+  bool send_write_(uint16_t address, const uint8_t *data, uint8_t length, AddressSpace space,
+                   const uint8_t *parameter = nullptr, uint8_t parameter_len = 0);
 
   bool ident_in_flight_{false};
 
@@ -594,30 +604,21 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
     bool is_write;
     uint8_t bytes[RAW_WRITE_MAX];
     uint8_t bytes_len;
-    // GWG access mode (2026-08-24): selects the TYPE byte of a raw read AND of
-    // a raw write on GWG builds; ignored by every other protocol. See
-    // queue_raw_read() / queue_raw_write() and dispatch_raw_front_().
+    // Which telegram (AddressSpace; address_space.h): a GWG access mode on
+    // GWG, a remote procedure call (`bytes`/`bytes_len` its parameter, `length`
+    // equal to bytes_len, 0 allowed), a GFA read. See queue_raw_read() /
+    // queue_raw_write() / queue_raw_rpc() / queue_raw_gfa_read().
     //
     // NO default member initializer here (bug fixed 2026-08-24, found on a
     // real ESP32-C3/ESP-IDF build, not caught by the native proof suite
-    // because it never instantiates RingBuffer<RawOp> -- only the engine
-    // layer under optolink/). A default member initializer makes the
-    // implicitly-defined default constructor non-trivial, which fails
-    // RingBuffer<T>'s `is_trivially_default_constructible` static_assert
-    // (ring_buffer.h) the moment raw_queue_ (RingBuffer<RawOp>) is
-    // instantiated -- i.e. always, since it's a hub member, not something
-    // conditional on GWG being selected. GWGAccessMode::PHYSICAL == 0 (see
-    // constants.h), so `RawOp operation{};` (used at every construction
-    // site) already value-initializes this to PHYSICAL, exactly like every
-    // other field in this struct -- no initializer was ever needed.
-    optolink::GWGAccessMode access;
-    // A remote procedure call: `bytes`/`bytes_len` are its parameter and
-    // `length` equals bytes_len (0 allowed). False by value-initialization,
-    // like every other field here.
-    bool is_rpc;
-    // A read in the burner control's address space (KW type 0x6B); see
-    // queue_raw_gfa_read(). False by value-initialization.
-    bool is_gfa;
+    // because it never instantiates RingBuffer<RawOp>). A default member
+    // initializer makes the implicitly-defined default constructor
+    // non-trivial, which fails RingBuffer<T>'s
+    // `is_trivially_default_constructible` static_assert (ring_buffer.h) the
+    // moment raw_queue_ is instantiated -- i.e. always. AddressSpace::OWN
+    // is 0 (static_assert below), so `RawOp operation{};` (used at every
+    // construction site) already value-initializes this to OWN.
+    AddressSpace space;
   };
 
   // The raw lane is explicitly bounded because a range sweep can enqueue much
@@ -659,11 +660,10 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   bool raw_in_flight_{false};
   bool raw_is_write_{false};
-  bool raw_is_rpc_{false};
-  bool raw_is_gfa_{false};
-  // Whether the last telegram dispatched was a GFA read; see the address-space
-  // affinity in dispatch_next_().
-  bool last_read_gfa_{false};
+  AddressSpace raw_space_{AddressSpace::OWN};
+  // The space of the last telegram dispatched; see the address-space affinity
+  // in dispatch_next_().
+  AddressSpace last_space_{AddressSpace::OWN};
 
   optolink::Datapoint raw_dp_{"scan", 0, 1, optolink::noconv};
 
