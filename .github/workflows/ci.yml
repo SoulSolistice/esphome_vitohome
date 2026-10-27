@@ -7,6 +7,10 @@ on:
   pull_request:
   workflow_dispatch:        # manual runs on any branch from the Actions tab
 
+# Every job only checks out code and uses the Actions cache; none writes back.
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: pre-commit
