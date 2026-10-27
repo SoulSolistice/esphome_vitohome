@@ -670,6 +670,16 @@ These are intentional divergences from upstream `edc059a7`:
       ENQ within `GFA_ENQ_TIMEOUT_MS` raises TIMEOUT and resets. The request
       watchdog restarts when the detour starts and when the telegram goes
       out. Answers up to `GFA_MAX_LENGTH` (64) bytes.
+    - VS2, diagnostic: `VS2Engine::functionRead(functionByte, address,
+      length)` sends the read frame with `functionByte` as the WHOLE flags
+      byte (no message id), for function codes the 5-bit field cannot hold --
+      Vitosoft lists GFA_READ as 201 (`0xC9`) among its P300 codes, which is
+      what the KW detour would make unnecessary if a controller took it. The
+      parser accepts that byte at FLAGS while the probe is in flight
+      (`ParserVS2::expectFlags()`, cleared by every other request) and treats
+      the frame as read-shaped whatever its low bits say; the answer's payload
+      is delivered through `PacketVS2::payload()`. Nothing but the raw lane
+      sends it (`queue_raw_function_read()`).
     Hardware: KW, VScotHO1_72 with burner control `0x24`, 2026-10-26 -- `6B 40
     50 01` answered `24` where `F7 40 50 01` answered `FF`. The P300 detour is
     not confirmed on a unit yet. READ/WRITE/RPC frames and the P300 parser are

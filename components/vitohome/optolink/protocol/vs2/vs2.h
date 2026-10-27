@@ -97,6 +97,13 @@ class VS2Engine {
   // GFA_MAX_LENGTH bytes.
   bool gfaRead(uint16_t address, uint8_t length);
   static constexpr uint8_t GFA_MAX_LENGTH = 64;
+  // A diagnostic probe: the frame of a read, with `functionByte` as the WHOLE
+  // flags byte (no message id) -- for function codes the 5-bit field cannot
+  // hold, such as Vitosoft's GFA_READ 201 (0xC9). The parser accepts an answer
+  // echoing that byte and takes it like a read's: a RESPONSE delivers its
+  // payload through onResponse, an ERROR frame raises DEVICE_ERROR. 0 is
+  // refused. Raw lane only (VitoHomeComponent::queue_raw_function_read()).
+  bool functionRead(uint8_t functionByte, uint16_t address, uint8_t length);
   // How long the KW session waits for the controller's ENQ after the EOT that
   // drops P300 (the controller sends one about every 2 s when idle), and,
   // once a GFA answer is in, for another GFA read before returning to P300.
@@ -149,6 +156,8 @@ class VS2Engine {
   // A GFA read in flight (gfaRead()): its KW telegram, with the ENQ_ACK in
   // front when it opens the KW session, and its answer.
   bool _gfa{false};
+  // The whole flags byte of a functionRead() in flight, 0 otherwise.
+  uint8_t _probeFlags{0};
   uint8_t _gfaFrame[5]{};
   uint8_t _gfaFrameLen{0};
   uint8_t _gfaAnswer[GFA_MAX_LENGTH]{};
