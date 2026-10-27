@@ -67,6 +67,16 @@ class VS1Engine {
   // telegram waits for an ENQ. So the cost of being too tight is throughput,
   // and the cost of being too loose is bounded by the guard in _syncRecv().
   static constexpr uint32_t CHAIN_WINDOW_MS = 1500;
+  // GFA_GAP_MS: how long a GFA read (gfaRead(), type 0x6B) chained onto an
+  // answer waits after that answer before it goes out. The read is forwarded
+  // to the burner control, a second controller behind the Vitotronic. The
+  // hardware-confirmed series (2026-10-26, VScotHO1_72, burner control 0x24)
+  // sent every 0x6B telegram 25 ms after the previous answer and got an answer
+  // to all of them; without the pause it has never been tried. A GFA read that
+  // opens a chain goes out on the device's ENQ like any other, the bus having
+  // been idle since. The cost is 25 ms per chained GFA read.
+  static constexpr uint32_t GFA_GAP_MS = 25;
+  static_assert(GFA_GAP_MS < CHAIN_WINDOW_MS, "the GFA pause must fit inside the chain window");
 
   // Fixed response buffer: bounds the largest VS1 datapoint payload. 256 is a
   // safe upper bound (datapoint length is a uint8_t).
@@ -108,6 +118,10 @@ class VS1Engine {
 
   bool read(uint16_t address, uint8_t length);
   bool write(uint16_t address, const uint8_t *data, uint8_t length);
+  // A read in the burner control's address space (type 0x6B, Vitosoft's
+  // GFA_READ; see PacketVS1Type). The answer arrives through onResponse like a
+  // read's: <length> raw bytes. There is no GFA write.
+  bool gfaRead(uint16_t address, uint8_t length);
 
   bool begin();
   void loop();

@@ -104,6 +104,15 @@ class VitoEntityBase {
   const uint8_t *rpc_prefix() const { return this->rpc_prefix_; }
   uint8_t rpc_prefix_len() const { return this->rpc_prefix_len_; }
 
+  // `access: gfa` (KW only). The datapoint lives in the burner control's
+  // address space and is read with type 0x6B (Vitosoft's GFA_READ, see
+  // PacketVS1Type) instead of 0xF7; the answer is decoded like any read. The
+  // same address in the Vitotronic's own space is a different datapoint. Set
+  // only on read-only platforms: Vitosoft defines no GFA write. Never set: an
+  // ordinary read.
+  void set_gfa() { this->gfa_ = true; }
+  bool is_gfa() const { return this->gfa_; }
+
   // --- scheduling -----------------------------------------------------------
   // 0 (default) = poll on every hub update cycle. Anything else is a minimum
   // period; effective granularity is the hub's own update_interval (the hub
@@ -228,6 +237,7 @@ class VitoEntityBase {
   uint8_t rpc_prefix_[RPC_PREFIX_MAX]{0, 0, 0, 0};
   uint8_t rpc_prefix_len_{0};
   bool rpc_{false};
+  bool gfa_{false};
 
  private:
   // Hub-side bookkeeping. Private, not public: only VitoHomeComponent (the

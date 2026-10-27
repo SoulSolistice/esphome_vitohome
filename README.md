@@ -129,7 +129,8 @@ provides several things you would otherwise have to build by hand:
   see `example/vitohome-dhw.yaml`; no extra C++.
 - **Interactive scan console.** A `scan_result` text sensor plus
   `queue_raw_read` / `queue_raw_write` lets you read or write an arbitrary
-  address at runtime (`queue_raw_rpc` makes a P300 remote procedure call) and sweep address ranges — useful for identifying
+  address at runtime (`queue_raw_rpc` makes a P300 remote procedure call,
+  `queue_raw_gfa_read` reads the burner control) and sweep address ranges — useful for identifying
   datapoints on an unknown unit. These interactive operations preempt normal
   polling so the console feels immediate.
 - **Boot-time device identification.** The hub reads the controller
@@ -449,6 +450,51 @@ parameter. The generator fans it out like the Vitotronic archive -- "Letzter
 Fehler (WPR)" enabled, the other 29 records disabled -- as raw hex until the
 record layout is decoded. Details and the one open wire question are in
 [`docs/design_notes.md`](docs/design_notes.md#p300-remote-procedure-calls-access-rpc).
+
+### KW and P300: `access: gfa` (burner control)
+
+Gas condensing boilers (Vitodens, Vitopend, Vitoplus, Vitosorp, Vitovalor and
+their relatives) have a second controller behind the Vitotronic: the **burner
+control** (Gasfeuerungsautomat, GFA). It has its own address space, and
+`access: gfa` reads a datapoint there -- telegram type `0x6B` instead of the
+read's `0xF7` on KW, function code `0x6B` instead of `0x01` on P300. Vitosoft
+marks these datapoints `GFA_READ`: fan speed (actual and setpoint), ionisation
+current, gas-valve drive, flame-formation time, burner phase and status, the
+burner control's own fault details, calibration counters, software version and
+coding plug. None of them exists in the Vitotronic's own address space.
+
+```yaml
+sensor:
+  - platform: vitohome
+    name: "Gebläse Drehzahl Ist"   # P06, raw x 30 rpm
+    address: 0x4006               # P-parameter n sits at 0x4000 + n
+    length: 1
+    access: gfa
+    filters:
+      - multiply: 30
+    unit_of_measurement: "rpm"
+text_sensor:
+  - platform: vitohome
+    type: enum
+    name: "Feuerungsautomat Chip"  # P80; the Vitotronic mirrors it at 0x7650
+    address: 0x4050
+    length: 1
+    access: gfa
+    options:
+      0x24: "NEC"
+```
+
+The same address in the Vitotronic's own space is a different datapoint: on the
+reference unit `0x4050` reads `FF` there and the chip byte `0x24` with
+`access: gfa`. Vitosoft defines no GFA write, so `access: gfa` is accepted on
+`sensor`, `binary_sensor` and `text_sensor` only; GWG has no such telegram, so
+`esphome config` rejects it there. A few parameters mean different things on
+different burner-control chips (the chip is the byte the hub logs at boot,
+`GFA=0x..`), so check the chip before trusting a scale. **Hardware-confirmed
+over KW** (VScotHO1_72, chip `0x24`, 2026-10-26); over P300 the telegram is
+built the same way but has not been tried on a unit yet. From a lambda,
+`queue_raw_gfa_read(address, length)` reads one directly. Details in
+[`docs/design_notes.md`](docs/design_notes.md#burner-control-reads-access-gfa).
 
 ## Development
 

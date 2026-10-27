@@ -649,7 +649,31 @@ These are intentional divergences from upstream `edc059a7`:
     harness, 8/8, is unaffected). Proofs: `tests/native/proof_vs2_rpc.cpp`, and the
     RPC seeds in `tests/native/fuzz_corpus_vs2.h`.
 
-Items 7-12, 18, 19, 21, 22, 24 and 26 are the only intentional changes to on-wire/runtime
+27. **GFA read, KW and P300 (behavioral divergence, additive).** Upstream reads
+    only the Vitotronic's own address space. Vitosoft reads a gas boiler's
+    burner control (Gasfeuerungsautomat) with the access function `GFA_READ`,
+    a read with type byte `0x6B`. Changes:
+    - VS1: `PacketVS1Type.GFA_READ = 0x6B`; `createPacket()` accepts it and
+      builds the read frame with it; `VS1Engine::gfaRead(address, length)`
+      sends it, and the answer (`length` raw bytes) arrives through
+      `onResponse` like a read's. A GFA read chained onto an answer waits
+      `GFA_GAP_MS` (25 ms) after it, the pause of the only session it was
+      confirmed in; one that opens a chain goes out on the ENQ unchanged.
+    - VS2: `FunctionCode::GFA_READ = 0x6B`. It does not fit the 5-bit
+      function-code field upstream shares with a 3-bit message id, so it is
+      sent and recognised as the whole flags byte: `createPacket()` refuses it
+      with a non-zero id, `functionCode()` maps `0x6B` back to it before
+      masking, and the parser accepts that byte at FLAGS and treats the frame
+      like a read (no payload on the request, DataLength-sized payload on the
+      answer). `VS2Engine::gfaRead()` sends it.
+    Hardware: KW, VScotHO1_72 with burner control `0x24`, 2026-10-26 -- `6B 40
+    50 01` answered `24` where `F7 40 50 01` answered `FF`. **Not tried over
+    P300.** READ/WRITE/RPC frames are byte-identical to before (no READ, WRITE
+    or RPC flags byte equals `0x6B`: its low five bits are `0x0B`). Proofs:
+    `tests/native/proof_vs1_gfa.cpp`, `tests/native/proof_vs2_gfa.cpp`, and the
+    GFA seeds in `tests/native/fuzz_corpus_vs2.h`.
+
+Items 7-12, 18, 19, 21, 22, 24, 26 and 27 are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16 are structural (no behavior change from any call
 site that exists -- item 16 alters bytes only on a RESPONSE-construction path
 nothing exercises); item 17 changes only construction-failure handling

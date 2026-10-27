@@ -26,6 +26,8 @@ esp32:
 
 <<: !include common.yaml
 
-# The P300-only `access: rpc` entities (common.yaml is shared with KW).
+# The P300-only `access: rpc` entities (common.yaml is shared with KW), and the
+# `access: gfa` ones (KW and P300).
 packages:
   rpc: !include common-rpc.yaml
+  gfa: !include common-gfa.yaml

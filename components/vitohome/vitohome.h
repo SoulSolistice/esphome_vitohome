@@ -276,6 +276,11 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // have no such telegram, it is refused with a warning.
   void queue_raw_rpc(uint16_t address, const uint8_t *parameter, std::size_t len);
   void queue_raw_rpc(uint16_t address, const std::vector<uint8_t> &parameter);
+  // A read in the burner control's address space (KW type 0x6B, Vitosoft's
+  // GFA_READ), published like a raw read. Read-only: there is no GFA write.
+  // Under P300 and GWG, which have no such telegram here, it is refused with a
+  // warning.
+  void queue_raw_gfa_read(uint16_t address, uint8_t length);
 
  protected:
   enum class OpType : uint8_t {
@@ -384,7 +389,8 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   //
   // Returns false for invalid arguments or queue overflow.
   bool enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes, uint8_t bytes_len,
-                    optolink::GWGAccessMode access = optolink::GWGAccessMode::PHYSICAL, bool is_rpc = false);
+                    optolink::GWGAccessMode access = optolink::GWGAccessMode::PHYSICAL, bool is_rpc = false,
+                    bool is_gfa = false);
 
   bool ident_in_flight_{false};
 
@@ -609,6 +615,9 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
     // `length` equals bytes_len (0 allowed). False by value-initialization,
     // like every other field here.
     bool is_rpc;
+    // A read in the burner control's address space (KW type 0x6B); see
+    // queue_raw_gfa_read(). False by value-initialization.
+    bool is_gfa;
   };
 
   // The raw lane is explicitly bounded because a range sweep can enqueue much
@@ -651,6 +660,7 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   bool raw_in_flight_{false};
   bool raw_is_write_{false};
   bool raw_is_rpc_{false};
+  bool raw_is_gfa_{false};
 
   optolink::Datapoint raw_dp_{"scan", 0, 1, optolink::noconv};
 

@@ -18,6 +18,15 @@ enum class FunctionCode : uint8_t {
   READ = 0x01,
   WRITE = 0x02,
   RPC = 0x07,
+  // A read in the burner control's address space -- Vitosoft's GFA_READ, the
+  // same byte as the KW type (PacketVS1Type.GFA_READ, hardware-confirmed
+  // there). It does not fit the 5-bit function-code field the other three
+  // share with a 3-bit message id (upstream's `fc | id << 5`), so it is sent
+  // and recognised as the WHOLE byte: every request this engine builds carries
+  // message id 0, and PacketVS2::functionCode() maps the whole byte back. Over
+  // P300 it is NOT confirmed on hardware -- neither that a controller accepts
+  // it, nor that its answer echoes 0x6B.
+  GFA_READ = 0x6B,
 };
 
 enum class PacketType : uint8_t {
@@ -27,9 +36,20 @@ enum class PacketType : uint8_t {
   ERROR = 0x03,
 };
 
+// GFA_READ reads the burner control (Gasfeuerungsautomat, GFA), a separate
+// controller behind the Vitotronic, in ITS address space: Vitosoft marks such
+// datapoints FCRead GFA_READ (273 of them across 53 device types, all
+// KW/P300 families, none GWG) and defines no GFA write at all. Same frame as a
+// READ -- <type> <addr hi> <addr lo> <len>, answered by <len> raw bytes -- with
+// 0x6B as the type. HARDWARE-CONFIRMED, KW, VScotHO1_72 with burner-control
+// chip 0x24 (NEC), 2026-10-26: 6B 40 50 01 -> 24 (P80, the chip, equal to the
+// Vitotronic's own GFA_Kennung F7 76 50 01 -> 24), while F7 40 50 01 -> FF at
+// the same address; 6B 40 06 / 40 09 / 40 0A answered too. See VS1Engine::
+// gfaRead() and THIRD_PARTY.md item 27.
 constexpr struct {
   uint8_t READ = 0xF7;
   uint8_t WRITE = 0xF4;
+  uint8_t GFA_READ = 0x6B;
 } PacketVS1Type;
 
 constexpr struct {

@@ -87,6 +87,11 @@ class VS2Engine {
   // one). The answer arrives through onResponse like a read's, as long as the
   // controller makes it. P300 only: KW and GWG have no such telegram.
   bool rpc(uint16_t address, const uint8_t *parameter, uint8_t length);
+  // A read in the burner control's address space (FunctionCode::GFA_READ,
+  // 0x6B): the frame of a read with that function code, the answer arriving
+  // through onResponse like a read's. Unconfirmed on P300 hardware; see
+  // FunctionCode::GFA_READ.
+  bool gfaRead(uint16_t address, uint8_t length);
 
   bool begin();
   void loop();

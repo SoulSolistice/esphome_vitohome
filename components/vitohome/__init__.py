@@ -235,28 +235,51 @@ _RPC_DOMAINS = ("sensor", "binary_sensor", "text_sensor")
 # action button (button.py, `type: action`), which runs a procedure.
 _RPC_CHECK_DOMAINS = (*_RPC_DOMAINS, "button")
 
+# `access: gfa` (KW and P300). The datapoint lives in the burner control
+# (Gasfeuerungsautomat, GFA), a second controller behind the Vitotronic, and is
+# read in ITS address space: telegram type 0x6B instead of the read's 0xF7 on
+# KW, function code 0x6B instead of 0x01 on P300. Vitosoft marks such
+# datapoints FCRead GFA_READ -- the burner control's P-parameters at 0x4000 + n
+# (fan speed, ionisation current, burner phase, ...) and its coding parameters
+# from 0x0000 -- and the same address in the Vitotronic's own space is a
+# different datapoint (0x4050 reads FF there, the chip byte here). `length:`,
+# `byte_offset:` and the converters mean what they mean for any read.
+#
+# Read-only platforms only (_GFA_DOMAINS): Vitosoft defines no GFA write at all.
+# Hardware-confirmed on KW (VScotHO1_72, burner control 0x24, 2026-10-26); over
+# P300 the telegram is built the same way but has not been tried on a unit.
+# GWG has no such telegram; _final_validate rejects `access: gfa` there.
+ACCESS_GFA = "gfa"
+_GFA_DOMAINS = _RPC_DOMAINS
+_GFA_PROTOCOLS = ("KW", "P300")
+
+# `access:` values that are not GWG access modes.
+_NON_GWG_ACCESS = (ACCESS_RPC, ACCESS_GFA)
+
 
 def read_access(value):
-    """`access:` on a read-only platform: a GWG access mode, or `rpc`."""
-    if isinstance(value, str) and value.strip().lower() == ACCESS_RPC:
-        return ACCESS_RPC
+    """`access:` on a read-only platform: a GWG access mode, `rpc` or `gfa`."""
+    if isinstance(value, str) and value.strip().lower() in _NON_GWG_ACCESS:
+        return value.strip().lower()
     try:
         return cv.enum(GWG_ACCESS_MODES, lower=True)(value)
     except cv.Invalid as err:
-        raise cv.Invalid(f"{err.msg}, or '{ACCESS_RPC}'") from err
+        raise cv.Invalid(f"{err.msg}, or '{ACCESS_RPC}' or '{ACCESS_GFA}'") from err
 
 
 RPC_PREFIX_SCHEMA = cv.All(cv.ensure_list(cv.hex_uint8_t), cv.Length(min=1, max=RPC_PREFIX_MAX))
 
 
 def emit_access(var, config):
-    """Emit `access:` -- a GWG mode, or an `access: rpc` read and its prefix."""
+    """Emit `access:` -- a GWG mode, an `access: rpc` read and its prefix, or an `access: gfa` read."""
     access = config.get(CONF_ACCESS)
     if access is None:
         return
     if str(access) == ACCESS_RPC:
         # An empty prefix still marks the entity an RPC: a call without a parameter.
         cg.add(var.set_rpc_prefix(config.get(CONF_PREFIX, [])))
+    elif str(access) == ACCESS_GFA:
+        cg.add(var.set_gfa())
     else:
         cg.add(var.set_access(access))
 
@@ -1005,7 +1028,7 @@ def _entity_gwg_access_slots(entity):
 def _entity_gwg_access_modes(entity):
     """The subset of _entity_gwg_access_slots that is actually set to a GWG mode."""
     for key, access in _entity_gwg_access_slots(entity):
-        if access is not None and str(access) != ACCESS_RPC:
+        if access is not None and str(access) not in _NON_GWG_ACCESS:
             yield key, access
 
 
@@ -1026,6 +1049,20 @@ def _validate_rpc_access(full, hub_id, protocol):
                 f"{domain} '{_entity_name(entity)}' sets 'access: {ACCESS_RPC}', but protocol "
                 f"'{protocol}' has no remote procedure call telegram -- it is function code 0x07 of "
                 f"P300 (VS2) only. Remove it, or read the datapoint another way.",
+                path=[CONF_ACCESS],
+            )
+
+
+def _validate_gfa_access(full, hub_id, protocol):
+    """`access: gfa` only where KW or P300 can send the burner control's read."""
+    if protocol in _GFA_PROTOCOLS:
+        return
+    for domain, entity in _entities_for_hub(full, _GFA_DOMAINS, hub_id):
+        if str(entity.get(CONF_ACCESS)) == ACCESS_GFA:
+            raise cv.Invalid(
+                f"{domain} '{_entity_name(entity)}' sets 'access: {ACCESS_GFA}', but protocol "
+                f"'{protocol}' has no GFA read telegram -- the burner control is read with 0x6B over "
+                f"KW (VS1) or P300 (VS2) only. Remove it, or set the protocol the unit speaks.",
                 path=[CONF_ACCESS],
             )
 
@@ -1082,6 +1119,7 @@ def _final_validate(config):
     hub_id = config[CONF_ID]
 
     _validate_rpc_access(full, hub_id, PROTOCOLS[protocol])
+    _validate_gfa_access(full, hub_id, PROTOCOLS[protocol])
 
     if protocol == "GWG":
         # System-time sync cannot work under GWG, at any address.
@@ -1205,7 +1243,8 @@ def _final_validate(config):
         # meaningless -- and silently a no-op at runtime, since VitoEntityBase::
         # access_ is compiled but never read outside a GWG build -- under
         # any other protocol. Reject at config time rather than let it look
-        # configurable. `access: rpc` is not a GWG mode and was checked above.
+        # configurable. `access: rpc` and `access: gfa` are not GWG modes and
+        # were checked above.
         for domain, entity in _entities_for_hub(full, _ACCESS_DOMAINS, hub_id):
             for key, _access in _entity_gwg_access_modes(entity):
                 raise cv.Invalid(

@@ -22,7 +22,7 @@ bool PacketVS1::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, con
   if (len == 0) {
     return false;
   }
-  if (packetType != PacketVS1Type.READ && packetType != PacketVS1Type.WRITE) {
+  if (packetType != PacketVS1Type.READ && packetType != PacketVS1Type.WRITE && packetType != PacketVS1Type.GFA_READ) {
     return false;
   }
   if (packetType == PacketVS1Type.WRITE && !data) {
@@ -54,7 +54,7 @@ bool PacketVS1::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, con
 uint8_t PacketVS1::length() const {
   if (_buffer[3] == 0)
     return 0;
-  if (_buffer[0] == PacketVS1Type.READ)
+  if (_buffer[0] == PacketVS1Type.READ || _buffer[0] == PacketVS1Type.GFA_READ)
     return 4;
   // NOTE: uint8_t arithmetic -- wraps for a payload length >= 252.
   // Unreachable today (the raw lane caps writes at 32 bytes; entity writes are

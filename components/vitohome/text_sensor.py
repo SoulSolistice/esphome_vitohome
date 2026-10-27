@@ -168,9 +168,9 @@ def _addressed(extra: dict) -> cv.Schema:
             {
                 cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
                 cv.Optional(CONF_UPDATE_INTERVAL): cv.update_interval,
-                # A GWG access mode (GWG only) or `rpc` (P300 only); checked
-                # in _final_validate (__init__.py). See CONF_ACCESS and
-                # ACCESS_RPC there.
+                # A GWG access mode (GWG only), `rpc` (P300 only) or `gfa`
+                # (KW and P300); checked in _final_validate (__init__.py). See
+                # CONF_ACCESS, ACCESS_RPC and ACCESS_GFA there.
                 cv.Optional(CONF_ACCESS): read_access,
                 # The parameter of an `access: rpc` read (P300); see ACCESS_RPC in __init__.py.
                 cv.Optional(CONF_PREFIX): RPC_PREFIX_SCHEMA,
