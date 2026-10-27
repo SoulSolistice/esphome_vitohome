@@ -690,6 +690,45 @@ The component side:
   for other chips only and keeps everything else; the *Burner control* tag chip
   shows the GFA datapoints alone.
 
+### Access spaces: one model for `access:`
+
+GWG modes, `rpc` and `gfa` are three answers to one question -- *which
+telegram reads this address?* -- and the same address means different things
+in different spaces (`0x01` in GWG's eeprom and port, `0x4050` in the
+Vitotronic and in the burner control). The hub models that once:
+
+- `AddressSpace` (`address_space.h`): `OWN` (the protocol's own read and
+  write), `GFA`, `RPC`, and GWG's modes. Per protocol, constexpr:
+  `space_available()`, `space_writable()`, `space_has_switch_cost()`.
+- One field per entity (`VitoEntityBase::space()`) and per raw-lane
+  operation (`RawOp::space`). The codegen setters (`set_access()` for a GWG
+  mode, `set_rpc_prefix()`, `set_gfa()`) set it; the raw-lane API keeps its
+  GWGAccessMode argument for lambdas, which maps to `OWN` off GWG as it
+  always did.
+- `send_read_()` / `send_write_()` are the only place a space becomes an
+  engine call, and hold the only protocol `#ifdef`s on the dispatch path.
+  Every lane goes through them: reads, writes, read-modify-writes,
+  identification (`GWG_VIRTUAL` on GWG), the raw console. A space a protocol
+  has no telegram for is refused like a packet the engine never builds.
+- The sibling refresh after a write compares spaces (same address, other
+  space = other register) on every protocol, not only GWG.
+- Address-space affinity: after a read in a space with a switch cost (over
+  P300: GFA), the next queued read in that space goes first.
+- Config: `ACCESS_SPACES` (`__init__.py`) holds, per `access:` value, the
+  protocols that have it and whether it is written;
+  `_validate_access_spaces()` checks every entity against it. GWG's own rules
+  (a writable entity must state its mode, the physical-default warning) stay
+  GWG-only. `tests/unit/test_access_spaces.py` keeps the table and
+  `space_name()` in step; `tests/native/proof_address_space.cpp` pins the
+  per-protocol rows.
+
+A new access function (the export also has `PROZESS_READ`, the `KBUS_*`
+tunnels, `Virtual_MBUS`, `EEPROM_READ`/`Physical_READ` outside GWG, ...) is
+then: an enumerator and its rows in `address_space.h`, its telegram in
+`send_read_()` (and `send_write_()` if written) and in the engine, a row in
+`ACCESS_SPACES` and its setter in `emit_access()`, and on the catalog side
+`_access_for()`. Nothing else in the hub dispatches on it.
+
 ---
 
 ## 3. The vendored engine (`optolink/`)

@@ -84,7 +84,7 @@ class VitoClimate final : public climate::Climate, public Component {
   // different registers -- the room setpoint and Betriebsart -- and nothing
   // says they live in the same GWG access space, so they are set separately
   // rather than one climate-wide mode. As everywhere else, one mode drives
-  // both directions of a channel (see VitoEntityBase::access_); the default is
+  // both directions of a channel (see VitoEntityBase::space()); the default is
   // PHYSICAL, i.e. byte-identical to the behaviour before this existed.
   void set_setpoint_access(optolink::GWGAccessMode access) { this->setpoint_.set_access(access); }
   void set_mode_access(optolink::GWGAccessMode access) { this->mode_.set_access(access); }

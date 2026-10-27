@@ -19,8 +19,12 @@ namespace esphome::vitohome {
 static const char *const TAG = "vitohome";
 
 // What a raw-lane operation is, for its log lines.
-static const char *raw_kind(bool is_write, bool is_rpc, bool is_gfa) {
-  return is_rpc ? "rpc" : (is_gfa ? "gfa read" : (is_write ? "write" : "read"));
+static const char *raw_kind(bool is_write, AddressSpace space) {
+  if (space == AddressSpace::RPC)
+    return "rpc";
+  if (space == AddressSpace::GFA)
+    return "gfa read";
+  return is_write ? "write" : "read";
 }
 
 // Known device families (Identification at 0xF8/0xF9). Deliberately small:
@@ -460,42 +464,17 @@ void VitoHomeComponent::dispatch_raw_front_() {
     this->raw_dp_ = optolink::Datapoint("scan", operation.address, operation.length, optolink::noconv);
 
     this->raw_is_write_ = operation.is_write;
-    this->raw_is_rpc_ = operation.is_rpc;
-    this->raw_is_gfa_ = operation.is_gfa;
+    this->raw_space_ = operation.space;
 
-    bool dispatched;
-    if (operation.is_rpc) {
-#ifdef VITOHOME_HAS_RPC
-      dispatched = this->vito_->rpc(operation.address, operation.bytes, operation.bytes_len);
-#else
-      dispatched = false;  // unreachable: queue_raw_rpc() refuses it on this build
-#endif
-    } else if (operation.is_gfa) {
-#ifdef VITOHOME_HAS_GFA
-      dispatched = this->vito_->gfaRead(this->raw_dp_.address(), this->raw_dp_.length());
-#else
-      dispatched = false;  // unreachable: queue_raw_gfa_read() refuses it on this build
-#endif
-    } else if (operation.is_write) {
-#ifdef VITOHOME_PROTOCOL_GWG
-      // GWG-only: the scan console can now pick the write access mode too, so a
-      // tester can exercise EEPROM (0xAD) / BE (0x9D) -- the only modes Vitosoft
-      // marks writable -- rather than only PHYSICAL (0xC8).
-      dispatched = this->vito_->write(this->raw_dp_.address(), operation.bytes, operation.bytes_len, operation.access);
-#else
-      dispatched = this->vito_->write(this->raw_dp_.address(), operation.bytes, operation.bytes_len);
-#endif
-    } else {
-#ifdef VITOHOME_PROTOCOL_GWG
-      // GWG-only: access mode selects the TYPE byte (see GWGAccessMode,
-      // constants.h). operation.access defaults to PHYSICAL, so a scan
-      // console user who never passes a third argument to queue_raw_read()
-      // gets exactly the pre-existing behaviour.
-      dispatched = this->vito_->read(this->raw_dp_.address(), this->raw_dp_.length(), operation.access);
-#else
-      dispatched = this->vito_->read(this->raw_dp_.address(), this->raw_dp_.length());
-#endif
-    }
+    // The space picks the telegram (send_read_ / send_write_): a GWG access
+    // mode on GWG -- the scan console can pick EEPROM (0xAD) / BE (0x9D), the
+    // modes Vitosoft marks writable --, a remote procedure call with its
+    // parameter, a GFA read. OWN, the protocol's own read or write, unless
+    // the caller asked for another.
+    const bool dispatched =
+        operation.is_write ? this->send_write_(operation.address, operation.bytes, operation.bytes_len, operation.space)
+                           : this->send_read_(operation.address, operation.length, operation.space, operation.bytes,
+                                              operation.bytes_len);
 
     if (!dispatched) {
       // read()/write() returning false is overloaded: transient backpressure
@@ -512,18 +491,18 @@ void VitoHomeComponent::dispatch_raw_front_() {
       if (this->vito_->isBusy())
         return false;  // transient: keep the item at the head and retry
       ESP_LOGE(TAG, "Engine refused raw %s 0x%04X len %u (permanent); dropping",
-               raw_kind(operation.is_write, operation.is_rpc, operation.is_gfa), operation.address, operation.length);
+               raw_kind(operation.is_write, operation.space), operation.address, operation.length);
       this->raw_handle_error_(optolink::OptolinkResult::ERROR);
       return true;  // permanent: drop so the read/write lanes are reached
     }
 
     this->raw_write_len_ = operation.is_write ? operation.bytes_len : 0;
     this->raw_in_flight_ = true;
-    this->last_read_gfa_ = operation.is_gfa;
+    this->last_space_ = operation.space;
     this->in_flight_started_ms_ = App.get_loop_component_start_time();
 
-    ESP_LOGV(TAG, "Dispatched raw %s 0x%04X len %u", raw_kind(operation.is_write, operation.is_rpc, operation.is_gfa),
-             operation.address, operation.length);
+    ESP_LOGV(TAG, "Dispatched raw %s 0x%04X len %u", raw_kind(operation.is_write, operation.space), operation.address,
+             operation.length);
 
     return true;
   });
@@ -545,20 +524,16 @@ void VitoHomeComponent::dispatch_next_() {
   // Identification runs before regular traffic so the user sees the device
   // tuple in the first seconds of the log.
   if (this->ident_state_ != IdentState::IDLE && this->ident_state_ != IdentState::DONE) {
-#ifdef VITOHOME_PROTOCOL_GWG
     // GWG identification lives in the VIRTUAL access space, not the physical
     // one (2026-08-24). Vitosoft's own GWG tables put the four `SystemIdent`
     // fields at 0xF8..0xFB under FCRead=Virtual_READ, and vcontrold agrees --
     // its getDevType reads 0xF8 len 4 with GETVADDR (0xC7). Reading them on
     // the physical mode returns whatever the physical register file holds at
     // those offsets, which is what produced the unstable identifier this
-    // project logged on its GWG capture. Every other protocol has exactly one
-    // read space and is unaffected.
-    const bool ident_dispatched =
-        this->vito_->read(this->ident_dp_.address(), this->ident_dp_.length(), optolink::GWGAccessMode::VIRTUAL);
-#else
-    const bool ident_dispatched = this->vito_->read(this->ident_dp_.address(), this->ident_dp_.length());
-#endif
+    // project logged on its GWG capture. Every other protocol reads it with its
+    // own read.
+    constexpr AddressSpace ident_space = IS_GWG ? AddressSpace::GWG_VIRTUAL : AddressSpace::OWN;
+    const bool ident_dispatched = this->send_read_(this->ident_dp_.address(), this->ident_dp_.length(), ident_space);
     if (ident_dispatched) {
       this->ident_in_flight_ = true;
       this->in_flight_started_ms_ = App.get_loop_component_start_time();
@@ -619,11 +594,7 @@ void VitoHomeComponent::dispatch_next_() {
         entity->handle_write_error(optolink::OptolinkResult::LENGTH);
         return true;
       }
-#ifdef VITOHOME_PROTOCOL_GWG
-      const bool read_ok = this->vito_->read(wdp.address(), wdp.length(), entity->access());
-#else
-      const bool read_ok = this->vito_->read(wdp.address(), wdp.length());
-#endif
+      const bool read_ok = this->send_read_(wdp.address(), wdp.length(), entity->space());
       if (!read_ok) {
         // Same transient/permanent split as the plain write below.
         if (this->vito_->isBusy())
@@ -642,25 +613,14 @@ void VitoHomeComponent::dispatch_next_() {
       return true;
     }
 
-#ifdef VITOHOME_PROTOCOL_GWG
-    // GWG-only: one access mode drives both directions (see
-    // VitoEntityBase::access_), so a writable entity writes in the same mode it
-    // polls in -- which is what Vitosoft's (EEPROM_READ, EEPROM_WRITE) /
-    // (BE_READ, BE_WRITE) pairing says. Defaults to PHYSICAL, i.e. the single
-    // 0xC8 this lane emitted before.
-    const bool write_ok = this->vito_->write(entity->get_write_datapoint().address(), entity->write_data(),
-                                             entity->write_length(), entity->access());
-#elif defined(VITOHOME_HAS_RPC)
-    // An action (VitoActionButton) is a procedure call, not a write: the same
-    // telegram an `access: rpc` read sends, here for its effect.
-    const bool write_ok =
-        entity->is_rpc()
-            ? this->vito_->rpc(entity->get_write_datapoint().address(), entity->rpc_prefix(), entity->rpc_prefix_len())
-            : this->vito_->write(entity->get_write_datapoint().address(), entity->write_data(), entity->write_length());
-#else
-    const bool write_ok =
-        this->vito_->write(entity->get_write_datapoint().address(), entity->write_data(), entity->write_length());
-#endif
+    // One space drives both directions (see VitoEntityBase::space()): a GWG
+    // entity writes in the mode it polls in, as Vitosoft pairs them
+    // (EEPROM_READ, EEPROM_WRITE) / (BE_READ, BE_WRITE). An action
+    // (VitoActionButton) is a procedure call, not a write: the same telegram an
+    // `access: rpc` read sends, here for its effect.
+    const optolink::Datapoint &wdp = entity->get_write_datapoint();
+    const bool write_ok = this->send_write_(wdp.address(), entity->write_data(), entity->write_length(),
+                                            entity->space(), entity->rpc_prefix(), entity->rpc_prefix_len());
     if (!write_ok) {
       // Transient (_busy) versus a permanent createPacket() rejection. Config-
       // declared write addresses/payloads are schema-validated, so the
@@ -678,7 +638,7 @@ void VitoHomeComponent::dispatch_next_() {
 
     this->in_flight_ = entity;
     this->in_flight_op_ = OpType::WRITE;
-    this->last_read_gfa_ = false;
+    this->last_space_ = entity->space();
     this->in_flight_started_ms_ = App.get_loop_component_start_time();
 
     // The entity has left the queue and is now in flight. Clearing
@@ -699,14 +659,16 @@ void VitoHomeComponent::dispatch_next_() {
   // ring and while its request is in flight. Completion, error, mismatch, or
   // watchdog handling clears it.
   //
-  // Address-space affinity: a GFA read right after a GFA read chains onto the
-  // same KW session, while a switch costs -- over P300 up to two ENQ waits,
-  // seconds, for the detour to KW and back (VS2Engine::gfaRead()). So after a
-  // GFA read the next queued GFA read goes first. The queue holds at most one
-  // slot per entity, so this cannot starve the others for longer than one
-  // round of GFA reads.
-  if (this->last_read_gfa_)
-    (void) this->read_queue_.move_first_to_front_if([](VitoEntityBase *e) { return e != nullptr && e->is_gfa(); });
+  // Address-space affinity: where reaching a space costs a protocol switch
+  // (space_has_switch_cost(): over P300 a GFA read detours to KW and back, up
+  // to two ENQ waits), the next queued read in the same space goes first, so a
+  // run of them shares one switch. The queue holds at most one slot per
+  // entity, so this cannot starve the others for longer than one such run.
+  if (space_has_switch_cost(this->last_space_)) {
+    const AddressSpace space = this->last_space_;
+    (void) this->read_queue_.move_first_to_front_if(
+        [space](VitoEntityBase *e) { return e != nullptr && e->space() == space; });
+  }
   this->read_queue_.consume_front_if([this](VitoEntityBase *entity) {
     if (entity == nullptr) {
       ESP_LOGE(TAG, "null entity in read queue; dropping item");
@@ -715,26 +677,11 @@ void VitoHomeComponent::dispatch_next_() {
 
     const optolink::Datapoint &datapoint = entity->get_datapoint();
 
-#ifdef VITOHOME_PROTOCOL_GWG
-    // GWG-only: entity->access() defaults to PHYSICAL (see
-    // VitoEntityBase::access_), so an entity that never sets `access:` gets
-    // exactly the pre-existing behaviour.
-    const bool dispatched_ok = this->vito_->read(datapoint.address(), datapoint.length(), entity->access());
-#elif defined(VITOHOME_HAS_RPC)
-    // `access: rpc` and `access: gfa`: the same lane and the same response path
-    // as a read; only the telegram differs. See VitoEntityBase::set_rpc_prefix()
-    // and set_gfa().
-    const bool dispatched_ok =
-        entity->is_rpc()   ? this->vito_->rpc(datapoint.address(), entity->rpc_prefix(), entity->rpc_prefix_len())
-        : entity->is_gfa() ? this->vito_->gfaRead(datapoint.address(), datapoint.length())
-                           : this->vito_->read(datapoint.address(), datapoint.length());
-#elif defined(VITOHOME_HAS_GFA)
-    // `access: gfa` (KW): likewise. See VitoEntityBase::set_gfa().
-    const bool dispatched_ok = entity->is_gfa() ? this->vito_->gfaRead(datapoint.address(), datapoint.length())
-                                                : this->vito_->read(datapoint.address(), datapoint.length());
-#else
-    const bool dispatched_ok = this->vito_->read(datapoint.address(), datapoint.length());
-#endif
+    // The entity's space picks the telegram (send_read_): a GWG access mode,
+    // an `access: rpc` call with its prefix, an `access: gfa` read -- the same
+    // lane and the same response path as a read.
+    const bool dispatched_ok = this->send_read_(datapoint.address(), datapoint.length(), entity->space(),
+                                                entity->rpc_prefix(), entity->rpc_prefix_len());
     if (!dispatched_ok) {
       // See the write lane above: transient _busy retains, a permanent
       // createPacket() rejection (unreachable for schema-validated poll
@@ -750,7 +697,7 @@ void VitoHomeComponent::dispatch_next_() {
     this->in_flight_ = entity;
     this->in_flight_op_ = OpType::READ;
     this->in_flight_started_ms_ = App.get_loop_component_start_time();
-    this->last_read_gfa_ = entity->is_gfa();
+    this->last_space_ = entity->space();
 
     ESP_LOGV(TAG, "Dispatched read for %s", entity->get_datapoint().name());
 
@@ -970,6 +917,61 @@ bool VitoHomeComponent::request_write(VitoEntityBase *entity) {
 }
 
 // ---------------------------------------------------------------------------
+// Telegrams per access space
+// ---------------------------------------------------------------------------
+// The only place an AddressSpace (address_space.h) becomes an engine call, and
+// the only protocol #ifdefs on the dispatch path: every lane -- reads, writes,
+// read-modify-writes, identification, the raw console -- comes through here. A
+// space the protocol has no telegram for is refused like a packet the engine
+// will never build (false while the engine is idle), which the callers already
+// treat as permanent; the config validation keeps such spaces out of the YAML.
+
+bool VitoHomeComponent::send_read_(uint16_t address, uint8_t length, AddressSpace space, const uint8_t *parameter,
+                                   uint8_t parameter_len) {
+  if (!space_available(space))
+    return false;
+  switch (space) {
+#ifdef VITOHOME_HAS_RPC
+    case AddressSpace::RPC:
+      return this->vito_->rpc(address, parameter, parameter_len);
+#endif
+#ifdef VITOHOME_HAS_GFA
+    case AddressSpace::GFA:
+      return this->vito_->gfaRead(address, length);
+#endif
+    default:
+      break;
+  }
+  (void) parameter;
+  (void) parameter_len;
+#ifdef VITOHOME_PROTOCOL_GWG
+  return this->vito_->read(address, length, gwg_mode(space));
+#else
+  return this->vito_->read(address, length);
+#endif
+}
+
+bool VitoHomeComponent::send_write_(uint16_t address, const uint8_t *data, uint8_t length, AddressSpace space,
+                                    const uint8_t *parameter, uint8_t parameter_len) {
+  if (!space_available(space))
+    return false;
+#ifdef VITOHOME_HAS_RPC
+  // An action button: the procedure call is sent for its effect.
+  if (space == AddressSpace::RPC)
+    return this->vito_->rpc(address, parameter, parameter_len);
+#endif
+  (void) parameter;
+  (void) parameter_len;
+  if (!space_writable(space))
+    return false;
+#ifdef VITOHOME_PROTOCOL_GWG
+  return this->vito_->write(address, data, length, gwg_mode(space));
+#else
+  return this->vito_->write(address, data, length);
+#endif
+}
+
+// ---------------------------------------------------------------------------
 // Raw scan console (debug)
 // ---------------------------------------------------------------------------
 
@@ -979,7 +981,7 @@ void VitoHomeComponent::queue_raw_read(uint16_t address, uint8_t length, optolin
     return;
   }
 
-  this->enqueue_raw_(address, length, false, nullptr, 0, access);
+  this->enqueue_raw_(address, length, false, nullptr, 0, space_from_gwg(access));
 }
 
 void VitoHomeComponent::queue_raw_write(uint16_t address, const uint8_t *data, std::size_t len,
@@ -992,7 +994,7 @@ void VitoHomeComponent::queue_raw_write(uint16_t address, const uint8_t *data, s
     return;
   }
 
-  this->enqueue_raw_(address, static_cast<uint8_t>(len), true, data, static_cast<uint8_t>(len), access);
+  this->enqueue_raw_(address, static_cast<uint8_t>(len), true, data, static_cast<uint8_t>(len), space_from_gwg(access));
 }
 
 void VitoHomeComponent::queue_raw_write(uint16_t address, const std::vector<uint8_t> &bytes,
@@ -1004,7 +1006,10 @@ void VitoHomeComponent::queue_raw_write(uint16_t address, const std::vector<uint
 }
 
 void VitoHomeComponent::queue_raw_rpc(uint16_t address, const uint8_t *parameter, std::size_t len) {
-#ifdef VITOHOME_HAS_RPC
+  if (!space_available(AddressSpace::RPC)) {
+    ESP_LOGW(TAG, "queue_raw_rpc: 0x%04X not sent -- %s has no remote procedure call telegram", address, PROTOCOL_NAME);
+    return;
+  }
   // Same cap as a raw write: the parameter rides in RawOp::bytes. Zero is
   // allowed -- a procedure without a parameter -- and then runs the procedure.
   if (len > RAW_WRITE_MAX || (len != 0 && parameter == nullptr)) {
@@ -1012,12 +1017,7 @@ void VitoHomeComponent::queue_raw_rpc(uint16_t address, const uint8_t *parameter
     return;
   }
   this->enqueue_raw_(address, static_cast<uint8_t>(len), false, parameter, static_cast<uint8_t>(len),
-                     optolink::GWGAccessMode::PHYSICAL, true);
-#else
-  (void) parameter;
-  (void) len;
-  ESP_LOGW(TAG, "queue_raw_rpc: 0x%04X not sent -- %s has no remote procedure call telegram", address, PROTOCOL_NAME);
-#endif
+                     AddressSpace::RPC);
 }
 
 void VitoHomeComponent::queue_raw_rpc(uint16_t address, const std::vector<uint8_t> &parameter) {
@@ -1025,20 +1025,20 @@ void VitoHomeComponent::queue_raw_rpc(uint16_t address, const std::vector<uint8_
 }
 
 void VitoHomeComponent::queue_raw_gfa_read(uint16_t address, uint8_t length) {
-#ifdef VITOHOME_HAS_GFA
+  if (!space_available(AddressSpace::GFA)) {
+    ESP_LOGW(TAG, "queue_raw_gfa_read: 0x%04X not sent -- %s has no GFA read telegram", address, PROTOCOL_NAME);
+    return;
+  }
   if (length < 1 || length > RAW_READ_MAX) {
     ESP_LOGW(TAG, "queue_raw_gfa_read: length %u out of range (1..%u)", length, RAW_READ_MAX);
     return;
   }
-  this->enqueue_raw_(address, length, false, nullptr, 0, optolink::GWGAccessMode::PHYSICAL, false, true);
-#else
-  (void) length;
-  ESP_LOGW(TAG, "queue_raw_gfa_read: 0x%04X not sent -- %s has no GFA read telegram", address, PROTOCOL_NAME);
-#endif
+  this->enqueue_raw_(address, length, false, nullptr, 0, AddressSpace::GFA);
 }
 
 bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes,
-                                     uint8_t bytes_len, optolink::GWGAccessMode access, bool is_rpc, bool is_gfa) {
+                                     uint8_t bytes_len, AddressSpace space) {
+  const bool is_rpc = space == AddressSpace::RPC;
   // An RPC's length is its parameter's, which may be empty; see queue_raw_rpc().
   if (length == 0 && !is_rpc) {
     ESP_LOGW(TAG, "enqueue_raw_: zero-length operation rejected");
@@ -1050,12 +1050,13 @@ bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
     return false;
   }
 
-  if (is_gfa && (is_write || is_rpc)) {
-    ESP_LOGW(TAG, "enqueue_raw_: a GFA operation is a read");
+  if (!space_available(space) || (is_write && !space_writable(space))) {
+    ESP_LOGW(TAG, "enqueue_raw_: %s has no %s telegram in access space '%s'", PROTOCOL_NAME,
+             is_write ? "write" : "read", space_name(space));
     return false;
   }
   if (is_rpc) {
-    if (is_write || bytes_len != length || (bytes_len != 0 && bytes == nullptr)) {
+    if (bytes_len != length || (bytes_len != 0 && bytes == nullptr)) {
       ESP_LOGW(TAG, "enqueue_raw_: invalid rpc parameter (length=%u, bytes_len=%u)", length, bytes_len);
       return false;
     }
@@ -1075,9 +1076,7 @@ bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
   operation.length = length;
   operation.is_write = is_write;
   operation.bytes_len = bytes_len;
-  operation.access = access;  // read and write TYPE byte on GWG; ignored on other builds
-  operation.is_rpc = is_rpc;
-  operation.is_gfa = is_gfa;
+  operation.space = space;
 
   if ((is_write || is_rpc) && bytes_len != 0)
     std::memcpy(operation.bytes, bytes, bytes_len);
@@ -1092,16 +1091,16 @@ bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
       ESP_LOGW(TAG,
                "raw lane not allocated; dropping %s 0x%04X. Set raw_queue_size on the vitohome hub to use the "
                "scan console.",
-               raw_kind(is_write, is_rpc, is_gfa), address);
+               raw_kind(is_write, space), address);
     } else {
       ESP_LOGW(TAG, "raw queue full (%zu/%zu); dropping %s 0x%04X. Raise raw_queue_size for larger sweeps.",
-               this->raw_queue_.size(), this->raw_queue_.capacity(), raw_kind(is_write, is_rpc, is_gfa), address);
+               this->raw_queue_.size(), this->raw_queue_.capacity(), raw_kind(is_write, space), address);
     }
 
     return false;
   }
 
-  ESP_LOGD(TAG, "Queued raw %s 0x%04X len %u", raw_kind(is_write, is_rpc, is_gfa), address, length);
+  ESP_LOGD(TAG, "Queued raw %s 0x%04X len %u", raw_kind(is_write, space), address, length);
   return true;
 }
 
@@ -1125,7 +1124,7 @@ void VitoHomeComponent::raw_handle_error_(optolink::OptolinkResult error) {
   char buffer[96];
 
   snprintf(buffer, sizeof(buffer), "0x%04X: %s FAILED (%s)", this->raw_dp_.address(),
-           raw_kind(this->raw_is_write_, this->raw_is_rpc_, this->raw_is_gfa_), optolink::errorToString(error));
+           raw_kind(this->raw_is_write_, this->raw_space_), optolink::errorToString(error));
 
   ESP_LOGW(TAG, "Raw: %s", buffer);
   this->raw_publish_(buffer);
@@ -1349,11 +1348,7 @@ void VitoHomeComponent::rmw_handle_read_(VitoEntityBase *entity, const ResponseV
 void VitoHomeComponent::rmw_dispatch_write_() {
   VitoEntityBase *entity = this->rmw_pending_;
   const optolink::Datapoint &wdp = entity->get_write_datapoint();
-#ifdef VITOHOME_PROTOCOL_GWG
-  const bool write_ok = this->vito_->write(wdp.address(), this->rmw_buf_, this->rmw_len_, entity->access());
-#else
-  const bool write_ok = this->vito_->write(wdp.address(), this->rmw_buf_, this->rmw_len_);
-#endif
+  const bool write_ok = this->send_write_(wdp.address(), this->rmw_buf_, this->rmw_len_, entity->space());
   if (!write_ok) {
     // Transient: stay armed. dispatch_next_() keeps returning here, so nothing
     // else reaches the bus until the merged write is out.
@@ -1423,19 +1418,13 @@ void VitoHomeComponent::refresh_siblings_(VitoEntityBase *writer) {
     // and must not receive an unsolicited response.
     if (e == nullptr || e == writer || !e->wants_polling() || e->get_datapoint().address() != address)
       continue;
-#ifdef VITOHOME_PROTOCOL_GWG
-    // GWG addresses are per access mode: 0x01/eeprom and 0x01/port are
-    // different registers.
-    if (e->access() != writer->access())
+    // Addresses are per access space: 0x01/eeprom and 0x01/port on GWG, 0x4050
+    // in the Vitotronic and in the burner control, are different registers.
+    if (e->space() != writer->space())
       continue;
-#endif
     // An RPC answer is computed by the controller, not read from the memory a
     // write changed, so sharing the address says nothing about it.
     if (e->is_rpc())
-      continue;
-    // A GFA datapoint lives in the burner control's address space: the same
-    // address there is a different register from the one just written.
-    if (e->is_gfa())
       continue;
     if (this->request_priority_read(e))
       ++queued;
