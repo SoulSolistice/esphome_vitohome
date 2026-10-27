@@ -15,9 +15,9 @@ namespace esphome::vitohome {
 #if defined(VITOHOME_PROTOCOL_KW)
 using SelectedProtocol = optolink::KW;
 inline constexpr const char *PROTOCOL_NAME = "KW (VS1)";
-// KW and P300 read the burner control (0x6B, Vitosoft's GFA_READ) through
-// gfaRead(); GWG has no such telegram. Hardware-confirmed on KW only. Guards
-// every call to it.
+// KW and P300 read the burner control (the KW telegram 0x6B, Vitosoft's
+// GFA_READ) through gfaRead(); GWG has no such telegram. Guards every call to
+// it.
 #define VITOHOME_HAS_GFA
 #elif defined(VITOHOME_PROTOCOL_GWG)
 using SelectedProtocol = optolink::GWG;
@@ -28,8 +28,8 @@ inline constexpr const char *PROTOCOL_NAME = "P300 (VS2)";
 // Only P300 has a remote procedure call telegram (function code 0x07);
 // VS2Engine::rpc() exists on that engine alone. Guards every call to it.
 #define VITOHOME_HAS_RPC
-// See the KW branch; over P300 the GFA read is function code 0x6B, unconfirmed
-// on hardware (FunctionCode::GFA_READ).
+// See the KW branch. A P300 controller refuses 0x6B as a function code, so
+// VS2Engine::gfaRead() drops the link to KW for the telegram.
 #define VITOHOME_HAS_GFA
 #endif
 

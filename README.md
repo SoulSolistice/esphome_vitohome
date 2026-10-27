@@ -456,8 +456,8 @@ record layout is decoded. Details and the one open wire question are in
 Gas condensing boilers (Vitodens, Vitopend, Vitoplus, Vitosorp, Vitovalor and
 their relatives) have a second controller behind the Vitotronic: the **burner
 control** (Gasfeuerungsautomat, GFA). It has its own address space, and
-`access: gfa` reads a datapoint there -- telegram type `0x6B` instead of the
-read's `0xF7` on KW, function code `0x6B` instead of `0x01` on P300. Vitosoft
+`access: gfa` reads a datapoint there with the KW telegram `0x6B` instead of
+the read's `0xF7`. Vitosoft
 marks these datapoints `GFA_READ`: fan speed (actual and setpoint), ionisation
 current, gas-valve drive, flame-formation time, burner phase and status, the
 burner control's own fault details, calibration counters, software version and
@@ -491,9 +491,23 @@ reference unit `0x4050` reads `FF` there and the chip byte `0x24` with
 `esphome config` rejects it there. A few parameters mean different things on
 different burner-control chips (the chip is the byte the hub logs at boot,
 `GFA=0x..`), so check the chip before trusting a scale. **Hardware-confirmed
-over KW** (VScotHO1_72, chip `0x24`, 2026-10-26); over P300 the telegram is
-built the same way but has not been tried on a unit yet. From a lambda,
-`queue_raw_gfa_read(address, length)` reads one directly. Details in
+over KW** (VScotHO1_72, chip `0x24`, 2026-10-26). From a lambda,
+`queue_raw_gfa_read(address, length)` reads one directly.
+
+**Under P300** the controller refuses `0x6B` as a function code (an error
+frame, code `05`; same unit, 2026-10-27), so the hub drops the link to KW for
+it: EOT, the controller's ENQ, `01 6B <addr> <len>`, the answer, then P300 is
+re-established (EOT, ENQ, `16 00 00`). GFA reads that are due together share
+one detour -- the hub takes them back to back -- but each detour costs up to
+two ENQ waits, about 2 s each, during which nothing else is read. Give GFA
+datapoints long update intervals under P300, or run the hub on KW. The P300
+detour is not yet confirmed on a unit.
+
+The generated catalogs carry them with `access: gfa` and a `# vito: gfa=20,24`
+line naming the chips Vitosoft lists each one for; where a parameter decodes
+differently per chip, each reading is its own entity. In the catalog editor,
+pick your chip under *Burner-control chip* (the finder's link presets it) and
+the other chips' burner-control datapoints are hidden. Details in
 [`docs/design_notes.md`](docs/design_notes.md#burner-control-reads-access-gfa).
 
 ## Development

@@ -9,7 +9,7 @@
 # disabled_by_default; enable the ones you want in Home Assistant.
 #
 # FCRead filter ON: 378 datapoint(s) whose access method this
-# engine has no read for (GFA_READ/PROZESS/KBUS/OT, and remote procedures
+# engine has no read for (PROZESS/KBUS/OT, and remote procedures
 # that are neither a reading nor an action) were omitted as unreachable.
 # Re-run with --no-reachable-only to include them.
 #
@@ -21,7 +21,8 @@
 # grouping, for the catalog editor: circuit=hk1..hk6|dhw|solar|boiler|
 # cascade|mbus (the menu they are in), level=td (shown at the service
 # access level only), overview, quickcheck and trend (Vitosoft's overview
-# screen, quick check and trend recorder). ESPHome ignores them.
+# screen, quick check and trend recorder), and gfa=<chips> (the burner-
+# control chips a GFA datapoint is listed for). ESPHome ignores them.
 #
 # Actions: 56 procedures (P300 function code 0x07) as `type: action`
 # buttons, all disabled by default. Pressing one RUNS it on the controller

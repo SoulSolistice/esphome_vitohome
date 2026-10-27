@@ -238,6 +238,23 @@ template<typename T> class RingBuffer {
     return false;
   }
 
+  // move_to_front() for the first element `pred` accepts. `pred` runs under the
+  // lock and must not call back into this RingBuffer.
+  template<typename Pred> [[nodiscard]] bool move_first_to_front_if(Pred pred) {
+    LockGuard lock(this->mutex_);
+
+    for (std::size_t i = 0; i < this->count_; ++i) {
+      const T value = this->slots_[this->slot_unlocked_(i)];
+      if (!pred(value))
+        continue;
+      for (std::size_t j = i; j > 0; --j)
+        this->slots_[this->slot_unlocked_(j)] = this->slots_[this->slot_unlocked_(j - 1)];
+      this->slots_[this->head_] = value;
+      return true;
+    }
+    return false;
+  }
+
   // Copy, but do not remove, the current front item.
   //
   // Returns false and leaves `value` unchanged when empty. The returned value

@@ -661,6 +661,9 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   bool raw_is_write_{false};
   bool raw_is_rpc_{false};
   bool raw_is_gfa_{false};
+  // Whether the last telegram dispatched was a GFA read; see the address-space
+  // affinity in dispatch_next_().
+  bool last_read_gfa_{false};
 
   optolink::Datapoint raw_dp_{"scan", 0, 1, optolink::noconv};
 

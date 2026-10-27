@@ -25,6 +25,7 @@ bool VS2Engine::read(uint16_t address, uint8_t length) {
     _currentLength = length;
     _busy = true;
     _requestTime = _currentMillis;
+    _gfa = false;
     optolink_log_i("reading packet OK");
     return true;
   }
@@ -36,16 +37,17 @@ bool VS2Engine::gfaRead(uint16_t address, uint8_t length) {
   if (_busy) {
     return false;
   }
-  if (_currentPacket.createPacket(PacketType::REQUEST, FunctionCode::GFA_READ, 0, address, length)) {
-    _currentAddress = address;
-    _currentLength = length;
-    _busy = true;
-    _requestTime = _currentMillis;
-    optolink_log_i("gfa reading packet OK");
-    return true;
+  if (length == 0 || length > GFA_MAX_LENGTH) {
+    optolink_log_i("gfa reading not possible, length %u out of 1..%u", length, GFA_MAX_LENGTH);
+    return false;
   }
-  optolink_log_i("gfa reading not possible, packet creation error");
-  return false;
+  _gfa = true;
+  _currentAddress = address;
+  _currentLength = length;
+  _busy = true;
+  _requestTime = _currentMillis;
+  optolink_log_i("gfa reading OK");
+  return true;
 }
 
 bool VS2Engine::write(uint16_t address, const uint8_t *data, uint8_t length) {
@@ -57,6 +59,7 @@ bool VS2Engine::write(uint16_t address, const uint8_t *data, uint8_t length) {
     _currentLength = length;
     _busy = true;
     _requestTime = _currentMillis;
+    _gfa = false;
     optolink_log_i("writing packet OK");
     return true;
   }
@@ -73,6 +76,7 @@ bool VS2Engine::rpc(uint16_t address, const uint8_t *parameter, uint8_t length) 
     _currentLength = length;
     _busy = true;
     _requestTime = _currentMillis;
+    _gfa = false;
     optolink_log_i("rpc packet OK");
     return true;
   }
@@ -122,6 +126,21 @@ void VS2Engine::loop() {
       break;
     case State::RECEIVE_ACK:
       _receiveAck();
+      break;
+    case State::GFA_DROP:
+      _gfaDrop();
+      break;
+    case State::GFA_ENQ:
+      _gfaEnq();
+      break;
+    case State::GFA_SEND:
+      _gfaSend();
+      break;
+    case State::GFA_RECEIVE:
+      _gfaReceive();
+      break;
+    case State::GFA_CHAIN:
+      _gfaChain();
       break;
     case State::UNDEFINED:
       // begin() not yet called
@@ -202,6 +221,11 @@ void VS2Engine::_initAck() {
 
 void VS2Engine::_idle() {
   if (_busy) {
+    // A GFA read leaves P300 for one KW telegram (see gfaRead()).
+    if (_gfa) {
+      _setState(State::GFA_DROP);
+      return;
+    }
     _setState(State::SENDSTART);
   }
   // send INIT every KEEPALIVE_INTERVAL_MS to keep communication alive
@@ -288,6 +312,109 @@ void VS2Engine::_receiveAck() {
   if (_interface->write(&internals::ProtocolBytes.ACK, 1) == 1) {
     _lastMillis = _currentMillis;
     _setState(State::IDLE);
+  }
+}
+
+// --- GFA read: a KW detour (gfaRead()) ---------------------------------------
+// The controller answers the KW telegram 0x6B (hardware-confirmed over KW) but
+// refuses it as a P300 function code (an ERROR frame, code 05). So the link
+// leaves P300 the way RESET does, with an EOT, and the controller -- now in KW
+// -- offers its ENQ; the telegram goes out on it like a KW read. Further GFA
+// reads chain onto that session; then RESET re-establishes P300.
+
+// Leave P300 like _reset(): parser, stale bytes, EOT.
+void VS2Engine::_gfaDrop() {
+  _parser.reset();
+  while (_interface->available())
+    _interface->read();
+  if (_interface->write(&internals::ProtocolBytes.EOT, 1) == 1) {
+    _lastMillis = _currentMillis;
+    // The request watchdog runs from here: the request may have waited out a
+    // handshake before the link was idle.
+    _requestTime = _currentMillis;
+    _setState(State::GFA_ENQ);
+  }
+}
+
+void VS2Engine::_gfaEnq() {
+  if (_interface->available()) {
+    // Anything but the ENQ is left over from P300 and dropped.
+    if (_interface->read() == internals::ProtocolBytes.ENQ)
+      _gfaStart(true);
+  } else if (_currentMillis - _lastMillis > GFA_ENQ_TIMEOUT_MS) {
+    _setState(State::RESET);
+    _tryOnError(OptolinkResult::TIMEOUT);
+  }
+}
+
+// The KW telegram, with ENQ_ACK in front when it answers an ENQ (as
+// VS1Engine::_syncEnq() does), sent in the same loop as the ENQ arrived.
+void VS2Engine::_gfaStart(bool enqAck) {
+  uint8_t n = 0;
+  if (enqAck)
+    _gfaFrame[n++] = internals::ProtocolBytes.ENQ_ACK;
+  _gfaFrame[n++] = PacketVS1Type.GFA_READ;
+  _gfaFrame[n++] = static_cast<uint8_t>(_currentAddress >> 8);
+  _gfaFrame[n++] = static_cast<uint8_t>(_currentAddress & 0xFF);
+  _gfaFrame[n++] = _currentLength;
+  _gfaFrameLen = n;
+  _bytesTransferred = 0;
+  _requestTime = _currentMillis;
+  _setState(State::GFA_SEND);
+  _gfaSend();
+}
+
+void VS2Engine::_gfaSend() {
+  _bytesTransferred += _interface->write(&_gfaFrame[_bytesTransferred], _gfaFrameLen - _bytesTransferred);
+  if (_bytesTransferred == _gfaFrameLen) {
+    _bytesTransferred = 0;
+    _lastMillis = _currentMillis;
+    _setState(State::GFA_RECEIVE);
+  }
+}
+
+// KW answers with exactly <length> raw bytes: no frame, no checksum.
+void VS2Engine::_gfaReceive() {
+  while (_interface->available() && _bytesTransferred < _currentLength) {
+    _gfaAnswer[_bytesTransferred++] = _interface->read();
+    _lastMillis = _currentMillis;
+  }
+  if (_bytesTransferred < _currentLength)
+    return;
+  _bytesTransferred = 0;
+  _setState(State::GFA_CHAIN);
+  if (_onResponseCallback) {
+    _onResponseCallback(_gfaAnswer, _currentLength, _currentAddress);
+  }
+  _busy = false;
+}
+
+// After an answer the KW session is still open: a GFA read goes out on it after
+// GFA_GAP_MS; anything else, or GFA_LINGER_MS without a request, returns to
+// P300. A byte from the controller meanwhile is its ENQ (the session idled
+// out): it opens the next GFA telegram, or is answered with SYNC like the ENQ
+// RESET waits for.
+void VS2Engine::_gfaChain() {
+  if (_interface->available()) {
+    if (_interface->read() != internals::ProtocolBytes.ENQ) {
+      _setState(State::RESET);
+      return;
+    }
+    if (_busy && _gfa) {
+      _gfaStart(true);
+    } else {
+      _lastMillis = _currentMillis;
+      _setState(State::INIT);
+    }
+    return;
+  }
+  if (_busy && _gfa) {
+    if (_currentMillis - _lastMillis >= GFA_GAP_MS)
+      _gfaStart(false);
+    return;
+  }
+  if (_busy || _currentMillis - _lastMillis > GFA_LINGER_MS) {
+    _setState(State::RESET);
   }
 }
 

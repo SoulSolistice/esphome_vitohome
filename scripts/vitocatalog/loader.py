@@ -20,11 +20,13 @@ from .constants import (
     _WANTED_EXTENSIONS,
     _WANTED_ROWS,
     CIRCUIT_TAGS,
+    GFA_MENU_CHIPS,
+    GFA_MENU_PREFIX,
     SYSTEM_MENU_TAGS,
 )
 from .identify import generic_of, resolve_device, resolve_pool
 from .models import Event, EventValue
-from .transforms import _rpc_selector_addresses
+from .transforms import _gfa_decode_key, _rpc_selector_addresses
 
 
 def _local(tag: str) -> str:
@@ -429,6 +431,20 @@ def _load_identification(path: str | None) -> list[dict]:
 # --- Catalog ---------------------------------------------------------------
 
 
+def _gfa_menu_chips(path: str) -> tuple[str, ...]:
+    """The burner-control chips of a menu path, () unless one of its segments is
+    a per-chip FA process-value menu (GFA_MENU_CHIPS). The suffix may carry more
+    after the chip name ("_DOVERVScotHO1_72", "_ViCC_Hauptcontroller")."""
+    for seg in path.split("~"):
+        if not seg.startswith(GFA_MENU_PREFIX):
+            continue
+        suffix = seg[len(GFA_MENU_PREFIX) :]
+        for name, chips in GFA_MENU_CHIPS:
+            if suffix.startswith(name) if name else suffix == "":
+                return chips
+    return ()
+
+
 class Catalog:
     """Parsed Vitosoft export: device types + events (merged with the access
     layer) + value types + identification."""
@@ -481,6 +497,7 @@ class Catalog:
         self._group_cache: dict = {}
         self._rpc_selectors: frozenset | None = None  # see rpc_selector_addresses()
         self._tag_index: dict | None = None  # see tags_for()
+        self._gfa_chip_index: dict = {}  # dp_id -> field -> chips; see gfa_chips()
         self._values = {vid: self._mk_value(f) for vid, f in raw_values.items()}
         self._events = {eid: self._mk_event(eid, f) for eid, f in raw_events.items()}
 
@@ -562,7 +579,40 @@ class Catalog:
         )
         out = ["circuit=" + ",".join(circuits)] if circuits else []
         out += [t for t in ("level=td", "overview", "quickcheck", "trend") if t in found]
+        chips = self.gfa_chips(ev, device_token)
+        if chips:
+            out.append("gfa=" + ",".join(chips))
         return out
+
+    def gfa_chips(self, ev: Event, device_token: str) -> tuple[str, ...]:
+        """The burner-control chips (hex bytes, "24") whose process-value menu on
+        this device lists a GFA_READ datapoint (GFA_MENU_CHIPS), for its ``gfa=``
+        tag. The union over the device's GFA rows for the same field that decode
+        alike (_gfa_decode_key): the renderer folds those into one entity, so its
+        tag has to cover every one of them -- 0x4006 is VSKO_Scot_CES_P6 in four
+        chips' menus and VSKO_Scot_P6 in the fifth. () for anything else, and for
+        a GFA datapoint in no chip's menu, which applies whatever the chip."""
+        if (getattr(ev, "fc_read", "") or "").strip().lower() != "gfa_read":
+            return ()
+        dp_id = self.devices.get(device_token)
+        if dp_id is None:
+            return ()
+        index = self._gfa_chip_index.get(dp_id)
+        if index is None:
+            index = defaultdict(set)
+            for e in self.events_for(device_token):
+                if (e.fc_read or "").strip().lower() != "gfa_read":
+                    continue
+                for gid, _order in self._glinks.get(e.id, ()):
+                    g = self._groups.get(gid)
+                    if g and g["dp"] == dp_id:
+                        index[self._gfa_field(e)].update(_gfa_menu_chips(g["path"]))
+            self._gfa_chip_index[dp_id] = index
+        return tuple(sorted(index.get(self._gfa_field(ev), ())))
+
+    @staticmethod
+    def _gfa_field(ev: Event) -> tuple:
+        return (ev.address, ev.byte_position or 0, ev.bit_position or 0, _gfa_decode_key(ev))
 
     def group_for(self, ev: Event, device_token: str) -> tuple[tuple, str]:
         """(sort_key, label) of the event's Vitosoft navigation group for this

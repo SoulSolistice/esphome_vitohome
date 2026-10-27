@@ -165,18 +165,12 @@ inline constexpr uint8_t kSeed_rpc_resp_len255[] = {
     0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x8E,
 };
 
-// GFA read (THIRD_PARTY #27): function code 0x6B is the WHOLE flags byte, not a
-// 5-bit code with a message id. Request (no payload), and an answer echoing it.
-inline constexpr uint8_t kSeed_gfa_request[] = {
-    0x41, 0x05, 0x00, 0x6B, 0x40, 0x50, 0x01, 0x01,
-};
-inline constexpr uint8_t kSeed_gfa_resp[] = {
-    0x41, 0x06, 0x01, 0x6B, 0x40, 0x50, 0x01, 0x24, 0x27,
-};
-
-// 0x6B without its top bits is 0x0B, no function code at all -> ERROR at FLAGS
-inline constexpr uint8_t kSeed_gfa_low_bits_only[] = {
-    0x41, 0x06, 0x01, 0x0B, 0x40, 0x50, 0x01, 0x24, 0xC7,
+// The controller's refusal of 0x6B as a P300 function code (VScotHO1_72,
+// 2026-10-27; THIRD_PARTY #27): an ERROR frame whose flags byte echoes 0x6B,
+// which is no function code this parser takes (low five bits 0x0B) -> ERROR at
+// FLAGS. The engine never sends 0x6B over P300; it drops to KW for it.
+inline constexpr uint8_t kSeed_gfa_refused[] = {
+    0x41, 0x06, 0x03, 0x6B, 0x40, 0x50, 0x01, 0x05, 0x0A,
 };
 
 struct FuzzSeed {
@@ -198,9 +192,7 @@ inline constexpr FuzzSeed kFuzzSeeds[] = {
     {"rpc_resp", kSeed_rpc_resp, sizeof(kSeed_rpc_resp)},
     {"rpc_resp_param_len", kSeed_rpc_resp_param_len, sizeof(kSeed_rpc_resp_param_len)},
     {"rpc_resp_len255", kSeed_rpc_resp_len255, sizeof(kSeed_rpc_resp_len255)},
-    {"gfa_request", kSeed_gfa_request, sizeof(kSeed_gfa_request)},
-    {"gfa_resp", kSeed_gfa_resp, sizeof(kSeed_gfa_resp)},
-    {"gfa_low_bits_only", kSeed_gfa_low_bits_only, sizeof(kSeed_gfa_low_bits_only)},
+    {"gfa_refused", kSeed_gfa_refused, sizeof(kSeed_gfa_refused)},
     {"ident_bits_set", kSeed_ident_bits_set, sizeof(kSeed_ident_bits_set)},
     {"two_frames", kSeed_two_frames, sizeof(kSeed_two_frames)},
     {"garbage_then_frame", kSeed_garbage_then_frame, sizeof(kSeed_garbage_then_frame)},

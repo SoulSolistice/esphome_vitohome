@@ -52,11 +52,9 @@ ParserResult ParserVS2::parse(const uint8_t b) {
       break;
 
     case ParserStep::FLAGS: {
-      // Low 5 bits carry the function code; only READ/WRITE/RPC are valid --
-      // and GFA_READ, which is the whole byte (see FunctionCode::GFA_READ).
+      // Low 5 bits carry the function code; only READ/WRITE/RPC are valid.
       const auto fc = static_cast<FunctionCode>(b & 0x1F);
-      if (b != static_cast<uint8_t>(FunctionCode::GFA_READ) && fc != FunctionCode::READ && fc != FunctionCode::WRITE &&
-          fc != FunctionCode::RPC) {
+      if (fc != FunctionCode::READ && fc != FunctionCode::WRITE && fc != FunctionCode::RPC) {
         optolink_log_w("Invalid packet fc: 0x%02x", static_cast<uint8_t>(fc));
         _step = ParserStep::STARTBYTE;
         return ParserResult::ERROR;
@@ -78,11 +76,9 @@ ParserResult ParserVS2::parse(const uint8_t b) {
 
     case ParserStep::PAYLOADLENGTH:
       _packet[5] = b;
-      if (((_packet.functionCode() == FunctionCode::READ || _packet.functionCode() == FunctionCode::GFA_READ) &&
-           _packet.packetType() == PacketType::REQUEST) ||
+      if ((_packet.functionCode() == FunctionCode::READ && _packet.packetType() == PacketType::REQUEST) ||
           (_packet.functionCode() == FunctionCode::WRITE && _packet.packetType() == PacketType::RESPONSE)) {
-        // read requests and write responses don't have a data payload; a GFA
-        // read is shaped like a read on both sides
+        // read requests and write responses don't have a data payload
         _step = ParserStep::CHECKSUM;
       } else if (_packet.functionCode() == FunctionCode::RPC && _packet.packetType() == PacketType::RESPONSE) {
         // An RPC request's DataLength is the length of the parameter it sends,

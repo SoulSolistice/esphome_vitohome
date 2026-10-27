@@ -10,6 +10,7 @@ const BASE_COLUMNS = [
   { key: "name",                label: "Name",              mono: false, editable: true },
   { key: "id",                  label: "ID",                mono: true },
   { key: "address",             label: "Address",           mono: true,  numericHex: true },
+  { key: "access",              label: "Access",            mono: true },
   { key: "length",              label: "Length",            mono: true,  numeric: true },
   { key: "byte_offset",         label: "Byte Offset",       mono: true,  numeric: true },
   { key: "byte_length",         label: "Byte Length",       mono: true,  numeric: true },
@@ -67,21 +68,38 @@ function splitValAndComment(rawVal) {
 // The `# vito:` line the generator writes above an entity: Vitosoft's own
 // grouping, e.g. "circuit=hk1,dhw level=td overview quickcheck trend". Each
 // becomes one tag ("hk1", "dhw", "level=td", "overview", ...), in TAG_ORDER.
+// "gfa=20,24" names the burner-control chips a GFA datapoint is listed for;
+// those go to the chip filter (gfaChips), not to the tags.
 const TAG_LINE = /^\s*#\s*vito:\s*(.*)$/;
 const TAG_LABELS = {
   hk1: "HK1", hk2: "HK2", hk3: "HK3", hk4: "HK4", hk5: "HK5", hk6: "HK6",
   dhw: "DHW", solar: "Solar", boiler: "Boiler", cascade: "Cascade", mbus: "M-Bus",
+  gfa: "Burner control",
   overview: "Overview", quickcheck: "Quick check", trend: "Trend", "level=td": "Service level"
 };
 const TAG_ORDER = Object.keys(TAG_LABELS);
 
 function parseTagLine(text) {
   const tags = [];
+  const gfaChips = [];
   for (const word of text.trim().split(/\s+/)) {
     if (word.startsWith("circuit=")) tags.push(...word.slice(8).split(",").filter(Boolean));
+    else if (word.startsWith("gfa=")) gfaChips.push(...word.slice(4).split(",").filter(Boolean).map((c) => c.toUpperCase()));
     else if (word) tags.push(word);
   }
-  return tags;
+  return { tags, gfaChips };
+}
+
+// `access: gfa`: read in the burner control's own address space (0x6B). Its
+// chips (gfaChips) are those whose Vitosoft menu lists it; none means any.
+function isGfaEntity(ent) {
+  return ent.props.access === "gfa";
+}
+
+// Whether the chip filter keeps an entity: everything but a GFA datapoint
+// listed for other chips only.
+function matchesGfaChip(ent, chip) {
+  return !chip || !ent.gfaChips || ent.gfaChips.length === 0 || ent.gfaChips.includes(chip);
 }
 
 function sortTags(tags) {
@@ -128,6 +146,13 @@ function parseCatalogYaml(yamlText) {
     }
     if (currentEntity.filterEntries.length > 0) {
       currentEntity.props._filters = currentEntity.filterEntries.join("\n");
+    }
+    // A burner-control datapoint gets the "gfa" tag whether or not a chip menu
+    // lists it; the Tags column shows its chips.
+    if (isGfaEntity(currentEntity)) {
+      currentEntity.tags = sortTags([...currentEntity.tags, "gfa"]);
+      const chips = currentEntity.gfaChips.length ? "=" + currentEntity.gfaChips.join(",") : "";
+      currentEntity.props._tags = currentEntity.tags.map((t) => (t === "gfa" ? "gfa" + chips : t)).join(" ");
     }
     currentEntity.props._notes = currentEntity.notes.join("\n");
     parsedEntities.push(currentEntity);
@@ -197,7 +222,8 @@ function parseCatalogYaml(yamlText) {
     if (/^\s*-\s+(platform|id):\s*/.test(line)) {
       finalizeEntity();
       const tagLine = pendingComments.map((c) => TAG_LINE.exec(c)).find(Boolean);
-      const tags = tagLine ? sortTags(parseTagLine(tagLine[1])) : [];
+      const parsedTags = tagLine ? parseTagLine(tagLine[1]) : { tags: [], gfaChips: [] };
+      const tags = sortTags(parsedTags.tags);
       const preNotes = pendingComments.filter((c) => !TAG_LINE.test(c)).map((c) => c.trim().replace(/^#\s?/, ""));
       currentEntity = {
         index: parsedEntities.length,
@@ -207,6 +233,7 @@ function parseCatalogYaml(yamlText) {
         preComments: [...pendingComments],
         rawLines: [line],
         tags,
+        gfaChips: parsedTags.gfaChips,
         props: {
           component: currentDomain,
           group: currentGroup,
@@ -298,6 +325,7 @@ function buildExportYaml(allEntities, anchorRegistry, meta = {}) {
   const fileLabel = meta.file || "local YAML";
   const langLabel = meta.lang || "de";
   const actionCount = selected.filter(isActionEntity).length;
+  const gfaCount = selected.filter(isGfaEntity).length;
 
   const out = [
     "# ============================================================",
@@ -312,6 +340,15 @@ function buildExportYaml(allEntities, anchorRegistry, meta = {}) {
       "# one RUNS a procedure on the controller -- some clear a history, some",
       "# reset settings or codings. Enable each in Home Assistant only once you",
       "# know what it does."
+    );
+  }
+  if (gfaCount > 0) {
+    out.push(
+      `# ${gfaCount} burner-control datapoint(s) (access: gfa) are read in the burner`,
+      "# control's own address space: the hub needs protocol KW or P300.",
+      meta.gfaChip
+        ? `# Picked for burner-control chip 0x${meta.gfaChip} (the hub logs it as GFA=0x..).`
+        : "# Their `gfa=` tags name the chips each is listed for; keep your unit's."
     );
   }
   out.push("# ============================================================", "");
@@ -454,6 +491,7 @@ function initEditorUI() {
           resolveData = await r.json();
           populateCatalogDropdown();
           updateGfaBanner();
+          if (entities.length) buildGfaChipSelect(); // the chip names arrived after the catalog
           return;
         }
       } catch (e) { /* try next */ }
@@ -591,6 +629,7 @@ function initEditorUI() {
       for (const tag of activeTags) {
         if (!(ent.tags || []).includes(tag)) return false;
       }
+      if (!matchesGfaChip(ent, activeGfaChip())) return false;
 
       for (const col of activeColumns) {
         const cf = columnFilters[col.key];
@@ -777,6 +816,13 @@ function initEditorUI() {
       span.textContent = val + " (omitted on export)";
       return span;
     }
+    if (col.key === "access" && val === "gfa") {
+      const badge = createBadge("warn", "gfa · burner control");
+      badge.title = "Read in the burner control's own address space (0x6B; Vitosoft GFA_READ). " +
+        "Needs protocol KW or P300. " +
+        (ent.gfaChips.length ? `Listed for chip(s) 0x${ent.gfaChips.join(", 0x")}.` : "Listed for no particular chip.");
+      return badge;
+    }
     if (col.key === "type" && isActionEntity(ent)) {
       const badge = createBadge("stop", "action · runs a procedure");
       badge.title = "Pressing this button RUNS a procedure on the controller (Vitosoft Remote_Procedure_Call), " +
@@ -921,6 +967,7 @@ function initEditorUI() {
     caption.textContent = "Vitosoft tags:";
     caption.title = "From the catalog's '# vito:' lines: the circuit an entity's menu belongs to, " +
       "Vitosoft's overview screen, quick check and trend recorder, and the service access level. " +
+      "'Burner control' marks the datapoints read in the burner control (access: gfa). " +
       "Switched-on chips must all match.";
     box.append(caption);
     for (const tag of sortTags([...counts.keys()])) {
@@ -938,11 +985,36 @@ function initEditorUI() {
     }
   }
 
+  // The burner-control chip the table is filtered for: GFA datapoints listed
+  // for other chips only are hidden, everything else stays. "" = all chips.
+  function activeGfaChip() {
+    return $("gfa-chip-label").classList.contains("hidden") ? "" : $("gfa-chip-select").value;
+  }
+
+  // One option per chip the loaded catalog's `gfa=` tags name, plus the chip
+  // from the URL (the finder passes the unit's), preselected.
+  function buildGfaChipSelect() {
+    const chips = new Set();
+    for (const ent of entities) for (const chip of ent.gfaChips || []) chips.add(chip);
+    const label = $("gfa-chip-label");
+    const sel = $("gfa-chip-select");
+    label.classList.toggle("hidden", chips.size === 0);
+    if (chips.size === 0) return;
+    if (currentGfa) chips.add(currentGfa);
+    const names = (resolveData && resolveData.gfa_chips) || {};
+    sel.replaceChildren(new Option("all chips", ""));
+    for (const chip of [...chips].sort()) {
+      sel.append(new Option(`0x${chip}${names[chip] ? " — " + names[chip] : ""}`, chip));
+    }
+    sel.value = chips.has(currentGfa) ? currentGfa : "";
+  }
+
   function loadYamlContent(yamlText, label) {
     const parsed = parseCatalogYaml(yamlText);
     entities = parsed.entities;
     anchorRegistry = parsed.anchors;
     buildTagChips();
+    buildGfaChipSelect();
 
     $("catalog-title").textContent = label;
     document.title = `${label} — vitohome catalog editor`;
@@ -1029,14 +1101,25 @@ function initEditorUI() {
     updateCounters();
   });
 
+  $("gfa-chip-select").addEventListener("change", () => {
+    currentGfa = $("gfa-chip-select").value;
+    const url = new URL(location.href);
+    if (currentGfa) url.searchParams.set("gfa", currentGfa); else url.searchParams.delete("gfa");
+    history.replaceState(null, "", url);
+    updateGfaBanner();
+    refreshTableBody();
+  });
+
+  const exportMeta = () => ({ file: currentFile, lang: currentLang, gfaChip: activeGfaChip() });
+
   $("preview-export-btn").addEventListener("click", () => {
-    const yaml = buildExportYaml(entities, anchorRegistry, { file: currentFile, lang: currentLang });
+    const yaml = buildExportYaml(entities, anchorRegistry, exportMeta());
     $("yaml-preview").value = yaml;
     $("export-dialog").showModal();
   });
 
   $("download-export-btn").addEventListener("click", () => {
-    const yaml = buildExportYaml(entities, anchorRegistry, { file: currentFile, lang: currentLang });
+    const yaml = buildExportYaml(entities, anchorRegistry, exportMeta());
     if (yaml) downloadYaml(yaml);
   });
 
@@ -1108,5 +1191,5 @@ if (typeof document !== "undefined") {
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { parseCatalogYaml, buildExportYaml };
+  module.exports = { parseCatalogYaml, buildExportYaml, parseTagLine, matchesGfaChip };
 }

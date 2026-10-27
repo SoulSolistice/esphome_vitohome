@@ -175,6 +175,26 @@ CIRCUIT_TAGS = {
 # flags: Vitosoft's overview screen, its trend recorder, and the datapoints it
 # shows only at the technical-service access level.
 SYSTEM_MENU_TAGS = {"Overview": "overview", "Trending": "trend", "CodeAccessLevelTD": "level=td"}
+# The burner control's process-value menus (`<token>~60_Funktionskontrolle~
+# 35_FA_VSKO<suffix>`) are per chip, and a GFA_READ datapoint's `gfa=` tag names
+# the chips whose menu lists it: the byte GFA_Kennung (0x7650) and P80 read, in
+# hex. Suffix -> chips, longest match first. The menu names are Vitosoft's own
+# ("Prozesswerte FA CES" for the bare suffix, "... DOVER", "... GFA", "... NEC",
+# "... Scot", "... ViCC", "... OEFA"), the bytes its chip table Kennung_FA_Chip
+# (20h GFA, 21h SCOT, 22h Dover, 23h CES, 24h NEC, 25h ET, 26h Scot eSTB, 27h Vi,
+# 41h ÖFA, 42h ÖFA (Vi)). ViCC is taken as the Vi chip and OEFA as both oil
+# burner controls; neither pairing is spelled out in the export. A menu named
+# otherwise gives no chip.
+GFA_MENU_PREFIX = "35_FA_VSKO"
+GFA_MENU_CHIPS = (
+    ("_ViCC", ("27",)),
+    ("_OEFA", ("41", "42")),
+    ("_DOVER", ("22",)),
+    ("_GFA", ("20",)),
+    ("_NEC", ("24",)),
+    ("_Scot", ("21",)),
+    ("", ("23",)),
+)
 TAG_PREFIX = "# vito: "
 
 # Platforms this generator emits `access:` on: a subset of the component's
@@ -186,6 +206,9 @@ ACCESS_PLATFORMS = ("sensor", "binary_sensor", "text_sensor", "number", "select"
 # The subset that takes `access: rpc` (the component's _RPC_DOMAINS): the
 # read-only platforms. A remote procedure reading is never written.
 RPC_PLATFORMS = ("sensor", "binary_sensor", "text_sensor")
+# The same for `access: gfa` (the component's _GFA_DOMAINS): Vitosoft defines no
+# GFA write.
+GFA_PLATFORMS = RPC_PLATFORMS
 # Every action button carries this above it (_action_warning).
 ACTION_WARNING = [
     "# WARNING: pressing this RUNS a procedure on the controller (Vitosoft",

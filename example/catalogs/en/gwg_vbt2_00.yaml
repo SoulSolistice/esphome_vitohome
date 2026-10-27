@@ -42,7 +42,8 @@
 # grouping, for the catalog editor: circuit=hk1..hk6|dhw|solar|boiler|
 # cascade|mbus (the menu they are in), level=td (shown at the service
 # access level only), overview, quickcheck and trend (Vitosoft's overview
-# screen, quick check and trend recorder). ESPHome ignores them.
+# screen, quick check and trend recorder), and gfa=<chips> (the burner-
+# control chips a GFA datapoint is listed for). ESPHome ignores them.
 #
 # System error history omitted: this unit has NO Optolink-reachable
 # datapoints (KBUS/GFA/RPC-only device), so the generic 0x7507 fault

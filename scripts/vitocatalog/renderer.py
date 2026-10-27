@@ -10,6 +10,7 @@ from .constants import (
     _WEEKDAYS,
     ACCESS_PLATFORMS,
     ACTION_WARNING,
+    GFA_PLATFORMS,
     PROTO_GWG,
     PROTO_P300,
     RPC_PLATFORMS,
@@ -36,6 +37,7 @@ from .special import (
 )
 from .transforms import (
     _access_for,
+    _gfa_decode_key,
     _is_diagnostic,
     _is_lon_bound_rpc,
     _is_lon_input,
@@ -259,10 +261,18 @@ def generate(
     # 0x01/port and 0x01/eeprom are different datapoints. It is empty for every
     # other protocol but an RPC reading, whose parameter is part of its identity
     # too: the sixteen LON participant entries share 0xA010 and differ only in it.
+    # A GFA read lives in the burner control's own address space, and how it
+    # decodes is part of its identity: P09 at 0x4009 is rpm on most chips and %
+    # on one (_gfa_decode_key), two entities, each tagged with its chips.
     def _field_key(ev: Event) -> tuple:
         access = _access_for(ev, protocol)
-        prefix = tuple(_rpc_prefix(ev) or ()) if access == "rpc" else ()
-        return (ev.address, ev.byte_position or 0, ev.bit_position or 0, access, prefix)
+        if access == "rpc":
+            detail = tuple(_rpc_prefix(ev) or ())
+        elif access == "gfa":
+            detail = _gfa_decode_key(ev)
+        else:
+            detail = ()
+        return (ev.address, ev.byte_position or 0, ev.bit_position or 0, access, detail)
 
     seen_addr: set[tuple] = set()
     used_ids: set[str] = set()
@@ -272,6 +282,8 @@ def generate(
     dropped_unreachable = 0
     dropped_lon_inputs = 0  # nvi* left out by the profile (_is_lon_input)
     rpc_readings = 0  # emitted with `access: rpc` (P300 remote procedure readings)
+    gfa_readings = 0  # emitted with `access: gfa` (the burner control, 0x6B)
+    gfa_chips_seen: set[str] = set()  # chips named in their `gfa=` tags
     dropped_rpc_readings = 0  # left out by the profile (_profile_keep)
     rpc_actions = 0  # procedures emitted as `type: action` buttons (_is_rpc_action)
     dropped_bare_actions = 0  # no parameter where siblings take one (_rpc_selector_addresses)
@@ -438,6 +450,11 @@ def generate(
         if _access_for(ev, protocol) == "rpc" and spec.platform not in RPC_PLATFORMS:
             dropped_unreachable += 1
             continue
+        # Likewise a GFA read: the component takes `access: gfa` on the
+        # read-only platforms only, and there is no GFA write.
+        if _access_for(ev, protocol) == "gfa" and spec.platform not in GFA_PLATFORMS:
+            dropped_unreachable += 1
+            continue
 
         if ev.address is not None:
             seen_addr.add(_field_key(ev))
@@ -465,6 +482,14 @@ def generate(
             spec.prefix = _rpc_prefix(ev)
             spec.prefix_source = f"PrefixRead {ev.prefix_read}" if ev.prefix_read else None
             rpc_readings += 1
+        elif access == "gfa":
+            # A read in the burner control's address space (the KW telegram
+            # 0x6B; a P300 hub drops to KW for it); its chips ride in the
+            # `gfa=` tag.
+            spec.access = access
+            spec.access_source = ev.fc_read
+            gfa_readings += 1
+            gfa_chips_seen.update(catalog.gfa_chips(ev, device))
         elif access and spec.platform in ACCESS_PLATFORMS:
             spec.access = access
             spec.access_source = f"{ev.fc_read} / {ev.fc_write}" if _is_writable(ev, protocol) else ev.fc_read
@@ -554,7 +579,7 @@ def generate(
             out.append("# and friends) were omitted. Re-run with --no-reachable-only to include them.")
         else:
             out.append(f"# FCRead filter ON: {dropped_unreachable} datapoint(s) whose access method this")
-            out.append("# engine has no read for (GFA_READ/PROZESS/KBUS/OT, and remote procedures")
+            out.append("# engine has no read for (PROZESS/KBUS/OT, and remote procedures")
             out.append("# that are neither a reading nor an action) were omitted as unreachable.")
             out.append("# Re-run with --no-reachable-only to include them.")
         out.append("#")
@@ -594,12 +619,26 @@ def generate(
         out.append("# 0x07 (`access: rpc`), with the catalog's parameter (`prefix:`) where it has one.")
         out.append("# Procedures with an effect are never polled; they are the action buttons.")
         out.append("#")
+    if gfa_readings:
+        noun = "entity" if gfa_readings == 1 else "entities"
+        out.append(f"# Burner control: {gfa_readings} {noun} read in the burner control's own")
+        out.append("# address space (`access: gfa`, the KW telegram 0x6B; a P300 hub drops to")
+        out.append("# KW for it, which costs seconds). Vitosoft lists them per burner-control")
+        out.append("# chip -- the byte the hub logs at boot as GFA=0x.. -- and a few decode")
+        out.append("# differently on different chips, so each carries a `gfa=` tag with the")
+        if gfa_chips_seen:
+            out.append(f"# chips that have it (here {', '.join(sorted(gfa_chips_seen))}). Keep the ones")
+        else:
+            out.append("# chips that have it. Keep the ones")
+        out.append("# tagged with your unit's chip, and the untagged ones.")
+        out.append("#")
     if tagged:
         out.append(f"# Metadata: {tagged} entities carry a `# vito:` line with Vitosoft's own")
         out.append("# grouping, for the catalog editor: circuit=hk1..hk6|dhw|solar|boiler|")
         out.append("# cascade|mbus (the menu they are in), level=td (shown at the service")
         out.append("# access level only), overview, quickcheck and trend (Vitosoft's overview")
-        out.append("# screen, quick check and trend recorder). ESPHome ignores them.")
+        out.append("# screen, quick check and trend recorder), and gfa=<chips> (the burner-")
+        out.append("# control chips a GFA datapoint is listed for). ESPHome ignores them.")
         out.append("#")
     if rpc_actions:
         noun = "procedure" if rpc_actions == 1 else "procedures"

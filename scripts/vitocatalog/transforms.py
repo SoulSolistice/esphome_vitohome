@@ -151,12 +151,13 @@ def _is_reachable(ev: Event, protocol: str = PROTO_P300) -> bool:
     """Whether the configured protocol can read this datapoint.
 
     P300/KW: the datapoint read issues Virtual_READ (VS2/P300 FunctionCode
-    0x01), plus, on P300, Remote_Procedure_Call (0x07) for the procedures that
-    are readings (_is_rpc_reading). Datapoints with any other access method --
-    GFA_READ (0x6B), PROZESS_READ (0x7B), KBUS_*/OT_*/Physical_READ, or a
-    procedure that is no reading -- are not reachable: the device NAKs or
-    returns unrelated virtual-space data. Procedures that are actions are
-    emitted as buttons on their own path (_is_rpc_action), not as reads.
+    0x01), plus GFA_READ (0x6B, the burner control; _is_gfa_read) and, on
+    P300, Remote_Procedure_Call (0x07) for the procedures that are readings
+    (_is_rpc_reading). Datapoints with any other access method --
+    PROZESS_READ (0x7B), KBUS_*/OT_*/Physical_READ, or a procedure that is no
+    reading -- are not reachable: the device NAKs or returns unrelated
+    virtual-space data. Procedures that are actions are emitted as buttons on
+    their own path (_is_rpc_action), not as reads.
 
     GWG: Virtual_READ is only a small share of a GWG device's datapoints (6 of
     195 on GWG_VBES_00); the bulk are physical/eeprom/kmbus_eeprom/be/xram/port,
@@ -172,7 +173,27 @@ def _is_reachable(ev: Event, protocol: str = PROTO_P300) -> bool:
     fc = (getattr(ev, "fc_read", "") or "").strip().lower()
     if protocol == PROTO_GWG:
         return fc == "" or fc in FCREAD_TO_GWG_ACCESS
-    return fc in ("", "virtual_read") or _is_rpc_reading(ev, protocol)
+    return fc in ("", "virtual_read") or _is_gfa_read(ev, protocol) or _is_rpc_reading(ev, protocol)
+
+
+def _is_gfa_read(ev: Event, protocol: str = PROTO_P300) -> bool:
+    """Whether the datapoint lives in the burner control's address space and is
+    read with `access: gfa`: Vitosoft FCRead GFA_READ, under KW or P300 (the
+    0x6B telegram; GWG has none). The component reads it as any read, so
+    nothing else about the row matters here; Vitosoft defines no GFA write, so
+    _is_writable already keeps it read-only."""
+    if protocol == PROTO_GWG:
+        return False
+    return (getattr(ev, "fc_read", "") or "").strip().lower() == "gfa_read"
+
+
+def _gfa_decode_key(ev: Event) -> tuple:
+    """How a GFA datapoint decodes, as part of its identity. A few burner-control
+    parameters mean different things on different chips -- on VScotHO1_72, P09
+    at 0x4009 is fan speed x30 rpm in most chips' menus and x0.3922 % in the
+    GFA chip's -- so two GFA rows at one address are one field only when they
+    also decode alike (see Catalog.gfa_chips)."""
+    return (ev.conversion or "", ev.conv_factor, ev.conv_offset, (ev.unit_token or "").strip())
 
 
 def _rpc_prefix(ev: Event, field: str = "prefix_read") -> list[int] | None:
@@ -360,10 +381,12 @@ def _is_rpc_action(ev: Event, protocol: str = PROTO_P300) -> bool:
 
 def _access_for(ev: Event, protocol: str) -> str:
     """The `access:` value to emit for one event, or "" when none is emitted
-    (KW, P300 other than an RPC reading, or GWG with a blank FCRead, where the
-    engine default already is physical)."""
+    (KW/P300 other than an RPC reading or a GFA read, or GWG with a blank
+    FCRead, where the engine default already is physical)."""
     if _is_rpc_reading(ev, protocol):
         return "rpc"
+    if _is_gfa_read(ev, protocol):
+        return "gfa"
     if protocol != PROTO_GWG:
         return ""
     return FCREAD_TO_GWG_ACCESS.get((getattr(ev, "fc_read", "") or "").strip().lower(), "")

@@ -87,11 +87,24 @@ class VS2Engine {
   // one). The answer arrives through onResponse like a read's, as long as the
   // controller makes it. P300 only: KW and GWG have no such telegram.
   bool rpc(uint16_t address, const uint8_t *parameter, uint8_t length);
-  // A read in the burner control's address space (FunctionCode::GFA_READ,
-  // 0x6B): the frame of a read with that function code, the answer arriving
-  // through onResponse like a read's. Unconfirmed on P300 hardware; see
-  // FunctionCode::GFA_READ.
+  // A read in the burner control's address space: the KW telegram 0x6B
+  // (PacketVS1Type.GFA_READ), which a controller refuses as a P300 function
+  // code. So the engine drops the link to KW for it -- EOT, the controller's
+  // ENQ, `01 6B <addr> <len>`, <len> raw bytes back -- chains further GFA reads
+  // onto that KW session, and re-establishes P300 (EOT, ENQ, SYNC) once the
+  // next request is not a GFA read or none follows. The answer arrives through
+  // onResponse like a read's, with the request's address. At most
+  // GFA_MAX_LENGTH bytes.
   bool gfaRead(uint16_t address, uint8_t length);
+  static constexpr uint8_t GFA_MAX_LENGTH = 64;
+  // How long the KW session waits for the controller's ENQ after the EOT that
+  // drops P300 (the controller sends one about every 2 s when idle), and,
+  // once a GFA answer is in, for another GFA read before returning to P300.
+  // GFA_GAP_MS is the pause before a chained GFA telegram, as on KW
+  // (VS1Engine::GFA_GAP_MS).
+  static constexpr uint32_t GFA_ENQ_TIMEOUT_MS = HANDSHAKE_RETRY_MS;
+  static constexpr uint32_t GFA_LINGER_MS = 250;
+  static constexpr uint32_t GFA_GAP_MS = 25;
 
   bool begin();
   void loop();
@@ -112,6 +125,12 @@ class VS2Engine {
     SEND_ACK,
     RECEIVE,
     RECEIVE_ACK,
+    // The KW detour of a GFA read (gfaRead()).
+    GFA_DROP,     // EOT: leave P300
+    GFA_ENQ,      // wait for the controller's ENQ
+    GFA_SEND,     // [01] 6B <addr hi> <addr lo> <len>
+    GFA_RECEIVE,  // <len> raw bytes
+    GFA_CHAIN,    // another GFA read, or back to P300
     UNDEFINED
   } _state;
   uint32_t _currentMillis;
@@ -127,6 +146,12 @@ class VS2Engine {
   uint8_t _currentLength;
   bool _busy;
   PacketVS2 _currentPacket;
+  // A GFA read in flight (gfaRead()): its KW telegram, with the ENQ_ACK in
+  // front when it opens the KW session, and its answer.
+  bool _gfa{false};
+  uint8_t _gfaFrame[5]{};
+  uint8_t _gfaFrameLen{0};
+  uint8_t _gfaAnswer[GFA_MAX_LENGTH]{};
   OnResponseCallback _onResponseCallback;
   OnErrorCallback _onErrorCallback;
 
@@ -143,6 +168,12 @@ class VS2Engine {
   void _sendAck();
   void _receive();
   void _receiveAck();
+  void _gfaDrop();
+  void _gfaEnq();
+  void _gfaSend();
+  void _gfaReceive();
+  void _gfaChain();
+  void _gfaStart(bool enqAck);
 
   void _tryOnResponse();
   void _tryOnError(OptolinkResult result);
