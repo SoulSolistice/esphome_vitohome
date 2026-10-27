@@ -2,8 +2,11 @@
 # vitohome — RAW SCAN CONSOLE  (uses the hub raw-lane addition)
 # =============================================================================
 # This config drives the hub feature: queue_raw_read / queue_raw_write /
-# queue_raw_rpc and a hub-fed `text_sensor: type: scan_result`:
+# queue_raw_rpc / queue_raw_gfa_read and a hub-fed `text_sensor: type:
+# scan_result`:
 #   * READ-NOW  — an immediate one-off read, not "next poll tick".
+#   * GFA READ   — the same read in the burner control's address space (KW
+#                  type / P300 function code 0x6B), e.g. 4050 = P80, its chip.
 #   * RAW HEX    — the response as bytes + exact 64-bit integer views (no
 #                  float32 narrowing on 4-byte values).
 #   * RAW WRITE  — an arbitrary byte payload (not just one LE integer).
@@ -17,14 +20,15 @@
 # e.g. queue_raw_read(0x05, 1, optolink::GWGAccessMode::EEPROM) or
 # queue_raw_write(0x05, bytes, optolink::GWGAccessMode::EEPROM). Modes:
 # PHYSICAL (default), VIRTUAL, EEPROM, XRAM, PORT, BE, KMBUS_RAM, KMBUS_EEPROM --
-# the catalog's `access:` value for that datapoint. RPC does not exist there.
+# the catalog's `access:` value for that datapoint. RPC and GFA reads do not
+# exist there.
 #
 # =============================================================================
 
 substitutions:
   friendly_name: "Viessmann Optolink (vitohome RAW CONSOLE)"
   device_name: viessmann-optolink-raw
-  device_description: "vitohome raw scan console (queue_raw_read/write/rpc)"
+  device_description: "vitohome raw scan console (queue_raw_read/write/rpc/gfa_read)"
 
 esphome:
   name: ${device_name}
@@ -193,6 +197,17 @@ button:
           long a = strtol(id(scan_addr).state.c_str(), nullptr, 16);
           if (a < 0 || a > 0xFFFF) { ESP_LOGW("scan", "address out of range: %s", id(scan_addr).state.c_str()); return; }
           id(vito).queue_raw_read((uint16_t) a, (uint8_t) id(scan_length).state);
+
+  # The same read in the burner control's address space (0x6B, the catalog's
+  # `access: gfa`), e.g. 4050 = P80, the burner-control chip. Read-only.
+  - platform: template
+    name: "Scan ▸ Raw GFA read (now)"
+    entity_category: config
+    on_press:
+      - lambda: |-
+          long a = strtol(id(scan_addr).state.c_str(), nullptr, 16);
+          if (a < 0 || a > 0xFFFF) { ESP_LOGW("scan", "address out of range: %s", id(scan_addr).state.c_str()); return; }
+          id(vito).queue_raw_gfa_read((uint16_t) a, (uint8_t) id(scan_length).state);
 
   # Arbitrary-byte write: parse the hex string (spaces/colons ignored) into bytes.
   - platform: template

@@ -1,0 +1,48 @@
+# `access: gfa` entities: reads in the burner control's address space (0x6B),
+# KW and P300 only. GWG has no such telegram and rejects them, so they cannot
+# live in a file GWG might share; merged as a package by the KW and P300 configs.
+#
+# Shaped like VScotHO1_72's burner-control parameters (Vitosoft FCRead
+# GFA_READ, the NEC chip's menu): P-parameter n at 0x4000 + n. P80 and P06 are
+# hardware-confirmed over KW (2026-10-26); the rest only compile here.
+sensor:
+  # P06 Drehzahl-Istwert: fan speed, raw x 30 rpm (Vitosoft MultOffset 30).
+  - platform: vitohome
+    name: "Test GFA P06 Fan Speed"
+    address: 0x4006
+    length: 1
+    converter: noconv
+    filters:
+      - multiply: 30
+    unit_of_measurement: "rpm"
+    access: gfa
+  # P142 Parameter EFA00 Maximale Drehzahl: two bytes, Vitosoft RotateBytes
+  # (big-endian), so a two-byte read in the burner control's space.
+  - platform: vitohome
+    name: "Test GFA P142 Max Fan Speed"
+    address: 0x408E
+    length: 2
+    converter: rotatebytes
+    access: gfa
+
+binary_sensor:
+  # A bit of P89 (b0=FA9, b1=FA11, b2=FA8), to cover the bit path.
+  - platform: vitohome
+    name: "Test GFA P89 Bit 0"
+    address: 0x4059
+    length: 1
+    bit_mask: 0x01
+    access: gfa
+
+text_sensor:
+  # P80 Kennung FA-Chip: the chip byte, which the Vitotronic also mirrors at
+  # 0x7650 (GFA_Kennung). Two of Vitosoft's labels.
+  - platform: vitohome
+    type: enum
+    name: "Test GFA P80 Chip"
+    address: 0x4050
+    length: 1
+    access: gfa
+    options:
+      0x20: "GFA"
+      0x24: "NEC"

@@ -16,3 +16,7 @@ esp32:
     type: esp-idf
 
 <<: !include common.yaml
+
+# `access: gfa` entities (KW and P300; GWG has no GFA read).
+packages:
+  gfa: !include common-gfa.yaml

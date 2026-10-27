@@ -19,7 +19,9 @@ namespace esphome::vitohome {
 static const char *const TAG = "vitohome";
 
 // What a raw-lane operation is, for its log lines.
-static const char *raw_kind(bool is_write, bool is_rpc) { return is_rpc ? "rpc" : (is_write ? "write" : "read"); }
+static const char *raw_kind(bool is_write, bool is_rpc, bool is_gfa) {
+  return is_rpc ? "rpc" : (is_gfa ? "gfa read" : (is_write ? "write" : "read"));
+}
 
 // Known device families (Identification at 0xF8/0xF9). Deliberately small:
 // it covers the units this project has seen on the wire; everything else is
@@ -459,6 +461,7 @@ void VitoHomeComponent::dispatch_raw_front_() {
 
     this->raw_is_write_ = operation.is_write;
     this->raw_is_rpc_ = operation.is_rpc;
+    this->raw_is_gfa_ = operation.is_gfa;
 
     bool dispatched;
     if (operation.is_rpc) {
@@ -466,6 +469,12 @@ void VitoHomeComponent::dispatch_raw_front_() {
       dispatched = this->vito_->rpc(operation.address, operation.bytes, operation.bytes_len);
 #else
       dispatched = false;  // unreachable: queue_raw_rpc() refuses it on this build
+#endif
+    } else if (operation.is_gfa) {
+#ifdef VITOHOME_HAS_GFA
+      dispatched = this->vito_->gfaRead(this->raw_dp_.address(), this->raw_dp_.length());
+#else
+      dispatched = false;  // unreachable: queue_raw_gfa_read() refuses it on this build
 #endif
     } else if (operation.is_write) {
 #ifdef VITOHOME_PROTOCOL_GWG
@@ -503,7 +512,7 @@ void VitoHomeComponent::dispatch_raw_front_() {
       if (this->vito_->isBusy())
         return false;  // transient: keep the item at the head and retry
       ESP_LOGE(TAG, "Engine refused raw %s 0x%04X len %u (permanent); dropping",
-               raw_kind(operation.is_write, operation.is_rpc), operation.address, operation.length);
+               raw_kind(operation.is_write, operation.is_rpc, operation.is_gfa), operation.address, operation.length);
       this->raw_handle_error_(optolink::OptolinkResult::ERROR);
       return true;  // permanent: drop so the read/write lanes are reached
     }
@@ -512,8 +521,8 @@ void VitoHomeComponent::dispatch_raw_front_() {
     this->raw_in_flight_ = true;
     this->in_flight_started_ms_ = App.get_loop_component_start_time();
 
-    ESP_LOGV(TAG, "Dispatched raw %s 0x%04X len %u", raw_kind(operation.is_write, operation.is_rpc), operation.address,
-             operation.length);
+    ESP_LOGV(TAG, "Dispatched raw %s 0x%04X len %u", raw_kind(operation.is_write, operation.is_rpc, operation.is_gfa),
+             operation.address, operation.length);
 
     return true;
   });
@@ -701,11 +710,17 @@ void VitoHomeComponent::dispatch_next_() {
     // exactly the pre-existing behaviour.
     const bool dispatched_ok = this->vito_->read(datapoint.address(), datapoint.length(), entity->access());
 #elif defined(VITOHOME_HAS_RPC)
-    // `access: rpc`: the same lane and the same response path as a read; only
-    // the telegram differs. See VitoEntityBase::set_rpc_prefix().
+    // `access: rpc` and `access: gfa`: the same lane and the same response path
+    // as a read; only the telegram differs. See VitoEntityBase::set_rpc_prefix()
+    // and set_gfa().
     const bool dispatched_ok =
-        entity->is_rpc() ? this->vito_->rpc(datapoint.address(), entity->rpc_prefix(), entity->rpc_prefix_len())
-                         : this->vito_->read(datapoint.address(), datapoint.length());
+        entity->is_rpc()   ? this->vito_->rpc(datapoint.address(), entity->rpc_prefix(), entity->rpc_prefix_len())
+        : entity->is_gfa() ? this->vito_->gfaRead(datapoint.address(), datapoint.length())
+                           : this->vito_->read(datapoint.address(), datapoint.length());
+#elif defined(VITOHOME_HAS_GFA)
+    // `access: gfa` (KW): likewise. See VitoEntityBase::set_gfa().
+    const bool dispatched_ok = entity->is_gfa() ? this->vito_->gfaRead(datapoint.address(), datapoint.length())
+                                                : this->vito_->read(datapoint.address(), datapoint.length());
 #else
     const bool dispatched_ok = this->vito_->read(datapoint.address(), datapoint.length());
 #endif
@@ -997,8 +1012,21 @@ void VitoHomeComponent::queue_raw_rpc(uint16_t address, const std::vector<uint8_
   this->queue_raw_rpc(address, parameter.data(), parameter.size());
 }
 
+void VitoHomeComponent::queue_raw_gfa_read(uint16_t address, uint8_t length) {
+#ifdef VITOHOME_HAS_GFA
+  if (length < 1 || length > RAW_READ_MAX) {
+    ESP_LOGW(TAG, "queue_raw_gfa_read: length %u out of range (1..%u)", length, RAW_READ_MAX);
+    return;
+  }
+  this->enqueue_raw_(address, length, false, nullptr, 0, optolink::GWGAccessMode::PHYSICAL, false, true);
+#else
+  (void) length;
+  ESP_LOGW(TAG, "queue_raw_gfa_read: 0x%04X not sent -- %s has no GFA read telegram", address, PROTOCOL_NAME);
+#endif
+}
+
 bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes,
-                                     uint8_t bytes_len, optolink::GWGAccessMode access, bool is_rpc) {
+                                     uint8_t bytes_len, optolink::GWGAccessMode access, bool is_rpc, bool is_gfa) {
   // An RPC's length is its parameter's, which may be empty; see queue_raw_rpc().
   if (length == 0 && !is_rpc) {
     ESP_LOGW(TAG, "enqueue_raw_: zero-length operation rejected");
@@ -1010,6 +1038,10 @@ bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
     return false;
   }
 
+  if (is_gfa && (is_write || is_rpc)) {
+    ESP_LOGW(TAG, "enqueue_raw_: a GFA operation is a read");
+    return false;
+  }
   if (is_rpc) {
     if (is_write || bytes_len != length || (bytes_len != 0 && bytes == nullptr)) {
       ESP_LOGW(TAG, "enqueue_raw_: invalid rpc parameter (length=%u, bytes_len=%u)", length, bytes_len);
@@ -1033,6 +1065,7 @@ bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
   operation.bytes_len = bytes_len;
   operation.access = access;  // read and write TYPE byte on GWG; ignored on other builds
   operation.is_rpc = is_rpc;
+  operation.is_gfa = is_gfa;
 
   if ((is_write || is_rpc) && bytes_len != 0)
     std::memcpy(operation.bytes, bytes, bytes_len);
@@ -1047,16 +1080,16 @@ bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
       ESP_LOGW(TAG,
                "raw lane not allocated; dropping %s 0x%04X. Set raw_queue_size on the vitohome hub to use the "
                "scan console.",
-               raw_kind(is_write, is_rpc), address);
+               raw_kind(is_write, is_rpc, is_gfa), address);
     } else {
       ESP_LOGW(TAG, "raw queue full (%zu/%zu); dropping %s 0x%04X. Raise raw_queue_size for larger sweeps.",
-               this->raw_queue_.size(), this->raw_queue_.capacity(), raw_kind(is_write, is_rpc), address);
+               this->raw_queue_.size(), this->raw_queue_.capacity(), raw_kind(is_write, is_rpc, is_gfa), address);
     }
 
     return false;
   }
 
-  ESP_LOGD(TAG, "Queued raw %s 0x%04X len %u", raw_kind(is_write, is_rpc), address, length);
+  ESP_LOGD(TAG, "Queued raw %s 0x%04X len %u", raw_kind(is_write, is_rpc, is_gfa), address, length);
   return true;
 }
 
@@ -1080,7 +1113,7 @@ void VitoHomeComponent::raw_handle_error_(optolink::OptolinkResult error) {
   char buffer[96];
 
   snprintf(buffer, sizeof(buffer), "0x%04X: %s FAILED (%s)", this->raw_dp_.address(),
-           raw_kind(this->raw_is_write_, this->raw_is_rpc_), optolink::errorToString(error));
+           raw_kind(this->raw_is_write_, this->raw_is_rpc_, this->raw_is_gfa_), optolink::errorToString(error));
 
   ESP_LOGW(TAG, "Raw: %s", buffer);
   this->raw_publish_(buffer);
@@ -1387,6 +1420,10 @@ void VitoHomeComponent::refresh_siblings_(VitoEntityBase *writer) {
     // An RPC answer is computed by the controller, not read from the memory a
     // write changed, so sharing the address says nothing about it.
     if (e->is_rpc())
+      continue;
+    // A GFA datapoint lives in the burner control's address space: the same
+    // address there is a different register from the one just written.
+    if (e->is_gfa())
       continue;
     if (this->request_priority_read(e))
       ++queued;

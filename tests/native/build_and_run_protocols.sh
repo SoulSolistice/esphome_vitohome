@@ -102,6 +102,16 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTO
   proof_vs1_write.cpp "${SRCS[@]}" -o vs1_write
 ./vs1_write
 
+echo "== VS1/KW GFA read: type 0x6B, the chained pause (#27) =="
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" -I"$OPTO" \
+  proof_vs1_gfa.cpp "${SRCS[@]}" -o vs1_gfa
+./vs1_gfa
+
+echo "== VS2/P300 GFA read: function code 0x6B as the whole flags byte (#27) =="
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
+  proof_vs2_gfa.cpp "${SRCS[@]}" -o vs2_gfa
+./vs2_gfa
+
 echo "== VS2 guards: ERROR-type frames + parser reset (#9 / #10) =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
   proof_vs2_guards.cpp "${SRCS[@]}" -o vs2_guards

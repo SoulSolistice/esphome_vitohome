@@ -431,3 +431,11 @@ button:
       - lambda: |-
           std::vector<uint8_t> p{0x00};
           id(vito).queue_raw_rpc(0xA010, p);
+  # A read in the burner control's address space (0x6B) on the raw lane: P80,
+  # the chip byte. KW and P300, which share this file, both send it.
+  - platform: template
+    name: "Test Raw GFA Read"
+    entity_category: diagnostic
+    on_press:
+      - lambda: |-
+          id(vito).queue_raw_gfa_read(0x4050, 1);

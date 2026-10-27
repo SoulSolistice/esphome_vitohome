@@ -32,6 +32,22 @@ bool VS1Engine::read(uint16_t address, uint8_t length) {
   return false;
 }
 
+bool VS1Engine::gfaRead(uint16_t address, uint8_t length) {
+  if (_busy) {
+    return false;
+  }
+  if (_currentRequest.createPacket(PacketVS1Type.GFA_READ, address, length)) {
+    _currentAddress = address;
+    _currentLength = length;
+    _busy = true;
+    _requestTime = _currentMillis;
+    optolink_log_i("gfa reading packet OK");
+    return true;
+  }
+  optolink_log_i("gfa reading not possible, packet creation error");
+  return false;
+}
+
 bool VS1Engine::write(uint16_t address, const uint8_t *data, uint8_t length) {
   if (_busy) {
     return false;
@@ -151,6 +167,11 @@ void VS1Engine::_syncRecv() {
     return;
   }
   if (_currentMillis - _lastMillis < CHAIN_WINDOW_MS) {
+    // A GFA read waits GFA_GAP_MS after the last answer (see there); the guard
+    // above keeps watching the line meanwhile.
+    if (_busy && _currentRequest.packetType() == PacketVS1Type.GFA_READ && _currentMillis - _lastMillis < GFA_GAP_MS) {
+      return;
+    }
     if (_busy) {
       _setState(State::SEND);
     }

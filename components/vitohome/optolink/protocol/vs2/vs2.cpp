@@ -32,6 +32,22 @@ bool VS2Engine::read(uint16_t address, uint8_t length) {
   return false;
 }
 
+bool VS2Engine::gfaRead(uint16_t address, uint8_t length) {
+  if (_busy) {
+    return false;
+  }
+  if (_currentPacket.createPacket(PacketType::REQUEST, FunctionCode::GFA_READ, 0, address, length)) {
+    _currentAddress = address;
+    _currentLength = length;
+    _busy = true;
+    _requestTime = _currentMillis;
+    optolink_log_i("gfa reading packet OK");
+    return true;
+  }
+  optolink_log_i("gfa reading not possible, packet creation error");
+  return false;
+}
+
 bool VS2Engine::write(uint16_t address, const uint8_t *data, uint8_t length) {
   if (_busy) {
     return false;

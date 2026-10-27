@@ -576,6 +576,89 @@ would be read too (THIRD_PARTY #26, `tests/native/proof_vs2_rpc.cpp` case C);
 that tolerance costs nothing and stays, since one unit does not speak for every
 controller.
 
+### Burner-control reads (`access: gfa`)
+
+A gas boiler's Vitotronic is not the only controller in it. The **burner
+control** (Gasfeuerungsautomat, GFA; "FA" in Vitosoft's menus) is a second one,
+with its own chip and its own address space, and the Vitotronic forwards reads
+into it. Vitosoft reads it with the access function `GFA_READ`: 273 linked
+events across 53 device tokens in 14 families (VScotHO1/HC1/HC2, VPend*,
+VPlus*, VDens*, VSorp, Vitovalor), all KW/P300, **none GWG**, and **no
+`GFA_WRITE` anywhere** in the export. VScotHO1_72 has 104 of them beside its 719
+`Virtual_READ` datapoints, and those 719 contain no fan speed, ionisation current,
+gas-valve drive or flame-formation time; only the burner control has them.
+
+**The telegram is a read with another type byte.** Over KW the frame is the
+read's, `<type> <addr hi> <addr lo> <len>`, answered by `<len>` raw bytes, with
+`0x6B` as the type instead of `0xF7`. Hardware, VScotHO1_72 (KW, burner control
+`0x24` = NEC), 2026-10-26, one session:
+
+```
+F7 76 50 01 -> 24    GFA_Kennung, the Vitotronic's mirror of the chip   13-81 ms
+F7 40 50 01 -> FF    the same address in the Vitotronic's own space     20 ms
+6B 40 50 01 -> 24    P80, the chip byte, in the burner control           61-90 ms
+F7 40 06 01 -> FF    / 6B 40 06 01 -> 0F    P06, fan speed actual
+F7 40 09 01 -> FF    / 6B 40 09 01 -> 10    P09, fan speed setpoint
+6B 40 0A 01 -> 1D    P10 fan PWM setpoint   6B 40 54 01 -> 06   P84 burner phase
+```
+
+So `0x6B` reaches a different space (FF versus the value at the same address),
+P80 there equals the Vitotronic's own copy, and repeated reads agree. The 0x6B
+reads took 56-90 ms against mostly 13-41 ms for 0xF7, which fits the Vitotronic
+forwarding each one (inference). Every 0x6B telegram in that session went out
+25 ms after the previous answer; `VS1Engine::GFA_GAP_MS` keeps that pause for a
+chained GFA read, since it has never been tried without. A GFA read that opens a
+chain goes out on the ENQ like any read.
+
+**Over P300** the same read is function code `0x6B` in the read frame:
+`41 05 00 6B 40 50 01 01`. That byte does not fit P300's 5-bit function-code
+field (upstream builds the flags byte as `fc | id << 5`, and the three codes it
+knew are all below `0x20`), so `FunctionCode::GFA_READ` is sent and recognised
+as the **whole** byte -- every request this engine builds carries message id 0 --
+and an answer must echo `0x6B` to be taken as the GFA answer; anything else that
+is no valid function code is refused by the parser. **Not yet tried on a unit**
+over P300: whether a controller accepts the code, and whether its answer echoes
+it, is open (THIRD_PARTY #27).
+
+**The address space**, from the export:
+
+| range | content | example |
+|---|---|---|
+| `0x0000 + n` | coding parameters Cn of the burner control | C10 natural gas / LPG |
+| `0x4000 + n` | P-parameter n, decimal | P31 `0x401F`, P80 `0x4050`, P140 `0x408C` |
+| `0x4100 + n` | P256..P286, 16-bit, Vi chip only | P264 fan drive |
+| `0xC0E0..0xC72F` | two 49-entry fault histories of 16-byte records, Vi chip only | `VSKO_FH_HC_01` |
+
+The P-parameters are mostly live values: P00 momentary power, P05 gas-valve
+drive, P06/P09 fan speed actual/setpoint, P10 fan PWM, P13-P15 ionisation
+actual/base/setpoint, P17 flame formation time, P84 burner phase, P85-P88
+status, P81/P82 the burner control's software version, P101-P108 its coding
+plug. P70-P79 publish the min/max of the coding parameters.
+
+**Some parameters depend on the chip.** Vitosoft hangs the GFA datapoints of a
+device under per-chip menus (`60_Funktionskontrolle~35_FA_VSKO_NEC`, `_GFA`,
+`_Scot`, `_DOVER...`; `_ViCC` on the Vi-chip units). The chip is the byte at
+`0x7650` (and P80), which the hub logs at boot as `GFA=0x..`. Most addresses
+decode the same in every menu; a chip mostly decides which parameters exist
+(P31-P33 and P140-P148 are NEC-only). Three addresses do differ:
+`0x4005`, `0x4009` and `0x401A`. On VScotHO1_72, P09 is fan speed x30 rpm in
+the NEC, Scot and generic menus and x0.3922 % in the GFA-chip and Dover menus;
+the reference unit's P06 = 15 and P09 = 16 (450 / 480 rpm) read as a matching
+actual/setpoint pair.
+
+The component side:
+
+- `access: gfa` on `sensor`, `binary_sensor` and `text_sensor` only (no GFA
+  write exists), under KW and P300; `_final_validate` rejects it under GWG.
+  `length:`, `byte_offset:`, the converters and `bit_mask` mean what they mean
+  for any read.
+- The entity rides the ordinary read lane; only the telegram differs
+  (`gfaRead()` instead of `read()`). A write to the same address in the
+  Vitotronic's space does not refresh it: it is a different register.
+- `queue_raw_gfa_read(address, length)` reads one from a lambda and publishes
+  it like a raw read (the scan console's "Raw GFA read").
+- The catalog generator does not emit GFA datapoints yet.
+
 ---
 
 ## 3. The vendored engine (`optolink/`)
