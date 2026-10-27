@@ -5,8 +5,9 @@
 # queue_raw_rpc / queue_raw_gfa_read and a hub-fed `text_sensor: type:
 # scan_result`:
 #   * READ-NOW  — an immediate one-off read, not "next poll tick".
-#   * GFA READ   — the same read in the burner control's address space (KW
-#                  type / P300 function code 0x6B), e.g. 4050 = P80, its chip.
+#   * GFA READ   — the same read in the burner control's address space (the
+#                  KW telegram 0x6B; a P300 hub drops to KW for it), e.g.
+#                  4050 = P80, its chip.
 #   * RAW HEX    — the response as bytes + exact 64-bit integer views (no
 #                  float32 narrowing on 4-byte values).
 #   * RAW WRITE  — an arbitrary byte payload (not just one LE integer).

@@ -45,11 +45,6 @@ bool PacketVS2::createPacket(PacketType pt, FunctionCode fc, uint8_t id, uint16_
   if (id > 7) {
     optolink_log_w("Message id overflow: %u > 7", id);
   }
-  // GFA_READ occupies the whole flags byte, so there is no room for an id.
-  if (fc == FunctionCode::GFA_READ && id != 0) {
-    optolink_log_w("GFA_READ carries no message id: %u", id);
-    return false;
-  }
 
   // A VS2 payload frame stores its P300 length byte as 0x05 + len, so the
   // payload must keep 0x05 + len inside a single byte: max len == 250.
@@ -96,14 +91,7 @@ uint8_t PacketVS2::length() const { return _buffer[0] + 1; }
 
 PacketType PacketVS2::packetType() const { return static_cast<PacketType>(_buffer[1]); }
 
-FunctionCode PacketVS2::functionCode() const {
-  // GFA_READ is the whole byte, not a 5-bit code with a message id (see
-  // FunctionCode::GFA_READ). No READ/WRITE/RPC frame carries 0x6B: its low five
-  // bits are 0x0B, which is none of them.
-  if (_buffer[2] == static_cast<uint8_t>(FunctionCode::GFA_READ))
-    return FunctionCode::GFA_READ;
-  return static_cast<FunctionCode>(_buffer[2] & 0x1F);
-}
+FunctionCode PacketVS2::functionCode() const { return static_cast<FunctionCode>(_buffer[2] & 0x1F); }
 
 uint16_t PacketVS2::address() const {
   uint16_t retVal = _buffer[3] << 8;

@@ -131,6 +131,8 @@ from vitocatalog import (  # noqa: E402, F401
     FCREAD_TO_GWG_ACCESS,
     FCWRITE_TO_GWG_ACCESS,
     GFA_DIRNAME,
+    GFA_MENU_CHIPS,
+    GFA_PLATFORMS,
     MAX_P300_READ_LENGTH,
     MAX_RMW_BLOCK,
     MAX_TEXT_BLOCK_LENGTH,
@@ -194,6 +196,7 @@ from vitocatalog import (  # noqa: E402, F401
     _intval,
     _is_diagnostic,
     _is_error_history,
+    _is_gfa_read,
     _is_hw_sw_ext,
     _is_identification,
     _is_lon_bound_rpc,
@@ -358,8 +361,8 @@ def main(argv=None) -> int:
         "--reachable-only",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="emit only datapoints VitoWiFi can read over Optolink (FCRead Virtual_READ); "
-        "drop GFA_READ/RPC/PROZESS/KBUS/OT (default: on)",
+        help="emit only datapoints vitohome can read over Optolink (FCRead Virtual_READ, and "
+        "GFA_READ as access: gfa); drop RPC/PROZESS/KBUS/OT (default: on)",
     )
     p.add_argument(
         "--export-all",

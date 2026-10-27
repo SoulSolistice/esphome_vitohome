@@ -519,6 +519,7 @@ void VitoHomeComponent::dispatch_raw_front_() {
 
     this->raw_write_len_ = operation.is_write ? operation.bytes_len : 0;
     this->raw_in_flight_ = true;
+    this->last_read_gfa_ = operation.is_gfa;
     this->in_flight_started_ms_ = App.get_loop_component_start_time();
 
     ESP_LOGV(TAG, "Dispatched raw %s 0x%04X len %u", raw_kind(operation.is_write, operation.is_rpc, operation.is_gfa),
@@ -677,6 +678,7 @@ void VitoHomeComponent::dispatch_next_() {
 
     this->in_flight_ = entity;
     this->in_flight_op_ = OpType::WRITE;
+    this->last_read_gfa_ = false;
     this->in_flight_started_ms_ = App.get_loop_component_start_time();
 
     // The entity has left the queue and is now in flight. Clearing
@@ -696,6 +698,15 @@ void VitoHomeComponent::dispatch_next_() {
   // Poll/read-back lane. read_queued_ remains true after the item leaves the
   // ring and while its request is in flight. Completion, error, mismatch, or
   // watchdog handling clears it.
+  //
+  // Address-space affinity: a GFA read right after a GFA read chains onto the
+  // same KW session, while a switch costs -- over P300 up to two ENQ waits,
+  // seconds, for the detour to KW and back (VS2Engine::gfaRead()). So after a
+  // GFA read the next queued GFA read goes first. The queue holds at most one
+  // slot per entity, so this cannot starve the others for longer than one
+  // round of GFA reads.
+  if (this->last_read_gfa_)
+    (void) this->read_queue_.move_first_to_front_if([](VitoEntityBase *e) { return e != nullptr && e->is_gfa(); });
   this->read_queue_.consume_front_if([this](VitoEntityBase *entity) {
     if (entity == nullptr) {
       ESP_LOGE(TAG, "null entity in read queue; dropping item");
@@ -739,6 +750,7 @@ void VitoHomeComponent::dispatch_next_() {
     this->in_flight_ = entity;
     this->in_flight_op_ = OpType::READ;
     this->in_flight_started_ms_ = App.get_loop_component_start_time();
+    this->last_read_gfa_ = entity->is_gfa();
 
     ESP_LOGV(TAG, "Dispatched read for %s", entity->get_datapoint().name());
 

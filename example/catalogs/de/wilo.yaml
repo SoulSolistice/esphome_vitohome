@@ -8,7 +8,7 @@
 # disabled_by_default; enable the ones you want in Home Assistant.
 #
 # FCRead filter ON: 69 datapoint(s) whose access method this
-# engine has no read for (GFA_READ/PROZESS/KBUS/OT, and remote procedures
+# engine has no read for (PROZESS/KBUS/OT, and remote procedures
 # that are neither a reading nor an action) were omitted as unreachable.
 # Re-run with --no-reachable-only to include them.
 #

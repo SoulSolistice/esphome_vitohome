@@ -95,8 +95,10 @@ def test_access_never_emitted_for_non_gwg():
 def test_p300_reachability_unchanged():
     assert gc._is_reachable(_ev("Virtual_READ"), gc.PROTO_P300)
     assert gc._is_reachable(_ev(""), gc.PROTO_P300)
+    # The burner control is read with its own telegram (`access: gfa`).
+    assert gc._is_reachable(_ev("GFA_READ"), gc.PROTO_P300)
     # Everything else is unreachable through VS2's virtual read.
-    for fc in ("Physical_READ", "EEPROM_READ", "GFA_READ", "Remote_Procedure_Call"):
+    for fc in ("Physical_READ", "EEPROM_READ", "PROZESS_READ", "Remote_Procedure_Call"):
         assert not gc._is_reachable(_ev(fc), gc.PROTO_P300)
 
 

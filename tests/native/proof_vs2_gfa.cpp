@@ -1,23 +1,22 @@
-// Proof for the P300 GFA read (FunctionCode::GFA_READ, 0x6B): a read in the
-// burner control's address space, built as a READ frame with function code
-// 0x6B. Unconfirmed on P300 hardware (it is confirmed over KW, type 0x6B); what
-// this pins is that the engine sends the frame it means to and handles every
-// plausible answer the way it handles a read's.
+// Proof for the P300 GFA read: a KW detour (VS2Engine::gfaRead()).
 //
-//   A) The request is 41 05 00 6B 40 50 01 01 -- the read frame with 0x6B as
-//      the whole flags byte (message id 0), checksum 0x01.
-//   B) An answer echoing 0x6B with DataLength = the returned bytes is
-//      delivered like a read's, with the echoed address.
-//   C) A two-byte answer is delivered whole.
-//   D) A device ERROR frame carrying 0x6B ends as DEVICE_ERROR, not as data.
-//   E) An answer with any other flags byte that is no valid function code is
-//      refused by the parser (ERROR), not delivered.
-//   F) READ frames are unchanged, and a READ whose flags carry a message id is
-//      still a READ: only the whole byte 0x6B means GFA.
-//   G) The packet guards: no message id with GFA_READ, no zero length; a GFA
-//      request frame parses as a payload-less request.
+// The controller refuses 0x6B as a P300 function code (VScotHO1_72,
+// 2026-10-27: 41 05 00 6B 40 50 01 01 -> 06 41 06 03 6B 40 50 01 05 0A, an
+// ERROR frame) but answers it as a KW telegram. So the engine drops P300 for
+// it. Pinned below, on a frozen clock:
+//   A) a GFA read leaves P300 with EOT, answers the controller's ENQ with
+//      01 6B <addr> <len>, and delivers the <len> raw bytes with the address;
+//   B) a GFA read right after it chains onto the KW session, GFA_GAP_MS later,
+//      without a new ENQ;
+//   C) with nothing queued for GFA_LINGER_MS the engine re-establishes P300
+//      (EOT, ENQ, SYNC 16 00 00, ACK) and reads as P300 again;
+//   D) a P300 request after a GFA answer goes through the same return first;
+//   E) a controller ENQ while the KW session idles is answered with SYNC;
+//   F) an ENQ in the KW session opens a pending GFA read with 01 again;
+//   G) no ENQ after the drop: TIMEOUT, and the engine resets to P300;
+//   H) guards: length 1..GFA_MAX_LENGTH, single in flight.
 //
-// Built by build_and_run_protocols.sh under ASan/UBSan with the VS2 engine.
+// Built by build_and_run_protocols.sh (P300 is the default protocol).
 
 #include <cstdio>
 #include <vector>
@@ -26,145 +25,191 @@
 #include "optolink/optolink.h"
 
 namespace optolink = esphome::vitohome::optolink;
-using optolink::FunctionCode;
-using optolink::PacketType;
-using optolink::internals::ParserResult;
+using Engine = optolink::VS2Engine;
+using Bytes = std::vector<uint8_t>;
 
-static int g_fail = 0;
-static void check(bool ok, const char *what) {
-  std::printf("  %-64s %s\n", what, ok ? "ok" : "FAIL");
+namespace {
+int g_fail = 0;
+int g_responses = 0;
+int g_errors = 0;
+optolink::OptolinkResult g_last_error = optolink::OptolinkResult::CONTINUE;
+Bytes g_payload;
+uint16_t g_address = 0;
+
+void check(bool ok, const char *what) {
+  std::printf("  %-66s %s\n", what, ok ? "ok" : "FAIL");
   if (!ok)
     ++g_fail;
 }
 
-// Start byte, then the length byte and what it counts, then their checksum.
-static std::vector<uint8_t> frame(const std::vector<uint8_t> &counted) {
-  std::vector<uint8_t> out{0x41};
-  out.insert(out.end(), counted.begin(), counted.end());
-  uint8_t cs = 0;
-  for (uint8_t b : counted)
-    cs = static_cast<uint8_t>(cs + b);
-  out.push_back(cs);
-  return out;
+void pump(Engine &e, int n = 8) {
+  for (int i = 0; i < n; ++i)
+    e.loop();
 }
 
-struct Result {
-  std::vector<uint8_t> written;
-  std::vector<uint8_t> payload;
-  bool answered = false;
-  optolink::OptolinkResult error = optolink::OptolinkResult::CONTINUE;  // no error seen
-  bool failed = false;
-  uint16_t address = 0;
-};
+void advance(Engine &e, uint32_t ms) {
+  optolink::optolink_test_clock_advance(ms);
+  pump(e);
+}
 
-// One request through a synced engine; `answer` is what the controller sends
-// back after its ACK.
-static Result run(bool gfa, uint16_t address, uint8_t length, const std::vector<uint8_t> &answer) {
-  FakeOptolink io;
-  optolink::OptolinkEngine<optolink::P300> vito(&io);
-  Result r;
-  vito.onResponse([&](const uint8_t *data, uint8_t len, uint16_t addr) {
-    if (data)
-      r.payload.assign(data, data + len);
-    r.answered = true;
-    r.address = addr;
-  });
-  vito.onError([&](optolink::OptolinkResult e, uint16_t) {
-    r.failed = true;
-    r.error = e;
-  });
-  vito.begin();
-  auto pump = [&](int n) {
-    for (int i = 0; i < n; ++i)
-      vito.loop();
-  };
-  pump(3);
-  io.feed({0x05});  // EOT -> ENQ
-  pump(3);
-  io.feed({0x06});  // SYNC -> ACK => IDLE
-  pump(3);
+// The P300 handshake from RESET: EOT out, ENQ in, SYNC out, ACK in.
+bool handshake(Engine &e, FakeOptolink &io) {
+  pump(e);
+  const bool eot = io.written() == Bytes({0x04});
   io.clear_written();
-
-  if (!(gfa ? vito.gfaRead(address, length) : vito.read(address, length))) {
-    r.failed = true;
-    return r;
-  }
-  pump(8);
-  std::vector<uint8_t> reply{0x06};  // the controller's ACK of the request
-  reply.insert(reply.end(), answer.begin(), answer.end());
-  io.feed(reply);
-  pump(8);
-  r.written = io.written();
-  return r;
+  io.feed({0x05});
+  pump(e);
+  const bool sync = io.written() == Bytes({0x16, 0x00, 0x00});
+  io.clear_written();
+  io.feed({0x06});
+  pump(e);
+  return eot && sync;
 }
+
+// A one-byte P300 read of 0x00F8, answered.
+bool p300_read(Engine &e, FakeOptolink &io) {
+  const int before = g_responses;
+  if (!e.read(0x00F8, 1))
+    return false;
+  pump(e);
+  // 41 05 00 01 00 F8 01 <cs>
+  const Bytes want{0x41, 0x05, 0x00, 0x01, 0x00, 0xF8, 0x01, 0xFF};
+  const bool frame = io.written() == want;
+  io.clear_written();
+  io.feed({0x06, 0x41, 0x06, 0x01, 0x01, 0x00, 0xF8, 0x01, 0x20, 0x21});
+  pump(e);
+  io.clear_written();  // the engine's ACK of the answer
+  return frame && g_responses == before + 1 && g_payload == Bytes({0x20});
+}
+}  // namespace
 
 int main() {
-  std::printf("== VS2 GFA read ==\n");
+  std::printf("== VS2 GFA read (KW detour) ==\n");
+  optolink::optolink_test_clock_freeze();
 
-  // A + B
-  {
-    Result r = run(true, 0x4050, 1, frame({0x06, 0x01, 0x6B, 0x40, 0x50, 0x01, 0x24}));
-    std::vector<uint8_t> request = frame({0x05, 0x00, 0x6B, 0x40, 0x50, 0x01});
-    check(request.back() == 0x01, "A: the request checksum is 0x01");
-    request.push_back(0x06);  // the engine's ACK of the answer
-    check(r.written == request, "A: request is 41 05 00 6B 40 50 01 01, then ACK");
-    check(r.answered && !r.failed, "B: an answer echoing 0x6B completes");
-    check(r.payload == std::vector<uint8_t>({0x24}), "B: the returned byte is delivered");
-    check(r.address == 0x4050, "B: the echoed address is surfaced");
-  }
+  FakeOptolink io;
+  Engine e(&io);
+  e.onResponse([](const uint8_t *d, uint8_t len, uint16_t address) {
+    ++g_responses;
+    g_payload.assign(d, d + len);
+    g_address = address;
+  });
+  e.onError([](optolink::OptolinkResult r, uint16_t) {
+    ++g_errors;
+    g_last_error = r;
+  });
+  e.begin();
+  check(handshake(e, io), "P300 link up");
 
-  // C
-  {
-    Result r = run(true, 0x408C, 2, frame({0x07, 0x01, 0x6B, 0x40, 0x8C, 0x02, 0x12, 0x34}));
-    check(r.answered && r.payload == std::vector<uint8_t>({0x12, 0x34}), "C: a two-byte answer is delivered whole");
-  }
+  // --- A ------------------------------------------------------------------
+  check(e.gfaRead(0x4050, 1), "A: gfa read accepted");
+  pump(e);
+  check(io.written() == Bytes({0x04}), "A: EOT leaves P300");
+  io.clear_written();
+  io.feed({0x05});
+  pump(e);
+  check(io.written() == Bytes({0x01, 0x6B, 0x40, 0x50, 0x01}), "A: the ENQ is answered with 01 6B 40 50 01");
+  io.clear_written();
+  io.feed({0x24});
+  pump(e);
+  check(g_responses == 1 && g_payload == Bytes({0x24}) && g_address == 0x4050, "A: P80 = 24 delivered, address 0x4050");
 
-  // D
-  {
-    Result r = run(true, 0x4050, 1, frame({0x06, 0x03, 0x6B, 0x40, 0x50, 0x01, 0x01}));
-    check(!r.answered && r.failed && r.error == optolink::OptolinkResult::DEVICE_ERROR,
-          "D: an error frame carrying 0x6B is DEVICE_ERROR");
-  }
+  // --- B ------------------------------------------------------------------
+  constexpr uint32_t gap = Engine::GFA_GAP_MS;
+  check(e.gfaRead(0x408C, 2), "B: chained gfa read accepted");
+  pump(e);
+  check(io.written().empty(), "B: nothing before the pause");
+  advance(e, gap - 1);
+  check(io.written().empty(), "B: nothing 1 ms before it ends");
+  advance(e, 1);
+  check(io.written() == Bytes({0x6B, 0x40, 0x8C, 0x02}), "B: 6B 40 8C 02 on the same session, no ENQ");
+  io.clear_written();
+  io.feed({0x12, 0x34});
+  pump(e);
+  check(g_responses == 2 && g_payload == Bytes({0x12, 0x34}), "B: both bytes delivered");
 
-  // E
-  {
-    Result r = run(true, 0x4050, 1, frame({0x06, 0x01, 0x0B, 0x40, 0x50, 0x01, 0x24}));
-    check(!r.answered && r.failed && r.error == optolink::OptolinkResult::ERROR,
-          "E: flags 0x0B (0x6B without its top bits) is refused");
-  }
+  // --- C ------------------------------------------------------------------
+  advance(e, Engine::GFA_LINGER_MS);
+  check(io.written().empty(), "C: still in KW at GFA_LINGER_MS");
+  advance(e, 1);
+  check(handshake(e, io), "C: after it, EOT / ENQ / SYNC / ACK back to P300");
+  check(p300_read(e, io), "C: and a P300 read works");
 
-  // F
-  {
-    Result r = run(false, 0x00F8, 2, frame({0x07, 0x01, 0x01, 0x00, 0xF8, 0x02, 0x20, 0xCB}));
-    std::vector<uint8_t> request = frame({0x05, 0x00, 0x01, 0x00, 0xF8, 0x02});
-    request.push_back(0x06);
-    check(r.written == request, "F: a READ is still 41 05 00 01 00 F8 02 <cs>");
-    check(r.answered && r.payload == std::vector<uint8_t>({0x20, 0xCB}), "F: and its answer is delivered");
+  // --- D ------------------------------------------------------------------
+  check(e.gfaRead(0x4006, 1), "D: gfa read accepted");
+  pump(e);
+  io.clear_written();
+  io.feed({0x05});
+  pump(e);
+  io.clear_written();
+  io.feed({0x0F});
+  pump(e);
+  check(g_responses == 4 && g_payload == Bytes({0x0F}), "D: P06 = 0F delivered");
+  check(e.read(0x00F8, 1), "D: P300 read accepted right after");
+  pump(e);
+  check(handshake(e, io), "D: P300 is re-established first");
+  pump(e);
+  io.clear_written();
+  io.feed({0x06, 0x41, 0x06, 0x01, 0x01, 0x00, 0xF8, 0x01, 0x20, 0x21});
+  pump(e);
+  io.clear_written();
+  check(g_responses == 5 && g_payload == Bytes({0x20}), "D: then the P300 read completes");
 
-    optolink::PacketVS2 p;
-    check(p.createPacket(PacketType::REQUEST, FunctionCode::READ, 3, 0x00F8, 1), "F: a READ with message id 3 builds");
-    check(p[2] == 0x61 && p.functionCode() == FunctionCode::READ, "F: flags 0x61 still read back as READ");
-  }
+  // --- E ------------------------------------------------------------------
+  check(e.gfaRead(0x4050, 1), "E: gfa read accepted");
+  pump(e);
+  io.clear_written();
+  io.feed({0x05});
+  pump(e);
+  io.clear_written();
+  io.feed({0x24});
+  pump(e);
+  io.feed({0x05});  // the KW session idles out before GFA_LINGER_MS
+  pump(e);
+  check(io.written() == Bytes({0x16, 0x00, 0x00}), "E: the ENQ is answered with SYNC");
+  io.clear_written();
+  io.feed({0x06});
+  pump(e);
+  check(p300_read(e, io), "E: and P300 is back");
 
-  // G
-  {
-    optolink::PacketVS2 p;
-    check(!p.createPacket(PacketType::REQUEST, FunctionCode::GFA_READ, 1, 0x4050, 1),
-          "G: GFA_READ with a message id is refused");
-    check(!p.createPacket(PacketType::REQUEST, FunctionCode::GFA_READ, 0, 0x4050, 0),
-          "G: zero-length GFA_READ is refused");
-    check(p.createPacket(PacketType::REQUEST, FunctionCode::GFA_READ, 0, 0x4050, 1) && p[2] == 0x6B &&
-              p.functionCode() == FunctionCode::GFA_READ,
-          "G: GFA_READ is the whole flags byte 0x6B");
+  // --- F ------------------------------------------------------------------
+  check(e.gfaRead(0x4050, 1), "F: gfa read accepted");
+  pump(e);
+  io.clear_written();
+  io.feed({0x05});
+  pump(e);
+  io.clear_written();
+  io.feed({0x24});
+  pump(e);
+  check(e.gfaRead(0x4009, 1), "F: next gfa read accepted");
+  io.feed({0x05});  // an ENQ before the pause ends
+  pump(e);
+  check(io.written() == Bytes({0x01, 0x6B, 0x40, 0x09, 0x01}), "F: the ENQ opens it with 01 6B 40 09 01");
+  io.clear_written();
+  io.feed({0x10});
+  pump(e);
+  check(g_payload == Bytes({0x10}), "F: and its answer is the data byte");
+  advance(e, Engine::GFA_LINGER_MS + 1);
+  check(handshake(e, io), "F: back to P300");
 
-    auto *parser = new optolink::internals::ParserVS2();
-    ParserResult res = ParserResult::CONTINUE;
-    for (uint8_t b : frame({0x05, 0x00, 0x6B, 0x40, 0x50, 0x01}))
-      res = parser->parse(b);
-    check(res == ParserResult::COMPLETE && parser->packet().functionCode() == FunctionCode::GFA_READ,
-          "G: a GFA request frame parses without a payload");
-    delete parser;
-  }
+  // --- G ------------------------------------------------------------------
+  const int errors_before = g_errors;
+  check(e.gfaRead(0x4050, 1), "G: gfa read accepted");
+  pump(e);
+  check(io.written() == Bytes({0x04}), "G: EOT");
+  io.clear_written();
+  advance(e, Engine::GFA_ENQ_TIMEOUT_MS);
+  check(g_errors == errors_before, "G: no error at GFA_ENQ_TIMEOUT_MS");
+  advance(e, 1);
+  check(g_errors == errors_before + 1 && g_last_error == optolink::OptolinkResult::TIMEOUT, "G: TIMEOUT after it");
+  check(!e.isBusy(), "G: engine free again");
+  check(handshake(e, io), "G: and it resets to P300");
+
+  // --- H ------------------------------------------------------------------
+  check(!e.gfaRead(0x4050, 0), "H: zero length refused");
+  check(!e.gfaRead(0x4050, Engine::GFA_MAX_LENGTH + 1), "H: more than GFA_MAX_LENGTH refused");
+  check(e.gfaRead(0x4050, Engine::GFA_MAX_LENGTH), "H: GFA_MAX_LENGTH accepted");
+  check(!e.gfaRead(0x4050, 1) && !e.read(0x00F8, 1), "H: nothing else while it is in flight");
 
   std::printf("vs2 gfa read: %d failure(s)\n", g_fail);
   return g_fail == 0 ? 0 : 1;

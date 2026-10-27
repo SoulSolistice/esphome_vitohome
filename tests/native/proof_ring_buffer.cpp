@@ -25,6 +25,8 @@
 //   - move_to_front() moves an already-queued element to the head and keeps
 //     the order of the rest, across the wrap boundary too; absent = no change
 //     (the read-back of an entity whose poll is already queued).
+//   - move_first_to_front_if() does the same for the first element a predicate
+//     accepts (the hub's address-space affinity for GFA reads).
 //
 // Built under -fsanitize=address,undefined: any off-by-one in the wraparound,
 // a push_front underflow, or a read of the unallocated backing would be an
@@ -396,6 +398,29 @@ static void test_move_to_front() {
   check(reads.size() == 6, "no duplicate: one copy of the writer");
 }
 
+// The hub's address-space affinity: after a GFA read, the next queued GFA read
+// goes first (vitohome.cpp, dispatch_next_), here "odd = GFA".
+static void test_move_first_to_front_if() {
+  std::printf("== move_first_to_front_if (address-space affinity) ==\n");
+  auto odd = [](int v) { return v % 2 != 0; };
+  RingBuffer<int> q;
+  check(q.reserve(4), "reserve(4) succeeds");
+  int out = -1;
+  check(!q.move_first_to_front_if(odd), "empty ring: nothing to move");
+  for (int e = 0; e < 3; e++)
+    check(q.push_back(e) && q.try_pop_front(out), "advance head_ to the last slot");
+  for (int e : {10, 12, 13, 15})
+    check(q.push_back(e), "fill across the wrap");
+  check(q.move_first_to_front_if(odd), "the first match (13) moves");
+  const int want[] = {13, 10, 12, 15};
+  bool order = true;
+  for (int w : want)
+    order = order && q.try_pop_front(out) && out == w;
+  check(order && q.empty(), "order is 13, 10, 12, 15: only the first match moved");
+  check(q.push_back(2) && q.push_back(4) && !q.move_first_to_front_if(odd), "no match: false");
+  check(q.size() == 2 && q.try_front(out) && out == 2, "no match: buffer unchanged");
+}
+
 int main() {
   test_unreserved();
   test_reserve_one_shot();
@@ -407,6 +432,7 @@ int main() {
   test_pod_element();
   test_hub_pattern();
   test_move_to_front();
+  test_move_first_to_front_if();
   std::printf("ring_buffer proof: %d failure(s)\n", g_fail);
   return g_fail == 0 ? 0 : 1;
 }

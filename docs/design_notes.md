@@ -610,15 +610,28 @@ forwarding each one (inference). Every 0x6B telegram in that session went out
 chained GFA read, since it has never been tried without. A GFA read that opens a
 chain goes out on the ENQ like any read.
 
-**Over P300** the same read is function code `0x6B` in the read frame:
-`41 05 00 6B 40 50 01 01`. That byte does not fit P300's 5-bit function-code
-field (upstream builds the flags byte as `fc | id << 5`, and the three codes it
-knew are all below `0x20`), so `FunctionCode::GFA_READ` is sent and recognised
-as the **whole** byte -- every request this engine builds carries message id 0 --
-and an answer must echo `0x6B` to be taken as the GFA answer; anything else that
-is no valid function code is refused by the parser. **Not yet tried on a unit**
-over P300: whether a controller accepts the code, and whether its answer echoes
-it, is open (THIRD_PARTY #27).
+**Over P300 the controller refuses it.** Sent as a P300 function code in the
+read frame, `41 05 00 6B 40 50 01 01`, it is answered with an ERROR frame
+that echoes the flags byte (VScotHO1_72, 2026-10-27):
+
+```
+>>> 41 05 00 6B 40 50 01 01
+<<< 06 41 06 03 6B 40 50 01 05 0A      PacketType 03, error code 05
+```
+
+An address the unit does not serve answers code `01` (`0x00F0` in the same
+log, `0x7362` before), so `05` is a different refusal -- read here as "not a
+function of this protocol". `VS2Engine::gfaRead()` therefore takes the
+telegram to KW: it leaves P300 the way RESET does (EOT), answers the
+controller's next ENQ with `01 6B <addr> <len>`, collects the raw answer,
+chains further GFA reads onto that KW session (25 ms apart), and after
+`GFA_LINGER_MS` without one, or at the first request that is not a GFA read,
+re-establishes P300 (EOT, ENQ, SYNC, ACK). An ENQ while the KW session idles
+is answered with SYNC straight away. The detour costs up to two ENQ waits
+(the controller offers one about every 2 s when idle), so the hub keeps GFA
+reads together: after one, the next queued GFA read is moved to the front of
+the read lane (address-space affinity, `dispatch_next_`). Not yet confirmed
+on a unit; `tests/native/proof_vs2_gfa.cpp` pins the byte sequence.
 
 **The address space**, from the export:
 
@@ -657,7 +670,25 @@ The component side:
   Vitotronic's space does not refresh it: it is a different register.
 - `queue_raw_gfa_read(address, length)` reads one from a lambda and publishes
   it like a raw read (the scan console's "Raw GFA read").
-- The catalog generator does not emit GFA datapoints yet.
+- The catalog generator emits them under KW and P300 (`_is_gfa_read`) with
+  `access: gfa  # Vitosoft GFA_READ` and a `# vito: gfa=<chips>` tag: the
+  chips whose menu lists the datapoint on that device (`GFA_MENU_CHIPS`: the
+  bare `35_FA_VSKO` menu is Vitosoft's "Prozesswerte FA CES" = `23`, `_GFA`
+  `20`, `_Scot` `21`, `_DOVER...` `22`, `_NEC` `24`, `_ViCC...` `27`, `_OEFA`
+  `41`/`42`; the last two pairings are inferred). The field identity of a GFA
+  row includes how it decodes (`_gfa_decode_key`): rows that decode alike at
+  one address fold into one entity whose tag is the union of their chips (P06
+  is `VSKO_Scot_CES_P6` in four chips' menus and `VSKO_Scot_P6` in the
+  fifth), rows that do not stay apart (P09 rpm `gfa=21,23,24`, P09 %
+  `gfa=20,22`). A GFA row in no chip's menu gets no tag. On VScotHO1_72 that is
+  104 rows -> 77 entities. The chips are not the same set on every device of a
+  family (CES has five variants across 39 devices) and many rows sit in no menu
+  (all 94 of VScotHC1_200's), so they stay in each device's catalog rather than
+  in the per-chip `gfa/chip_<XX>.yaml` companions.
+- The catalog editor filters on the tag: its *Burner-control chip* selector
+  (preset from the finder's `gfa=` parameter) hides the GFA datapoints listed
+  for other chips only and keeps everything else; the *Burner control* tag chip
+  shows the GFA datapoints alone.
 
 ---
 

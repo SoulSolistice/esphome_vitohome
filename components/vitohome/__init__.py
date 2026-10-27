@@ -237,8 +237,11 @@ _RPC_CHECK_DOMAINS = (*_RPC_DOMAINS, "button")
 
 # `access: gfa` (KW and P300). The datapoint lives in the burner control
 # (Gasfeuerungsautomat, GFA), a second controller behind the Vitotronic, and is
-# read in ITS address space: telegram type 0x6B instead of the read's 0xF7 on
-# KW, function code 0x6B instead of 0x01 on P300. Vitosoft marks such
+# read in ITS address space: the KW telegram 0x6B instead of the read's 0xF7.
+# Under P300 the engine drops the link to KW for it and re-establishes P300
+# afterwards, since a P300 controller refuses 0x6B as a function code
+# (VS2Engine::gfaRead()); that detour costs up to two ENQ waits (about 2 s
+# each) per run of GFA reads. Vitosoft marks such
 # datapoints FCRead GFA_READ -- the burner control's P-parameters at 0x4000 + n
 # (fan speed, ionisation current, burner phase, ...) and its coding parameters
 # from 0x0000 -- and the same address in the Vitotronic's own space is a
@@ -246,8 +249,8 @@ _RPC_CHECK_DOMAINS = (*_RPC_DOMAINS, "button")
 # `byte_offset:` and the converters mean what they mean for any read.
 #
 # Read-only platforms only (_GFA_DOMAINS): Vitosoft defines no GFA write at all.
-# Hardware-confirmed on KW (VScotHO1_72, burner control 0x24, 2026-10-26); over
-# P300 the telegram is built the same way but has not been tried on a unit.
+# Hardware-confirmed on KW (VScotHO1_72, burner control 0x24, 2026-10-26); the
+# P300 detour is not confirmed on a unit yet.
 # GWG has no such telegram; _final_validate rejects `access: gfa` there.
 ACCESS_GFA = "gfa"
 _GFA_DOMAINS = _RPC_DOMAINS

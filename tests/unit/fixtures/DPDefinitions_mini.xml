@@ -151,8 +151,8 @@
         <ByteLength>4</ByteLength>
       </ecnEventType>
 
-      <!-- 10: a perfectly normal Div10 sensor, but GFA_READ access, so it is
-           dropped by default (reachable_only) and only emitted when that is off -->
+      <!-- 10: a perfectly normal Div10 sensor, but PROZESS_READ access, so it
+           is dropped by default (reachable_only) and only emitted when that is off -->
       <ecnEventType>
         <Id>10</Id>
         <Name>Unreachable_Temp~0x9999</Name>
@@ -160,7 +160,7 @@
         <Type>1</Type>
         <BlockLength>2</BlockLength>
         <ByteLength>2</ByteLength>
-        <FCRead>GFA_READ</FCRead>
+        <FCRead>PROZESS_READ</FCRead>
       </ecnEventType>
 
       <!-- 11: writable noconv number (Type 3) with a NEGATIVE lower border (a

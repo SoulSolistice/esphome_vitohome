@@ -124,7 +124,9 @@ function gfaNote(choice) {
   return note("", el("p", {}, "GFA chip ", el("code", {}, choice.chip), choice.name ? " (" + choice.name + ")" : "",
     ": the companion ", el("a", { href: REPO + "/blob/main/" + catalogPath(choice.file) }, el("code", {}, catalogPath(choice.file))),
     " ", openInEditorBtn(choice.file, true),
-    " adds its fault texts to the catalog's GFA history. Save it in ", el("code", {}, "catalogs/gfa/"), "."));
+    " adds its fault texts to the catalog's GFA history. Save it in ", el("code", {}, "catalogs/gfa/"), ". ",
+    "The catalog's burner-control datapoints (", el("code", {}, "access: gfa"), ") carry the chips Vitosoft lists them for; ",
+    "the editor opened from here shows only this chip's."));
 }
 
 function catalogBlock(entry) {

@@ -107,7 +107,7 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTO
   proof_vs1_gfa.cpp "${SRCS[@]}" -o vs1_gfa
 ./vs1_gfa
 
-echo "== VS2/P300 GFA read: function code 0x6B as the whole flags byte (#27) =="
+echo "== VS2/P300 GFA read: the KW detour (#27) =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
   proof_vs2_gfa.cpp "${SRCS[@]}" -o vs2_gfa
 ./vs2_gfa

@@ -659,19 +659,23 @@ These are intentional divergences from upstream `edc059a7`:
       `onResponse` like a read's. A GFA read chained onto an answer waits
       `GFA_GAP_MS` (25 ms) after it, the pause of the only session it was
       confirmed in; one that opens a chain goes out on the ENQ unchanged.
-    - VS2: `FunctionCode::GFA_READ = 0x6B`. It does not fit the 5-bit
-      function-code field upstream shares with a 3-bit message id, so it is
-      sent and recognised as the whole flags byte: `createPacket()` refuses it
-      with a non-zero id, `functionCode()` maps `0x6B` back to it before
-      masking, and the parser accepts that byte at FLAGS and treats the frame
-      like a read (no payload on the request, DataLength-sized payload on the
-      answer). `VS2Engine::gfaRead()` sends it.
+    - VS2: the controller refuses `0x6B` as a P300 function code (ERROR
+      frame, code `05`, 2026-10-27), so `VS2Engine::gfaRead()` leaves P300
+      for it: EOT (as RESET), the controller's ENQ answered with the KW
+      telegram `01 6B <addr> <len>`, `<len>` raw bytes back (states
+      GFA_DROP / GFA_ENQ / GFA_SEND / GFA_RECEIVE). In GFA_CHAIN a further
+      GFA read goes out on the same KW session after `GFA_GAP_MS`; a request
+      that is not one, or `GFA_LINGER_MS` without any, returns through RESET
+      (EOT, ENQ, SYNC, ACK), and an ENQ meanwhile is answered with SYNC. No
+      ENQ within `GFA_ENQ_TIMEOUT_MS` raises TIMEOUT and resets. The request
+      watchdog restarts when the detour starts and when the telegram goes
+      out. Answers up to `GFA_MAX_LENGTH` (64) bytes.
     Hardware: KW, VScotHO1_72 with burner control `0x24`, 2026-10-26 -- `6B 40
-    50 01` answered `24` where `F7 40 50 01` answered `FF`. **Not tried over
-    P300.** READ/WRITE/RPC frames are byte-identical to before (no READ, WRITE
-    or RPC flags byte equals `0x6B`: its low five bits are `0x0B`). Proofs:
+    50 01` answered `24` where `F7 40 50 01` answered `FF`. The P300 detour is
+    not confirmed on a unit yet. READ/WRITE/RPC frames and the P300 parser are
+    byte-identical to before. Proofs:
     `tests/native/proof_vs1_gfa.cpp`, `tests/native/proof_vs2_gfa.cpp`, and the
-    GFA seeds in `tests/native/fuzz_corpus_vs2.h`.
+    refusal frame as a seed in `tests/native/fuzz_corpus_vs2.h`.
 
 Items 7-12, 18, 19, 21, 22, 24, 26 and 27 are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16 are structural (no behavior change from any call

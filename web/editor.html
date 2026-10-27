@@ -195,6 +195,11 @@
     <label style="display:inline-flex; align-items:center; gap:0.3rem; font-size:0.82rem; color:var(--muted); cursor:pointer;">
       <input id="show-empty-cols" type="checkbox"> Show empty columns
     </label>
+    <label id="gfa-chip-label" class="hidden" style="display:inline-flex; align-items:center; gap:0.3rem; font-size:0.82rem; color:var(--muted);"
+           title="The burner-control chip of your unit: the byte the hub logs at boot as GFA=0x... Hides the burner-control datapoints (access: gfa) that Vitosoft lists for other chips only; everything else stays.">
+      Burner-control chip:
+      <select id="gfa-chip-select"></select>
+    </label>
 
     <div class="toolbar-spacer"></div>
 

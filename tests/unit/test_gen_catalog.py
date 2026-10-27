@@ -354,7 +354,7 @@ def test_error_history_entity_and_toggle(catalog):
 
 def test_reachable_filter_drops_non_optolink(catalog):
     # Event 10 (Unreachable_Temp~0x9999) is a normal Div10 sensor whose only
-    # problem is FCRead=GFA_READ -- VitoWiFi's standard read can't reach it.
+    # problem is FCRead=PROZESS_READ -- no telegram this engine sends reaches it.
     on = gc.generate(catalog, "VTestHO1_99", "full", None, None)  # reachable_only defaults True
     assert "0x9999" not in on
     assert "Unreachable" not in on
