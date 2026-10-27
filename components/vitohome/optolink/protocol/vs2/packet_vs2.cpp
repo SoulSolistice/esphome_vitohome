@@ -112,6 +112,8 @@ const uint8_t *PacketVS2::data() const {
   return &_buffer[6];
 }
 
+const uint8_t *PacketVS2::payload() const { return &_buffer[6]; }
+
 uint8_t PacketVS2::checksum() const {
   uint8_t retVal = 0;
   for (std::size_t i = 0; i <= _buffer[0]; ++i) {
