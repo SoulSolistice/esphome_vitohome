@@ -501,9 +501,7 @@ re-established (EOT, ENQ, `16 00 00`). GFA reads that are due together share
 one detour -- the hub takes them back to back -- but each detour costs up to
 two ENQ waits, about 2 s each, during which nothing else is read. Give GFA
 datapoints long update intervals under P300, or run the hub on KW. The P300
-detour is not yet confirmed on a unit. Vitosoft's own P300 code for a GFA read
-may be `0xC9` (201) rather than `0x6B`; the scan console's *Raw P300 function
-probe* (`queue_raw_function_read()`) sends it, to find out.
+detour is not yet confirmed on a unit.
 
 The generated catalogs carry them with `access: gfa` and a `# vito: gfa=20,24`
 line naming the chips Vitosoft lists each one for; where a parameter decodes

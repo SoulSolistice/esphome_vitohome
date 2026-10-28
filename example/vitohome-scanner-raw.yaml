@@ -8,9 +8,6 @@
 #   * GFA READ   — the same read in the burner control's address space (the
 #                  KW telegram 0x6B; a P300 hub drops to KW for it), e.g.
 #                  4050 = P80, its chip.
-#   * FUNCTION PROBE (P300) — a read with a whole function-code byte, e.g. C9
-#                  (Vitosoft's GFA_READ, 201) to try the burner control over
-#                  P300 without the KW detour. A refusal shows as a device error.
 #   * RAW HEX    — the response as bytes + exact 64-bit integer views (no
 #                  float32 narrowing on 4-byte values).
 #   * RAW WRITE  — an arbitrary byte payload (not just one LE integer).
@@ -32,7 +29,7 @@
 substitutions:
   friendly_name: "Viessmann Optolink (vitohome RAW CONSOLE)"
   device_name: viessmann-optolink-raw
-  device_description: "vitohome raw scan console (queue_raw_read/write/rpc/gfa_read/function_read)"
+  device_description: "vitohome raw scan console (queue_raw_read/write/rpc/gfa_read)"
 
 esphome:
   name: ${device_name}
@@ -160,16 +157,6 @@ text:
     initial_value: ""
     entity_category: config
 
-  # The whole function-code byte of a P300 probe (see "Scan ▸ Raw P300 function
-  # probe"). C9 is Vitosoft's GFA_READ (201).
-  - platform: template
-    id: scan_function
-    name: "Scan · P300 function code (hex, e.g. C9)"
-    optimistic: true
-    mode: text
-    initial_value: "C9"
-    entity_category: config
-
   # The parameter of a remote procedure call: the catalog's `prefix:` for an
   # `access: rpc` entity (e.g. 00 for the newest record at 0xA801). May be empty.
   - platform: template
@@ -222,20 +209,6 @@ button:
           long a = strtol(id(scan_addr).state.c_str(), nullptr, 16);
           if (a < 0 || a > 0xFFFF) { ESP_LOGW("scan", "address out of range: %s", id(scan_addr).state.c_str()); return; }
           id(vito).queue_raw_gfa_read((uint16_t) a, (uint8_t) id(scan_length).state);
-
-  # P300 only: the read with the function-code byte above as the whole flags
-  # byte of the telegram, e.g. address 4050 / length 1 / C9 for P80 of the
-  # burner control. Read-only, a diagnostic; under KW and GWG it is refused.
-  - platform: template
-    name: "Scan ▸ Raw P300 function probe"
-    entity_category: config
-    on_press:
-      - lambda: |-
-          long a = strtol(id(scan_addr).state.c_str(), nullptr, 16);
-          long fc = strtol(id(scan_function).state.c_str(), nullptr, 16);
-          if (a < 0 || a > 0xFFFF) { ESP_LOGW("scan", "address out of range: %s", id(scan_addr).state.c_str()); return; }
-          if (fc < 1 || fc > 0xFF) { ESP_LOGW("scan", "function code out of range: %s", id(scan_function).state.c_str()); return; }
-          id(vito).queue_raw_function_read((uint16_t) a, (uint8_t) id(scan_length).state, (uint8_t) fc);
 
   # Arbitrary-byte write: parse the hex string (spaces/colons ignored) into bytes.
   - platform: template

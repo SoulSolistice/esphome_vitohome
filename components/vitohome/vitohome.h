@@ -282,13 +282,6 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // Under P300 and GWG, which have no such telegram here, it is refused with a
   // warning.
   void queue_raw_gfa_read(uint16_t address, uint8_t length);
-  // A diagnostic probe (P300 only): a read with `function` as the whole flags
-  // byte of the telegram, published like a raw read. For function codes the
-  // 5-bit field cannot hold -- the default is Vitosoft's GFA_READ, 201 (0xC9),
-  // to try the burner control over P300 without the KW detour. An ERROR frame
-  // in reply (the controller does not take the code) shows as a device error.
-  // Under KW and GWG it is refused with a warning.
-  void queue_raw_function_read(uint16_t address, uint8_t length, uint8_t function = 0xC9);
 
  protected:
   enum class OpType : uint8_t {
@@ -397,7 +390,7 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   //
   // Returns false for invalid arguments or queue overflow.
   bool enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes, uint8_t bytes_len,
-                    AddressSpace space = AddressSpace::OWN, uint8_t function = 0);
+                    AddressSpace space = AddressSpace::OWN);
 
   // The telegram for a read (or an RPC call) / a write of `address` in
   // `space`, on the selected engine: the one place an AddressSpace becomes an
@@ -626,9 +619,6 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
     // is 0 (static_assert below), so `RawOp operation{};` (used at every
     // construction site) already value-initializes this to OWN.
     AddressSpace space;
-    // A function-code probe (queue_raw_function_read()): the whole flags byte,
-    // 0 for every other operation. 0 by value-initialization.
-    uint8_t function;
   };
 
   // The raw lane is explicitly bounded because a range sweep can enqueue much
@@ -670,7 +660,6 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   bool raw_in_flight_{false};
   bool raw_is_write_{false};
-  uint8_t raw_function_{0};
   AddressSpace raw_space_{AddressSpace::OWN};
   // The space of the last telegram dispatched; see the address-space affinity
   // in dispatch_next_().

@@ -12,7 +12,7 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 namespace esphome::vitohome::optolink {
 namespace internals {
 
-ParserVS2::ParserVS2() : _packet(), _step(ParserStep::STARTBYTE), _payloadLength(0), _expectedFlags(0) {
+ParserVS2::ParserVS2() : _packet(), _step(ParserStep::STARTBYTE), _payloadLength(0) {
   // empty
 }
 
@@ -52,12 +52,9 @@ ParserResult ParserVS2::parse(const uint8_t b) {
       break;
 
     case ParserStep::FLAGS: {
-      // Low 5 bits carry the function code; only READ/WRITE/RPC are valid --
-      // and, while a function-code probe is in flight, its whole flags byte
-      // (expectFlags()), which then parses like a read.
+      // Low 5 bits carry the function code; only READ/WRITE/RPC are valid.
       const auto fc = static_cast<FunctionCode>(b & 0x1F);
-      if ((_expectedFlags == 0 || b != _expectedFlags) && fc != FunctionCode::READ && fc != FunctionCode::WRITE &&
-          fc != FunctionCode::RPC) {
+      if (fc != FunctionCode::READ && fc != FunctionCode::WRITE && fc != FunctionCode::RPC) {
         optolink_log_w("Invalid packet fc: 0x%02x", static_cast<uint8_t>(fc));
         _step = ParserStep::STARTBYTE;
         return ParserResult::ERROR;
@@ -77,17 +74,13 @@ ParserResult ParserVS2::parse(const uint8_t b) {
       _step = ParserStep::PAYLOADLENGTH;
       break;
 
-    case ParserStep::PAYLOADLENGTH: {
+    case ParserStep::PAYLOADLENGTH:
       _packet[5] = b;
-      // A probe's whole flags byte is read-shaped whatever its low five bits
-      // say (0x22 would otherwise parse as a WRITE answer).
-      const bool probe = _expectedFlags != 0 && _packet[2] == _expectedFlags;
-      const auto fc = probe ? FunctionCode::READ : _packet.functionCode();
-      if ((fc == FunctionCode::READ && _packet.packetType() == PacketType::REQUEST) ||
-          (fc == FunctionCode::WRITE && _packet.packetType() == PacketType::RESPONSE)) {
+      if ((_packet.functionCode() == FunctionCode::READ && _packet.packetType() == PacketType::REQUEST) ||
+          (_packet.functionCode() == FunctionCode::WRITE && _packet.packetType() == PacketType::RESPONSE)) {
         // read requests and write responses don't have a data payload
         _step = ParserStep::CHECKSUM;
-      } else if (fc == FunctionCode::RPC && _packet.packetType() == PacketType::RESPONSE) {
+      } else if (_packet.functionCode() == FunctionCode::RPC && _packet.packetType() == PacketType::RESPONSE) {
         // An RPC request's DataLength is the length of the parameter it sends,
         // so whether the answer's DataLength counts the returned bytes or
         // repeats the parameter's length is not settled by the request side.
@@ -119,7 +112,6 @@ ParserResult ParserVS2::parse(const uint8_t b) {
         _step = ParserStep::PAYLOAD;
       }
       break;
-    }
 
     case ParserStep::PAYLOAD:
       // Indexed from the frame's payload size rather than from DataLength:
@@ -148,8 +140,6 @@ ParserResult ParserVS2::parse(const uint8_t b) {
 }
 
 const PacketVS2 &ParserVS2::packet() const { return _packet; }
-
-void ParserVS2::expectFlags(uint8_t flags) { _expectedFlags = flags; }
 
 void ParserVS2::reset() {
   _packet.reset();

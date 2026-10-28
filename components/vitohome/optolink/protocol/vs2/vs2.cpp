@@ -26,8 +26,6 @@ bool VS2Engine::read(uint16_t address, uint8_t length) {
     _busy = true;
     _requestTime = _currentMillis;
     _gfa = false;
-    _probeFlags = 0;
-    _parser.expectFlags(0);
     optolink_log_i("reading packet OK");
     return true;
   }
@@ -48,30 +46,8 @@ bool VS2Engine::gfaRead(uint16_t address, uint8_t length) {
   _currentLength = length;
   _busy = true;
   _requestTime = _currentMillis;
-  _probeFlags = 0;
-  _parser.expectFlags(0);
   optolink_log_i("gfa reading OK");
   return true;
-}
-
-bool VS2Engine::functionRead(uint8_t functionByte, uint16_t address, uint8_t length) {
-  if (_busy || functionByte == 0) {
-    return false;
-  }
-  if (_currentPacket.createPacket(PacketType::REQUEST, FunctionCode::READ, 0, address, length)) {
-    _currentPacket[2] = functionByte;  // the whole flags byte; the checksum is taken at send
-    _gfa = false;
-    _probeFlags = functionByte;
-    _parser.expectFlags(functionByte);
-    _currentAddress = address;
-    _currentLength = length;
-    _busy = true;
-    _requestTime = _currentMillis;
-    optolink_log_i("function 0x%02x probe packet OK", functionByte);
-    return true;
-  }
-  optolink_log_i("function probe not possible, packet creation error");
-  return false;
 }
 
 bool VS2Engine::write(uint16_t address, const uint8_t *data, uint8_t length) {
@@ -84,8 +60,6 @@ bool VS2Engine::write(uint16_t address, const uint8_t *data, uint8_t length) {
     _busy = true;
     _requestTime = _currentMillis;
     _gfa = false;
-    _probeFlags = 0;
-    _parser.expectFlags(0);
     optolink_log_i("writing packet OK");
     return true;
   }
@@ -103,8 +77,6 @@ bool VS2Engine::rpc(uint16_t address, const uint8_t *parameter, uint8_t length) 
     _busy = true;
     _requestTime = _currentMillis;
     _gfa = false;
-    _probeFlags = 0;
-    _parser.expectFlags(0);
     optolink_log_i("rpc packet OK");
     return true;
   }
@@ -454,13 +426,8 @@ void VS2Engine::_tryOnResponse() {
     // a non-zero dataLength(); the caller must guard on data() before reading.
     // An RPC answer is as long as its frame says (see ParserVS2).
     const PacketVS2 &packet = _parser.packet();
-    if (_probeFlags != 0) {
-      // A probe's answer is read-shaped whatever its flags byte's low bits say.
-      _onResponseCallback(packet.payload(), packet.dataLength(), packet.address());
-    } else {
-      const uint8_t length = packet.functionCode() == FunctionCode::RPC ? packet.payloadLength() : packet.dataLength();
-      _onResponseCallback(packet.data(), length, packet.address());
-    }
+    const uint8_t length = packet.functionCode() == FunctionCode::RPC ? packet.payloadLength() : packet.dataLength();
+    _onResponseCallback(packet.data(), length, packet.address());
   }
   _busy = false;
 }
