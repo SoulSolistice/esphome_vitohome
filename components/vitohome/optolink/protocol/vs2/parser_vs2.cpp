@@ -52,9 +52,11 @@ ParserResult ParserVS2::parse(const uint8_t b) {
       break;
 
     case ParserStep::FLAGS: {
-      // Low 5 bits carry the function code; only READ/WRITE/RPC are valid.
+      // Low 5 bits carry the function code; READ/WRITE/RPC are valid, and the
+      // one of a request in flight (expectFunction()).
       const auto fc = static_cast<FunctionCode>(b & 0x1F);
-      if (fc != FunctionCode::READ && fc != FunctionCode::WRITE && fc != FunctionCode::RPC) {
+      if (fc != FunctionCode::READ && fc != FunctionCode::WRITE && fc != FunctionCode::RPC &&
+          (_expectedFunction == 0 || static_cast<uint8_t>(fc) != _expectedFunction)) {
         optolink_log_w("Invalid packet fc: 0x%02x", static_cast<uint8_t>(fc));
         _step = ParserStep::STARTBYTE;
         return ParserResult::ERROR;
@@ -80,7 +82,8 @@ ParserResult ParserVS2::parse(const uint8_t b) {
           (_packet.functionCode() == FunctionCode::WRITE && _packet.packetType() == PacketType::RESPONSE)) {
         // read requests and write responses don't have a data payload
         _step = ParserStep::CHECKSUM;
-      } else if (_packet.functionCode() == FunctionCode::RPC && _packet.packetType() == PacketType::RESPONSE) {
+      } else if ((_packet.functionCode() == FunctionCode::RPC && _packet.packetType() == PacketType::RESPONSE) ||
+                 _packet.packetType() == PacketType::ERROR || !isNamedFunction(_packet.functionCode())) {
         // An RPC request's DataLength is the length of the parameter it sends,
         // so whether the answer's DataLength counts the returned bytes or
         // repeats the parameter's length is not settled by the request side.
@@ -88,6 +91,11 @@ ParserResult ParserVS2::parse(const uint8_t b) {
         // covers both, so the frame decides: the answer is every byte between
         // the header and the checksum, and DataLength is kept as received
         // (it is part of the checksum). See PacketVS2::payloadLength().
+        // The same holds for an ERROR frame, whose payload is the error code
+        // whatever the request's length (VScotHO1_72: one byte; a VDensHO1
+        // answers an EEPROM read out of range with two, 31 01), and for a
+        // function code this project has no frame shape for
+        // (expectFunction()).
         _payloadLength = _packet.payloadLength();
         _step = _payloadLength == 0 ? ParserStep::CHECKSUM : ParserStep::PAYLOAD;
       } else if (b != _packet.length() - 6U) {
@@ -140,6 +148,12 @@ ParserResult ParserVS2::parse(const uint8_t b) {
 }
 
 const PacketVS2 &ParserVS2::packet() const { return _packet; }
+
+void ParserVS2::expectFunction(uint8_t function) { _expectedFunction = function & 0x1F; }
+
+bool ParserVS2::isNamedFunction(FunctionCode function) {
+  return function == FunctionCode::READ || function == FunctionCode::WRITE || function == FunctionCode::RPC;
+}
 
 void ParserVS2::reset() {
   _packet.reset();

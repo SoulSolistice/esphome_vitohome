@@ -122,6 +122,14 @@ class VS1Engine {
   // GFA_READ; see PacketVS1Type). The answer arrives through onResponse like a
   // read's: <length> raw bytes. There is no GFA write.
   bool gfaRead(uint16_t address, uint8_t length);
+  // Any KW telegram: `type addr-hi addr-lo length`, plus `length` payload
+  // bytes when `data` is given. A telegram without payload is answered with
+  // `length` raw bytes, one with payload with a single acknowledgement byte
+  // (the shape of 0xF4; hardware-confirmed for it, assumed for other types).
+  // read(), write() and gfaRead() are this with 0xF7, 0xF4 and 0x6B; the raw
+  // lane sends any other type byte through it
+  // (VitoHomeComponent::queue_raw_op()).
+  bool telegram(uint8_t type, uint16_t address, uint8_t length, const uint8_t *data = nullptr);
 
   bool begin();
   void loop();

@@ -133,9 +133,11 @@ void check_complete_frame(const PacketVS2 &p, uint8_t checksum_byte) {
     // The length VS2Engine::_tryOnResponse() hands the consumer: DataLength,
     // except for an RPC answer, whose size is the frame's own payload
     // (payloadLength()) -- the parser keeps an RPC answer's DataLength as
-    // received and does not trust it (THIRD_PARTY.md #26).
-    const bool rpc = p.functionCode() == FunctionCode::RPC;
-    const std::size_t delivered = rpc ? p.payloadLength() : p.dataLength();
+    // received and does not trust it (THIRD_PARTY.md #26) -- and for the
+    // answer to any other function code a raw request asked for
+    // (ParserVS2::expectFunction()), sized the same way.
+    const bool by_frame = p.functionCode() != FunctionCode::READ && p.functionCode() != FunctionCode::WRITE;
+    const std::size_t delivered = by_frame ? p.payloadLength() : p.dataLength();
 
     // (2) A delivered payload lies wholly inside the packet buffer. The
     // payload starts at index 6, so this is the bound a consumer relies on.
@@ -149,7 +151,7 @@ void check_complete_frame(const PacketVS2 &p, uint8_t checksum_byte) {
     // arithmetic and wraps to 0 at a length byte of 255 -- the trap
     // packet_vs2.cpp documents -- which an RPC answer may legitimately carry.
     oracle(delivered == p.payloadLength(), "delivered length disagrees with the frame's payload");
-    if (!rpc)
+    if (!by_frame)
       oracle(static_cast<int>(p.dataLength()) == static_cast<int>(p.length()) - 6,
              "delivered dataLength() disagrees with the frame length");
   }
@@ -163,16 +165,30 @@ void check_complete_frame(const PacketVS2 &p, uint8_t checksum_byte) {
 // garbled frame. That is where the interesting sequences live -- a truncated
 // frame followed by a good one, a false start byte inside a payload, a
 // checksum that happens to match.
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
+namespace {
+
+// An ERROR frame's payload is the controller's error code, sized by the frame
+// (ParserVS2, PAYLOADLENGTH); VS2Engine::_receive() copies up to
+// ERROR_PAYLOAD_MAX bytes of it from payload(). It must lie inside the buffer.
+void check_error_frame(const PacketVS2 &p) {
+  if (p.packetType() != PacketType::ERROR)
+    return;
+  oracle(6u + p.payloadLength() <= PacketVS2::kMaxFrame, "error payload extends past the packet buffer");
+}
+
+void run_once(const uint8_t *data, std::size_t size, uint8_t expect) {
   // Heap-allocated so ASan surrounds the packet buffer with redzones; a
   // stack or static parser would make an out-of-bounds index far more likely
   // to land in adjacent valid memory and go unreported.
   auto *parser = new ParserVS2();
+  parser->expectFunction(expect);
 
   for (std::size_t i = 0; i < size; ++i) {
     const uint8_t b = data[i];
-    if (parser->parse(b) == ParserResult::COMPLETE)
+    if (parser->parse(b) == ParserResult::COMPLETE) {
       check_complete_frame(parser->packet(), b);
+      check_error_frame(parser->packet());
+    }
   }
 
   // (4) Liveness: no byte sequence may permanently wedge the parser. Drain
@@ -204,6 +220,19 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
   }
 
   delete parser;
+}
+
+}  // namespace
+
+// Every input runs twice: as the engine's own reads, writes and calls see the
+// line (no other function code expected), and as a raw request
+// (VS2Engine::request()) for the function code in the low five bits of byte
+// 3 -- the flags byte of a frame that starts the input -- would, so the
+// fuzzer explores every code's frames.
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
+  run_once(data, size, 0);
+  if (size > 3)
+    run_once(data, size, static_cast<uint8_t>(data[3] & 0x1F));
   return 0;
 }
 

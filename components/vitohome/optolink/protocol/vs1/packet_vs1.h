@@ -38,13 +38,19 @@ class PacketVS1 {
 
  public:
   bool createPacket(uint8_t packetType, uint16_t addr, uint8_t len, const uint8_t *data = nullptr);
+  bool createTelegram(uint8_t type, uint16_t addr, uint8_t len, const uint8_t *data = nullptr);
   uint8_t length() const;
   uint8_t packetType() const;
+  // Whether the telegram carries `len` payload bytes (a write's shape): its
+  // answer is then a one-byte acknowledgement, otherwise `len` data bytes.
+  bool hasPayload() const;
 
   void reset();
 
  protected:
   std::array<uint8_t, kMaxFrame> _buffer;
+  uint8_t _length{0};
+  bool _hasPayload{false};
 };
 
 }  // namespace esphome::vitohome::optolink

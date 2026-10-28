@@ -5,8 +5,9 @@
 # queue_raw_rpc / queue_raw_gfa_read and a hub-fed `text_sensor: type:
 # scan_result`:
 #   * READ-NOW  — an immediate one-off read, not "next poll tick".
-#   * GFA READ   — the same read in the burner control's address space (KW
-#                  type / P300 function code 0x6B), e.g. 4050 = P80, its chip.
+#   * GFA READ   — the same read in the burner control's address space (the
+#                  KW telegram 0x6B; a P300 hub drops to KW for it), e.g.
+#                  4050 = P80, its chip.
 #   * RAW HEX    — the response as bytes + exact 64-bit integer views (no
 #                  float32 narrowing on 4-byte values).
 #   * RAW WRITE  — an arbitrary byte payload (not just one LE integer).
@@ -15,6 +16,18 @@
 #                  (0xA801, parameter = record index). Disabled by default:
 #                  a procedure that is not a reading RUNS at once.
 #   * RANGE SWEEP— scan a contiguous block from a Home Assistant action.
+#   * RAW OP     — any telegram of any layer, typed as one line (needs
+#                  `raw_access: unrestricted`, set below):
+#                    p300 r 05 1000 16     P300 function code 05, 16 bytes
+#                    kw r 7B 0800 2        a KW telegram (P300: the KW detour)
+#                    gwg r 31 05 1         a GWG TYPE byte
+#                    p300 w 02 2306 25     a telegram with payload
+#                  The P300 code is the low five bits of the flags byte
+#                  (1..1F); an error frame shows its code (01: address not
+#                  served, 05: function code not implemented). Telegrams that
+#                  may change the controller -- physical / EEPROM writes, KW
+#                  GFA_WRITE / PROZESS_WRITE, payloads with unnamed codes --
+#                  also need `unsafe_raw_writes: true`, deliberately not set.
 #
 # GWG units: set `protocol: GWG` and pass the access mode as the last argument,
 # e.g. queue_raw_read(0x05, 1, optolink::GWGAccessMode::EEPROM) or
@@ -52,18 +65,18 @@ text:
     initial_value: ""
     entity_category: config
 
-  # The whole function-code byte of a P300 probe (see "Scan ▸ Raw P300 function
-  # probe"). C9 is Vitosoft's GFA_READ (201).
-  - platform: template
-    id: scan_function
-    name: "Scan · P300 function code (hex, e.g. C9)"
-    optimistic: true
-    mode: text
-    initial_value: "C9"
-    entity_category: config
-
   # The parameter of a remote procedure call: the catalog's `prefix:` for an
   # `access: rpc` entity (e.g. 00 for the newest record at 0xA801). May be empty.
+  # One raw operation as a line (RAW OP in the header).
+  - platform: template
+    id: scan_op
+    name: "Scan · Raw op (e.g. p300 r 05 1000 16)"
+    optimistic: true
+    mode: text
+    max_length: 120
+    initial_value: "p300 r 01 00F8 8"
+    entity_category: config
+
   - platform: template
     id: scan_rpc_parameter
     name: "Scan · RPC parameter (hex, may be empty)"
@@ -110,20 +123,6 @@ button:
           long a = strtol(id(scan_addr).state.c_str(), nullptr, 16);
           if (a < 0 || a > 0xFFFF) { ESP_LOGW("scan", "address out of range: %s", id(scan_addr).state.c_str()); return; }
           id(vito).queue_raw_gfa_read((uint16_t) a, (uint8_t) id(scan_length).state);
-
-  # P300 only: the read with the function-code byte above as the whole flags
-  # byte of the telegram, e.g. address 4050 / length 1 / C9 for P80 of the
-  # burner control. Read-only, a diagnostic; under KW and GWG it is refused.
-  - platform: template
-    name: "Scan ▸ Raw P300 function probe"
-    entity_category: config
-    on_press:
-      - lambda: |-
-          long a = strtol(id(scan_addr).state.c_str(), nullptr, 16);
-          long fc = strtol(id(scan_function).state.c_str(), nullptr, 16);
-          if (a < 0 || a > 0xFFFF) { ESP_LOGW("scan", "address out of range: %s", id(scan_addr).state.c_str()); return; }
-          if (fc < 1 || fc > 0xFF) { ESP_LOGW("scan", "function code out of range: %s", id(scan_function).state.c_str()); return; }
-          id(vito).queue_raw_function_read((uint16_t) a, (uint8_t) id(scan_length).state, (uint8_t) fc);
 
   # Arbitrary-byte write: parse the hex string (spaces/colons ignored) into bytes.
   - platform: template
@@ -176,3 +175,13 @@ button:
           }
           ESP_LOGW("scan", "RAW RPC 0x%04X (%u parameter bytes)", (unsigned)(uint16_t)a, (unsigned)parameter.size());
           id(vito).queue_raw_rpc((uint16_t) a, parameter);
+
+  # The line in "Scan · Raw op": one telegram, any layer and code. The answer,
+  # its time and a P300 error code land on "Scan ▸ Raw result".
+  - platform: template
+    name: "Scan ▸ Raw op"
+    entity_category: config
+    on_press:
+      - lambda: |-
+          ESP_LOGW("scan", "RAW OP '%s'", id(scan_op).state.c_str());
+          id(vito).queue_raw_op(id(scan_op).state);

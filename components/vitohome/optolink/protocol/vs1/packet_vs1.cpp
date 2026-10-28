@@ -18,19 +18,31 @@ uint8_t &PacketVS1::operator[](std::size_t index) { return _buffer[index]; }
 bool PacketVS1::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, const uint8_t *data) {
   reset();
 
-  // check arguments
-  if (len == 0) {
-    return false;
-  }
+  // The three telegrams the engine's own requests use; anything else goes
+  // through createTelegram().
   if (packetType != PacketVS1Type.READ && packetType != PacketVS1Type.WRITE && packetType != PacketVS1Type.GFA_READ) {
     return false;
   }
   if (packetType == PacketVS1Type.WRITE && !data) {
     return false;
   }
+  return createTelegram(packetType, addr, len, packetType == PacketVS1Type.WRITE ? data : nullptr);
+}
+
+// Any type byte: `type addr-hi addr-lo len`, followed by `len` payload bytes
+// when `data` is given (the shape of a write). The frame length is fixed here
+// rather than derived from the type byte later, so a type the engine has no
+// name for still goes out whole (the raw lane, VS1Engine::telegram()).
+bool PacketVS1::createTelegram(uint8_t type, uint16_t addr, uint8_t len, const uint8_t *data) {
+  reset();
+
+  // check arguments
+  if (len == 0) {
+    return false;
+  }
 
   // bounds check against the fixed buffer (fail-soft, no overflow)
-  const std::size_t needed = (packetType == PacketVS1Type.WRITE) ? static_cast<std::size_t>(len) + 4 : 4;
+  const std::size_t needed = data ? static_cast<std::size_t>(len) + 4 : 4;
   if (needed > _buffer.size()) {
     optolink_log_e("buffer overflow: need %u > %u", static_cast<unsigned>(needed),
                    static_cast<unsigned>(_buffer.size()));
@@ -39,33 +51,32 @@ bool PacketVS1::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, con
 
   // Serialize into buffer
   size_t step = 0;
-  _buffer[step++] = packetType;
+  _buffer[step++] = type;
   _buffer[step++] = (addr >> 8) & 0xFF;
   _buffer[step++] = addr & 0xFF;
   _buffer[step++] = len;
-  if (packetType == PacketVS1Type.WRITE) {
+  if (data) {
     for (uint8_t i = 0; i < len; ++i) {
       _buffer[step++] = data[i];
     }
   }
+  _length = static_cast<uint8_t>(step);
+  _hasPayload = data != nullptr;
   return true;
 }
 
-uint8_t PacketVS1::length() const {
-  if (_buffer[3] == 0)
-    return 0;
-  if (_buffer[0] == PacketVS1Type.READ || _buffer[0] == PacketVS1Type.GFA_READ)
-    return 4;
-  // NOTE: uint8_t arithmetic -- wraps for a payload length >= 252.
-  // Unreachable today (the raw lane caps writes at 32 bytes; entity writes are
-  // <= 8), but a live trap if those caps are ever raised.
-  if (_buffer[0] == PacketVS1Type.WRITE)
-    return _buffer[3] + 4;
-  return 0;  // should not be possible
-}
+// NOTE: uint8_t -- a payload of 252+ bytes would wrap. Unreachable: the raw
+// lane caps payloads at 32 and entity writes at 8.
+uint8_t PacketVS1::length() const { return _length; }
+
+bool PacketVS1::hasPayload() const { return _hasPayload; }
 
 uint8_t PacketVS1::packetType() const { return _buffer[0]; }
 
-void PacketVS1::reset() { _buffer[3] = 0x00; }
+void PacketVS1::reset() {
+  _buffer[3] = 0x00;
+  _length = 0;
+  _hasPayload = false;
+}
 
 }  // namespace esphome::vitohome::optolink

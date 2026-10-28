@@ -9,6 +9,8 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 #include "vs2.h"
 
+#include <cstring>
+
 namespace esphome::vitohome::optolink {
 
 VS2Engine::~VS2Engine() { delete _interface; }
@@ -17,71 +19,75 @@ void VS2Engine::onResponse(OnResponseCallback callback) { _onResponseCallback = 
 void VS2Engine::onError(OnErrorCallback callback) { _onErrorCallback = callback; }
 
 bool VS2Engine::read(uint16_t address, uint8_t length) {
+  return request(static_cast<uint8_t>(FunctionCode::READ), address, length);
+}
+
+bool VS2Engine::write(uint16_t address, const uint8_t *data, uint8_t length) {
+  if (data == nullptr)
+    return false;
+  return request(static_cast<uint8_t>(FunctionCode::WRITE), address, length, data);
+}
+
+bool VS2Engine::rpc(uint16_t address, const uint8_t *parameter, uint8_t length) {
+  if (length != 0 && parameter == nullptr)
+    return false;
+  return request(static_cast<uint8_t>(FunctionCode::RPC), address, length, length != 0 ? parameter : nullptr);
+}
+
+bool VS2Engine::request(uint8_t function, uint16_t address, uint8_t length, const uint8_t *data) {
   if (_busy) {
     return false;
   }
-  if (_currentPacket.createPacket(PacketType::REQUEST, FunctionCode::READ, 0, address, length)) {
+  // The flags byte holds the function code in its low five bits; the upper
+  // three are the message id (always 0 here).
+  if (function == 0 || function > 0x1F) {
+    optolink_log_i("function code 0x%02x not possible (1..0x1f)", function);
+    return false;
+  }
+  if (_currentPacket.createPacket(PacketType::REQUEST, static_cast<FunctionCode>(function), 0, address, length, data)) {
     _currentAddress = address;
     _currentLength = length;
     _busy = true;
     _requestTime = _currentMillis;
-    _gfa = false;
-    optolink_log_i("reading packet OK");
+    _kw = false;
+    _errorPayloadLength = 0;
+    _parser.expectFunction(function);
+    optolink_log_i("function 0x%02x packet OK", function);
     return true;
   }
-  optolink_log_i("reading not possible, packet creation error");
+  optolink_log_i("function 0x%02x not possible, packet creation error", function);
   return false;
 }
 
 bool VS2Engine::gfaRead(uint16_t address, uint8_t length) {
+  return kwTelegram(PacketVS1Type.GFA_READ, address, length);
+}
+
+bool VS2Engine::kwTelegram(uint8_t type, uint16_t address, uint8_t length, const uint8_t *data) {
   if (_busy) {
     return false;
   }
-  if (length == 0 || length > GFA_MAX_LENGTH) {
-    optolink_log_i("gfa reading not possible, length %u out of 1..%u", length, GFA_MAX_LENGTH);
+  if (length == 0 || length > (data ? KW_MAX_PAYLOAD : KW_MAX_LENGTH)) {
+    optolink_log_i("kw telegram not possible, length %u out of 1..%u", length, data ? KW_MAX_PAYLOAD : KW_MAX_LENGTH);
     return false;
   }
-  _gfa = true;
+  _kw = true;
+  _kwType = type;
+  _kwHasPayload = data != nullptr;
+  if (data)
+    std::memcpy(_kwPayload, data, length);
   _currentAddress = address;
   _currentLength = length;
+  _errorPayloadLength = 0;
   _busy = true;
   _requestTime = _currentMillis;
-  optolink_log_i("gfa reading OK");
+  optolink_log_i("kw telegram 0x%02x OK", type);
   return true;
 }
 
-bool VS2Engine::write(uint16_t address, const uint8_t *data, uint8_t length) {
-  if (_busy) {
-    return false;
-  }
-  if (_currentPacket.createPacket(PacketType::REQUEST, FunctionCode::WRITE, 0, address, length, data)) {
-    _currentAddress = address;
-    _currentLength = length;
-    _busy = true;
-    _requestTime = _currentMillis;
-    _gfa = false;
-    optolink_log_i("writing packet OK");
-    return true;
-  }
-  optolink_log_i("writing not possible, packet creation error");
-  return false;
-}
-
-bool VS2Engine::rpc(uint16_t address, const uint8_t *parameter, uint8_t length) {
-  if (_busy) {
-    return false;
-  }
-  if (_currentPacket.createPacket(PacketType::REQUEST, FunctionCode::RPC, 0, address, length, parameter)) {
-    _currentAddress = address;
-    _currentLength = length;
-    _busy = true;
-    _requestTime = _currentMillis;
-    _gfa = false;
-    optolink_log_i("rpc packet OK");
-    return true;
-  }
-  optolink_log_i("rpc not possible, packet creation error");
-  return false;
+const uint8_t *VS2Engine::errorPayload(uint8_t &length) const {
+  length = _errorPayloadLength;
+  return _errorPayload;
 }
 
 bool VS2Engine::begin() {
@@ -127,20 +133,20 @@ void VS2Engine::loop() {
     case State::RECEIVE_ACK:
       _receiveAck();
       break;
-    case State::GFA_DROP:
-      _gfaDrop();
+    case State::KW_DROP:
+      _kwDrop();
       break;
-    case State::GFA_ENQ:
-      _gfaEnq();
+    case State::KW_ENQ:
+      _kwEnq();
       break;
-    case State::GFA_SEND:
-      _gfaSend();
+    case State::KW_SEND:
+      _kwSend();
       break;
-    case State::GFA_RECEIVE:
-      _gfaReceive();
+    case State::KW_RECEIVE:
+      _kwReceive();
       break;
-    case State::GFA_CHAIN:
-      _gfaChain();
+    case State::KW_CHAIN:
+      _kwChain();
       break;
     case State::UNDEFINED:
       // begin() not yet called
@@ -221,9 +227,9 @@ void VS2Engine::_initAck() {
 
 void VS2Engine::_idle() {
   if (_busy) {
-    // A GFA read leaves P300 for one KW telegram (see gfaRead()).
-    if (_gfa) {
-      _setState(State::GFA_DROP);
+    // A KW telegram leaves P300 for KW (see kwTelegram()).
+    if (_kw) {
+      _setState(State::KW_DROP);
       return;
     }
     _setState(State::SENDSTART);
@@ -292,6 +298,11 @@ void VS2Engine::_receive() {
         _tryOnResponse();
       } else {
         optolink_log_w("packet type 0x%02x is not a response", static_cast<unsigned>(_parser.packet().packetType()));
+        // Keep the frame's payload -- the controller's error code -- for
+        // errorPayload().
+        const PacketVS2 &packet = _parser.packet();
+        _errorPayloadLength = packet.payloadLength() < ERROR_PAYLOAD_MAX ? packet.payloadLength() : ERROR_PAYLOAD_MAX;
+        std::memcpy(_errorPayload, packet.payload(), _errorPayloadLength);
         _tryOnError(OptolinkResult::DEVICE_ERROR);
       }
       return;
@@ -315,15 +326,16 @@ void VS2Engine::_receiveAck() {
   }
 }
 
-// --- GFA read: a KW detour (gfaRead()) ---------------------------------------
+// --- A KW telegram: the detour (kwTelegram()) ---------------------------------
 // The controller answers the KW telegram 0x6B (hardware-confirmed over KW) but
 // refuses it as a P300 function code (an ERROR frame, code 05). So the link
 // leaves P300 the way RESET does, with an EOT, and the controller -- now in KW
-// -- offers its ENQ; the telegram goes out on it like a KW read. Further GFA
-// reads chain onto that session; then RESET re-establishes P300.
+// -- offers its ENQ; the telegram goes out on it like a KW read. Further KW
+// telegrams chain onto that session; then RESET re-establishes P300.
+// Hardware-confirmed for a GFA read on VScotHO1_72 (2026-10-27).
 
 // Leave P300 like _reset(): parser, stale bytes, EOT.
-void VS2Engine::_gfaDrop() {
+void VS2Engine::_kwDrop() {
   _parser.reset();
   while (_interface->available())
     _interface->read();
@@ -332,16 +344,17 @@ void VS2Engine::_gfaDrop() {
     // The request watchdog runs from here: the request may have waited out a
     // handshake before the link was idle.
     _requestTime = _currentMillis;
-    _setState(State::GFA_ENQ);
+    _setState(State::KW_ENQ);
   }
 }
 
-void VS2Engine::_gfaEnq() {
+void VS2Engine::_kwEnq() {
   if (_interface->available()) {
-    // Anything but the ENQ is left over from P300 and dropped.
+    // Anything but the ENQ is left over from P300 (the controller ACKs the
+    // EOT first) and dropped.
     if (_interface->read() == internals::ProtocolBytes.ENQ)
-      _gfaStart(true);
-  } else if (_currentMillis - _lastMillis > GFA_ENQ_TIMEOUT_MS) {
+      _kwStart(true);
+  } else if (_currentMillis - _lastMillis > KW_ENQ_TIMEOUT_MS) {
     _setState(State::RESET);
     _tryOnError(OptolinkResult::TIMEOUT);
   }
@@ -349,71 +362,77 @@ void VS2Engine::_gfaEnq() {
 
 // The KW telegram, with ENQ_ACK in front when it answers an ENQ (as
 // VS1Engine::_syncEnq() does), sent in the same loop as the ENQ arrived.
-void VS2Engine::_gfaStart(bool enqAck) {
+void VS2Engine::_kwStart(bool enqAck) {
   uint8_t n = 0;
   if (enqAck)
-    _gfaFrame[n++] = internals::ProtocolBytes.ENQ_ACK;
-  _gfaFrame[n++] = PacketVS1Type.GFA_READ;
-  _gfaFrame[n++] = static_cast<uint8_t>(_currentAddress >> 8);
-  _gfaFrame[n++] = static_cast<uint8_t>(_currentAddress & 0xFF);
-  _gfaFrame[n++] = _currentLength;
-  _gfaFrameLen = n;
+    _kwFrame[n++] = internals::ProtocolBytes.ENQ_ACK;
+  _kwFrame[n++] = _kwType;
+  _kwFrame[n++] = static_cast<uint8_t>(_currentAddress >> 8);
+  _kwFrame[n++] = static_cast<uint8_t>(_currentAddress & 0xFF);
+  _kwFrame[n++] = _currentLength;
+  if (_kwHasPayload) {
+    std::memcpy(&_kwFrame[n], _kwPayload, _currentLength);
+    n += _currentLength;
+  }
+  _kwFrameLen = n;
   _bytesTransferred = 0;
   _requestTime = _currentMillis;
-  _setState(State::GFA_SEND);
-  _gfaSend();
+  _setState(State::KW_SEND);
+  _kwSend();
 }
 
-void VS2Engine::_gfaSend() {
-  _bytesTransferred += _interface->write(&_gfaFrame[_bytesTransferred], _gfaFrameLen - _bytesTransferred);
-  if (_bytesTransferred == _gfaFrameLen) {
+void VS2Engine::_kwSend() {
+  _bytesTransferred += _interface->write(&_kwFrame[_bytesTransferred], _kwFrameLen - _bytesTransferred);
+  if (_bytesTransferred == _kwFrameLen) {
     _bytesTransferred = 0;
     _lastMillis = _currentMillis;
-    _setState(State::GFA_RECEIVE);
+    _setState(State::KW_RECEIVE);
   }
 }
 
-// KW answers with exactly <length> raw bytes: no frame, no checksum.
-void VS2Engine::_gfaReceive() {
-  while (_interface->available() && _bytesTransferred < _currentLength) {
-    _gfaAnswer[_bytesTransferred++] = _interface->read();
+// KW answers with exactly <length> raw bytes, or one acknowledgement byte
+// after a telegram with payload: no frame, no checksum.
+void VS2Engine::_kwReceive() {
+  const uint8_t expected = _kwHasPayload ? 1 : _currentLength;
+  while (_interface->available() && _bytesTransferred < expected) {
+    _kwAnswer[_bytesTransferred++] = _interface->read();
     _lastMillis = _currentMillis;
   }
-  if (_bytesTransferred < _currentLength)
+  if (_bytesTransferred < expected)
     return;
   _bytesTransferred = 0;
-  _setState(State::GFA_CHAIN);
+  _setState(State::KW_CHAIN);
   if (_onResponseCallback) {
-    _onResponseCallback(_gfaAnswer, _currentLength, _currentAddress);
+    _onResponseCallback(_kwAnswer, expected, _currentAddress);
   }
   _busy = false;
 }
 
-// After an answer the KW session is still open: a GFA read goes out on it after
-// GFA_GAP_MS; anything else, or GFA_LINGER_MS without a request, returns to
-// P300. A byte from the controller meanwhile is its ENQ (the session idled
-// out): it opens the next GFA telegram, or is answered with SYNC like the ENQ
-// RESET waits for.
-void VS2Engine::_gfaChain() {
+// After an answer the KW session is still open: another KW telegram goes out
+// on it (a GFA read GFA_GAP_MS after the answer); anything else, or
+// KW_LINGER_MS without a request, returns to P300. A byte from the controller
+// meanwhile is its ENQ (the session idled out): it opens the next KW telegram,
+// or is answered with SYNC like the ENQ RESET waits for.
+void VS2Engine::_kwChain() {
   if (_interface->available()) {
     if (_interface->read() != internals::ProtocolBytes.ENQ) {
       _setState(State::RESET);
       return;
     }
-    if (_busy && _gfa) {
-      _gfaStart(true);
+    if (_busy && _kw) {
+      _kwStart(true);
     } else {
       _lastMillis = _currentMillis;
       _setState(State::INIT);
     }
     return;
   }
-  if (_busy && _gfa) {
-    if (_currentMillis - _lastMillis >= GFA_GAP_MS)
-      _gfaStart(false);
+  if (_busy && _kw) {
+    if (_kwType != PacketVS1Type.GFA_READ || _currentMillis - _lastMillis >= GFA_GAP_MS)
+      _kwStart(false);
     return;
   }
-  if (_busy || _currentMillis - _lastMillis > GFA_LINGER_MS) {
+  if (_busy || _currentMillis - _lastMillis > KW_LINGER_MS) {
     _setState(State::RESET);
   }
 }
@@ -424,9 +443,13 @@ void VS2Engine::_tryOnResponse() {
     // the request's) so the caller's response-address match is a real
     // wire-level check on P300. A write ack has data()==nullptr by design but
     // a non-zero dataLength(); the caller must guard on data() before reading.
-    // An RPC answer is as long as its frame says (see ParserVS2).
+    // An RPC answer is as long as its frame says (see ParserVS2), and so is
+    // the answer to a function code without a frame shape of its own
+    // (request()).
     const PacketVS2 &packet = _parser.packet();
-    const uint8_t length = packet.functionCode() == FunctionCode::RPC ? packet.payloadLength() : packet.dataLength();
+    const FunctionCode fc = packet.functionCode();
+    const bool sized_by_frame = fc != FunctionCode::READ && fc != FunctionCode::WRITE;
+    const uint8_t length = sized_by_frame ? packet.payloadLength() : packet.dataLength();
     _onResponseCallback(packet.data(), length, packet.address());
   }
   _busy = false;

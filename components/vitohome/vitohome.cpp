@@ -18,15 +18,6 @@ namespace esphome::vitohome {
 
 static const char *const TAG = "vitohome";
 
-// What a raw-lane operation is, for its log lines.
-static const char *raw_kind(bool is_write, AddressSpace space) {
-  if (space == AddressSpace::RPC)
-    return "rpc";
-  if (space == AddressSpace::GFA)
-    return "gfa read";
-  return is_write ? "write" : "read";
-}
-
 // Known device families (Identification at 0xF8/0xF9). Deliberately small:
 // it covers the units this project has seen on the wire; everything else is
 // reported as raw hex, and the catalogue tooling (scripts/gen_catalog.py)
@@ -465,16 +456,25 @@ void VitoHomeComponent::dispatch_raw_front_() {
 
     this->raw_is_write_ = operation.is_write;
     this->raw_space_ = operation.space;
+    this->raw_layer_ = operation.layer;
+    this->raw_code_ = operation.code;
 
     // The space picks the telegram (send_read_ / send_write_): a GWG access
     // mode on GWG -- the scan console can pick EEPROM (0xAD) / BE (0x9D), the
     // modes Vitosoft marks writable --, a remote procedure call with its
     // parameter, a GFA read. OWN, the protocol's own read or write, unless
     // the caller asked for another.
+    // A queue_raw_op() operation names its layer and code itself.
     const bool dispatched =
-        operation.is_write ? this->send_write_(operation.address, operation.bytes, operation.bytes_len, operation.space)
-                           : this->send_read_(operation.address, operation.length, operation.space, operation.bytes,
-                                              operation.bytes_len);
+        operation.layer != RawLayer::NONE
+            ? this->send_raw_op_(operation.address, operation.length, operation.layer, operation.code,
+                                 operation.is_write ? operation.bytes : nullptr, operation.bytes_len)
+        : operation.is_write
+            ? this->send_write_(operation.address, operation.bytes, operation.bytes_len, operation.space)
+            : this->send_read_(operation.address, operation.length, operation.space, operation.bytes,
+                               operation.bytes_len);
+    char label[24];
+    raw_label_(label, sizeof(label), operation.is_write, operation.space, operation.layer, operation.code);
 
     if (!dispatched) {
       // read()/write() returning false is overloaded: transient backpressure
@@ -490,19 +490,21 @@ void VitoHomeComponent::dispatch_raw_front_() {
       // two with isBusy() and drop a permanently-refused op so the lane moves.
       if (this->vito_->isBusy())
         return false;  // transient: keep the item at the head and retry
-      ESP_LOGE(TAG, "Engine refused raw %s 0x%04X len %u (permanent); dropping",
-               raw_kind(operation.is_write, operation.space), operation.address, operation.length);
+      ESP_LOGE(TAG, "Engine refused raw %s 0x%04X len %u (permanent); dropping", label, operation.address,
+               operation.length);
       this->raw_handle_error_(optolink::OptolinkResult::ERROR);
       return true;  // permanent: drop so the read/write lanes are reached
     }
 
     this->raw_write_len_ = operation.is_write ? operation.bytes_len : 0;
     this->raw_in_flight_ = true;
-    this->last_space_ = operation.space;
+    // A KW telegram over P300 rides the same detour as a GFA read, so it
+    // counts as one for the address-space affinity.
+    this->last_space_ = operation.layer == RawLayer::KW && space_has_switch_cost(AddressSpace::GFA) ? AddressSpace::GFA
+                                                                                                    : operation.space;
     this->in_flight_started_ms_ = App.get_loop_component_start_time();
 
-    ESP_LOGV(TAG, "Dispatched raw %s 0x%04X len %u", raw_kind(operation.is_write, operation.space), operation.address,
-             operation.length);
+    ESP_LOGV(TAG, "Dispatched raw %s 0x%04X len %u", label, operation.address, operation.length);
 
     return true;
   });
@@ -863,6 +865,14 @@ void VitoHomeComponent::dump_config() {
   if (ESPHomeUARTInterface::frame_logging_enabled())
     ESP_LOGCONFIG(TAG, "  Frame logging: ON (tag 'vitohome.frames')");
 
+  // queue_raw_op()'s gates (raw_access / unsafe_raw_writes).
+#ifdef VITOHOME_RAW_UNRESTRICTED
+  ESP_LOGCONFIG(TAG, "  Raw access: unrestricted (queue_raw_op)");
+#endif
+#ifdef VITOHOME_RAW_UNSAFE_WRITES
+  ESP_LOGCONFIG(TAG, "  Unsafe raw writes: ON");
+#endif
+
   if (this->is_failed())
     ESP_LOGE(TAG, "  Setup FAILED");
 
@@ -971,6 +981,46 @@ bool VitoHomeComponent::send_write_(uint16_t address, const uint8_t *data, uint8
 #endif
 }
 
+bool VitoHomeComponent::send_raw_op_(uint16_t address, uint8_t length, RawLayer layer, uint8_t code,
+                                     const uint8_t *payload, uint8_t payload_len) {
+  (void) payload_len;  // == length when a payload is given (enqueue_raw_)
+  switch (layer) {
+#if defined(VITOHOME_PROTOCOL_KW)
+    case RawLayer::KW:
+      return this->vito_->telegram(code, address, length, payload);
+#elif defined(VITOHOME_PROTOCOL_GWG)
+    case RawLayer::GWG:
+      return this->vito_->telegram(code, address, length, payload);
+#else
+    case RawLayer::P300:
+      return this->vito_->request(code, address, length, payload);
+    case RawLayer::KW:
+      return this->vito_->kwTelegram(code, address, length, payload);
+#endif
+    default:
+      return false;
+  }
+}
+
+// Whether the selected protocol reaches a raw_op layer (queue_raw_op()).
+static constexpr bool raw_layer_available(RawLayer layer) {
+  return (layer == RawLayer::P300 && IS_P300) || (layer == RawLayer::KW && (IS_KW || IS_P300)) ||
+         (layer == RawLayer::GWG && IS_GWG);
+}
+
+void VitoHomeComponent::raw_label_(char *out, std::size_t cap, bool is_write, AddressSpace space, RawLayer layer,
+                                   uint8_t code) {
+  if (layer != RawLayer::NONE) {
+    snprintf(out, cap, "%s %02X %s", raw_layer_name(layer), code, is_write ? "write" : "read");
+    return;
+  }
+  const char *kind = space == AddressSpace::RPC   ? "rpc"
+                     : space == AddressSpace::GFA ? "gfa read"
+                     : is_write                   ? "write"
+                                                  : "read";
+  snprintf(out, cap, "%s", kind);
+}
+
 // ---------------------------------------------------------------------------
 // Raw scan console (debug)
 // ---------------------------------------------------------------------------
@@ -1036,9 +1086,68 @@ void VitoHomeComponent::queue_raw_gfa_read(uint16_t address, uint8_t length) {
   this->enqueue_raw_(address, length, false, nullptr, 0, AddressSpace::GFA);
 }
 
+bool VitoHomeComponent::queue_raw_op(const char *spec) {
+  RawSpec parsed;
+  const char *error = nullptr;
+  if (!parse_raw_spec(spec, parsed, error, RAW_READ_MAX)) {
+    ESP_LOGW(TAG, "queue_raw_op: '%s' -- %s", spec != nullptr ? spec : "", error);
+    return false;
+  }
+  return this->queue_raw_op(parsed.layer, parsed.code, parsed.address, parsed.length,
+                            parsed.has_payload ? parsed.payload : nullptr);
+}
+
+bool VitoHomeComponent::queue_raw_op(RawLayer layer, uint8_t code, uint16_t address, uint8_t length,
+                                     const uint8_t *payload) {
+#ifndef VITOHOME_RAW_UNRESTRICTED
+  ESP_LOGW(TAG, "queue_raw_op: refused -- set raw_access: unrestricted on the vitohome hub to send any telegram");
+  (void) layer;
+  (void) code;
+  (void) address;
+  (void) length;
+  (void) payload;
+  return false;
+#else
+  if (!raw_layer_available(layer)) {
+    ESP_LOGW(TAG, "queue_raw_op: %s has no %s layer", PROTOCOL_NAME, raw_layer_name(layer));
+    return false;
+  }
+  const RawClass cls = raw_op_class(layer, code, payload != nullptr);
+#ifndef VITOHOME_RAW_UNSAFE_WRITES
+  if (cls == RawClass::UNSAFE) {
+    ESP_LOGW(TAG,
+             "queue_raw_op: %s %02X %s refused -- it may change the controller; set unsafe_raw_writes: true to "
+             "send it",
+             raw_layer_name(layer), code, payload != nullptr ? "with payload" : "without payload");
+    return false;
+  }
+#endif
+  if (cls == RawClass::UNSAFE || cls == RawClass::PROBE) {
+    ESP_LOGW(TAG, "queue_raw_op: sending %s %s %02X to 0x%04X", raw_class_name(cls), raw_layer_name(layer), code,
+             address);
+  }
+  if (payload != nullptr) {
+    if (length == 0 || length > RAW_WRITE_MAX) {
+      ESP_LOGW(TAG, "queue_raw_op: %u payload bytes out of range (1..%u)", length, RAW_WRITE_MAX);
+      return false;
+    }
+    return this->enqueue_raw_(address, length, true, payload, length, AddressSpace::OWN, layer, code);
+  }
+  const bool call = layer == RawLayer::P300 && code == static_cast<uint8_t>(optolink::FunctionCode::RPC);
+  if ((length == 0 && !call) || length > RAW_READ_MAX) {
+    ESP_LOGW(TAG, "queue_raw_op: length %u out of range (1..%u)", length, RAW_READ_MAX);
+    return false;
+  }
+  return this->enqueue_raw_(address, length, false, nullptr, 0, AddressSpace::OWN, layer, code);
+#endif
+}
+
 bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes,
-                                     uint8_t bytes_len, AddressSpace space) {
-  const bool is_rpc = space == AddressSpace::RPC;
+                                     uint8_t bytes_len, AddressSpace space, RawLayer layer, uint8_t code) {
+  const bool is_rpc = space == AddressSpace::RPC ||
+                      (layer == RawLayer::P300 && code == static_cast<uint8_t>(optolink::FunctionCode::RPC));
+  char label[24];
+  raw_label_(label, sizeof(label), is_write, space, layer, code);
   // An RPC's length is its parameter's, which may be empty; see queue_raw_rpc().
   if (length == 0 && !is_rpc) {
     ESP_LOGW(TAG, "enqueue_raw_: zero-length operation rejected");
@@ -1050,12 +1159,12 @@ bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
     return false;
   }
 
-  if (!space_available(space) || (is_write && !space_writable(space))) {
+  if (layer == RawLayer::NONE && (!space_available(space) || (is_write && !space_writable(space)))) {
     ESP_LOGW(TAG, "enqueue_raw_: %s has no %s telegram in access space '%s'", PROTOCOL_NAME,
              is_write ? "write" : "read", space_name(space));
     return false;
   }
-  if (is_rpc) {
+  if (is_rpc && !is_write) {
     if (bytes_len != length || (bytes_len != 0 && bytes == nullptr)) {
       ESP_LOGW(TAG, "enqueue_raw_: invalid rpc parameter (length=%u, bytes_len=%u)", length, bytes_len);
       return false;
@@ -1077,6 +1186,8 @@ bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
   operation.is_write = is_write;
   operation.bytes_len = bytes_len;
   operation.space = space;
+  operation.layer = layer;
+  operation.code = code;
 
   if ((is_write || is_rpc) && bytes_len != 0)
     std::memcpy(operation.bytes, bytes, bytes_len);
@@ -1091,29 +1202,42 @@ bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
       ESP_LOGW(TAG,
                "raw lane not allocated; dropping %s 0x%04X. Set raw_queue_size on the vitohome hub to use the "
                "scan console.",
-               raw_kind(is_write, space), address);
+               label, address);
     } else {
       ESP_LOGW(TAG, "raw queue full (%zu/%zu); dropping %s 0x%04X. Raise raw_queue_size for larger sweeps.",
-               this->raw_queue_.size(), this->raw_queue_.capacity(), raw_kind(is_write, space), address);
+               this->raw_queue_.size(), this->raw_queue_.capacity(), label, address);
     }
 
     return false;
   }
 
-  ESP_LOGD(TAG, "Queued raw %s 0x%04X len %u", raw_kind(is_write, space), address, length);
+  ESP_LOGD(TAG, "Queued raw %s 0x%04X len %u", label, address, length);
   return true;
 }
 
 void VitoHomeComponent::raw_handle_response_(const ResponseView &response) {
   // "0xXXXX:" (7) + RAW_READ_MAX * 3 hex chars + the integer views for widths
-  // 1..8 + NUL. 208 covers a 48-byte dump with room to spare.
-  char buffer[208];
+  // 1..8 + NUL. 208 covers a 48-byte dump with room to spare; the label and
+  // the time ride in front.
+  char buffer[240];
+  int offset = 0;
+  const uint32_t elapsed = millis() - this->in_flight_started_ms_;
 
-  if (this->raw_is_write_) {
+  if (this->raw_layer_ != RawLayer::NONE) {
+    char label[24];
+    raw_label_(label, sizeof(label), this->raw_is_write_, this->raw_space_, this->raw_layer_, this->raw_code_);
+    offset = snprintf(buffer, sizeof(buffer), "%s, %" PRIu32 " ms: ", label, elapsed);
+    if (offset < 0 || offset >= static_cast<int>(sizeof(buffer)))
+      offset = 0;
+  }
+  if (this->raw_is_write_ && this->raw_layer_ == RawLayer::NONE) {
     snprintf(buffer, sizeof(buffer), "0x%04X: write ACK (%u byte%s)", this->raw_dp_.address(), this->raw_write_len_,
              this->raw_write_len_ == 1 ? "" : "s");
+  } else if (response.data == nullptr || response.data_length == 0) {
+    // A P300 write acknowledgement carries no data.
+    snprintf(buffer + offset, sizeof(buffer) - offset, "0x%04X: ACK, no data", response.address);
   } else {
-    format_raw_dump(response.address, response.data, response.data_length, buffer, sizeof(buffer));
+    format_raw_dump(response.address, response.data, response.data_length, buffer + offset, sizeof(buffer) - offset);
   }
 
   ESP_LOGI(TAG, "Raw: %s", buffer);
@@ -1121,10 +1245,26 @@ void VitoHomeComponent::raw_handle_response_(const ResponseView &response) {
 }
 
 void VitoHomeComponent::raw_handle_error_(optolink::OptolinkResult error) {
-  char buffer[96];
+  char buffer[112];
+  char label[24];
+  raw_label_(label, sizeof(label), this->raw_is_write_, this->raw_space_, this->raw_layer_, this->raw_code_);
 
-  snprintf(buffer, sizeof(buffer), "0x%04X: %s FAILED (%s)", this->raw_dp_.address(),
-           raw_kind(this->raw_is_write_, this->raw_space_), optolink::errorToString(error));
+  int offset = snprintf(buffer, sizeof(buffer), "0x%04X: %s FAILED (%s", this->raw_dp_.address(), label,
+                        optolink::errorToString(error));
+#ifndef VITOHOME_PROTOCOL_KW
+#ifndef VITOHOME_PROTOCOL_GWG
+  // The controller's error code from the P300 error frame: 01 an address it
+  // does not serve, 05 a function code it lacks (VS2Engine::errorPayload()).
+  if (error == optolink::OptolinkResult::DEVICE_ERROR) {
+    uint8_t length = 0;
+    const uint8_t *code = this->vito_->errorPayload(length);
+    for (uint8_t i = 0; i < length && offset > 0 && offset < static_cast<int>(sizeof(buffer)); ++i)
+      offset += snprintf(buffer + offset, sizeof(buffer) - offset, i == 0 ? ", code %02X" : " %02X", code[i]);
+  }
+#endif
+#endif
+  if (offset > 0 && offset < static_cast<int>(sizeof(buffer)))
+    snprintf(buffer + offset, sizeof(buffer) - offset, ")");
 
   ESP_LOGW(TAG, "Raw: %s", buffer);
   this->raw_publish_(buffer);

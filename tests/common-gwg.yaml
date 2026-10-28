@@ -41,6 +41,10 @@ vitohome:
   update_interval: 60s
   identify_device: ${identify_device}
   log_frames: ${log_frames}
+  # queue_raw_op() with both gates open: compiles -DVITOHOME_RAW_UNSAFE_WRITES.
+  raw_queue_size: 1
+  raw_access: unrestricted
+  unsafe_raw_writes: true
 
 sensor:
   # NOTE: several read entities below deliberately omit `access:` to keep the
@@ -215,3 +219,15 @@ switch:
     length: 1
     bit_mask: 0x40
     update_interval: 3600s
+
+button:
+  # The generic raw operation on GWG: an unnamed TYPE byte, and a payload one
+  # (UNSAFE, sent only because unsafe_raw_writes is on).
+  - platform: template
+    name: "Test Raw Op"
+    entity_category: diagnostic
+    on_press:
+      - lambda: |-
+          id(vito).queue_raw_op("gwg r 31 05 1");
+          const uint8_t p[] = {0x01};
+          id(vito).queue_raw_op(esphome::vitohome::RawLayer::GWG, 0xC3, 0x00, 1, p);

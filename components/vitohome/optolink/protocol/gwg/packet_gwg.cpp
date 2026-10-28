@@ -18,21 +18,12 @@ uint8_t &PacketGWG::operator[](std::size_t index) { return _buffer[index]; }
 bool PacketGWG::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, const uint8_t *data) {
   reset();
 
-  // check arguments
-  if (len == 0) {
-    optolink_log_w("Zero length given");
-    return false;
-  }
-  if (addr > 0xFF) {
-    optolink_log_w("GWG doesn't support addresses > 0xFF");
-    return false;
-  }
   // Access-mode divergence from upstream (see GWGAccessMode in constants.h):
   // upstream (and vitohome before this change) only ever emitted
   // PacketGWGType.READ (PHYSICAL READ, 0xCB). isKnownGwgReadType() accepts
   // that plus the other seven read-direction TYPE bytes from the openv wiki
-  // table; every WRITE-direction byte except PacketGWGType.WRITE itself is
-  // still rejected, exactly as before this change.
+  // table, isKnownGwgWriteType() the six write-direction ones; every other
+  // byte is rejected here and goes through createTelegram() instead.
   if (!isKnownGwgReadType(packetType) && !isKnownGwgWriteType(packetType)) {
     optolink_log_w("Packet type error: 0x%02x", packetType);
     return false;
@@ -42,10 +33,29 @@ bool PacketGWG::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, con
     optolink_log_w("No data for write packet");
     return false;
   }
+  return createTelegram(packetType, addr, len, is_write ? data : nullptr);
+}
+
+// Any TYPE byte: `01 TYPE ADDR LEN 04`, or with `data` the write layout. The
+// frame length and whether a payload rides are fixed here rather than derived
+// from the TYPE byte later, so a byte this project has no name for still goes
+// out whole (the raw lane, GWGEngine::telegram()).
+bool PacketGWG::createTelegram(uint8_t type, uint16_t addr, uint8_t len, const uint8_t *data) {
+  reset();
+
+  // check arguments
+  if (len == 0) {
+    optolink_log_w("Zero length given");
+    return false;
+  }
+  if (addr > 0xFF) {
+    optolink_log_w("GWG doesn't support addresses > 0xFF");
+    return false;
+  }
 
   // bounds check against the fixed buffer (fail-soft, no overflow)
   // write frame = ENQ_ACK + type + addr + len + data[len] + EOT
-  const std::size_t needed = is_write ? static_cast<std::size_t>(len) + 5 : 5;
+  const std::size_t needed = data ? static_cast<std::size_t>(len) + 5 : 5;
   if (needed > _buffer.size()) {
     optolink_log_e("buffer overflow: need %u > %u", static_cast<unsigned>(needed),
                    static_cast<unsigned>(_buffer.size()));
@@ -55,10 +65,10 @@ bool PacketGWG::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, con
   // Serialize into buffer
   size_t step = 0;
   _buffer[step++] = internals::ProtocolBytes.ENQ_ACK;
-  _buffer[step++] = packetType;
+  _buffer[step++] = type;
   _buffer[step++] = addr & 0xFF;
   _buffer[step++] = len;
-  if (is_write) {
+  if (data) {
     // Payload placement relative to the EOT terminator is the one part of the
     // GWG write frame with no evidence behind it -- see
     // gwgWriteEotBeforePayload (constants.h) for the two candidate layouts,
@@ -72,39 +82,36 @@ bool PacketGWG::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, con
       for (uint8_t i = 0; i < len; ++i) {
         _buffer[step++] = data[i];
       }
-      return true;
+    } else {
+      for (uint8_t i = 0; i < len; ++i) {
+        _buffer[step++] = data[i];
+      }
+      _buffer[step++] = internals::ProtocolBytes.EOT;
     }
-    for (uint8_t i = 0; i < len; ++i) {
-      _buffer[step++] = data[i];
-    }
+  } else {
+    _buffer[step++] = internals::ProtocolBytes.EOT;
   }
-  _buffer[step] = internals::ProtocolBytes.EOT;
+  // Bug fixed 2026-08-24 (caught by proof_gwg_access_mode.cpp): length() used
+  // to compare the TYPE byte against PHYSICAL READ only and reported 0 for the
+  // other read modes, so _send() wrote nothing. It is now the length built
+  // here, whatever the TYPE byte.
+  // NOTE: uint8_t -- wraps for a payload length >= 251. Unreachable today
+  // (the raw lane caps writes at 32 bytes; entity writes are <= 8).
+  _length = static_cast<uint8_t>(step);
+  _hasPayload = data != nullptr;
   return true;
 }
 
-uint8_t PacketGWG::length() const {
-  if (_buffer[3] == 0)
-    return 0;
-  // Bug fixed 2026-08-24 (caught by proof_gwg_access_mode.cpp): this compared
-  // only against PacketGWGType.READ (0xCB, PHYSICAL READ), so createPacket()
-  // would accept any other read-access-mode TYPE byte (isKnownGwgReadType())
-  // but length() then fell through to `return 0` for it -- _send() then wrote
-  // zero bytes and the engine transitioned straight to RECEIVE with nothing on
-  // the wire. Every read TYPE byte is the same 5-byte frame shape
-  // (01 TYPE ADDR LEN 04); only WRITE carries a variable-length payload.
-  if (isKnownGwgReadType(_buffer[1]))
-    return 5;
-  // NOTE: uint8_t arithmetic -- wraps for a payload length >= 251.
-  // Unreachable today (the raw lane caps writes at 32 bytes; entity writes are
-  // <= 8), but a live trap if those caps are ever raised. Mirrors the same note
-  // on PacketVS1::length() (whose +4 wraps at >= 252).
-  if (isKnownGwgWriteType(_buffer[1]))
-    return _buffer[3] + 5;
-  return 0;  // should not be possible
-}
+uint8_t PacketGWG::length() const { return _length; }
+
+bool PacketGWG::hasPayload() const { return _hasPayload; }
 
 uint8_t PacketGWG::packetType() const { return _buffer[1]; }
 
-void PacketGWG::reset() { _buffer[3] = 0x00; }
+void PacketGWG::reset() {
+  _buffer[3] = 0x00;
+  _length = 0;
+  _hasPayload = false;
+}
 
 }  // namespace esphome::vitohome::optolink

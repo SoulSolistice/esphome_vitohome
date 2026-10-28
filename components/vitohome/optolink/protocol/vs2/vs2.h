@@ -87,23 +87,44 @@ class VS2Engine {
   // one). The answer arrives through onResponse like a read's, as long as the
   // controller makes it. P300 only: KW and GWG have no such telegram.
   bool rpc(uint16_t address, const uint8_t *parameter, uint8_t length);
-  // A read in the burner control's address space: the KW telegram 0x6B
-  // (PacketVS1Type.GFA_READ), which a controller refuses as a P300 function
-  // code. So the engine drops the link to KW for it -- EOT, the controller's
-  // ENQ, `01 6B <addr> <len>`, <len> raw bytes back -- chains further GFA reads
-  // onto that KW session, and re-establishes P300 (EOT, ENQ, SYNC) once the
-  // next request is not a GFA read or none follows. The answer arrives through
-  // onResponse like a read's, with the request's address. At most
-  // GFA_MAX_LENGTH bytes.
+  // Any P300 function code (1..0x1F, the low five bits of the flags byte):
+  // without `data` the frame of a read (DataLength = `length`), with it
+  // `length` payload bytes. read(), write() and rpc() are this with 0x01,
+  // 0x02 and 0x07. The answer -- a RESPONSE frame echoing the code --
+  // arrives through onResponse; for a code other than READ/WRITE its payload
+  // is as long as the frame says. An ERROR frame raises DEVICE_ERROR and its
+  // payload, the controller's error code, is kept for errorPayload(). For the
+  // raw lane (VitoHomeComponent::queue_raw_op()).
+  bool request(uint8_t function, uint16_t address, uint8_t length, const uint8_t *data = nullptr);
+  // The payload of the last ERROR frame (at most ERROR_PAYLOAD_MAX bytes,
+  // length 0 when the last request got none): `01` for an address the
+  // controller does not serve, `05` for a function code it lacks
+  // (VScotHO1_72, 2026-10-27).
+  const uint8_t *errorPayload(uint8_t &length) const;
+  static constexpr uint8_t ERROR_PAYLOAD_MAX = 4;
+  // A KW telegram over a P300 link: `type addr-hi addr-lo length`, plus
+  // `length` payload bytes when `data` is given. The controller refuses KW
+  // telegrams as P300 function codes (0x6B: an ERROR frame, code 05), so the
+  // engine drops the link to KW for it -- EOT, the controller's ENQ,
+  // `01 <telegram>`, <length> raw bytes back (one acknowledgement byte after a
+  // telegram with payload) -- chains further KW telegrams onto that session,
+  // and re-establishes P300 (EOT, ENQ, SYNC) once the next request is not one
+  // or none follows. The answer arrives through onResponse with the request's
+  // address. At most KW_MAX_LENGTH answer bytes, KW_MAX_PAYLOAD payload bytes.
+  // Hardware-confirmed for a GFA read (VScotHO1_72, 2026-10-27).
+  bool kwTelegram(uint8_t type, uint16_t address, uint8_t length, const uint8_t *data = nullptr);
+  static constexpr uint8_t KW_MAX_LENGTH = 64;
+  static constexpr uint8_t KW_MAX_PAYLOAD = 32;
+  // A read in the burner control's address space: kwTelegram() with 0x6B
+  // (PacketVS1Type.GFA_READ).
   bool gfaRead(uint16_t address, uint8_t length);
-  static constexpr uint8_t GFA_MAX_LENGTH = 64;
   // How long the KW session waits for the controller's ENQ after the EOT that
   // drops P300 (the controller sends one about every 2 s when idle), and,
-  // once a GFA answer is in, for another GFA read before returning to P300.
-  // GFA_GAP_MS is the pause before a chained GFA telegram, as on KW
+  // once an answer is in, for another KW telegram before returning to P300.
+  // GFA_GAP_MS is the pause before a chained GFA read, as on KW
   // (VS1Engine::GFA_GAP_MS).
-  static constexpr uint32_t GFA_ENQ_TIMEOUT_MS = HANDSHAKE_RETRY_MS;
-  static constexpr uint32_t GFA_LINGER_MS = 250;
+  static constexpr uint32_t KW_ENQ_TIMEOUT_MS = HANDSHAKE_RETRY_MS;
+  static constexpr uint32_t KW_LINGER_MS = 250;
   static constexpr uint32_t GFA_GAP_MS = 25;
 
   bool begin();
@@ -125,12 +146,12 @@ class VS2Engine {
     SEND_ACK,
     RECEIVE,
     RECEIVE_ACK,
-    // The KW detour of a GFA read (gfaRead()).
-    GFA_DROP,     // EOT: leave P300
-    GFA_ENQ,      // wait for the controller's ENQ
-    GFA_SEND,     // [01] 6B <addr hi> <addr lo> <len>
-    GFA_RECEIVE,  // <len> raw bytes
-    GFA_CHAIN,    // another GFA read, or back to P300
+    // The KW detour of a KW telegram (kwTelegram()).
+    KW_DROP,     // EOT: leave P300
+    KW_ENQ,      // wait for the controller's ENQ
+    KW_SEND,     // [01] <type> <addr hi> <addr lo> <len> [payload]
+    KW_RECEIVE,  // <len> raw bytes, or the one acknowledgement byte
+    KW_CHAIN,    // another KW telegram, or back to P300
     UNDEFINED
   } _state;
   uint32_t _currentMillis;
@@ -146,12 +167,18 @@ class VS2Engine {
   uint8_t _currentLength;
   bool _busy;
   PacketVS2 _currentPacket;
-  // A GFA read in flight (gfaRead()): its KW telegram, with the ENQ_ACK in
-  // front when it opens the KW session, and its answer.
-  bool _gfa{false};
-  uint8_t _gfaFrame[5]{};
-  uint8_t _gfaFrameLen{0};
-  uint8_t _gfaAnswer[GFA_MAX_LENGTH]{};
+  // A KW telegram in flight (kwTelegram()): its type, payload and frame,
+  // with the ENQ_ACK in front when it opens the KW session, and its answer.
+  bool _kw{false};
+  uint8_t _kwType{0};
+  bool _kwHasPayload{false};
+  uint8_t _kwPayload[KW_MAX_PAYLOAD]{};
+  uint8_t _kwFrame[5 + KW_MAX_PAYLOAD]{};
+  uint8_t _kwFrameLen{0};
+  uint8_t _kwAnswer[KW_MAX_LENGTH]{};
+  // See errorPayload().
+  uint8_t _errorPayload[ERROR_PAYLOAD_MAX]{};
+  uint8_t _errorPayloadLength{0};
   OnResponseCallback _onResponseCallback;
   OnErrorCallback _onErrorCallback;
 
@@ -168,12 +195,12 @@ class VS2Engine {
   void _sendAck();
   void _receive();
   void _receiveAck();
-  void _gfaDrop();
-  void _gfaEnq();
-  void _gfaSend();
-  void _gfaReceive();
-  void _gfaChain();
-  void _gfaStart(bool enqAck);
+  void _kwDrop();
+  void _kwEnq();
+  void _kwSend();
+  void _kwReceive();
+  void _kwChain();
+  void _kwStart(bool enqAck);
 
   void _tryOnResponse();
   void _tryOnError(OptolinkResult result);
