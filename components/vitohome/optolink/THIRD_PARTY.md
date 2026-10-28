@@ -699,7 +699,12 @@ These are intentional divergences from upstream `edc059a7`:
       (its payload is the controller's error code, not DataLength bytes: a
       VDensHO1 answers an out-of-range EEPROM read with `31 01`), and the
       engine keeps up to `ERROR_PAYLOAD_MAX` (4) bytes of it for
-      `errorPayload()`. `PacketVS2::payload()` reads it.
+      `errorPayload()`. `PacketVS2::payload()` reads it. A RESPONSE whose
+      function code is not the request's -- a write acknowledgement arriving
+      for a read, a stale frame -- is ACKed and reported as ERROR instead of
+      delivered (upstream delivered it, as a read with no data and the
+      frame's DataLength; found by `fuzz_raw_engines.cpp`,
+      `proof_raw_engines.cpp` case C).
     - VS2 KW detour: `kwTelegram(type, address, length, data)` -- item 27's
       detour for any KW telegram; with payload the answer is one ack byte.
       `gfaRead()` is `kwTelegram(0x6B, ...)`. Chained telegrams wait

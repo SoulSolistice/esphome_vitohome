@@ -69,7 +69,9 @@ void on_response(const uint8_t *data, uint8_t length, uint16_t) {
   ++g_completions;
   if (g_expect_length != 0 && length != g_expect_length)
     g_shape_ok = false;
-  if (length > g_max_length)
+  // A P300 write acknowledgement carries no data, and its length is the
+  // frame's DataLength, nothing a consumer reads.
+  if (data != nullptr && length > g_max_length)
     g_shape_ok = false;
   if (data != nullptr) {
     for (uint8_t i = 0; i < length; ++i)

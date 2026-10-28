@@ -151,6 +151,20 @@ void p300_cases() {
   check(g_responses == responses + 1 && g_payload == Bytes({0x20}), "C: answered");
   io.clear_written();
 
+  // An answer with another function code -- a write's acknowledgement for a
+  // read -- is no answer: ERROR, nothing delivered (found by fuzz_raw_engines).
+  responses = g_responses;
+  errors = g_errors;
+  check(e.read(0x00F8, 1), "C: read() accepted");
+  pump(e);
+  io.clear_written();
+  io.feed(acked(p300({0x05, 0x01, 0x02, 0x00, 0xF8, 0x01})));
+  pump(e);
+  check(g_responses == responses && g_errors == errors + 1 && g_last_error == optolink::OptolinkResult::ERROR,
+        "C: a write ack for a read is an ERROR");
+  check(!e.isBusy(), "C: and the engine is free");
+  io.clear_written();
+
   // --- D ------------------------------------------------------------------
   check(!e.request(0x00, 0x0000, 1), "D: code 0 refused");
   check(!e.request(0x20, 0x0000, 1), "D: code 20 refused");

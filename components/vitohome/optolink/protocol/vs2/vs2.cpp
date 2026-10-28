@@ -300,7 +300,18 @@ void VS2Engine::_receive() {
       // demonstrably answered -- distinct from the malformed-traffic ERROR
       // below, which proves nothing about the link (see constants.h).
       _setState(State::RECEIVE_ACK);
-      if (_parser.packet().packetType() == PacketType::RESPONSE) {
+      if (_parser.packet().packetType() == PacketType::RESPONSE &&
+          _parser.packet().functionCode() != _currentPacket.functionCode()) {
+        // An answer to another function code -- a write's acknowledgement
+        // arriving for a read, a stale frame -- is not this request's answer
+        // (upstream delivered it, as a read with no data and the frame's
+        // DataLength; found by fuzz_raw_engines). Malformed for this request,
+        // though a valid frame, so it is ACKed and reported as ERROR.
+        optolink_log_w("response function code 0x%02x does not match the request's 0x%02x",
+                       static_cast<unsigned>(_parser.packet().functionCode()),
+                       static_cast<unsigned>(_currentPacket.functionCode()));
+        _tryOnError(OptolinkResult::ERROR);
+      } else if (_parser.packet().packetType() == PacketType::RESPONSE) {
         _tryOnResponse();
       } else {
         optolink_log_w("packet type 0x%02x is not a response", static_cast<unsigned>(_parser.packet().packetType()));
