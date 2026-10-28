@@ -111,6 +111,12 @@ inline constexpr uint8_t kRawEngineSeed_found_watchdog_mid_kw_answer_2[] = {
     0xF9, 0xF9, 0xF9, 0xF9, 0xF9, 0x05, 0x01, 0x12, 0x38, 0x05, 0x00, 0x01, 0x00, 0x05,
 };
 
+// found by the campaign: a write acknowledgement with DataLength FE answering a read
+inline constexpr uint8_t kRawEngineSeed_found_write_ack_for_read[] = {
+    0x00, 0x01, 0x01, 0x25, 0xE6, 0xE6, 0xE6, 0x00, 0x05, 0x00, 0x06,
+    0x08, 0x06, 0x41, 0x05, 0x01, 0x02, 0xDD, 0xEA, 0xFE, 0xCD,
+};
+
 // GWG: an address above FF is refused
 inline constexpr uint8_t kRawEngineSeed_gwg_high_address[] = {
     0x03, 0x31, 0x01, 0x00, 0x01, 0x00, 0x00, 0x05,
@@ -144,6 +150,8 @@ inline constexpr RawEngineSeed kRawEngineSeeds[] = {
      sizeof(kRawEngineSeed_found_watchdog_mid_kw_answer)},
     {"found_watchdog_mid_kw_answer_2", kRawEngineSeed_found_watchdog_mid_kw_answer_2,
      sizeof(kRawEngineSeed_found_watchdog_mid_kw_answer_2)},
+    {"found_write_ack_for_read", kRawEngineSeed_found_write_ack_for_read,
+     sizeof(kRawEngineSeed_found_write_ack_for_read)},
     {"gwg_high_address", kRawEngineSeed_gwg_high_address, sizeof(kRawEngineSeed_gwg_high_address)},
 };
 
