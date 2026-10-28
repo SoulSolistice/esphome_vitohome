@@ -731,7 +731,30 @@ These are intentional divergences from upstream `edc059a7`:
     function code), with seeds in `fuzz_corpus_raw_engines.h` and
     `fuzz_corpus_vs2.h`.
 
-Items 7-12, 18, 19, 21, 22, 24, 26, 27 and 28 are the only intentional changes to on-wire/runtime
+29. **KW answer deadline, and the detour on the reset's ENQ (behavioral
+    divergence).** Upstream VS1 waits for the answer bytes until the request
+    watchdog fires, taking whatever arrives. A telegram the controller
+    ignores gets no answer, and the ENQ it offers about 2 s later was read
+    as data -- a one-byte read would "succeed" with `05` (VScotHO1_72,
+    2026-10-28: `01 7B 08 00 02` over the P300 detour, `05` 2.25 s later).
+    Changes:
+    - VS1: `_receive()` fails with TIMEOUT once the line has been silent
+      `ANSWER_TIMEOUT_MS` (1000 ms) while an answer is due -- before the
+      first byte or between bytes -- and returns to INIT, where the waiting
+      ENQ syncs the next telegram. Checked before the drain, so a byte
+      already waiting past the deadline is not taken for data.
+    - VS2 detour: the same rule in `_kwReceive()` (`KW_ANSWER_TIMEOUT_MS`),
+      returning through RESET.
+    - VS2: `_resetAck()` answers the ENQ with a pending KW telegram
+      (`_kwStart()`) instead of SYNC: after the EOT the controller speaks KW,
+      so the telegram goes out one ENQ wait (about 2 s) sooner.
+    Answers take 13-140 ms on the reference unit, the ENQ period is about
+    2 s. Proofs: `proof_vs2_gfa.cpp` cases J and K, `proof_raw_engines.cpp`
+    case G -- all fail without the change; seeds `kw_detour_ignored`,
+    `kw_detour_queued_on_reset`, `kw_telegram_ignored` in
+    `fuzz_corpus_raw_engines.h`.
+
+Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28 and 29 are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16 are structural (no behavior change from any call
 site that exists -- item 16 alters bytes only on a RESPONSE-construction path
 nothing exercises); item 17 changes only construction-failure handling

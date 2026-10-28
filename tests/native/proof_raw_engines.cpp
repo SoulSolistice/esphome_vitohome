@@ -228,6 +228,33 @@ void kw_cases() {
   pump(e);
   check(g_responses == responses + 1 && g_payload == Bytes({0x00}), "G: completes on the one ack byte");
   check(!e.telegram(0x7B, 0x0800, 0), "G: zero length refused");
+
+  // An ignored telegram: the controller's next ENQ, already waiting when the
+  // deadline is checked, is not a one-byte answer.
+  responses = g_responses;
+  const int errors = g_errors;
+  check(e.telegram(0x7B, 0x0800, 1), "G: telegram(7B, 0800, 1) accepted");
+  pump(e);
+  check(io.written() == Bytes({0x7B, 0x08, 0x00, 0x01}), "G: 7B 08 00 01 chained");
+  io.clear_written();
+  optolink::optolink_test_clock_advance(optolink::VS1Engine::ANSWER_TIMEOUT_MS);
+  pump(e);
+  check(g_errors == errors, "G: no error at ANSWER_TIMEOUT_MS");
+  io.feed({0x05});
+  optolink::optolink_test_clock_advance(1);
+  pump(e);
+  check(g_responses == responses && g_errors == errors + 1 && g_last_error == optolink::OptolinkResult::TIMEOUT,
+        "G: the ENQ that follows is no answer: TIMEOUT");
+  // That ENQ is then the sync for the next telegram; an answer just inside
+  // the deadline is delivered.
+  check(e.telegram(0x7B, 0x0800, 1), "G: next telegram accepted");
+  pump(e);
+  check(io.written() == Bytes({0x01, 0x7B, 0x08, 0x00, 0x01}), "G: 01 7B 08 00 01 on that ENQ");
+  io.clear_written();
+  optolink::optolink_test_clock_advance(optolink::VS1Engine::ANSWER_TIMEOUT_MS);
+  io.feed({0x12});
+  pump(e);
+  check(g_responses == responses + 1 && g_payload == Bytes({0x12}), "G: an answer at the deadline is delivered");
 }
 
 // One GWG transaction on a fresh engine: a completed one re-opens the burst

@@ -173,6 +173,16 @@ void VS1Engine::_send() {
 // wait for data to receive
 // when done, move to SYNC_RECV
 void VS1Engine::_receive() {
+  // A telegram the controller ignores gets no answer, and the controller's
+  // next ENQ (about 2 s later) must not be taken for data. The line may stay
+  // silent ANSWER_TIMEOUT_MS before the first byte and between bytes; checked
+  // before the drain so a waiting ENQ is left for _init().
+  if (_currentMillis - _lastMillis > ANSWER_TIMEOUT_MS) {
+    _bytesTransferred = 0;
+    _setState(State::INIT);
+    _tryOnError(OptolinkResult::TIMEOUT);
+    return;
+  }
   while (_interface->available()) {
     _responseBuffer[_bytesTransferred] = _interface->read();
     ++_bytesTransferred;

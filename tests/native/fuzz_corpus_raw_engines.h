@@ -117,6 +117,21 @@ inline constexpr uint8_t kRawEngineSeed_found_write_ack_for_read[] = {
     0x08, 0x06, 0x41, 0x05, 0x01, 0x02, 0xDD, 0xEA, 0xFE, 0xCD,
 };
 
+// the controller ignores a one-byte KW telegram; its ENQ 2.25 s later is no answer
+inline constexpr uint8_t kRawEngineSeed_kw_detour_ignored[] = {
+    0x01, 0x7B, 0x08, 0x00, 0x01, 0x00, 0x00, 0x05, 0x00, 0x06, 0x01, 0x06, 0x05, 0xFF, 0xE2, 0x00, 0x05, 0x00, 0x06,
+};
+
+// a GFA read while the link returns to P300: out on the reset's ENQ
+inline constexpr uint8_t kRawEngineSeed_kw_detour_queued_on_reset[] = {
+    0x01, 0x6B, 0x40, 0x50, 0x01, 0x00, 0x00, 0x05, 0x00, 0x24, 0x9E, 0x00, 0x05, 0x00, 0x06,
+};
+
+// VS1: the controller ignores a one-byte telegram; its next ENQ is no answer
+inline constexpr uint8_t kRawEngineSeed_kw_telegram_ignored[] = {
+    0x02, 0x7B, 0x08, 0x00, 0x01, 0x00, 0x00, 0x05, 0xFF, 0xE2, 0x00, 0x05,
+};
+
 // GWG: an address above FF is refused
 inline constexpr uint8_t kRawEngineSeed_gwg_high_address[] = {
     0x03, 0x31, 0x01, 0x00, 0x01, 0x00, 0x00, 0x05,
@@ -152,6 +167,10 @@ inline constexpr RawEngineSeed kRawEngineSeeds[] = {
      sizeof(kRawEngineSeed_found_watchdog_mid_kw_answer_2)},
     {"found_write_ack_for_read", kRawEngineSeed_found_write_ack_for_read,
      sizeof(kRawEngineSeed_found_write_ack_for_read)},
+    {"kw_detour_ignored", kRawEngineSeed_kw_detour_ignored, sizeof(kRawEngineSeed_kw_detour_ignored)},
+    {"kw_detour_queued_on_reset", kRawEngineSeed_kw_detour_queued_on_reset,
+     sizeof(kRawEngineSeed_kw_detour_queued_on_reset)},
+    {"kw_telegram_ignored", kRawEngineSeed_kw_telegram_ignored, sizeof(kRawEngineSeed_kw_telegram_ignored)},
     {"gwg_high_address", kRawEngineSeed_gwg_high_address, sizeof(kRawEngineSeed_gwg_high_address)},
 };
 
