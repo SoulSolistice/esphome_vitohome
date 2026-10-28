@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstring>
 #include <limits>
+#include <new>
 
 #include "decode.h"
 #include "esphome/core/application.h"
@@ -194,7 +195,14 @@ void VitoHomeComponent::setup() {
 
   // The engine is build-time-selected (protocol_select.h) and deduces the
   // interface type, wrapping &iface_ in a GenericInterface internally.
-  this->vito_ = std::make_unique<optolink::OptolinkEngine<SelectedProtocol>>(&this->iface_);
+  // Not std::make_unique: without exceptions an allocation failure there
+  // aborts the firmware, where the queues above fail soft.
+  this->vito_.reset(new (std::nothrow) optolink::OptolinkEngine<SelectedProtocol>(&this->iface_));
+  if (!this->vito_) {
+    ESP_LOGE(TAG, "failed to allocate the protocol engine");
+    this->mark_failed(LOG_STR("engine allocation failed"));
+    return;
+  }
 
   // All three engines share one byte-mover callback shape, so the hub registers
   // directly with the engine and wraps the raw payload in a ResponseView here.
@@ -451,7 +459,16 @@ void VitoHomeComponent::dispatch_raw_front_() {
   // Keep the front item stable across the engine hand-off and remove it only
   // if read()/write() accepts it. The engine copies a write payload into its
   // own fixed packet synchronously inside write().
-  this->raw_queue_.consume_front_if([this](const RawOp &operation) {
+  //
+  // Nothing that can reach a callback runs inside the consumer: it holds the
+  // queue's lock (a non-recursive FreeRTOS mutex on ESP32), and publishing a
+  // result runs the scan_result sensors' automations synchronously -- which
+  // may queue the next raw operation and so take the same lock again, a
+  // deadlock (external review, 2026-10-28). A refusal is noted here and
+  // reported after the lock is released. tests/unit/test_queue_lock_discipline
+  // keeps every consume_front_if body free of such calls.
+  bool refused = false;
+  this->raw_queue_.consume_front_if([this, &refused](const RawOp &operation) {
     this->raw_dp_ = optolink::Datapoint("scan", operation.address, operation.length, optolink::noconv);
 
     this->raw_is_write_ = operation.is_write;
@@ -492,7 +509,7 @@ void VitoHomeComponent::dispatch_raw_front_() {
         return false;  // transient: keep the item at the head and retry
       ESP_LOGE(TAG, "Engine refused raw %s 0x%04X len %u (permanent); dropping", label, operation.address,
                operation.length);
-      this->raw_handle_error_(optolink::OptolinkResult::ERROR);
+      refused = true;
       return true;  // permanent: drop so the read/write lanes are reached
     }
 
@@ -508,6 +525,8 @@ void VitoHomeComponent::dispatch_raw_front_() {
 
     return true;
   });
+  if (refused)
+    this->raw_handle_error_(optolink::OptolinkResult::ERROR);
 }
 
 void VitoHomeComponent::dispatch_next_() {
@@ -571,8 +590,11 @@ void VitoHomeComponent::dispatch_next_() {
   }
 
   // Writes preempt reads. The ring keeps the entity stable at the front until
-  // the engine accepts it.
-  const auto write_result = this->write_queue_.consume_front_if([this](VitoEntityBase *entity) {
+  // the engine accepts it. As in dispatch_raw_front_(), an entity's error
+  // handler (which may publish, and so run automations that queue a write)
+  // runs only after the queue's lock is released.
+  VitoEntityBase *write_failed = nullptr;
+  const auto write_result = this->write_queue_.consume_front_if([this, &write_failed](VitoEntityBase *entity) {
     if (entity == nullptr) {
       // A null entry violates registration/enqueue invariants. Remove it so it
       // cannot block all later writes.
@@ -593,7 +615,7 @@ void VitoHomeComponent::dispatch_next_() {
         ESP_LOGE(TAG, "%s: %u-byte read-modify-write exceeds %u bytes; dropping", entity->get_datapoint().name(),
                  wdp.length(), MAX_RMW_BLOCK);
         entity->write_queued_ = false;
-        entity->handle_write_error(optolink::OptolinkResult::LENGTH);
+        write_failed = entity;
         return true;
       }
       const bool read_ok = this->send_read_(wdp.address(), wdp.length(), entity->space());
@@ -654,6 +676,8 @@ void VitoHomeComponent::dispatch_next_() {
     return true;
   });
 
+  if (write_failed != nullptr)
+    write_failed->handle_write_error(optolink::OptolinkResult::LENGTH);
   if (write_result != RingBuffer<VitoEntityBase *>::ConsumeResult::EMPTY)
     return;
 

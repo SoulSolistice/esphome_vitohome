@@ -9,6 +9,8 @@
 #include <utility>
 
 #ifdef VITOHOME_NATIVE_TEST
+#include <cstdio>
+#include <cstdlib>
 // Host test harness build (tests/native, which defines this macro): ESPHome
 // headers are not on the include path, and esphome::Mutex has no out-of-line
 // definitions on a bare host anyway (helpers.h declares them for "new
@@ -18,14 +20,31 @@
 // uses the real ESPHome Mutex (FreeRTOS-backed on ESP32; an inline no-op on
 // the single-threaded ESP8266/RP2040 platforms).
 namespace esphome::vitohome {
+// Not a no-op: it aborts when the holder locks it again, which on ESP32 (a
+// non-recursive FreeRTOS mutex) would deadlock. That is what a consumer
+// lambda queueing onto its own queue does; the proofs see it at once.
 class Mutex {
  public:
   Mutex() = default;
   Mutex(const Mutex &) = delete;
   Mutex &operator=(const Mutex &) = delete;
-  void lock() {}
-  bool try_lock() { return true; }
-  void unlock() {}
+  void lock() {
+    if (this->locked_) {
+      std::fputs("RingBuffer: lock taken again while held (would deadlock on ESP32)\n", stderr);
+      std::abort();
+    }
+    this->locked_ = true;
+  }
+  bool try_lock() {
+    if (this->locked_)
+      return false;
+    this->locked_ = true;
+    return true;
+  }
+  void unlock() { this->locked_ = false; }
+
+ private:
+  bool locked_{false};
 };
 
 class LockGuard {
