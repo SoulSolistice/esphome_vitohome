@@ -27,6 +27,7 @@ from . import (
     emit_write_target,
     field_width,
     llround,
+    poll_update_interval,
     pop_poll_interval,
     raw_fits,
     resolve_signed,
@@ -128,7 +129,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Required(CONF_MAX_VALUE): cv.float_,
             cv.Required(CONF_STEP): cv.positive_float,
             cv.Optional(CONF_READ_BACK, default=True): cv.boolean,
-            cv.Optional(CONF_UPDATE_INTERVAL): cv.update_interval,
+            cv.Optional(CONF_UPDATE_INTERVAL): poll_update_interval,
         }
     )
     .extend(cv.COMPONENT_SCHEMA),

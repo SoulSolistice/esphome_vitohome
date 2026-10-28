@@ -92,7 +92,9 @@ CONF_SYNC_ON_BOOT = "sync_on_boot"
 # disables the periodic check (boot-only).
 TIME_SYNC_SCHEMA = cv.Schema(
     {
-        cv.Optional(CONF_INTERVAL, default="24h"): cv.positive_time_period_milliseconds,
+        cv.Optional(CONF_INTERVAL, default="24h"): cv.All(
+            cv.positive_time_period_milliseconds, lambda v: _check_interval(v, "time_sync.interval")
+        ),
         cv.Optional(CONF_DRIFT_THRESHOLD, default="60s"): cv.positive_time_period_seconds,
         cv.Optional(CONF_SYNC_ON_BOOT, default=True): cv.boolean,
         # The device clock datapoint. NOT a constant across Viessmann devices --
@@ -953,6 +955,33 @@ def datapoint_expression(name: str, address: int, length: int) -> cg.RawExpressi
         f"esphome::vitohome::optolink::noconv"
         f")"
     )
+
+
+# The longest interval the hub's schedules can hold: deadlines compare through a
+# signed 32-bit millisecond difference (poll_schedule.h, vito_clock.cpp), so
+# anything from 2^31 ms (24.8 days) on looks already due and runs on every hub
+# tick. External review, 2026-10-28.
+POLL_INTERVAL_MAX_MS = 0x7FFFFFFF
+# ESPHome's `never` (SCHEDULER_DONT_RUN); poll_schedule.h's POLL_NEVER.
+POLL_NEVER_MS = 0xFFFFFFFF
+
+
+def _check_interval(value, what, allow_never=False):
+    ms = int(value.total_milliseconds)
+    if allow_never and ms == POLL_NEVER_MS:
+        return value
+    if ms > POLL_INTERVAL_MAX_MS:
+        raise cv.Invalid(
+            f"{what} must be at most 24 days ({POLL_INTERVAL_MAX_MS} ms): the hub's schedules "
+            "compare deadlines in a signed 32-bit millisecond difference, and a longer interval "
+            "would run on every hub tick" + (" (use 'never' to disable polling)" if allow_never else "")
+        )
+    return value
+
+
+def poll_update_interval(value):
+    """A datapoint's `update_interval`: `never` (no polling) or at most 24 days."""
+    return _check_interval(cv.update_interval(value), "update_interval", allow_never=True)
 
 
 def _validate_raw_access(config):

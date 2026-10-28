@@ -11,6 +11,7 @@ from . import (
     VitoHomeComponent,
     datapoint_expression,
     emit_poll_interval,
+    poll_update_interval,
     pop_poll_interval,
     vitohome_ns,
 )
@@ -37,7 +38,7 @@ CONFIG_SCHEMA = (
             # (__init__.py). One mode drives this entity's reads AND writes.
             cv.Optional(CONF_ACCESS): cv.enum(GWG_ACCESS_MODES, lower=True),
             cv.Optional(CONF_READ_BACK, default=True): cv.boolean,
-            cv.Optional(CONF_UPDATE_INTERVAL): cv.update_interval,
+            cv.Optional(CONF_UPDATE_INTERVAL): poll_update_interval,
         }
     )
     .extend(cv.COMPONENT_SCHEMA)

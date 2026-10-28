@@ -22,6 +22,7 @@ from . import (
     emit_bit_mask,
     emit_option_table,
     emit_poll_interval,
+    poll_update_interval,
     pop_poll_interval,
     read_access,
     register_hub_sensor,
@@ -167,7 +168,7 @@ def _addressed(extra: dict) -> cv.Schema:
         .extend(
             {
                 cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
-                cv.Optional(CONF_UPDATE_INTERVAL): cv.update_interval,
+                cv.Optional(CONF_UPDATE_INTERVAL): poll_update_interval,
                 # A GWG access mode (GWG only), `rpc` (P300 only) or `gfa`
                 # (KW and P300); checked in _final_validate (__init__.py). See
                 # CONF_ACCESS, ACCESS_RPC and ACCESS_GFA there.

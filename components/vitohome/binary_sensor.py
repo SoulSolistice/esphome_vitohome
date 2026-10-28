@@ -17,6 +17,7 @@ from . import (
     datapoint_expression,
     emit_access,
     emit_poll_interval,
+    poll_update_interval,
     pop_poll_interval,
     read_access,
     register_hub_sensor,
@@ -80,7 +81,7 @@ _DATAPOINT_SCHEMA = cv.All(
             cv.Optional(CONF_LENGTH, default=1): cv.positive_int,
             cv.Optional(CONF_BYTE_OFFSET, default=0): cv.int_range(min=0, max=MAX_P300_READ_LENGTH - 1),
             cv.Optional(CONF_BIT_MASK, default=0xFF): cv.hex_uint8_t,
-            cv.Optional(CONF_UPDATE_INTERVAL): cv.update_interval,
+            cv.Optional(CONF_UPDATE_INTERVAL): poll_update_interval,
             # A GWG access mode (GWG only), `rpc` (P300 only) or `gfa` (KW and
             # P300); checked in _final_validate (__init__.py). See CONF_ACCESS,
             # ACCESS_RPC and ACCESS_GFA there.

@@ -25,6 +25,7 @@ from . import (
     VitoHomeComponent,
     cpp_string_literal,
     datapoint_expression,
+    poll_update_interval,
     pop_poll_interval,
     vitohome_ns,
 )
@@ -203,7 +204,7 @@ CONFIG_SCHEMA = cv.All(
             cv.GenerateID(CONF_VITOHOME_ID): cv.use_id(VitoHomeComponent),
             cv.Required(CONF_TARGET_ADDRESS): cv.hex_uint16_t,
             cv.Optional(CONF_OPERATING_MODE): OPERATING_MODE_SCHEMA,
-            cv.Optional(CONF_UPDATE_INTERVAL): cv.update_interval,
+            cv.Optional(CONF_UPDATE_INTERVAL): poll_update_interval,
             # GWG access mode for the SETPOINT channel (target_address). The
             # Betriebsart channel has its own under operating_mode. GWG-only;
             # rejected under other protocols in _final_validate (__init__.py).
