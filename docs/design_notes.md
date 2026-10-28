@@ -664,6 +664,17 @@ export fits: all 269 `VSKO_*` event types (and 4 unnamed ones) read with
 work on that VDensHO1: `16 00 00` right after the EOT, before the ENQ (no
 ACK), and entering P300 on an idle ENQ without EOT (about 1 s slower).
 
+**An ignored KW telegram gets no answer.** VScotHO1_72 does not answer
+`01 7B 08 00 02` (PROZESS_READ, which Vitosoft defines only for Vitosorp):
+nothing comes back, and the controller offers its next ENQ about 2.25 s later
+(2026-10-28). Read as data, that `05` would be a one-byte answer. Both KW
+paths therefore allow the line to stay silent at most 1 s while an answer is
+due (`VS2Engine::KW_ANSWER_TIMEOUT_MS`, `VS1Engine::ANSWER_TIMEOUT_MS`;
+answers take 13-140 ms), checked before the bytes are drained, and report
+TIMEOUT. A KW telegram queued while the link returns to P300 goes out on the
+ENQ that return waits for, instead of after a P300 handshake the detour would
+drop again (3.4 s against 2.1 s on the same unit).
+
 Error code `05` is the controller's answer to a function code it lacks. The
 P300 flags byte is a 3-bit message id over a 5-bit function code, so a
 Vitosoft function-code number sent whole lands on whatever its low five bits

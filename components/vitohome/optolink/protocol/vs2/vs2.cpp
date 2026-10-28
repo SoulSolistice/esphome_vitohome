@@ -198,6 +198,15 @@ void VS2Engine::_resetAck() {
     uint8_t buff = _interface->read();
     if (buff == internals::ProtocolBytes.ENQ) {
       _lastMillis = _currentMillis;
+      // After the EOT the controller speaks KW: a KW telegram waiting for the
+      // link goes out on this ENQ instead of after a P300 handshake that the
+      // detour would drop again -- one ENQ wait (about 2 s) saved
+      // (VScotHO1_72, 2026-10-28: 3423 ms for a GFA read queued during the
+      // return to P300, against about 2100 ms).
+      if (_busy && _kw) {
+        _kwStart(true);
+        return;
+      }
       _setState(State::INIT);
     }
   } else {
@@ -411,6 +420,15 @@ void VS2Engine::_kwSend() {
 // after a telegram with payload: no frame, no checksum.
 void VS2Engine::_kwReceive() {
   const uint8_t expected = _kwHasPayload ? 1 : _currentLength;
+  // A telegram the controller ignores gets no answer; its next byte is the
+  // ENQ it offers about 2 s later, which must not be taken for data
+  // (VScotHO1_72, 2026-10-28: 01 7B 08 00 02, then 05 after 2.25 s). Checked
+  // before the drain, so an ENQ already waiting is not read as an answer.
+  if (_currentMillis - _lastMillis > KW_ANSWER_TIMEOUT_MS) {
+    _setState(State::RESET);
+    _tryOnError(OptolinkResult::TIMEOUT);
+    return;
+  }
   while (_interface->available() && _bytesTransferred < expected) {
     _kwAnswer[_bytesTransferred++] = _interface->read();
     _lastMillis = _currentMillis;

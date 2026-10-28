@@ -125,6 +125,11 @@ class VS2Engine {
   // (VS1Engine::GFA_GAP_MS).
   static constexpr uint32_t KW_ENQ_TIMEOUT_MS = HANDSHAKE_RETRY_MS;
   static constexpr uint32_t KW_LINGER_MS = 250;
+  // How long a KW answer may keep the line silent -- before its first byte
+  // and between bytes. Answers take 13-140 ms on VScotHO1_72; the ENQ an
+  // ignored telegram is followed by comes about 2 s later (VS1Engine::
+  // ANSWER_TIMEOUT_MS is the same rule on a KW link).
+  static constexpr uint32_t KW_ANSWER_TIMEOUT_MS = 1000;
   static constexpr uint32_t GFA_GAP_MS = 25;
 
   bool begin();

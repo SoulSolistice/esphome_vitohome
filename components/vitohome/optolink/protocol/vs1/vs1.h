@@ -77,6 +77,13 @@ class VS1Engine {
   // been idle since. The cost is 25 ms per chained GFA read.
   static constexpr uint32_t GFA_GAP_MS = 25;
   static_assert(GFA_GAP_MS < CHAIN_WINDOW_MS, "the GFA pause must fit inside the chain window");
+  // ANSWER_TIMEOUT_MS: how long the line may stay silent while an answer is
+  // due -- before its first byte and between bytes. Answers take 13-81 ms on
+  // VScotHO1_72 (KW); a telegram the controller ignores is followed by its
+  // next ENQ about 2 s later, which must not be read as data
+  // (2026-10-28, 01 7B 08 00 02 over the P300 detour). Well under that, well
+  // over any answer.
+  static constexpr uint32_t ANSWER_TIMEOUT_MS = 1000;
 
   // Fixed response buffer: bounds the largest VS1 datapoint payload. 256 is a
   // safe upper bound (datapoint length is a uint8_t).

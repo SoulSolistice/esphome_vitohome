@@ -17,7 +17,11 @@
 //   H) guards: length 1..KW_MAX_LENGTH, single in flight;
 //   I) the request watchdog firing in the middle of a KW answer: the next
 //      handshake sends exactly 16 00 00 (a stale byte count used to index
-//      past SYNC; found by fuzz_raw_engines).
+//      past SYNC; found by fuzz_raw_engines);
+//   J) a KW telegram the controller ignores: the ENQ that follows is not
+//      taken for a one-byte answer -- TIMEOUT after KW_ANSWER_TIMEOUT_MS;
+//   K) a KW telegram queued while the link returns to P300 goes out on the
+//      ENQ that return waits for.
 //
 // Built by build_and_run_protocols.sh (P300 is the default protocol).
 
@@ -245,6 +249,60 @@ int main() {
     io2.feed({0x05});
     pump(e2);
     check(io2.written() == Bytes({0x16, 0x00, 0x00}), "I: then exactly 16 00 00");
+  }
+
+  // --- J ------------------------------------------------------------------
+  // A KW telegram the controller ignores: its next ENQ, already waiting when
+  // the deadline is checked, is not a one-byte answer.
+  {
+    FakeOptolink io3;
+    Engine e3(&io3);
+    e3.onResponse([](const uint8_t *, uint8_t, uint16_t) { ++g_responses; });
+    e3.onError([](optolink::OptolinkResult r, uint16_t) {
+      ++g_errors;
+      g_last_error = r;
+    });
+    e3.begin();
+    check(handshake(e3, io3), "J: P300 link up");
+    const int responses_before = g_responses;
+    const int errors_before = g_errors;
+    check(e3.kwTelegram(0x7B, 0x0800, 1), "J: kwTelegram(7B, 0800, 1) accepted");
+    pump(e3);
+    io3.clear_written();
+    io3.feed({0x06, 0x05});
+    pump(e3);
+    check(io3.written() == Bytes({0x01, 0x7B, 0x08, 0x00, 0x01}), "J: 01 7B 08 00 01 on the ENQ");
+    io3.clear_written();
+    advance(e3, Engine::KW_ANSWER_TIMEOUT_MS);
+    check(g_errors == errors_before, "J: no error at KW_ANSWER_TIMEOUT_MS");
+    io3.feed({0x05});  // the controller's next ENQ, not read yet
+    advance(e3, 1);
+    check(g_responses == responses_before, "J: the ENQ is not delivered as an answer");
+    check(g_errors == errors_before + 1 && g_last_error == optolink::OptolinkResult::TIMEOUT, "J: TIMEOUT instead");
+    check(io3.written() == Bytes({0x04}), "J: and back to P300: EOT");
+  }
+
+  // --- K ------------------------------------------------------------------
+  // A KW telegram queued while the link returns to P300 goes out on the ENQ
+  // that return waits for, not after a P300 handshake.
+  {
+    FakeOptolink io4;
+    Engine e4(&io4);
+    e4.onResponse([](const uint8_t *, uint8_t, uint16_t) { ++g_responses; });
+    e4.onError([](optolink::OptolinkResult, uint16_t) { ++g_errors; });
+    e4.begin();
+    pump(e4);
+    check(io4.written() == Bytes({0x04}), "K: EOT, waiting for the ENQ");
+    io4.clear_written();
+    const int responses_before = g_responses;
+    check(e4.gfaRead(0x4050, 1), "K: gfa read queued meanwhile");
+    io4.feed({0x05});
+    pump(e4);
+    check(io4.written() == Bytes({0x01, 0x6B, 0x40, 0x50, 0x01}), "K: 01 6B 40 50 01 on that ENQ, no SYNC");
+    io4.clear_written();
+    io4.feed({0x24});
+    pump(e4);
+    check(g_responses == responses_before + 1, "K: answered");
   }
 
   std::printf("vs2 gfa read: %d failure(s)\n", g_fail);
