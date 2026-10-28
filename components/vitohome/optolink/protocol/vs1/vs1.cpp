@@ -16,51 +16,30 @@ VS1Engine::~VS1Engine() { delete _interface; }
 void VS1Engine::onResponse(OnResponseCallback callback) { _onResponseCallback = callback; }
 void VS1Engine::onError(OnErrorCallback callback) { _onErrorCallback = callback; }
 
-bool VS1Engine::read(uint16_t address, uint8_t length) {
-  if (_busy) {
-    return false;
-  }
-  if (_currentRequest.createPacket(PacketVS1Type.READ, address, length)) {
-    _currentAddress = address;
-    _currentLength = length;
-    _busy = true;
-    _requestTime = _currentMillis;
-    optolink_log_i("reading packet OK");
-    return true;
-  }
-  optolink_log_i("reading not possible, packet creation error");
-  return false;
-}
+bool VS1Engine::read(uint16_t address, uint8_t length) { return telegram(PacketVS1Type.READ, address, length); }
 
-bool VS1Engine::gfaRead(uint16_t address, uint8_t length) {
-  if (_busy) {
-    return false;
-  }
-  if (_currentRequest.createPacket(PacketVS1Type.GFA_READ, address, length)) {
-    _currentAddress = address;
-    _currentLength = length;
-    _busy = true;
-    _requestTime = _currentMillis;
-    optolink_log_i("gfa reading packet OK");
-    return true;
-  }
-  optolink_log_i("gfa reading not possible, packet creation error");
-  return false;
-}
+bool VS1Engine::gfaRead(uint16_t address, uint8_t length) { return telegram(PacketVS1Type.GFA_READ, address, length); }
 
 bool VS1Engine::write(uint16_t address, const uint8_t *data, uint8_t length) {
+  if (data == nullptr)
+    return false;
+  return telegram(PacketVS1Type.WRITE, address, length, data);
+}
+
+bool VS1Engine::telegram(uint8_t type, uint16_t address, uint8_t length, const uint8_t *data) {
   if (_busy) {
     return false;
   }
-  if (_currentRequest.createPacket(PacketVS1Type.WRITE, address, length, data)) {
+  // Any answer fits _responseBuffer: at most 255 bytes.
+  if (_currentRequest.createTelegram(type, address, length, data)) {
     _currentAddress = address;
     _currentLength = length;
     _busy = true;
     _requestTime = _currentMillis;
-    optolink_log_i("writing packet OK");
+    optolink_log_i("telegram 0x%02x OK", type);
     return true;
   }
-  optolink_log_i("writing not possible, packet creation error");
+  optolink_log_i("telegram 0x%02x not possible, packet creation error", type);
   return false;
 }
 
@@ -208,9 +187,11 @@ void VS1Engine::_receive() {
   // (Betriebsart, setpoints) is what masked this. vcontrold's KW setaddr
   // ("RECV 1 SR") also reads exactly one byte and does not validate its
   // value; we complete on it and warn if it is not the documented 0x00.
-  const uint8_t expected = (_currentRequest.packetType() == PacketVS1Type.WRITE) ? 1 : _currentLength;
+  // Generalised with telegram(): every telegram that carries a payload (a
+  // write's shape) is answered with the one acknowledgement byte.
+  const uint8_t expected = _currentRequest.hasPayload() ? 1 : _currentLength;
   if (_bytesTransferred == expected) {
-    if (_currentRequest.packetType() == PacketVS1Type.WRITE && _responseBuffer[0] != 0x00) {
+    if (_currentRequest.hasPayload() && _responseBuffer[0] != 0x00) {
       optolink_log_w("write ack byte 0x%02x (expected 0x00)", static_cast<unsigned>(_responseBuffer[0]));
     }
     _bytesTransferred = 0;

@@ -133,6 +133,14 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" \
   -o fuzz_parser_vs2
 ./fuzz_parser_vs2
 
+# raw_op.h: the generic raw operation's spec parser and safety class
+# (queue_raw_op()), then its fuzz corpus -- same two-build arrangement as the
+# VS2 parser's (fuzz.sh raw_spec for the open-ended search).
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}"   -I"$ROOT" -I"$OPTO" proof_raw_op.cpp -o proof_raw_op
+./proof_raw_op
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}"   -I"$ROOT" -I"$OPTO" fuzz_raw_spec.cpp -o fuzz_raw_spec
+./fuzz_raw_spec
+
 # decode.h fuzz corpus, the same two-build arrangement over the other half of
 # the path: payload->text, where the fixed char buffers and the hand-rolled
 # snprintf offset arithmetic live, plus encode_schaltzeiten_day, which parses a

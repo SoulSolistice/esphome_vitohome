@@ -20,6 +20,7 @@
 #include "address_space.h"
 #include "optolink/optolink.h"
 #include "protocol_select.h"
+#include "raw_op.h"
 #include "response_view.h"
 #include "ring_buffer.h"
 #include "vito_clock.h"
@@ -282,6 +283,20 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // Under P300 and GWG, which have no such telegram here, it is refused with a
   // warning.
   void queue_raw_gfa_read(uint16_t address, uint8_t length);
+  // A generic raw operation, for reverse engineering: one telegram of any
+  // protocol layer with any function code / type byte, from a spec line
+  // ("p300 r 05 1000 16"; the syntax is at the top of raw_op.h) or its
+  // fields. Needs `raw_access: unrestricted` on the hub, and an UNSAFE one
+  // (RawClass, raw_op.h) also `unsafe_raw_writes: true`. The layer must be
+  // reachable: p300 on a P300 hub, kw on a KW hub and on a P300 hub (through
+  // the KW detour), gwg on a GWG hub. Published like a raw read, with the
+  // controller's error code when a P300 error frame answers. Refused with a
+  // warning otherwise; returns whether it was queued.
+  bool queue_raw_op(const char *spec);
+  bool queue_raw_op(const std::string &spec) { return this->queue_raw_op(spec.c_str()); }
+  // `length` is the bytes asked for, or the size of `payload` when one is
+  // given.
+  bool queue_raw_op(RawLayer layer, uint8_t code, uint16_t address, uint8_t length, const uint8_t *payload = nullptr);
 
  protected:
   enum class OpType : uint8_t {
@@ -390,7 +405,15 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   //
   // Returns false for invalid arguments or queue overflow.
   bool enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes, uint8_t bytes_len,
-                    AddressSpace space = AddressSpace::OWN);
+                    AddressSpace space = AddressSpace::OWN, RawLayer layer = RawLayer::NONE, uint8_t code = 0);
+
+  // The telegram of a queue_raw_op() operation on the selected engine. False
+  // like send_read_(): busy, or never (a layer the protocol cannot reach).
+  bool send_raw_op_(uint16_t address, uint8_t length, RawLayer layer, uint8_t code, const uint8_t *payload,
+                    uint8_t payload_len);
+  // "read" / "gfa read" / "p300 05 read" ...: what the raw operation in
+  // flight (or being queued) is, for log and result lines.
+  static void raw_label_(char *out, std::size_t cap, bool is_write, AddressSpace space, RawLayer layer, uint8_t code);
 
   // The telegram for a read (or an RPC call) / a write of `address` in
   // `space`, on the selected engine: the one place an AddressSpace becomes an
@@ -619,6 +642,11 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
     // is 0 (static_assert below), so `RawOp operation{};` (used at every
     // construction site) already value-initializes this to OWN.
     AddressSpace space;
+    // A queue_raw_op() operation: its layer and function code / type byte
+    // (`bytes` its payload when is_write). NONE (0, value-initialized, see
+    // above) for every other raw operation.
+    RawLayer layer;
+    uint8_t code;
   };
 
   // The raw lane is explicitly bounded because a range sweep can enqueue much
@@ -661,6 +689,8 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   bool raw_in_flight_{false};
   bool raw_is_write_{false};
   AddressSpace raw_space_{AddressSpace::OWN};
+  RawLayer raw_layer_{RawLayer::NONE};
+  uint8_t raw_code_{0};
   // The space of the last telegram dispatched; see the address-space affinity
   // in dispatch_next_().
   AddressSpace last_space_{AddressSpace::OWN};

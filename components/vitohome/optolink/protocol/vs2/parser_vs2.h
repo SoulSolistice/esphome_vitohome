@@ -26,8 +26,15 @@ class ParserVS2 {
   ParserResult parse(const uint8_t b);
   const PacketVS2 &packet() const;
   void reset();
+  // Accept a frame with this function code too (0: none beyond READ / WRITE /
+  // RPC), for the request in flight (VS2Engine::request()). Its payload is
+  // taken from the frame length, as for an RPC answer. Survives reset(): it
+  // belongs to the request, not to one frame.
+  void expectFunction(uint8_t function);
 
  private:
+  static bool isNamedFunction(FunctionCode function);
+  uint8_t _expectedFunction{0};
   PacketVS2 _packet;
   enum class ParserStep {
     STARTBYTE,

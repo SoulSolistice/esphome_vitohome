@@ -294,6 +294,13 @@ class GWGEngine {
   // (BE_READ, BE_WRITE), never across modes. Returns false for KMBUS_RAM and
   // KMBUS_EEPROM, which have no write telegram type at all.
   bool write(uint16_t address, const uint8_t *data, uint8_t length, GWGAccessMode access = GWGAccessMode::PHYSICAL);
+  // Any GWG TYPE byte: `01 TYPE ADDR LEN 04`, or the write layout when `data`
+  // is given. A byte of the access-mode table goes through read()/write() in
+  // that mode (an EEPROM read keeps its complement pairs); any other is
+  // answered with `length` raw bytes, or one acknowledgement byte when it
+  // carries a payload (assumed: the KW convention). For the raw lane
+  // (VitoHomeComponent::queue_raw_op()).
+  bool telegram(uint8_t type, uint16_t address, uint8_t length, const uint8_t *data = nullptr);
 
   // True when the transaction that just completed was an EEPROM read in which
   // at least one address answered FF FF ("address not in use"). That pair is

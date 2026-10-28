@@ -67,11 +67,25 @@ case "$TARGET" in
     HEADER="fuzz_corpus_decode.h"
     EXTRA=()
     ;;
+  raw_spec)
+    SRC="fuzz_raw_spec.cpp"
+    HEADER="fuzz_corpus_raw_spec.h"
+    EXTRA=()
+    ;;
+  raw_engines)
+    SRC="fuzz_raw_engines.cpp"
+    HEADER="fuzz_corpus_raw_engines.h"
+    EXTRA=("$OPTO/constants.cpp" "$OPTO/protocol/vs2/vs2.cpp" "$OPTO/protocol/vs2/parser_vs2.cpp"
+      "$OPTO/protocol/vs2/packet_vs2.cpp" "$OPTO/protocol/vs1/vs1.cpp" "$OPTO/protocol/vs1/packet_vs1.cpp"
+      "$OPTO/protocol/gwg/gwg.cpp" "$OPTO/protocol/gwg/packet_gwg.cpp")
+    ;;
   *)
     echo "usage: bash fuzz.sh <target> [seconds] [workers]" >&2
     echo "targets:" >&2
     echo "  parser_vs2   ParserVS2::parse() -- wire to payload" >&2
     echo "  decode       decode.h buffer writers -- payload to text" >&2
+    echo "  raw_spec     raw_op.h spec parser -- a typed line to an operation" >&2
+    echo "  raw_engines  generic telegrams -- one operation against a fuzzed controller" >&2
     exit 2
     ;;
 esac

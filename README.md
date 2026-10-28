@@ -130,7 +130,8 @@ provides several things you would otherwise have to build by hand:
 - **Interactive scan console.** A `scan_result` text sensor plus
   `queue_raw_read` / `queue_raw_write` lets you read or write an arbitrary
   address at runtime (`queue_raw_rpc` makes a P300 remote procedure call,
-  `queue_raw_gfa_read` reads the burner control) and sweep address ranges — useful for identifying
+  `queue_raw_gfa_read` reads the burner control; with `raw_access: unrestricted`,
+  `queue_raw_op` sends any telegram of any layer, e.g. `p300 r 05 1000 16`) and sweep address ranges — useful for identifying
   datapoints on an unknown unit. These interactive operations preempt normal
   polling so the console feels immediate.
 - **Boot-time device identification.** The hub reads the controller
@@ -232,13 +233,19 @@ vitohome:
   #                         # Not supported under protocol: GWG (its clock is
   #                         # three 1-byte registers, a different shape) —
   #                         # rejected at config time.
-  # raw_queue_size: 0       # scan-console lane slots (~38 B each, reserved once
+  # raw_access: standard    # `unrestricted`: queue_raw_op() sends any telegram
+  #                         # of any layer (reverse engineering; needs
+  #                         # raw_queue_size). unsafe_raw_writes: true adds
+  #                         # the ones that may change the controller (EEPROM
+  #                         # / physical writes, GFA_WRITE, unnamed codes with
+  #                         # payload). Both off by default.
+  # raw_queue_size: 0       # scan-console lane slots (~40 B each, reserved once
   #                         # at boot). Default 0: the scan console is a debug
   #                         # tool, so it is opt-in and costs nothing unless
   #                         # used. Set it only if you call queue_raw_read /
   #                         # queue_raw_write or use a scan_result text_sensor:
   #                         # 1–2 for one-off reads, 256 for RANGE SWEEPS
-  #                         # (~9.7 KiB — see example/vitohome-scanner-raw.yaml).
+  #                         # (~10 KiB — see example/vitohome-scanner-raw.yaml).
   #                         # Time sync does NOT use this lane.
 
 sensor:

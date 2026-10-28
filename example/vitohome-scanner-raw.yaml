@@ -16,6 +16,18 @@
 #                  (0xA801, parameter = record index). Disabled by default:
 #                  a procedure that is not a reading RUNS at once.
 #   * RANGE SWEEP— scan a contiguous block from a Home Assistant action.
+#   * RAW OP     — any telegram of any layer, typed as one line (needs
+#                  `raw_access: unrestricted`, set below):
+#                    p300 r 05 1000 16     P300 function code 05, 16 bytes
+#                    kw r 7B 0800 2        a KW telegram (P300: the KW detour)
+#                    gwg r 31 05 1         a GWG TYPE byte
+#                    p300 w 02 2306 25     a telegram with payload
+#                  The P300 code is the low five bits of the flags byte
+#                  (1..1F); an error frame shows its code (01: address not
+#                  served, 05: function code not implemented). Telegrams that
+#                  may change the controller -- physical / EEPROM writes, KW
+#                  GFA_WRITE / PROZESS_WRITE, payloads with unnamed codes --
+#                  also need `unsafe_raw_writes: true`, deliberately not set.
 #
 # GWG units: set `protocol: GWG` and pass the access mode as the last argument,
 # e.g. queue_raw_read(0x05, 1, optolink::GWGAccessMode::EEPROM) or
@@ -125,10 +137,13 @@ vitohome:
   # anything past capacity is dropped with a "raw queue full (n/n); dropping
   # read 0x...." warning.
   #
-  # 256 slots x sizeof(RawOp) (38 B) = ~9.7 KiB. That is the price of sweeping,
+  # 256 slots x sizeof(RawOp) (40 B) = 10 KiB. That is the price of sweeping,
   # which is why it is opt-in here rather than charged to every config. Size it
   # to the largest `count` you intend to sweep; the schema allows up to 1024.
   raw_queue_size: 256
+  # queue_raw_op(), the "Scan ▸ Raw op" button: any telegram that does not
+  # change the controller. A reverse-engineering setting.
+  raw_access: unrestricted
 
 # --- The result surface: a hub-fed text sensor (no address, no polling) ------
 text_sensor:
@@ -159,6 +174,16 @@ text:
 
   # The parameter of a remote procedure call: the catalog's `prefix:` for an
   # `access: rpc` entity (e.g. 00 for the newest record at 0xA801). May be empty.
+  # One raw operation as a line (RAW OP in the header).
+  - platform: template
+    id: scan_op
+    name: "Scan · Raw op (e.g. p300 r 05 1000 16)"
+    optimistic: true
+    mode: text
+    max_length: 120
+    initial_value: "p300 r 01 00F8 8"
+    entity_category: config
+
   - platform: template
     id: scan_rpc_parameter
     name: "Scan · RPC parameter (hex, may be empty)"
@@ -261,3 +286,13 @@ button:
           }
           ESP_LOGW("scan", "RAW RPC 0x%04X (%u parameter bytes)", (unsigned)(uint16_t)a, (unsigned)parameter.size());
           id(vito).queue_raw_rpc((uint16_t) a, parameter);
+
+  # The line in "Scan · Raw op": one telegram, any layer and code. The answer,
+  # its time and a P300 error code land on "Scan ▸ Raw result".
+  - platform: template
+    name: "Scan ▸ Raw op"
+    entity_category: config
+    on_press:
+      - lambda: |-
+          ESP_LOGW("scan", "RAW OP '%s'", id(scan_op).state.c_str());
+          id(vito).queue_raw_op(id(scan_op).state);

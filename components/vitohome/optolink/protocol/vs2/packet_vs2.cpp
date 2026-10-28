@@ -37,7 +37,9 @@ bool PacketVS2::createPacket(PacketType pt, FunctionCode fc, uint8_t id, uint16_
   // 6-byte size check and then copy `len` bytes -- a null dereference and,
   // for len 251..255, an out-of-bounds write. Both were latent (the engines
   // only build REQUESTs), but present.
-  const bool has_payload = (fc == FunctionCode::WRITE || is_rpc || pt == PacketType::RESPONSE);
+  // A function code this project has no name for (the raw lane,
+  // VS2Engine::request()) carries a payload exactly when it is given one.
+  const bool has_payload = (fc == FunctionCode::WRITE || is_rpc || pt == PacketType::RESPONSE || data != nullptr);
   if (has_payload && !data && len != 0) {
     optolink_log_w("Function code - data mismatch");
     return false;

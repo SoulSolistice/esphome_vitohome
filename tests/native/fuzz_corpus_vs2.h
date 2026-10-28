@@ -168,9 +168,30 @@ inline constexpr uint8_t kSeed_rpc_resp_len255[] = {
 // The controller's refusal of 0x6B as a P300 function code (VScotHO1_72,
 // 2026-10-27; THIRD_PARTY #27): an ERROR frame whose flags byte echoes 0x6B,
 // which is no function code this parser takes (low five bits 0x0B) -> ERROR at
-// FLAGS. The engine never sends 0x6B over P300; it drops to KW for it.
+// FLAGS, unless a raw request for 0B expects it. The engine never sends 0x6B
+// over P300 itself; it drops to KW for it.
 inline constexpr uint8_t kSeed_gfa_refused[] = {
     0x41, 0x06, 0x03, 0x6B, 0x40, 0x50, 0x01, 0x05, 0x0A,
+};
+
+// A raw request's answer (VS2Engine::request(), queue_raw_op()): function code
+// 05 EEPROM_READ, accepted because the request expects it, its payload sized
+// by the frame.
+inline constexpr uint8_t kSeed_raw_fc05_resp[] = {
+    0x41, 0x07, 0x01, 0x05, 0x10, 0x00, 0x02, 0xAA, 0xBB, 0x84,
+};
+
+// An ERROR frame whose payload is not DataLength long: an EEPROM read of 16
+// bytes out of range, answered with the two-byte code 31 01 (VDensHO1). The
+// frame decides an error's size.
+inline constexpr uint8_t kSeed_raw_error_31_01[] = {
+    0x41, 0x07, 0x03, 0x05, 0xFF, 0x05, 0x10, 0x31, 0x01, 0x55,
+};
+
+// Vitosoft's GFA_READ 201 sent as a whole flags byte, refused with 05
+// (VScotHO1_72, 2026-10-27): message id 6, function code 09.
+inline constexpr uint8_t kSeed_raw_c9_refused[] = {
+    0x41, 0x06, 0x03, 0xC9, 0x40, 0x50, 0x01, 0x05, 0x68,
 };
 
 struct FuzzSeed {
@@ -193,6 +214,9 @@ inline constexpr FuzzSeed kFuzzSeeds[] = {
     {"rpc_resp_param_len", kSeed_rpc_resp_param_len, sizeof(kSeed_rpc_resp_param_len)},
     {"rpc_resp_len255", kSeed_rpc_resp_len255, sizeof(kSeed_rpc_resp_len255)},
     {"gfa_refused", kSeed_gfa_refused, sizeof(kSeed_gfa_refused)},
+    {"raw_fc05_resp", kSeed_raw_fc05_resp, sizeof(kSeed_raw_fc05_resp)},
+    {"raw_error_31_01", kSeed_raw_error_31_01, sizeof(kSeed_raw_error_31_01)},
+    {"raw_c9_refused", kSeed_raw_c9_refused, sizeof(kSeed_raw_c9_refused)},
     {"ident_bits_set", kSeed_ident_bits_set, sizeof(kSeed_ident_bits_set)},
     {"two_frames", kSeed_two_frames, sizeof(kSeed_two_frames)},
     {"garbage_then_frame", kSeed_garbage_then_frame, sizeof(kSeed_garbage_then_frame)},

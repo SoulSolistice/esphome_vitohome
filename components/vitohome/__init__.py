@@ -71,6 +71,13 @@ CONF_LOG_FRAMES = "log_frames"
 # VitoHomeComponent::set_raw_queue_capacity for the RAM trade-off. Defaults to
 # 0 -- clock sync does not use this lane.
 CONF_RAW_QUEUE_SIZE = "raw_queue_size"
+# The generic raw operation (VitoHomeComponent::queue_raw_op(), raw_op.h): any
+# telegram of any layer, for reverse engineering. Off by default; the second
+# switch adds the operations that may change the controller (RawClass UNSAFE).
+CONF_RAW_ACCESS = "raw_access"
+CONF_UNSAFE_RAW_WRITES = "unsafe_raw_writes"
+RAW_ACCESS_STANDARD = "standard"
+RAW_ACCESS_UNRESTRICTED = "unrestricted"
 
 # System-time sync options (hub-level; see VitoHomeComponent::set_time_sync).
 CONF_TIME_SYNC = "time_sync"
@@ -948,6 +955,24 @@ def datapoint_expression(name: str, address: int, length: int) -> cg.RawExpressi
     )
 
 
+def _validate_raw_access(config):
+    """``unsafe_raw_writes`` widens ``raw_access: unrestricted``, which needs the
+    raw lane it queues on."""
+    unrestricted = config.get(CONF_RAW_ACCESS) == RAW_ACCESS_UNRESTRICTED
+    if config.get(CONF_UNSAFE_RAW_WRITES) and not unrestricted:
+        raise cv.Invalid(
+            f"'{CONF_UNSAFE_RAW_WRITES}' needs '{CONF_RAW_ACCESS}: {RAW_ACCESS_UNRESTRICTED}'",
+            path=[CONF_UNSAFE_RAW_WRITES],
+        )
+    if unrestricted and config.get(CONF_RAW_QUEUE_SIZE, 0) == 0:
+        raise cv.Invalid(
+            f"'{CONF_RAW_ACCESS}: {RAW_ACCESS_UNRESTRICTED}' sends its telegrams on the raw lane; "
+            f"set '{CONF_RAW_QUEUE_SIZE}' (1 for one operation at a time)",
+            path=[CONF_RAW_ACCESS],
+        )
+    return config
+
+
 def _validate_time_sync(config):
     """``time_sync`` needs a ``time_id`` to pull the current time from."""
     if CONF_TIME_SYNC in config and CONF_TIME_ID not in config:
@@ -992,11 +1017,21 @@ CONFIG_SCHEMA = cv.All(
             # chosen at runtime. An enqueue against an unallocated lane is
             # rejected with a warning naming this option.
             cv.Optional(CONF_RAW_QUEUE_SIZE, default=0, visibility=cv.Visibility.ADVANCED): cv.int_range(min=0, max=1024),
+            # queue_raw_op(): `standard` refuses it; `unrestricted` sends any
+            # telegram that does not change the controller (reads, probes of
+            # unnamed codes, the writes the raw lane already makes);
+            # unsafe_raw_writes adds the rest -- P300 physical / EEPROM writes,
+            # KW GFA_WRITE / PROZESS_WRITE, payloads with unnamed codes.
+            cv.Optional(CONF_RAW_ACCESS, default=RAW_ACCESS_STANDARD, visibility=cv.Visibility.ADVANCED): cv.one_of(
+                RAW_ACCESS_STANDARD, RAW_ACCESS_UNRESTRICTED, lower=True
+            ),
+            cv.Optional(CONF_UNSAFE_RAW_WRITES, default=False, visibility=cv.Visibility.ADVANCED): cv.boolean,
         }
     )
     .extend(cv.polling_component_schema("60s"))
     .extend(uart.UART_DEVICE_SCHEMA),
     _validate_time_sync,
+    _validate_raw_access,
 )
 
 
@@ -1485,6 +1520,18 @@ async def to_code(config):
     # Raw-lane capacity is applied before setup() reserves the lane. Emitted
     # unconditionally so the generated main.cpp states the size it runs with.
     cg.add(var.set_raw_queue_capacity(config[CONF_RAW_QUEUE_SIZE]))
+    if config[CONF_RAW_ACCESS] == RAW_ACCESS_UNRESTRICTED:
+        cg.add_build_flag("-DVITOHOME_RAW_UNRESTRICTED")
+        _LOGGER.warning(
+            "vitohome raw_access: unrestricted -- queue_raw_op() sends any telegram of any layer. "
+            "A reverse-engineering setting; remove it from a production config."
+        )
+        if config[CONF_UNSAFE_RAW_WRITES]:
+            cg.add_build_flag("-DVITOHOME_RAW_UNSAFE_WRITES")
+            _LOGGER.warning(
+                "vitohome unsafe_raw_writes: true -- queue_raw_op() may write EEPROM, physical "
+                "memory and the burner control. Use it only knowing what each telegram does."
+            )
 
     # Optional system-time sync. The build flag compiles the now()-using paths
     # in the hub only when a time source is configured, so a build without

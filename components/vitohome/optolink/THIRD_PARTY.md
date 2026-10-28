@@ -663,13 +663,15 @@ These are intentional divergences from upstream `edc059a7`:
       frame, code `05`, 2026-10-27), so `VS2Engine::gfaRead()` leaves P300
       for it: EOT (as RESET), the controller's ENQ answered with the KW
       telegram `01 6B <addr> <len>`, `<len>` raw bytes back (states
-      GFA_DROP / GFA_ENQ / GFA_SEND / GFA_RECEIVE). In GFA_CHAIN a further
+      KW_DROP / KW_ENQ / KW_SEND / KW_RECEIVE). In KW_CHAIN a further
       GFA read goes out on the same KW session after `GFA_GAP_MS`; a request
-      that is not one, or `GFA_LINGER_MS` without any, returns through RESET
+      that is not one, or `KW_LINGER_MS` without any, returns through RESET
       (EOT, ENQ, SYNC, ACK), and an ENQ meanwhile is answered with SYNC. No
-      ENQ within `GFA_ENQ_TIMEOUT_MS` raises TIMEOUT and resets. The request
+      ENQ within `KW_ENQ_TIMEOUT_MS` raises TIMEOUT and resets. The request
       watchdog restarts when the detour starts and when the telegram goes
-      out. Answers up to `GFA_MAX_LENGTH` (64) bytes.
+      out. Answers up to `KW_MAX_LENGTH` (64) bytes. (Item 28 generalised the
+      detour from the GFA read to any KW telegram, `kwTelegram()`, and renamed
+      its states and constants from GFA_* to KW_*.)
     Hardware: KW, VScotHO1_72 with burner control `0x24`, 2026-10-26 -- `6B 40
     50 01` answered `24` where `F7 40 50 01` answered `FF`; P300, same unit,
     2026-10-27 -- the detour read `24` and returned to P300 (4.4 s). READ/WRITE/RPC frames and the P300 parser are
@@ -677,7 +679,49 @@ These are intentional divergences from upstream `edc059a7`:
     `tests/native/proof_vs1_gfa.cpp`, `tests/native/proof_vs2_gfa.cpp`, and the
     refusal frame as a seed in `tests/native/fuzz_corpus_vs2.h`.
 
-Items 7-12, 18, 19, 21, 22, 24, 26 and 27 are the only intentional changes to on-wire/runtime
+28. **Generic telegrams for the raw lane (behavioral divergence, additive).**
+    Upstream sends three fixed telegrams per protocol. The hub's
+    `queue_raw_op()` (raw_op.h, gated by `raw_access: unrestricted`) sends
+    any function code / type byte, for reverse engineering. Changes:
+    - VS2: `request(function, address, length, data)` -- any function code
+      1..0x1F in the low five bits of the flags byte (message id 0), a read's
+      frame without `data`, `length` payload bytes with it. `read()`,
+      `write()` and `rpc()` are now this with 0x01 / 0x02 / 0x07 and build
+      the same bytes. `PacketVS2::createPacket()` attaches a payload whenever
+      data is given. The parser accepts the in-flight request's code too
+      (`ParserVS2::expectFunction()`) and sizes its answer by the frame
+      length, as for an RPC answer; an ERROR frame is sized the same way
+      (its payload is the controller's error code, not DataLength bytes: a
+      VDensHO1 answers an out-of-range EEPROM read with `31 01`), and the
+      engine keeps up to `ERROR_PAYLOAD_MAX` (4) bytes of it for
+      `errorPayload()`. `PacketVS2::payload()` reads it.
+    - VS2 KW detour: `kwTelegram(type, address, length, data)` -- item 27's
+      detour for any KW telegram; with payload the answer is one ack byte.
+      `gfaRead()` is `kwTelegram(0x6B, ...)`. Chained telegrams wait
+      `GFA_GAP_MS` only before a GFA read. Payloads up to `KW_MAX_PAYLOAD`
+      (32) bytes.
+    - VS1: `telegram(type, address, length, data)`; `read()`, `write()`,
+      `gfaRead()` delegate to it. `PacketVS1::createTelegram()` builds any
+      type byte and records the frame length and whether a payload rides;
+      `length()` and the one-byte-ack rule of item 11 key on that instead of
+      the type byte (identical for 0xF7 / 0xF4 / 0x6B).
+    - GWG: `telegram(type, address, length, data)`; a TYPE byte of the
+      access-mode table goes through `read()` / `write()` in that mode
+      (EEPROM pairs, item 24, kept), any other through
+      `PacketGWG::createTelegram()`. As for VS1, the frame length and the
+      one-byte ack (item 8) key on the recorded payload flag, not the TYPE
+      byte -- the same for every byte of the table.
+    Hardware: none for codes outside the existing telegrams; the shapes
+    assumed for them (a payload answered with one ack byte on KW and GWG) are
+    the KW convention. Every frame the existing calls build is byte-identical
+    (all earlier proofs pass unchanged; only `proof_vs2_gfa.cpp` follows the
+    renamed constants). Proofs: `tests/native/proof_raw_engines.cpp`; fuzzing:
+    `fuzz_raw_engines.cpp` (whole transactions against a fuzzed controller,
+    every engine), `fuzz_parser_vs2.cpp` (now also run with an expected
+    function code), with seeds in `fuzz_corpus_raw_engines.h` and
+    `fuzz_corpus_vs2.h`.
+
+Items 7-12, 18, 19, 21, 22, 24, 26, 27 and 28 are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16 are structural (no behavior change from any call
 site that exists -- item 16 alters bytes only on a RESPONSE-construction path
 nothing exercises); item 17 changes only construction-failure handling

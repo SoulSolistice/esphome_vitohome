@@ -625,7 +625,7 @@ function of this protocol". `VS2Engine::gfaRead()` therefore takes the
 telegram to KW: it leaves P300 the way RESET does (EOT), answers the
 controller's next ENQ with `01 6B <addr> <len>`, collects the raw answer,
 chains further GFA reads onto that KW session (25 ms apart), and after
-`GFA_LINGER_MS` without one, or at the first request that is not a GFA read,
+`KW_LINGER_MS` without one, or at the first request that is not a GFA read,
 re-establishes P300 (EOT, ENQ, SYNC, ACK). An ENQ while the KW session idles
 is answered with SYNC straight away. The detour costs up to two ENQ waits
 (the controller offers one about every 2 s when idle), so the hub keeps GFA
@@ -641,7 +641,7 @@ Confirmed on VScotHO1_72 (P300, 2026-10-27), raw GFA read of P80:
 <<< 05                  ENQ, 1.95 s later
 >>> 01 6B 40 50 01
 <<< 24                  P80
->>> 04                  after GFA_LINGER_MS
+>>> 04                  after KW_LINGER_MS
 <<< 05                  ENQ, 1.98 s later
 >>> 16 00 00 / <<< 06   P300 again
 ```
@@ -770,6 +770,61 @@ Vitotronic and in the burner control). The hub models that once:
   GWG-only. `tests/unit/test_access_spaces.py` keeps the table and
   `space_name()` in step; `tests/native/proof_address_space.cpp` pins the
   per-protocol rows.
+
+### The generic raw operation (`queue_raw_op()`)
+
+For reverse engineering, the raw lane sends any telegram of any layer, typed
+as one line in the scan console ("Scan · Raw op") or built from a lambda:
+
+```
+p300 r 05 1000 16      P300 function code 05 (EEPROM_READ), 16 bytes at 0x1000
+p300 w 02 2306 25      a P300 telegram with payload
+kw r 7B 0800 2         a KW telegram -- native on KW, the detour on P300
+gwg r 31 05 1          any GWG TYPE byte
+```
+
+`raw_op.h` holds the parser and the safety class, framework-free, so the
+native suite pins both and fuzzes the parser. The P300 code is the 5-bit
+function code; the engine adds message id 0, so `0x41` / `0x43` style
+"function codes" (a message id over Virtual_READ / Physical_READ) cannot be
+mistaken for new functions. The result line names the operation, the time
+from dispatch, and on a P300 error frame the controller's code (`01` address
+not served, `05` function not implemented).
+
+Two config gates, both off by default:
+
+| | standard | `raw_access: unrestricted` | + `unsafe_raw_writes: true` |
+|---|---|---|---|
+| `queue_raw_op()` | refused | READ, PROBE, WRITE | also UNSAFE |
+
+- READ: P300 01 / 03 / 05, KW F7 / 6B / 7B, GWG's read TYPE bytes, without
+  payload.
+- WRITE: what the raw lane already writes -- P300 02 and the 07 call, KW
+  F4, GWG's write TYPE bytes -- with payload.
+- PROBE: a code with no name here, without payload. The controller refuses
+  one it lacks (P300 `05`); each is logged.
+- UNSAFE: everything that may change the controller -- P300 04 / 06
+  (physical / EEPROM write), KW 68 / 78 (GFA_WRITE / PROZESS_WRITE), a
+  payload on a read code or on an unnamed one.
+
+`unrestricted` needs `raw_queue_size`, and `unsafe_raw_writes` needs
+`unrestricted` (config errors). The layer is checked when the line arrives:
+`p300` on a P300 hub, `kw` on KW and P300, `gwg` on GWG. Entities stay on the
+checked `access:` model; nothing generic reaches a catalog.
+
+The engines gained one generic request each (`VS2Engine::request()` /
+`kwTelegram()`, `VS1Engine::telegram()`, `GWGEngine::telegram()`;
+THIRD_PARTY.md item 28); the existing reads and writes are those with fixed
+codes and build the same bytes. A packet now records its frame length and
+whether a payload rides when it is built, instead of deriving both from the
+type byte later -- which is what lets a byte without a name go out whole.
+
+Fuzzing: `fuzz_raw_spec.cpp` (the line, round-tripped through its canonical
+form), `fuzz_raw_engines.cpp` (one operation against a fuzzed controller,
+every engine: exactly one completion, the promised answer shape, the engine
+idle afterwards) and `fuzz_parser_vs2.cpp` (each input also parsed as the
+answer to a raw request for its code). `tests/native/fuzz.sh raw_spec` /
+`raw_engines` / `parser_vs2` run the open-ended search.
 
 A new access function (the export also has `PROZESS_READ`, the `KBUS_*`
 tunnels, `Virtual_MBUS`, `EEPROM_READ`/`Physical_READ` outside GWG, ...) is

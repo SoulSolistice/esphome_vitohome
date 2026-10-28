@@ -64,6 +64,10 @@ vitohome:
   # a lane -- without this they would be rejected at runtime with a warning.
   # Two slots: one per button, neither of which sweeps.
   raw_queue_size: 2
+  # Compiles queue_raw_op()'s sending branch (-DVITOHOME_RAW_UNRESTRICTED);
+  # common-gwg.yaml adds unsafe_raw_writes, and the single-platform config the
+  # refusing default.
+  raw_access: unrestricted
 
 sensor:
   # div10 SIGNED via converter default
@@ -439,3 +443,13 @@ button:
     on_press:
       - lambda: |-
           id(vito).queue_raw_gfa_read(0x4050, 1);
+  # The generic raw operation, from a spec line and from its fields. P300
+  # sends both (the KW one through the detour); KW refuses the p300 layer at
+  # runtime and sends the KW one.
+  - platform: template
+    name: "Test Raw Op"
+    entity_category: diagnostic
+    on_press:
+      - lambda: |-
+          id(vito).queue_raw_op("p300 r 05 1000 16");
+          id(vito).queue_raw_op(esphome::vitohome::RawLayer::KW, 0x7B, 0x0800, 2);

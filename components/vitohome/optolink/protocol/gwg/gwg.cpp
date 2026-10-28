@@ -72,6 +72,33 @@ bool GWGEngine::write(uint16_t address, const uint8_t *data, uint8_t length, GWG
   return false;
 }
 
+bool GWGEngine::telegram(uint8_t type, uint16_t address, uint8_t length, const uint8_t *data) {
+  if (_busy) {
+    return false;
+  }
+  // A TYPE byte of the access-mode table keeps its mode's handling -- an
+  // EEPROM read (0xAE) still collects complement pairs.
+  for (uint8_t m = 0; m <= static_cast<uint8_t>(GWGAccessMode::KMBUS_EEPROM); ++m) {
+    const auto mode = static_cast<GWGAccessMode>(m);
+    if (data == nullptr && type == gwgReadTypeByte(mode))
+      return read(address, length, mode);
+    if (data != nullptr && gwgModeIsWritable(mode) && type == gwgWriteTypeByte(mode))
+      return write(address, data, length, mode);
+  }
+  if (_currentRequest.createTelegram(type, address, length, data)) {
+    _currentAddress = address;
+    _currentLength = length;
+    _eepromPairs = false;
+    _eepromUnserved = false;
+    _busy = true;
+    _requestTime = _currentMillis;
+    optolink_log_i("telegram 0x%02x OK", type);
+    return true;
+  }
+  optolink_log_i("telegram 0x%02x not possible, packet creation error", type);
+  return false;
+}
+
 bool GWGEngine::begin() {
   if (_interface == nullptr)
     return false;
@@ -265,7 +292,7 @@ void GWGEngine::_receive() {
   // Exception, hardware-confirmed: an EEPROM read is answered with a 2-byte
   // complement pair per address, so _currentLength is 2 there (see
   // kEepromPairLength and THIRD_PARTY.md #24).
-  const uint8_t expected = isKnownGwgWriteType(_currentRequest.packetType()) ? 1 : _currentLength;
+  const uint8_t expected = _currentRequest.hasPayload() ? 1 : _currentLength;
   if (_bytesTransferred == expected) {
     _bytesTransferred = 0;  // VS1 parity; _init() also resets before SEND
     // A completed transaction is itself proof the device is listening, so it
@@ -309,7 +336,7 @@ void GWGEngine::_receive() {
     // Writes are out of scope -- GWG write framing remains model-derived
     // (THIRD_PARTY.md #8) and this instrument was motivated by, and only
     // validated against, the read path's ENQ-misread capture.
-    if (_onTimingCallback && !isKnownGwgWriteType(_currentRequest.packetType())) {
+    if (_onTimingCallback && !_currentRequest.hasPayload()) {
       _onTimingCallback(_enqAgeMillis, _currentMillis - _sendCompleteMillis, _currentAddress);
     }
     _tryOnResponse(_eepromPairs ? _eepromLength : expected);

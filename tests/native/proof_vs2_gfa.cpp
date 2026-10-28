@@ -8,13 +8,13 @@
 //      01 6B <addr> <len>, and delivers the <len> raw bytes with the address;
 //   B) a GFA read right after it chains onto the KW session, GFA_GAP_MS later,
 //      without a new ENQ;
-//   C) with nothing queued for GFA_LINGER_MS the engine re-establishes P300
+//   C) with nothing queued for KW_LINGER_MS the engine re-establishes P300
 //      (EOT, ENQ, SYNC 16 00 00, ACK) and reads as P300 again;
 //   D) a P300 request after a GFA answer goes through the same return first;
 //   E) a controller ENQ while the KW session idles is answered with SYNC;
 //   F) an ENQ in the KW session opens a pending GFA read with 01 again;
 //   G) no ENQ after the drop: TIMEOUT, and the engine resets to P300;
-//   H) guards: length 1..GFA_MAX_LENGTH, single in flight.
+//   H) guards: length 1..KW_MAX_LENGTH, single in flight.
 //
 // Built by build_and_run_protocols.sh (P300 is the default protocol).
 
@@ -133,8 +133,8 @@ int main() {
   check(g_responses == 2 && g_payload == Bytes({0x12, 0x34}), "B: both bytes delivered");
 
   // --- C ------------------------------------------------------------------
-  advance(e, Engine::GFA_LINGER_MS);
-  check(io.written().empty(), "C: still in KW at GFA_LINGER_MS");
+  advance(e, Engine::KW_LINGER_MS);
+  check(io.written().empty(), "C: still in KW at KW_LINGER_MS");
   advance(e, 1);
   check(handshake(e, io), "C: after it, EOT / ENQ / SYNC / ACK back to P300");
   check(p300_read(e, io), "C: and a P300 read works");
@@ -168,7 +168,7 @@ int main() {
   io.clear_written();
   io.feed({0x24});
   pump(e);
-  io.feed({0x05});  // the KW session idles out before GFA_LINGER_MS
+  io.feed({0x05});  // the KW session idles out before KW_LINGER_MS
   pump(e);
   check(io.written() == Bytes({0x16, 0x00, 0x00}), "E: the ENQ is answered with SYNC");
   io.clear_written();
@@ -193,7 +193,7 @@ int main() {
   io.feed({0x10});
   pump(e);
   check(g_payload == Bytes({0x10}), "F: and its answer is the data byte");
-  advance(e, Engine::GFA_LINGER_MS + 1);
+  advance(e, Engine::KW_LINGER_MS + 1);
   check(handshake(e, io), "F: back to P300");
 
   // --- G ------------------------------------------------------------------
@@ -202,8 +202,8 @@ int main() {
   pump(e);
   check(io.written() == Bytes({0x04}), "G: EOT");
   io.clear_written();
-  advance(e, Engine::GFA_ENQ_TIMEOUT_MS);
-  check(g_errors == errors_before, "G: no error at GFA_ENQ_TIMEOUT_MS");
+  advance(e, Engine::KW_ENQ_TIMEOUT_MS);
+  check(g_errors == errors_before, "G: no error at KW_ENQ_TIMEOUT_MS");
   advance(e, 1);
   check(g_errors == errors_before + 1 && g_last_error == optolink::OptolinkResult::TIMEOUT, "G: TIMEOUT after it");
   check(!e.isBusy(), "G: engine free again");
@@ -211,8 +211,8 @@ int main() {
 
   // --- H ------------------------------------------------------------------
   check(!e.gfaRead(0x4050, 0), "H: zero length refused");
-  check(!e.gfaRead(0x4050, Engine::GFA_MAX_LENGTH + 1), "H: more than GFA_MAX_LENGTH refused");
-  check(e.gfaRead(0x4050, Engine::GFA_MAX_LENGTH), "H: GFA_MAX_LENGTH accepted");
+  check(!e.gfaRead(0x4050, Engine::KW_MAX_LENGTH + 1), "H: more than KW_MAX_LENGTH refused");
+  check(e.gfaRead(0x4050, Engine::KW_MAX_LENGTH), "H: KW_MAX_LENGTH accepted");
   check(!e.gfaRead(0x4050, 1) && !e.read(0x00F8, 1), "H: nothing else while it is in flight");
 
   std::printf("vs2 gfa read: %d failure(s)\n", g_fail);
