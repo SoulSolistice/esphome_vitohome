@@ -439,11 +439,3 @@ button:
     on_press:
       - lambda: |-
           id(vito).queue_raw_gfa_read(0x4050, 1);
-  # A P300 function-code probe (0xC9, Vitosoft's GFA_READ). P300 sends it; KW,
-  # which shares this file, compiles the refusal branch.
-  - platform: template
-    name: "Test Raw Function Probe"
-    entity_category: diagnostic
-    on_press:
-      - lambda: |-
-          id(vito).queue_raw_function_read(0x4050, 1, 0xC9);

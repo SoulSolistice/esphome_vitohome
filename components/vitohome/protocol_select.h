@@ -31,9 +31,6 @@ inline constexpr const char *PROTOCOL_NAME = "P300 (VS2)";
 // See the KW branch. A P300 controller refuses 0x6B as a function code, so
 // VS2Engine::gfaRead() drops the link to KW for the telegram.
 #define VITOHOME_HAS_GFA
-// A raw read with a whole function-code byte (VS2Engine::functionRead()), the
-// scan console's probe for codes the 5-bit field cannot hold.
-#define VITOHOME_HAS_FUNCTION_PROBE
 #endif
 
 }  // namespace esphome::vitohome

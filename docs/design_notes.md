@@ -633,25 +633,6 @@ reads together: after one, the next queued GFA read is moved to the front of
 the read lane (address-space affinity, `dispatch_next_`). Not yet confirmed
 on a unit; `tests/native/proof_vs2_gfa.cpp` pins the byte sequence.
 
-**A P300 code for it may exist.** The Vitosoft export only names access
-functions, but the InsideViessmannVitosoft notes list Vitosoft's P300 function
-codes, and there GFA_READ is **201** (`0xC9`), GFA_WRITE 202 -- not 107 (`0x6B`),
-which is the KW command byte (as PROZESS_READ is 123 in both, while
-Virtual_READ is `0xF7` on KW and 1 on P300). 201 does not fit the 5-bit
-function-code field, so it would go out as the whole flags byte. The scan
-console's "Raw P300 function probe" sends exactly that
-(`queue_raw_function_read(address, length, function)`, default `0xC9`):
-
-```
->>> 41 05 00 C9 40 50 01 5F
-<<< 06 41 06 01 C9 40 50 01 24 85      if the controller takes it (P80 = 24)
-<<< 06 41 06 03 C9 40 50 01 xx cs      if it refuses (compare code 05 for 0x6B)
-```
-
-Not tried on a unit yet. If it answers, `gfaRead()` over P300 can send it
-directly and the KW detour becomes the fallback; until then the detour is the
-path.
-
 **The address space**, from the export:
 
 | range | content | example |

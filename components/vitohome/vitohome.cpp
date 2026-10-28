@@ -19,9 +19,7 @@ namespace esphome::vitohome {
 static const char *const TAG = "vitohome";
 
 // What a raw-lane operation is, for its log lines.
-static const char *raw_kind(bool is_write, AddressSpace space, uint8_t function = 0) {
-  if (function != 0)
-    return "function probe";
+static const char *raw_kind(bool is_write, AddressSpace space) {
   if (space == AddressSpace::RPC)
     return "rpc";
   if (space == AddressSpace::GFA)
@@ -467,28 +465,16 @@ void VitoHomeComponent::dispatch_raw_front_() {
 
     this->raw_is_write_ = operation.is_write;
     this->raw_space_ = operation.space;
-    this->raw_function_ = operation.function;
 
     // The space picks the telegram (send_read_ / send_write_): a GWG access
     // mode on GWG -- the scan console can pick EEPROM (0xAD) / BE (0x9D), the
     // modes Vitosoft marks writable --, a remote procedure call with its
     // parameter, a GFA read. OWN, the protocol's own read or write, unless
     // the caller asked for another.
-    // A function-code probe bypasses the spaces: a diagnostic of the engine.
-    bool dispatched = false;
-#ifdef VITOHOME_HAS_FUNCTION_PROBE
-    const bool probe = operation.function != 0;
-    if (probe)
-      dispatched = this->vito_->functionRead(operation.function, operation.address, operation.length);
-#else
-    const bool probe = false;
-#endif
-    if (!probe) {
-      dispatched = operation.is_write
-                       ? this->send_write_(operation.address, operation.bytes, operation.bytes_len, operation.space)
-                       : this->send_read_(operation.address, operation.length, operation.space, operation.bytes,
-                                          operation.bytes_len);
-    }
+    const bool dispatched =
+        operation.is_write ? this->send_write_(operation.address, operation.bytes, operation.bytes_len, operation.space)
+                           : this->send_read_(operation.address, operation.length, operation.space, operation.bytes,
+                                              operation.bytes_len);
 
     if (!dispatched) {
       // read()/write() returning false is overloaded: transient backpressure
@@ -505,7 +491,7 @@ void VitoHomeComponent::dispatch_raw_front_() {
       if (this->vito_->isBusy())
         return false;  // transient: keep the item at the head and retry
       ESP_LOGE(TAG, "Engine refused raw %s 0x%04X len %u (permanent); dropping",
-               raw_kind(operation.is_write, operation.space, operation.function), operation.address, operation.length);
+               raw_kind(operation.is_write, operation.space), operation.address, operation.length);
       this->raw_handle_error_(optolink::OptolinkResult::ERROR);
       return true;  // permanent: drop so the read/write lanes are reached
     }
@@ -515,8 +501,8 @@ void VitoHomeComponent::dispatch_raw_front_() {
     this->last_space_ = operation.space;
     this->in_flight_started_ms_ = App.get_loop_component_start_time();
 
-    ESP_LOGV(TAG, "Dispatched raw %s 0x%04X len %u", raw_kind(operation.is_write, operation.space, operation.function),
-             operation.address, operation.length);
+    ESP_LOGV(TAG, "Dispatched raw %s 0x%04X len %u", raw_kind(operation.is_write, operation.space), operation.address,
+             operation.length);
 
     return true;
   });
@@ -1050,28 +1036,8 @@ void VitoHomeComponent::queue_raw_gfa_read(uint16_t address, uint8_t length) {
   this->enqueue_raw_(address, length, false, nullptr, 0, AddressSpace::GFA);
 }
 
-void VitoHomeComponent::queue_raw_function_read(uint16_t address, uint8_t length, uint8_t function) {
-#ifdef VITOHOME_HAS_FUNCTION_PROBE
-  if (function == 0) {
-    ESP_LOGW(TAG, "queue_raw_function_read: function code 0 is no function");
-    return;
-  }
-  if (length < 1 || length > RAW_READ_MAX) {
-    ESP_LOGW(TAG, "queue_raw_function_read: length %u out of range (1..%u)", length, RAW_READ_MAX);
-    return;
-  }
-  ESP_LOGI(TAG, "Function probe 0x%02X: read 0x%04X len %u", function, address, length);
-  this->enqueue_raw_(address, length, false, nullptr, 0, AddressSpace::OWN, function);
-#else
-  (void) length;
-  (void) function;
-  ESP_LOGW(TAG, "queue_raw_function_read: 0x%04X not sent -- %s has no function-code probe (P300 only)", address,
-           PROTOCOL_NAME);
-#endif
-}
-
 bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes,
-                                     uint8_t bytes_len, AddressSpace space, uint8_t function) {
+                                     uint8_t bytes_len, AddressSpace space) {
   const bool is_rpc = space == AddressSpace::RPC;
   // An RPC's length is its parameter's, which may be empty; see queue_raw_rpc().
   if (length == 0 && !is_rpc) {
@@ -1111,7 +1077,6 @@ bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
   operation.is_write = is_write;
   operation.bytes_len = bytes_len;
   operation.space = space;
-  operation.function = function;
 
   if ((is_write || is_rpc) && bytes_len != 0)
     std::memcpy(operation.bytes, bytes, bytes_len);
@@ -1126,16 +1091,16 @@ bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
       ESP_LOGW(TAG,
                "raw lane not allocated; dropping %s 0x%04X. Set raw_queue_size on the vitohome hub to use the "
                "scan console.",
-               raw_kind(is_write, space, function), address);
+               raw_kind(is_write, space), address);
     } else {
       ESP_LOGW(TAG, "raw queue full (%zu/%zu); dropping %s 0x%04X. Raise raw_queue_size for larger sweeps.",
-               this->raw_queue_.size(), this->raw_queue_.capacity(), raw_kind(is_write, space, function), address);
+               this->raw_queue_.size(), this->raw_queue_.capacity(), raw_kind(is_write, space), address);
     }
 
     return false;
   }
 
-  ESP_LOGD(TAG, "Queued raw %s 0x%04X len %u", raw_kind(is_write, space, function), address, length);
+  ESP_LOGD(TAG, "Queued raw %s 0x%04X len %u", raw_kind(is_write, space), address, length);
   return true;
 }
 
@@ -1159,7 +1124,7 @@ void VitoHomeComponent::raw_handle_error_(optolink::OptolinkResult error) {
   char buffer[96];
 
   snprintf(buffer, sizeof(buffer), "0x%04X: %s FAILED (%s)", this->raw_dp_.address(),
-           raw_kind(this->raw_is_write_, this->raw_space_, this->raw_function_), optolink::errorToString(error));
+           raw_kind(this->raw_is_write_, this->raw_space_), optolink::errorToString(error));
 
   ESP_LOGW(TAG, "Raw: %s", buffer);
   this->raw_publish_(buffer);

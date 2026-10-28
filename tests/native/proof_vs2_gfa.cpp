@@ -15,12 +15,6 @@
 //   F) an ENQ in the KW session opens a pending GFA read with 01 again;
 //   G) no ENQ after the drop: TIMEOUT, and the engine resets to P300;
 //   H) guards: length 1..GFA_MAX_LENGTH, single in flight.
-// And the function-code probe (functionRead()), on a fresh engine:
-//   I) the read frame with the whole flags byte, e.g. 41 05 00 C9 40 50 01 5F
-//      for Vitosoft's GFA_READ 201; an answer echoing it is delivered, an
-//      ERROR frame echoing it is DEVICE_ERROR; a byte whose low bits read as
-//      WRITE (0x22) still delivers its payload; once a plain read is sent, an
-//      echo of the probe byte is no longer taken; 0 is refused.
 //
 // Built by build_and_run_protocols.sh (P300 is the default protocol).
 
@@ -216,61 +210,6 @@ int main() {
   check(!e.gfaRead(0x4050, Engine::GFA_MAX_LENGTH + 1), "H: more than GFA_MAX_LENGTH refused");
   check(e.gfaRead(0x4050, Engine::GFA_MAX_LENGTH), "H: GFA_MAX_LENGTH accepted");
   check(!e.gfaRead(0x4050, 1) && !e.read(0x00F8, 1), "H: nothing else while it is in flight");
-
-  // --- I: function-code probe ---------------------------------------------
-  {
-    FakeOptolink pio;
-    Engine p(&pio);
-    p.onResponse([](const uint8_t *d, uint8_t len, uint16_t address) {
-      ++g_responses;
-      g_payload.assign(d, d + len);
-      g_address = address;
-    });
-    p.onError([](optolink::OptolinkResult r, uint16_t) {
-      ++g_errors;
-      g_last_error = r;
-    });
-    p.begin();
-    check(handshake(p, pio), "I: P300 link up");
-    const int responses = g_responses;
-    check(!p.functionRead(0x00, 0x4050, 1), "I: function byte 0 refused");
-    check(p.functionRead(0xC9, 0x4050, 1), "I: probe 0xC9 accepted");
-    pump(p);
-    check(pio.written() == Bytes({0x41, 0x05, 0x00, 0xC9, 0x40, 0x50, 0x01, 0x5F}), "I: frame 41 05 00 C9 40 50 01 5F");
-    pio.clear_written();
-    pio.feed({0x06, 0x41, 0x06, 0x01, 0xC9, 0x40, 0x50, 0x01, 0x24, 0x85});
-    pump(p);
-    check(g_responses == responses + 1 && g_payload == Bytes({0x24}) && g_address == 0x4050,
-          "I: an answer echoing 0xC9 delivers 24");
-    pio.clear_written();
-
-    const int errors = g_errors;
-    check(p.functionRead(0xC9, 0x4050, 1), "I: probe again");
-    pump(p);
-    pio.clear_written();
-    pio.feed({0x06, 0x41, 0x06, 0x03, 0xC9, 0x40, 0x50, 0x01, 0x05, 0x68});
-    pump(p);
-    check(g_errors == errors + 1 && g_last_error == optolink::OptolinkResult::DEVICE_ERROR,
-          "I: an ERROR frame echoing it is DEVICE_ERROR");
-    pio.clear_written();
-
-    check(p.functionRead(0x22, 0x4050, 2), "I: probe 0x22 (low bits = WRITE)");
-    pump(p);
-    pio.clear_written();
-    pio.feed({0x06, 0x41, 0x07, 0x01, 0x22, 0x40, 0x50, 0x02, 0x12, 0x34, 0x02});
-    pump(p);
-    check(g_payload == Bytes({0x12, 0x34}), "I: its payload is delivered, not hidden as a write ack");
-    pio.clear_written();
-
-    const int errors2 = g_errors;
-    check(p.read(0x4050, 1), "I: a plain read after the probes");
-    pump(p);
-    pio.clear_written();
-    pio.feed({0x06, 0x41, 0x06, 0x01, 0xC9, 0x40, 0x50, 0x01, 0x24, 0x85});
-    pump(p);
-    check(g_errors == errors2 + 1 && g_last_error == optolink::OptolinkResult::ERROR,
-          "I: an echo of 0xC9 is no longer taken");
-  }
 
   std::printf("vs2 gfa read: %d failure(s)\n", g_fail);
   return g_fail == 0 ? 0 : 1;

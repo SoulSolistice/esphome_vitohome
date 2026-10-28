@@ -53,8 +53,6 @@ class PacketVS2 {
   uint8_t dataLength() const;
   uint8_t payloadLength() const;
   const uint8_t *data() const;
-  // The payload bytes whatever the function code (data() hides a WRITE's).
-  const uint8_t *payload() const;
 
   uint8_t checksum() const;
 
