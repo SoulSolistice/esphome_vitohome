@@ -45,6 +45,10 @@
 #include <cstdint>
 #include <cstdio>
 
+#include <csignal>
+#include <sys/wait.h>
+#include <unistd.h>
+
 #include "ring_buffer.h"
 
 using esphome::vitohome::RingBuffer;
@@ -421,6 +425,27 @@ static void test_move_first_to_front_if() {
   check(q.size() == 2 && q.try_front(out) && out == 2, "no match: buffer unchanged");
 }
 
+// A consumer that queues onto its own ring takes the lock again: on ESP32 a
+// deadlock. The host stand-in aborts instead; run it in a child and 
+// expect the abort.
+static void test_reentry_is_caught() {
+  std::fflush(stdout);
+  const pid_t pid = fork();
+  if (pid == 0) {
+    RingBuffer<int> rb;
+    if (!rb.reserve(4) || !rb.push_back(1))
+      _exit(2);
+    rb.consume_front_if([&rb](int) {
+      (void) rb.push_back(2);  // re-entry
+      return true;
+    });
+    _exit(0);  // not reached when the guard works
+  }
+  int status = 0;
+  waitpid(pid, &status, 0);
+  check(WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT, "re-entering a ring from its consumer aborts");
+}
+
 int main() {
   test_unreserved();
   test_reserve_one_shot();
@@ -433,6 +458,7 @@ int main() {
   test_hub_pattern();
   test_move_to_front();
   test_move_first_to_front_if();
+  test_reentry_is_caught();
   std::printf("ring_buffer proof: %d failure(s)\n", g_fail);
   return g_fail == 0 ? 0 : 1;
 }
