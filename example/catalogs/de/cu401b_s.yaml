@@ -3067,6 +3067,32 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: circuit=hk1 level=td quickcheck
+    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted; no encode path for the conversion -> read-only
+  - platform: vitohome
+    name: "Ferienbeginn HK1"
+    id: WPR3_FerienBeginn_HK1
+    address: 0xB100
+    length: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=hk1 level=td quickcheck
+    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted; no encode path for the conversion -> read-only
+  - platform: vitohome
+    name: "Ferienende HK1"
+    id: WPR3_FerienEnde_HK1
+    address: 0xB100
+    length: 4
+    byte_offset: 2
+    byte_length: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
   # vito: circuit=dhw,boiler level=td trend
   - platform: vitohome
     name: "Kesseltemperatur Soll"
@@ -5713,6 +5739,85 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
+  # --- HC2 ---
+  # vito: circuit=hk2 quickcheck
+    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted; no encode path for the conversion -> read-only
+  - platform: vitohome
+    name: "Ferienbeginn HK2"
+    id: WPR3_FerienBeginn_HK2
+    address: 0xB101
+    length: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=hk2 quickcheck
+    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted; no encode path for the conversion -> read-only
+  - platform: vitohome
+    name: "Ferienende HK2"
+    id: WPR3_FerienEnde_HK2
+    address: 0xB101
+    length: 4
+    byte_offset: 2
+    byte_length: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- HC3 ---
+  # vito: circuit=hk3 quickcheck
+    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted; no encode path for the conversion -> read-only
+  - platform: vitohome
+    name: "Ferienbeginn HK3"
+    id: WPR3_FerienBeginn_HK3
+    address: 0xB102
+    length: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=hk3 quickcheck
+    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted; no encode path for the conversion -> read-only
+  - platform: vitohome
+    name: "Ferienende HK3"
+    id: WPR3_FerienEnde_HK3
+    address: 0xB102
+    length: 4
+    byte_offset: 2
+    byte_length: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Lueftung ---
+    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted; no encode path for the conversion -> read-only
+  - platform: vitohome
+    name: "Ferienbeginn Lüftung"
+    id: WPR3_FerienBeginn_Lueftung
+    address: 0xB105
+    length: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted; no encode path for the conversion -> read-only
+  - platform: vitohome
+    name: "Ferienende Lüftung"
+    id: WPR3_FerienEnde_Lueftung
+    address: 0xB105
+    length: 4
+    byte_offset: 2
+    byte_length: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
 
   # --- PlantOverview / Heizkreise ---
   # vito: circuit=hk2 trend
@@ -18545,46 +18650,6 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-  # vito: circuit=hk1 level=td quickcheck
-    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted; writes are a read-modify-write of the whole 4-byte block
-  - platform: vitohome
-    name: "Ferienbeginn HK1"
-    id: WPR3_FerienBeginn_HK1
-    address: 0xB100
-    length: 4
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=hk1 level=td quickcheck
-    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted; writes are a read-modify-write of the whole 4-byte block
-  - platform: vitohome
-    name: "Ferienende HK1"
-    id: WPR3_FerienEnde_HK1
-    address: 0xB100
-    length: 4
-    byte_offset: 2
-    byte_length: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # vito: level=td
     # NOTE: writes are a read-modify-write of the whole 6-byte block
   - platform: vitohome
@@ -19232,127 +19297,6 @@ number:
     id: WPR3_Split_Aktor_Primaerquelle_Nonstandard_Profile
     address: 0x7332
     length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # --- HC2 ---
-  # vito: circuit=hk2 quickcheck
-    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted; writes are a read-modify-write of the whole 4-byte block
-  - platform: vitohome
-    name: "Ferienbeginn HK2"
-    id: WPR3_FerienBeginn_HK2
-    address: 0xB101
-    length: 4
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=hk2 quickcheck
-    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted; writes are a read-modify-write of the whole 4-byte block
-  - platform: vitohome
-    name: "Ferienende HK2"
-    id: WPR3_FerienEnde_HK2
-    address: 0xB101
-    length: 4
-    byte_offset: 2
-    byte_length: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # --- HC3 ---
-  # vito: circuit=hk3 quickcheck
-    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted; writes are a read-modify-write of the whole 4-byte block
-  - platform: vitohome
-    name: "Ferienbeginn HK3"
-    id: WPR3_FerienBeginn_HK3
-    address: 0xB102
-    length: 4
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=hk3 quickcheck
-    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted; writes are a read-modify-write of the whole 4-byte block
-  - platform: vitohome
-    name: "Ferienende HK3"
-    id: WPR3_FerienEnde_HK3
-    address: 0xB102
-    length: 4
-    byte_offset: 2
-    byte_length: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # --- Lueftung ---
-    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted; writes are a read-modify-write of the whole 4-byte block
-  - platform: vitohome
-    name: "Ferienbeginn Lüftung"
-    id: WPR3_FerienBeginn_Lueftung
-    address: 0xB105
-    length: 4
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-    # NOTE: conversion 'DayToDate' has no preset; raw noconv emitted; writes are a read-modify-write of the whole 4-byte block
-  - platform: vitohome
-    name: "Ferienende Lüftung"
-    id: WPR3_FerienEnde_Lueftung
-    address: 0xB105
-    length: 4
-    byte_offset: 2
-    byte_length: 2
     converter: noconv
     # Borders absent, or out of range for this byte width, in
     # the export. These placeholders pass `esphome config` but

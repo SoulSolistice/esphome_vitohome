@@ -32,6 +32,270 @@
 # ============================================================
 
 sensor:
+  # --- Bedienung / BedienungHK1 ---
+  # vito: circuit=hk1 overview trend
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "Komfortsollwert (Vitotwin_2000_Komfortsollwert)"
+    id: Vitotwin_2000_Komfortsollwert
+    address: 0x2000
+    length: 2
+    converter: noconv
+    unit_of_measurement: "°C"
+    device_class: temperature
+    filters:
+      - multiply: 0.015625
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=hk1 overview trend
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "Reduziertsollwert (Vitotwin_2003_Reduziertsollwert)"
+    id: Vitotwin_2003_Reduziertsollwert
+    address: 0x2003
+    length: 2
+    converter: noconv
+    unit_of_measurement: "°C"
+    device_class: temperature
+    filters:
+      - multiply: 0.015625
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: overview
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.02); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "Neigung (Vitotwin_2006_Neigung)"
+    id: Vitotwin_2006_Neigung
+    address: 0x2006
+    length: 2
+    converter: noconv
+    filters:
+      - multiply: 0.02
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: overview
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "Niveau (Vitotwin_2009_Niveau)"
+    id: Vitotwin_2009_Niveau
+    address: 0x2009
+    length: 2
+    converter: noconv
+    filters:
+      - multiply: 0.015625
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: overview
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "Mischererhöhung (Vitotwin_2011_Mischererhoehung)"
+    id: Vitotwin_2011_Mischererhoehung
+    address: 0x2011
+    length: 2
+    converter: noconv
+    unit_of_measurement: "°C"
+    device_class: temperature
+    filters:
+      - multiply: 0.015625
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Bedienung / BedienungHK2 ---
+  # vito: circuit=hk2 overview trend
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "Komfortsollwert (Vitotwin_3000_Komfortsollwert)"
+    id: Vitotwin_3000_Komfortsollwert
+    address: 0x3000
+    length: 2
+    converter: noconv
+    unit_of_measurement: "°C"
+    device_class: temperature
+    filters:
+      - multiply: 0.015625
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=hk2 overview trend
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "Reduziertsollwert (Vitotwin_3003_Reduziertsollwert)"
+    id: Vitotwin_3003_Reduziertsollwert
+    address: 0x3003
+    length: 2
+    converter: noconv
+    unit_of_measurement: "°C"
+    device_class: temperature
+    filters:
+      - multiply: 0.015625
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: overview
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.02); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "Neigung (Vitotwin_3006_Neigung)"
+    id: Vitotwin_3006_Neigung
+    address: 0x3006
+    length: 2
+    converter: noconv
+    filters:
+      - multiply: 0.02
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: overview
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "Niveau (Vitotwin_3009_Niveau)"
+    id: Vitotwin_3009_Niveau
+    address: 0x3009
+    length: 2
+    converter: noconv
+    filters:
+      - multiply: 0.015625
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: overview
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "Mischererhöhung (Vitotwin_3011_Mischererhoehung)"
+    id: Vitotwin_3011_Mischererhoehung
+    address: 0x3011
+    length: 2
+    converter: noconv
+    unit_of_measurement: "°C"
+    device_class: temperature
+    filters:
+      - multiply: 0.015625
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Bedienung / BedienungHK3 ---
+  # vito: circuit=hk3 overview trend
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "Komfortsollwert (Vitotwin_4000_Komfortsollwert)"
+    id: Vitotwin_4000_Komfortsollwert
+    address: 0x4000
+    length: 2
+    converter: noconv
+    unit_of_measurement: "°C"
+    device_class: temperature
+    filters:
+      - multiply: 0.015625
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=hk3 overview trend
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "Reduziertsollwert (Vitotwin_4003_Reduziertsollwert)"
+    id: Vitotwin_4003_Reduziertsollwert
+    address: 0x4003
+    length: 2
+    converter: noconv
+    unit_of_measurement: "°C"
+    device_class: temperature
+    filters:
+      - multiply: 0.015625
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: overview
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.02); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "Neigung (Vitotwin_4006_Neigung)"
+    id: Vitotwin_4006_Neigung
+    address: 0x4006
+    length: 2
+    converter: noconv
+    filters:
+      - multiply: 0.02
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: overview
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "Niveau (Vitotwin_4009_Niveau)"
+    id: Vitotwin_4009_Niveau
+    address: 0x4009
+    length: 2
+    converter: noconv
+    filters:
+      - multiply: 0.015625
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: overview
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "Mischererhöhung (Vitotwin_4011_Mischererhoehung)"
+    id: Vitotwin_4011_Mischererhoehung
+    address: 0x4011
+    length: 2
+    converter: noconv
+    unit_of_measurement: "°C"
+    device_class: temperature
+    filters:
+      - multiply: 0.015625
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Bedienung / BedienungWW ---
+  # vito: circuit=dhw overview trend
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "Nennsollwert"
+    id: Vitotwin_5000_Nennsollwert
+    address: 0x5000
+    length: 2
+    converter: noconv
+    unit_of_measurement: "°C"
+    device_class: temperature
+    filters:
+      - multiply: 0.015625
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Bedienung / ExternerWarmeerzeuger ---
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "Sollwertanhebung Haupterzeuger"
+    id: Vitotwin_1010_Sollwertanhebung_Haupterzeug
+    address: 0x1010
+    length: 2
+    converter: noconv
+    unit_of_measurement: "°C"
+    device_class: temperature
+    filters:
+      - multiply: 0.015625
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
   # --- DiagnoseAnlage / Monatswerte ---
   - platform: vitohome
     name: "Datum Monatswerte 1 Monat"
@@ -975,87 +1239,6 @@ sensor:
 
 number:
   # --- Bedienung / BedienungHK1 ---
-  # vito: circuit=hk1 overview trend
-    # NOTE: conversion 'MultOffset': display value = raw * 0.015625; raw noconv emitted (no encode path for the transform); writes are a read-modify-write of the whole 3-byte block
-  - platform: vitohome
-    name: "Komfortsollwert (Vitotwin_2000_Komfortsollwert)"
-    id: Vitotwin_2000_Komfortsollwert
-    address: 0x2000
-    length: 3
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=hk1 overview trend
-    # NOTE: conversion 'MultOffset': display value = raw * 0.015625; raw noconv emitted (no encode path for the transform); writes are a read-modify-write of the whole 3-byte block
-  - platform: vitohome
-    name: "Reduziertsollwert (Vitotwin_2003_Reduziertsollwert)"
-    id: Vitotwin_2003_Reduziertsollwert
-    address: 0x2003
-    length: 3
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-    # NOTE: conversion 'MultOffset': display value = raw * 0.02; raw noconv emitted (no encode path for the transform); writes are a read-modify-write of the whole 3-byte block
-  - platform: vitohome
-    name: "Neigung (Vitotwin_2006_Neigung)"
-    id: Vitotwin_2006_Neigung
-    address: 0x2006
-    length: 3
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    min_value: 0.1
-    max_value: 4
-    step: 0.02
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-    # NOTE: conversion 'MultOffset': display value = raw * 0.015625; raw noconv emitted (no encode path for the transform); writes are a read-modify-write of the whole 3-byte block
-  - platform: vitohome
-    name: "Niveau (Vitotwin_2009_Niveau)"
-    id: Vitotwin_2009_Niveau
-    address: 0x2009
-    length: 3
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # vito: overview
     # NOTE: writes are a read-modify-write of the whole 5-byte block
   - platform: vitohome
@@ -1068,28 +1251,6 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-    # NOTE: conversion 'MultOffset': display value = raw * 0.015625; raw noconv emitted (no encode path for the transform); writes are a read-modify-write of the whole 3-byte block
-  - platform: vitohome
-    name: "Mischererhöhung (Vitotwin_2011_Mischererhoehung)"
-    id: Vitotwin_2011_Mischererhoehung
-    address: 0x2011
-    length: 3
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    unit_of_measurement: "°C"
-    device_class: temperature
     # Borders absent, or out of range for this byte width, in
     # the export. These placeholders pass `esphome config` but
     # pin the value to 0 - set real min/max/step before use.
@@ -1177,87 +1338,6 @@ number:
     update_interval: 3600s
 
   # --- Bedienung / BedienungHK2 ---
-  # vito: circuit=hk2 overview trend
-    # NOTE: conversion 'MultOffset': display value = raw * 0.015625; raw noconv emitted (no encode path for the transform); writes are a read-modify-write of the whole 3-byte block
-  - platform: vitohome
-    name: "Komfortsollwert (Vitotwin_3000_Komfortsollwert)"
-    id: Vitotwin_3000_Komfortsollwert
-    address: 0x3000
-    length: 3
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=hk2 overview trend
-    # NOTE: conversion 'MultOffset': display value = raw * 0.015625; raw noconv emitted (no encode path for the transform); writes are a read-modify-write of the whole 3-byte block
-  - platform: vitohome
-    name: "Reduziertsollwert (Vitotwin_3003_Reduziertsollwert)"
-    id: Vitotwin_3003_Reduziertsollwert
-    address: 0x3003
-    length: 3
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-    # NOTE: conversion 'MultOffset': display value = raw * 0.02; raw noconv emitted (no encode path for the transform); writes are a read-modify-write of the whole 3-byte block
-  - platform: vitohome
-    name: "Neigung (Vitotwin_3006_Neigung)"
-    id: Vitotwin_3006_Neigung
-    address: 0x3006
-    length: 3
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    min_value: 0.1
-    max_value: 4
-    step: 0.02
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-    # NOTE: conversion 'MultOffset': display value = raw * 0.015625; raw noconv emitted (no encode path for the transform); writes are a read-modify-write of the whole 3-byte block
-  - platform: vitohome
-    name: "Niveau (Vitotwin_3009_Niveau)"
-    id: Vitotwin_3009_Niveau
-    address: 0x3009
-    length: 3
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # vito: overview
     # NOTE: writes are a read-modify-write of the whole 5-byte block
   - platform: vitohome
@@ -1270,28 +1350,6 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-    # NOTE: conversion 'MultOffset': display value = raw * 0.015625; raw noconv emitted (no encode path for the transform); writes are a read-modify-write of the whole 3-byte block
-  - platform: vitohome
-    name: "Mischererhöhung (Vitotwin_3011_Mischererhoehung)"
-    id: Vitotwin_3011_Mischererhoehung
-    address: 0x3011
-    length: 3
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    unit_of_measurement: "°C"
-    device_class: temperature
     # Borders absent, or out of range for this byte width, in
     # the export. These placeholders pass `esphome config` but
     # pin the value to 0 - set real min/max/step before use.
@@ -1379,84 +1437,6 @@ number:
     update_interval: 3600s
 
   # --- Bedienung / BedienungHK3 ---
-  # vito: circuit=hk3 overview trend
-    # NOTE: conversion 'MultOffset': display value = raw * 0.015625; raw noconv emitted (no encode path for the transform); writes are a read-modify-write of the whole 3-byte block
-  - platform: vitohome
-    name: "Komfortsollwert (Vitotwin_4000_Komfortsollwert)"
-    id: Vitotwin_4000_Komfortsollwert
-    address: 0x4000
-    length: 3
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=hk3 overview trend
-    # NOTE: conversion 'MultOffset': display value = raw * 0.015625; raw noconv emitted (no encode path for the transform); writes are a read-modify-write of the whole 3-byte block
-  - platform: vitohome
-    name: "Reduziertsollwert (Vitotwin_4003_Reduziertsollwert)"
-    id: Vitotwin_4003_Reduziertsollwert
-    address: 0x4003
-    length: 3
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    unit_of_measurement: "°C"
-    device_class: temperature
-    min_value: 6
-    max_value: 29
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-    # NOTE: conversion 'MultOffset': display value = raw * 0.02; raw noconv emitted (no encode path for the transform); writes are a read-modify-write of the whole 3-byte block
-  - platform: vitohome
-    name: "Neigung (Vitotwin_4006_Neigung)"
-    id: Vitotwin_4006_Neigung
-    address: 0x4006
-    length: 3
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    min_value: 0.1
-    max_value: 4
-    step: 0.02
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-    # NOTE: conversion 'MultOffset': display value = raw * 0.015625; raw noconv emitted (no encode path for the transform); writes are a read-modify-write of the whole 3-byte block
-  - platform: vitohome
-    name: "Niveau (Vitotwin_4009_Niveau)"
-    id: Vitotwin_4009_Niveau
-    address: 0x4009
-    length: 3
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # vito: overview
     # NOTE: writes are a read-modify-write of the whole 5-byte block
   - platform: vitohome
@@ -1469,28 +1449,6 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-    # NOTE: conversion 'MultOffset': display value = raw * 0.015625; raw noconv emitted (no encode path for the transform); writes are a read-modify-write of the whole 3-byte block
-  - platform: vitohome
-    name: "Mischererhöhung (Vitotwin_4011_Mischererhoehung)"
-    id: Vitotwin_4011_Mischererhoehung
-    address: 0x4011
-    length: 3
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    unit_of_measurement: "°C"
-    device_class: temperature
     # Borders absent, or out of range for this byte width, in
     # the export. These placeholders pass `esphome config` but
     # pin the value to 0 - set real min/max/step before use.
@@ -1559,25 +1517,6 @@ number:
     update_interval: 3600s
 
   # --- Bedienung / BedienungWW ---
-  # vito: circuit=dhw overview trend
-    # NOTE: conversion 'MultOffset': display value = raw * 0.015625; raw noconv emitted (no encode path for the transform); writes are a read-modify-write of the whole 3-byte block
-  - platform: vitohome
-    name: "Nennsollwert"
-    id: Vitotwin_5000_Nennsollwert
-    address: 0x5000
-    length: 3
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    unit_of_measurement: "°C"
-    device_class: temperature
-    min_value: 8
-    max_value: 65
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # vito: overview
     # NOTE: writes are a read-modify-write of the whole 3-byte block
   - platform: vitohome
@@ -1621,24 +1560,6 @@ number:
     update_interval: 3600s
 
   # --- Bedienung / ExternerWarmeerzeuger ---
-    # NOTE: conversion 'MultOffset': display value = raw * 0.015625; raw noconv emitted (no encode path for the transform); writes are a read-modify-write of the whole 3-byte block
-  - platform: vitohome
-    name: "Sollwertanhebung Haupterzeuger"
-    id: Vitotwin_1010_Sollwertanhebung_Haupterzeug
-    address: 0x1010
-    length: 3
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    unit_of_measurement: "°C"
-    device_class: temperature
-    min_value: 0
-    max_value: 10
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
     # NOTE: writes are a read-modify-write of the whole 2-byte block
   - platform: vitohome
     name: "Leistungsgrenze Haupterzeuger"

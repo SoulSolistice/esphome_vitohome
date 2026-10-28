@@ -1,8 +1,8 @@
 file,token,ident,hw_index,sw_lo,sw_hi,f0_lo,f0_hi,events,entities,bytes,status,ext_raw,gfa_slots,short_name,product_name
 bess.yaml,BESS,0x2502,,,,,,99,64,31649,ok,,,BESS,Battery Energy Storage System
-cu401b_a.yaml,CU401B_A,0x204C,,,,,,2153,2194,830235,ok,,,VT 200 (WO1C),Vitocal xxx-A mit Vitotronic 200 (Typ WO1C)
-cu401b_g.yaml,CU401B_G,0x204B,,,,,,2168,2206,838884,ok,,,VT 200 (WO1C),Vitocal xxx-G mit Vitotronic 200 (Typ WO1C)
-cu401b_s.yaml,CU401B_S,0x204D,,,,,,2292,2324,876739,ok,,,VT 200 (WO1C),"Vitocal xxx-S mit Vitotronic 200 (Typ WO1C), Vitocaldens, Vitolacaldens"
+cu401b_a.yaml,CU401B_A,0x204C,,,,,,2153,2194,828267,ok,,,VT 200 (WO1C),Vitocal xxx-A mit Vitotronic 200 (Typ WO1C)
+cu401b_g.yaml,CU401B_G,0x204B,,,,,,2168,2206,836916,ok,,,VT 200 (WO1C),Vitocal xxx-G mit Vitotronic 200 (Typ WO1C)
+cu401b_s.yaml,CU401B_S,0x204D,,,,,,2292,2324,874771,ok,,,VT 200 (WO1C),"Vitocal xxx-S mit Vitotronic 200 (Typ WO1C), Vitocaldens, Vitolacaldens"
 ,DEKATEL_F,0x2088,,,,,,586,1,,skipped: no Optolink-reachable datapoints,37343530353330,,,
 ,DEKATEL_F_A,0x2088,,,,,,576,1,,skipped: no Optolink-reachable datapoints,37343533353330,,,
 ,DEKATEL_F_CH,0x2088,,,,,,576,1,,skipped: no Optolink-reachable datapoints,37343531353330,,,
@@ -34,29 +34,29 @@ dekatel_m.yaml,DEKATEL_M,0x2081,,,,,,120,44,18915,ok,37343530353336,,,
 ,Dekamatik_M2,0x2000,,,,,,52,1,,skipped: no Optolink-reachable datapoints,024002,,,
 ,Dekamatik_M2_3,0x2000,,,,,,52,1,,skipped: no Optolink-reachable datapoints,034002,,,
 ea2.yaml,EA2,0x20A3,,,,,,87,87,35112,ok,,,EA2,Anschlusserweiterung EA2
-ecotronic.yaml,Ecotronic,0x2034,,,,,,1146,925,327862,ok,,,Ecotronic,"Ecotronic (Typ VL300-C, VL300-H, VL200-S)"
-ecotronic_100.yaml,Ecotronic_100,0x2035,,,,,,898,701,232053,ok,,,Ecotronic 100,Ecotronic 100 (Typ VL150-S)
-gwg_bt2.yaml,GWG_BT2,0x2054,0,255,255,,,111,104,49124,ok,00FF,,,
-gwg_vbem_00.yaml,GWG_VBEM_00,0x2053,1,0,0,,,220,198,85634,ok,0100,,,
-gwg_vbem_03.yaml,GWG_VBEM_03,0x2053,1,3,3,,,220,198,85634,ok,0103,,,
-gwg_vbem_21.yaml,GWG_VBEM_21,0x2053,1,33,33,,,220,198,85634,ok,0121,,,
-gwg_vbem_35.yaml,GWG_VBEM_35,0x2053,1,53,53,,,220,198,85660,ok,0135,,,
-gwg_vbem_36.yaml,GWG_VBEM_36,0x2053,1,54,54,,,221,199,86039,ok,0136,,,
-gwg_vbes_00.yaml,GWG_VBES_00,0x2053,2,0,0,,,195,177,75956,ok,0200,,,
-gwg_vbes_03.yaml,GWG_VBES_03,0x2053,2,3,3,,,195,177,75956,ok,0203,,,
-gwg_vbes_21.yaml,GWG_VBES_21,0x2053,2,33,33,,,195,177,75956,ok,0221,,,
-gwg_vbes_35.yaml,GWG_VBES_35,0x2053,2,53,53,,,195,177,75956,ok,0235,,,
-gwg_vbes_36.yaml,GWG_VBES_36,0x2053,2,54,54,,,196,178,76335,ok,0236,,,
-gwg_vbt2_00.yaml,GWG_VBT2_00,0x2053,16,0,0,,,192,175,75190,ok,1000,,,
-gwg_vbt2_03.yaml,GWG_VBT2_03,0x2053,16,3,3,,,192,175,75190,ok,1003,,,
-gwg_vbt2_21.yaml,GWG_VBT2_21,0x2053,16,33,33,,,192,175,75190,ok,1021,,,
-gwg_vbt2_35.yaml,GWG_VBT2_35,0x2053,16,53,53,,,192,175,75190,ok,1035,,,
-gwg_vbt2_36.yaml,GWG_VBT2_36,0x2053,16,54,54,,,193,176,75569,ok,1036,,,
-gwg_vwms_00.yaml,GWG_VWMS_00,0x2053,8,0,0,,,192,174,74962,ok,0800,,,
-gwg_vwms_03.yaml,GWG_VWMS_03,0x2053,8,3,3,,,192,174,74962,ok,0803,,,
-gwg_vwms_21.yaml,GWG_VWMS_21,0x2053,8,33,33,,,192,174,74962,ok,0821,,,
-gwg_vwms_35.yaml,GWG_VWMS_35,0x2053,8,53,53,,,192,174,74962,ok,0835,,,
-gwg_vwms_36.yaml,GWG_VWMS_36,0x2053,8,54,54,,,193,175,75341,ok,0836,,,
+ecotronic.yaml,Ecotronic,0x2034,,,,,,1146,925,327877,ok,,,Ecotronic,"Ecotronic (Typ VL300-C, VL300-H, VL200-S)"
+ecotronic_100.yaml,Ecotronic_100,0x2035,,,,,,898,701,232068,ok,,,Ecotronic 100,Ecotronic 100 (Typ VL150-S)
+gwg_bt2.yaml,GWG_BT2,0x2054,0,255,255,,,111,104,49033,ok,00FF,,,
+gwg_vbem_00.yaml,GWG_VBEM_00,0x2053,1,0,0,,,220,198,85480,ok,0100,,,
+gwg_vbem_03.yaml,GWG_VBEM_03,0x2053,1,3,3,,,220,198,85480,ok,0103,,,
+gwg_vbem_21.yaml,GWG_VBEM_21,0x2053,1,33,33,,,220,198,85480,ok,0121,,,
+gwg_vbem_35.yaml,GWG_VBEM_35,0x2053,1,53,53,,,220,198,85506,ok,0135,,,
+gwg_vbem_36.yaml,GWG_VBEM_36,0x2053,1,54,54,,,221,199,85872,ok,0136,,,
+gwg_vbes_00.yaml,GWG_VBES_00,0x2053,2,0,0,,,195,177,75828,ok,0200,,,
+gwg_vbes_03.yaml,GWG_VBES_03,0x2053,2,3,3,,,195,177,75828,ok,0203,,,
+gwg_vbes_21.yaml,GWG_VBES_21,0x2053,2,33,33,,,195,177,75828,ok,0221,,,
+gwg_vbes_35.yaml,GWG_VBES_35,0x2053,2,53,53,,,195,177,75828,ok,0235,,,
+gwg_vbes_36.yaml,GWG_VBES_36,0x2053,2,54,54,,,196,178,76194,ok,0236,,,
+gwg_vbt2_00.yaml,GWG_VBT2_00,0x2053,16,0,0,,,192,175,75062,ok,1000,,,
+gwg_vbt2_03.yaml,GWG_VBT2_03,0x2053,16,3,3,,,192,175,75062,ok,1003,,,
+gwg_vbt2_21.yaml,GWG_VBT2_21,0x2053,16,33,33,,,192,175,75062,ok,1021,,,
+gwg_vbt2_35.yaml,GWG_VBT2_35,0x2053,16,53,53,,,192,175,75062,ok,1035,,,
+gwg_vbt2_36.yaml,GWG_VBT2_36,0x2053,16,54,54,,,193,176,75428,ok,1036,,,
+gwg_vwms_00.yaml,GWG_VWMS_00,0x2053,8,0,0,,,192,174,74834,ok,0800,,,
+gwg_vwms_03.yaml,GWG_VWMS_03,0x2053,8,3,3,,,192,174,74834,ok,0803,,,
+gwg_vwms_21.yaml,GWG_VWMS_21,0x2053,8,33,33,,,192,174,74834,ok,0821,,,
+gwg_vwms_35.yaml,GWG_VWMS_35,0x2053,8,53,53,,,192,174,74834,ok,0835,,,
+gwg_vwms_36.yaml,GWG_VWMS_36,0x2053,8,54,54,,,193,175,75200,ok,0836,,,
 ,HV_GWG,0x2000,,,,,,38,1,,skipped: no Optolink-reachable datapoints,015300,,,
 ,HV_V050HK1M,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,04b400,,,
 ,HV_V050HK1M_5,0x2000,,,,,,19,1,,skipped: no Optolink-reachable datapoints,05b400,,,
@@ -212,27 +212,27 @@ gwg_vwms_36.yaml,GWG_VWMS_36,0x2053,8,54,54,,,193,175,75341,ok,0836,,,
 ,OpenTherm_9_84,0x2621,1,9,9,84,84,81,1,,skipped: no Optolink-reachable datapoints,0109,,OT 9_84,OpenTherm Gerät 9_84
 ,OpenTherm_DEFAULT,0x26FF,,,,,,68,1,,skipped: no Optolink-reachable datapoints,,,OT DEFAULT,OpenTherm Defaultgerät
 ,Solartrol_M,0x2000,,,,,,26,1,,skipped: no Optolink-reachable datapoints,0b6000,,,
-v050hk1m.yaml,V050HK1M,0x20B4,1,0,6,,,313,247,89336,ok,0100,,VT 200-H (HK1M),Vitotronic 200-H / 050 (Typ HK1M)
+v050hk1m.yaml,V050HK1M,0x20B4,1,0,6,,,313,247,89351,ok,0100,,VT 200-H (HK1M),Vitotronic 200-H / 050 (Typ HK1M)
 v050hk1m_7.yaml,V050HK1M_7,0x20B4,1,7,7,,,225,191,70352,ok,0107,,VT 200-H (HK1M),Vitotronic 200-H / 050 (Typ HK1M)
 v050hk1m_8.yaml,V050HK1M_8,0x20B4,1,8,8,,,214,197,72105,ok,0108,,VT 200-H (HK1M),Vitotronic 200-H / 050 (Typ HK1M)
 v050hk1m_9.yaml,V050HK1M_9,0x20B4,1,9,15,,,218,201,73711,ok,0109,,VT 200-H (HK1M),Vitotronic 200-H / 050 (Typ HK1M)
-v050hk1s.yaml,V050HK1S,0x20AC,1,0,6,,,356,279,102612,ok,0100,,VT 200-H (HK1S),Vitotronic 200-H / 050 (Typ HK1S)
+v050hk1s.yaml,V050HK1S,0x20AC,1,0,6,,,356,279,102627,ok,0100,,VT 200-H (HK1S),Vitotronic 200-H / 050 (Typ HK1S)
 v050hk1s_7.yaml,V050HK1S_7,0x20AC,1,7,7,,,273,229,85697,ok,0107,,VT 200-H (HK1S),Vitotronic 200-H / 050 (Typ HK1S)
 v050hk1s_8.yaml,V050HK1S_8,0x20AC,1,8,8,,,280,236,87879,ok,0108,,VT 200-H (HK1S),Vitotronic 200-H / 050 (Typ HK1S)
 v050hk1s_9.yaml,V050HK1S_9,0x20AC,1,9,15,,,280,236,89026,ok,0109,,VT 200-H (HK1S),Vitotronic 200-H / 050 (Typ HK1S)
-v050hk1w.yaml,V050HK1W,0x20AA,1,0,6,,,362,284,104244,ok,0100,,VT 200-H (HK1W),Vitotronic 200-H / 050 (Typ HK1W)
+v050hk1w.yaml,V050HK1W,0x20AA,1,0,6,,,362,284,104259,ok,0100,,VT 200-H (HK1W),Vitotronic 200-H / 050 (Typ HK1W)
 v050hk1w_7.yaml,V050HK1W_7,0x20AA,1,7,7,,,274,230,87040,ok,0107,,VT 200-H (HK1W),Vitotronic 200-H / 050 (Typ HK1W)
 v050hk1w_8.yaml,V050HK1W_8,0x20AA,1,8,8,,,281,237,89222,ok,0108,,VT 200-H (HK1W),Vitotronic 200-H / 050 (Typ HK1W)
 v050hk1w_9.yaml,V050HK1W_9,0x20AA,1,9,15,,,279,236,89009,ok,0109,,VT 200-H (HK1W),Vitotronic 200-H / 050 (Typ HK1W)
-v050hk3s.yaml,V050HK3S,0x20AD,1,0,6,,,555,490,174568,ok,0100,,VT 200-H (HK3S),Vitotronic 200-H / 050 (Typ HK3S)
+v050hk3s.yaml,V050HK3S,0x20AD,1,0,6,,,555,490,174583,ok,0100,,VT 200-H (HK3S),Vitotronic 200-H / 050 (Typ HK3S)
 v050hk3s_7.yaml,V050HK3S_7,0x20AD,1,7,7,,,432,404,145299,ok,0107,,VT 200-H (HK3S),Vitotronic 200-H / 050 (Typ HK3S)
 v050hk3s_8.yaml,V050HK3S_8,0x20AD,1,8,8,,,439,411,147508,ok,0108,,VT 200-H (HK3S),Vitotronic 200-H / 050 (Typ HK3S)
 v050hk3s_9.yaml,V050HK3S_9,0x20AD,1,9,15,,,435,410,147559,ok,0109,,VT 200-H (HK3S),Vitotronic 200-H / 050 (Typ HK3S)
-v050hk3w.yaml,V050HK3W,0x20AB,1,0,6,,,555,490,174617,ok,0100,,VT 200-H (HK3W),Vitotronic 200-H / 050 (Typ HK3W)
+v050hk3w.yaml,V050HK3W,0x20AB,1,0,6,,,555,490,174632,ok,0100,,VT 200-H (HK3W),Vitotronic 200-H / 050 (Typ HK3W)
 v050hk3w_7.yaml,V050HK3W_7,0x20AB,1,7,7,,,432,404,145299,ok,0107,,VT 200-H (HK3W),Vitotronic 200-H / 050 (Typ HK3W)
 v050hk3w_8.yaml,V050HK3W_8,0x20AB,1,8,8,,,439,411,147508,ok,0108,,VT 200-H (HK3W),Vitotronic 200-H / 050 (Typ HK3W)
 v050hk3w_9.yaml,V050HK3W_9,0x20AB,1,9,15,,,435,410,147671,ok,0109,,VT 200-H (HK3W),Vitotronic 200-H / 050 (Typ HK3W)
-v100cc1x.yaml,V100CC1x,0x20A7,,,,,,597,508,195449,ok,,,"VT 100 (CC1E, CC1I)","Vitotronic 100 (Typ CC1E, CC1I)"
+v100cc1x.yaml,V100CC1x,0x20A7,,,,,,597,508,194969,ok,,,"VT 100 (CC1E, CC1I)","Vitotronic 100 (Typ CC1E, CC1I)"
 v100gc1.yaml,V100GC1,0x20A0,1,0,6,,,405,306,112614,ok,0100,,VT 100 (GC1),Vitotronic 100 (Typ GC1)
 v100gc1a.yaml,V100GC1A,0x20A1,,,,,,451,379,143621,ok,,,"VT 100 (GC1B, GC4B)","Vitotronic 100 (Typ GC1B, GC4B)"
 v100gc1c.yaml,V100GC1C,0x20A2,,,,,,460,395,148300,ok,,,"VT 100 GC1C, GC4C","Vitotronic 100 (Typ GC1C, GC4C)"
@@ -245,7 +245,7 @@ v150kb1.yaml,V150KB1,0x2092,1,0,3,,,258,261,95278,ok,0100,,VT 150 (KB1),Vitotron
 v150kb1_4.yaml,V150KB1_4,0x2092,1,4,4,,,233,238,85970,ok,0104,,VT 150 (KB1),Vitotronic 150 (Typ KB1)
 v150kb1_5.yaml,V150KB1_5,0x2092,1,5,5,,,230,235,84997,ok,0105,,VT 150 (KB1),Vitotronic 150 (Typ KB1)
 v150kb1_6.yaml,V150KB1_6,0x2092,1,6,15,,,245,248,89080,ok,0106,,VT 150 (KB1 / KB2),Vitotronic 150 (Typ KB1 / KB2)
-v200co1x.yaml,V200CO1x,0x20A9,,,,,,1005,916,354621,ok,,20,VT 200 CO1E / CO1I,"Vitotronic 200 (Typ CO1E, CO1I)"
+v200co1x.yaml,V200CO1x,0x20A9,,,,,,1005,916,354141,ok,,20,VT 200 CO1E / CO1I,"Vitotronic 200 (Typ CO1E, CO1I)"
 v200gw1.yaml,V200GW1,0x20A4,1,0,6,,,531,426,150409,ok,0100,,VT 200 (GW1),Vitotronic 200 (Typ GW1)
 v200gw1_7.yaml,V200GW1_7,0x20A4,1,7,7,,,412,357,129717,ok,0107,,VT 200 (GW1),Vitotronic 200 (Typ GW1)
 v200gw1_8.yaml,V200GW1_8,0x20A4,1,8,8,,,421,365,132171,ok,0108,,VT 200 (GW1),Vitotronic 200 (Typ GW1)
@@ -260,8 +260,8 @@ v200kw2.yaml,V200KW2,0x2098,1,0,3,,,437,439,154609,ok,0100,,VT 200 (KW2),Vitotro
 v200kw2_4.yaml,V200KW2_4,0x2098,1,4,4,,,391,395,138748,ok,0104,,VT 200 (KW2),Vitotronic 200 (Typ KW2)
 v200kw2_5.yaml,V200KW2_5,0x2098,1,5,5,,,391,395,139110,ok,0105,,VT 200 (KW2),Vitotronic 200 (Typ KW2)
 v200kw2_6.yaml,V200KW2_6,0x2098,1,6,15,,,404,411,143557,ok,0106,,VT 200 (KW2 / KW5),Vitotronic 200 (Typ KW2 / KW5)
-v200wo1a.yaml,V200WO1A,0x2048,,,,,,1312,1365,504385,ok,,,VT 200 (WO1A / WO1B),"Vitocal 222 / 242 G mit Vitotronic 200 (Typ WO1A / WO1B), Vitocal 333 / 343 G mit Vitotronic 200 (Typ WO1A / WO1B)"
-v300cm1x.yaml,V300CM1x,0x20BF,,,,,,1048,935,361603,ok,,20,VT 300 CM1E / CM1I,"Vitotronic 300 (Typ CM1E, CM1I)"
+v200wo1a.yaml,V200WO1A,0x2048,,,,,,1312,1365,502909,ok,,,VT 200 (WO1A / WO1B),"Vitocal 222 / 242 G mit Vitotronic 200 (Typ WO1A / WO1B), Vitocal 333 / 343 G mit Vitotronic 200 (Typ WO1A / WO1B)"
+v300cm1x.yaml,V300CM1x,0x20BF,,,,,,1048,935,361123,ok,,20,VT 300 CM1E / CM1I,"Vitotronic 300 (Typ CM1E, CM1I)"
 v300gw2.yaml,V300GW2,0x20A5,1,0,6,,,714,621,217071,ok,0100,,VT 300 (GW2),Vitotronic 300 (Typ GW2)
 v300gw2a.yaml,V300GW2A,0x20A6,,,,,,646,606,233321,ok,,20,VT 200/300 (GW1B / GW2B / GW4B / GW5B),Vitotronic 200 GW1B / Vitotronic 300 (GW2B / GW4B / GW5B)
 v300gw2_7.yaml,V300GW2_7,0x20A5,1,7,7,,,576,535,189830,ok,0107,,VT 300 (GW2),Vitotronic 300 (Typ GW2)
@@ -285,13 +285,13 @@ v333mw1_8.yaml,V333MW1_8,0x20B8,1,8,8,,,579,483,174002,ok,0108,,VT 300-K (MW1),V
 v333mw1_9.yaml,V333MW1_9,0x20B8,1,9,15,,,575,482,174004,ok,0109,,VT 300-K (MW1),Vitotronic 300-K / 333 (Typ MW1)
 v333mw2.yaml,V333MW2,0x20BA,,,,,,571,479,173208,ok,,,VT 300-K (MW2),"Vitotronic 300-K / 333 (Typ MW2), Vitotronic 300-K (Typ MW2S)"
 v333mw2_2.yaml,V333MW2_2,0x20BA,1,2,15,,,568,476,172207,ok,0102,,VT 300-K (MW2),Vitotronic 300-K / 333 (Typ MW2)
-vbc550p.yaml,VBC550P,0x2033,,,,,,872,717,246876,ok,,,VT 200 FO1,Vitotronic 200 Typ FO1
-vbc550s.yaml,VBC550S,0x2032,,,,,,786,640,217817,ok,,,,
+vbc550p.yaml,VBC550P,0x2033,,,,,,872,717,246891,ok,,,VT 200 FO1,Vitotronic 200 Typ FO1
+vbc550s.yaml,VBC550S,0x2032,,,,,,786,640,217832,ok,,,,
 vbc700_aw.yaml,VBC700_AW,0x2047,,,,,,912,955,341996,ok,,,WPR 300,Vitocal 300-A mit WPR 300
 vbc700_bw_ww.yaml,VBC700_BW_WW,0x2046,,,,,,914,956,342266,ok,,,WPR 300,Vitocal 300-G mit WPR 300
 ,VBC701,0x2043,,,,,,5,1,,skipped: no Optolink-reachable datapoints,,,,
-vbc702_aw.yaml,VBC702_AW,0x2049,,,,,,1310,1364,504191,ok,,,VT 200 (W01A / WO1B),"Vitocal 2xx-G / 3xx-G mit Vitotronic 200 (Typ WO1A / WO1B), Vitocal 3xx-A mit Vitotronic 200 (Typ WO1A / WO1B)"
-vbc702_s.yaml,VBC702_S,0x204A,,,,,,1420,1472,541829,ok,,,VT 200 (WO1A / WO1B),Vitocal 200-S mit Vitotronic 200 (Typ WO1A / WO1B)
+vbc702_aw.yaml,VBC702_AW,0x2049,,,,,,1310,1364,502715,ok,,,VT 200 (W01A / WO1B),"Vitocal 2xx-G / 3xx-G mit Vitotronic 200 (Typ WO1A / WO1B), Vitocal 3xx-A mit Vitotronic 200 (Typ WO1A / WO1B)"
+vbc702_s.yaml,VBC702_S,0x204A,,,,,,1420,1472,540353,ok,,,VT 200 (WO1A / WO1B),Vitocal 200-S mit Vitotronic 200 (Typ WO1A / WO1B)
 vblock-unbekannt.yaml,VBlock-Unbekannt,0x3000,,,,,,112,89,38114,ok,,,,
 vblockbm123-177.yaml,VBlockBM123-177,0x300D,,,,,,110,87,37955,ok,,,VBlockBM123-177,Vitobloc test
 vblockbm190-238.yaml,VBlockBM190-238,0x300E,,,,,,111,88,38273,ok,,,VBlockBM190-238,Vitobloc BM190-238
@@ -381,18 +381,18 @@ vscotho1_90.yaml,VScotHO1_90,0x20CB,1,90,129,,,849,772,286479,ok,015A,20,VT 200 
 vsorp.yaml,VSorp,0x20CB,1,150,199,,,917,813,301271,ok,0196,20,Vitosorp 200-F,Vitosorp 200-F mit Vitotronic 200 Typ HO1D
 virtualhydrauliccalibration.yaml,VirtualHydraulicCalibration,0xFFFF,,,,,,5,5,3673,ok,,,,
 vitocom100_lan.yaml,Vitocom100_LAN,0x208D,,,,,,11,4,2945,ok,,,VC 100 LAN1,Vitocom 100 LAN1
-vitocom200_lan.yaml,Vitocom200_LAN,0x208C,,,,,,421,103,55643,ok,,,VC 200 GP1,Vitocom 200 GP1
+vitocom200_lan.yaml,Vitocom200_LAN,0x208C,,,,,,421,103,55510,ok,,,VC 200 GP1,Vitocom 200 GP1
 vitocom200_lan_gp.yaml,Vitocom200_LAN_GP,0x208E,,,,,,45,14,9435,ok,,,VC 200 LAN2,Vitocom 200 Typ LAN2
-vitocom300.yaml,Vitocom300,0x208A,,,,,,621,157,68148,ok,,,VC 300 FA3/FI1/FE1,Vitocom 300 FA3/FI1/FE1
-vitocom300_10.yaml,Vitocom300_10,0x208A,1,10,15,,,576,121,58711,ok,010A,,VC 300 FA3/FI1/FE1,Vitocom 300 FA3/FI1/FE1
-vitocom300_lan.yaml,Vitocom300_LAN,0x208A,1,16,47,,,989,276,144861,ok,0110,,VC 300 FA5/FI2/GP2,Vitocom 300 FA5/FI2/GP2
+vitocom300.yaml,Vitocom300,0x208A,,,,,,621,157,68021,ok,,,VC 300 FA3/FI1/FE1,Vitocom 300 FA3/FI1/FE1
+vitocom300_10.yaml,Vitocom300_10,0x208A,1,10,15,,,576,121,58584,ok,010A,,VC 300 FA3/FI1/FE1,Vitocom 300 FA3/FI1/FE1
+vitocom300_lan.yaml,Vitocom300_LAN,0x208A,1,16,47,,,989,276,144728,ok,0110,,VC 300 FA5/FI2/GP2,Vitocom 300 FA5/FI2/GP2
 vitocom300_lan_gp_analog.yaml,Vitocom300_LAN_GP_Analog,0x208F,,,,,,389,18,11124,ok,,,VC 300 LAN3,Vitocom 300 Typ LAN3
 vitogate200eib.yaml,Vitogate200EIB,,,,,,,5,4,2652,ok,,,VG 200 (EIB),Vitogate 200 EIB
 vitogate200knx.yaml,Vitogate200KNX,0x0820,,,,,,7,6,3324,ok,,,VG 200 (KNX),"Vitogate 200, Typ KNX"
 vitogate300bn.yaml,Vitogate300BN,0x0830,,,,,,7,13,8372,ok,,,VG 300 (BN),Vitogate 300 BN / MB
-vitotwingw_bati.yaml,VitotwinGW_BATI,0x0810,1,0,1,,,159,191,89596,ok,0100,,Vitotwin-GW BATI_01,Vitotwin-Gateway BATI (01)
-vitotwingw_bati_02.yaml,VitotwinGW_BATI_02,0x0810,1,2,2,,,161,183,82175,ok,0102,,Vitotwin-GW BATI_02,Vitotwin-Gateway BATI (02)
-vitotwingw_bati_03.yaml,VitotwinGW_BATI_03,0x0810,1,3,255,,,163,185,82898,ok,0103,,Vitotwin-GW BATI_03,Vitotwin-Gateway BATI (03)
+vitotwingw_bati.yaml,VitotwinGW_BATI,0x0810,1,0,1,,,159,191,86472,ok,0100,,Vitotwin-GW BATI_01,Vitotwin-Gateway BATI (01)
+vitotwingw_bati_02.yaml,VitotwinGW_BATI_02,0x0810,1,2,2,,,161,183,82040,ok,0102,,Vitotwin-GW BATI_02,Vitotwin-Gateway BATI (02)
+vitotwingw_bati_03.yaml,VitotwinGW_BATI_03,0x0810,1,3,255,,,163,185,82763,ok,0103,,Vitotwin-GW BATI_03,Vitotwin-Gateway BATI (03)
 vitovalor.yaml,Vitovalor,0x20E3,,,,,,1286,1208,467576,ok,,20,Vitovalor 300-P,Vitovalor 300-P mit Vitotronic 200 Typ HO1E
 wilo.yaml,WILO,0x0700,,,,,,79,12,6684,ok,,,,
 ,_VITODATA,,,,,,,3,1,,skipped: no Optolink-reachable datapoints,-,,,

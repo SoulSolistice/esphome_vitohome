@@ -1173,7 +1173,7 @@ binary_sensor:
 number:
   # --- Codierungen / Allgemein ---
   # vito: quickcheck
-    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(S1) Nachlauf der Umwälzpumpe bei Speicherladung"
     id: GWG_BT2_S1Speichernachlauf
@@ -1191,7 +1191,7 @@ number:
     update_interval: 3600s
 
   # vito: quickcheck
-    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(S3) Maximale Kesseltemperatur bei Trinkwasserbereitung"
     id: GWG_BT2_S3MaxKTbeiSpeicherladung
@@ -1280,7 +1280,7 @@ number:
 select:
   # --- Codierungen / Allgemein ---
   # vito: quickcheck
-    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(S5) Trinkwassererwaermung durch"
     id: GWG_BT2_S5Trinkwasserschema
@@ -1298,7 +1298,7 @@ select:
       0x05: "5 Plattenwaermetauscher"
 
   # vito: quickcheck
-    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(S6) Anlagenfrostschutz"
     id: GWG_BT2_S6Anlagenfrostschutz
@@ -1335,7 +1335,7 @@ select:
       0x18: "24 mal pro Tag"
 
   # vito: quickcheck
-    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(S2) Extern Sperren wirkt auf"
     id: GWG_BT2_S2ExternSperren
@@ -1352,7 +1352,7 @@ select:
       0x04: "4 Komfortbetrieb"
 
   # vito: quickcheck
-    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(S4) Zusatzfunktion Trinkwassererwaermung"
     id: GWG_BT2_S4ZusatzfunktionTrinkwasser
@@ -1395,7 +1395,7 @@ select:
       0x1E: "30 Jede Ladung"
 
   # vito: quickcheck
-    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(S7) Uhrenthermostat-M ist eingestellt auf"
     id: GWG_BT2_S7UhrenthermostatM

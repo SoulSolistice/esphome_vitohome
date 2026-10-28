@@ -32,6 +32,51 @@
 # ============================================================
 
 sensor:
+  # --- Bedienung / BedienungHK1 ---
+  # vito: overview
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.02); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "Slope (Vitotwin_2006_Neigung)"
+    id: Vitotwin_2006_Neigung
+    address: 0x2006
+    length: 2
+    converter: noconv
+    filters:
+      - multiply: 0.02
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Bedienung / BedienungHK2 ---
+  # vito: overview
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.02); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "Slope (Vitotwin_3006_Neigung)"
+    id: Vitotwin_3006_Neigung
+    address: 0x3006
+    length: 2
+    converter: noconv
+    filters:
+      - multiply: 0.02
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Bedienung / BedienungHK3 ---
+  # vito: overview
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.02); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "Slope (Vitotwin_4006_Neigung)"
+    id: Vitotwin_4006_Neigung
+    address: 0x4006
+    length: 2
+    converter: noconv
+    filters:
+      - multiply: 0.02
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
   # --- DiagnoseAnlage / Monatswerte ---
   # vito: circuit=boiler
   - platform: vitohome
@@ -929,23 +974,6 @@ sensor:
 number:
   # --- Bedienung / BedienungHK1 ---
   # vito: overview
-    # NOTE: conversion 'MultOffset': display value = raw * 0.02; raw noconv emitted (no encode path for the transform); writes are a read-modify-write of the whole 3-byte block
-  - platform: vitohome
-    name: "Slope (Vitotwin_2006_Neigung)"
-    id: Vitotwin_2006_Neigung
-    address: 0x2006
-    length: 3
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    min_value: 0.1
-    max_value: 4
-    step: 0.02
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
     # NOTE: writes are a read-modify-write of the whole 5-byte block
   - platform: vitohome
     name: "Start optimisation Max opt energy (Vitotwin_200C_Optimierung)"
@@ -1047,23 +1075,6 @@ number:
 
   # --- Bedienung / BedienungHK2 ---
   # vito: overview
-    # NOTE: conversion 'MultOffset': display value = raw * 0.02; raw noconv emitted (no encode path for the transform); writes are a read-modify-write of the whole 3-byte block
-  - platform: vitohome
-    name: "Slope (Vitotwin_3006_Neigung)"
-    id: Vitotwin_3006_Neigung
-    address: 0x3006
-    length: 3
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    min_value: 0.1
-    max_value: 4
-    step: 0.02
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
     # NOTE: writes are a read-modify-write of the whole 5-byte block
   - platform: vitohome
     name: "Start optimisation Max opt energy (Vitotwin_300C_Optimierung)"
@@ -1164,23 +1175,6 @@ number:
     update_interval: 3600s
 
   # --- Bedienung / BedienungHK3 ---
-  # vito: overview
-    # NOTE: conversion 'MultOffset': display value = raw * 0.02; raw noconv emitted (no encode path for the transform); writes are a read-modify-write of the whole 3-byte block
-  - platform: vitohome
-    name: "Slope (Vitotwin_4006_Neigung)"
-    id: Vitotwin_4006_Neigung
-    address: 0x4006
-    length: 3
-    byte_offset: 0
-    byte_length: 2
-    converter: noconv
-    min_value: 0.1
-    max_value: 4
-    step: 0.02
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # vito: overview
     # NOTE: writes are a read-modify-write of the whole 5-byte block
   - platform: vitohome

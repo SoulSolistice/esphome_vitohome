@@ -620,6 +620,17 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+    # NOTE: conversion 'Estrich' has no preset; raw noconv emitted; no encode path for the conversion -> read-only
+  - platform: vitohome
+    name: "aktueller Tag Estrichprogramm A1M1"
+    id: TProfilSchrittAktuellM1
+    address: 0x2533
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
     # NOTE: converter 'sec2hour' is read-only -> demoted to sensor
   - platform: vitohome
     name: "Restlaufzeit Partybetrieb A1M1"
@@ -1568,20 +1579,6 @@ number:
     converter: noconv
     min_value: 0
     max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-    # NOTE: conversion 'Estrich' has no preset; raw noconv emitted
-  - platform: vitohome
-    name: "aktueller Tag Estrichprogramm A1M1"
-    id: TProfilSchrittAktuellM1
-    address: 0x2533
-    length: 1
-    converter: noconv
-    min_value: 0
-    max_value: 240
     step: 1
     mode: box
     disabled_by_default: true

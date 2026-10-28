@@ -116,6 +116,18 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # --- (ohne Gruppenzuordnung) ---
+    # NOTE: conversion 'FixedStringTerminalZeroes' has no preset; raw noconv emitted; no encode path for the conversion -> read-only
+  - platform: vitohome
+    name: "Country code"
+    id: vcLanLaendercode
+    address: 0xAD75
+    length: 3
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
 binary_sensor:
   # --- MBus / Status ---
   - platform: vitohome
@@ -438,23 +450,6 @@ number:
     id: vcLanBaudrate
     address: 0xACCA
     length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-    # NOTE: conversion 'FixedStringTerminalZeroes' has no preset; raw noconv emitted
-  - platform: vitohome
-    name: "Country code"
-    id: vcLanLaendercode
-    address: 0xAD75
-    length: 3
     converter: noconv
     # Borders absent, or out of range for this byte width, in
     # the export. These placeholders pass `esphome config` but
