@@ -671,7 +671,12 @@ These are intentional divergences from upstream `edc059a7`:
       watchdog restarts when the detour starts and when the telegram goes
       out. Answers up to `KW_MAX_LENGTH` (64) bytes. (Item 28 generalised the
       detour from the GFA read to any KW telegram, `kwTelegram()`, and renamed
-      its states and constants from GFA_* to KW_*.)
+      its states and constants from GFA_* to KW_*.) `_setState()` zeroes
+      `_bytesTransferred`, the count every sending or receiving state keeps:
+      the KW answer shares it with the SYNC, and the request watchdog
+      firing mid-answer used to leave a count behind, so `_init()` sent SYNC
+      from past the end of its 3-byte array with a wrapped length. Found by
+      `fuzz_raw_engines.cpp`; `proof_vs2_gfa.cpp` case I fails without it.
     Hardware: KW, VScotHO1_72 with burner control `0x24`, 2026-10-26 -- `6B 40
     50 01` answered `24` where `F7 40 50 01` answered `FF`; P300, same unit,
     2026-10-27 -- the detour read `24` and returned to P300 (4.4 s). READ/WRITE/RPC frames and the P300 parser are

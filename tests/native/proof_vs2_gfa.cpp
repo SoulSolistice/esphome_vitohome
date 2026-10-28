@@ -14,7 +14,10 @@
 //   E) a controller ENQ while the KW session idles is answered with SYNC;
 //   F) an ENQ in the KW session opens a pending GFA read with 01 again;
 //   G) no ENQ after the drop: TIMEOUT, and the engine resets to P300;
-//   H) guards: length 1..KW_MAX_LENGTH, single in flight.
+//   H) guards: length 1..KW_MAX_LENGTH, single in flight;
+//   I) the request watchdog firing in the middle of a KW answer: the next
+//      handshake sends exactly 16 00 00 (a stale byte count used to index
+//      past SYNC; found by fuzz_raw_engines).
 //
 // Built by build_and_run_protocols.sh (P300 is the default protocol).
 
@@ -214,6 +217,35 @@ int main() {
   check(!e.gfaRead(0x4050, Engine::KW_MAX_LENGTH + 1), "H: more than KW_MAX_LENGTH refused");
   check(e.gfaRead(0x4050, Engine::KW_MAX_LENGTH), "H: KW_MAX_LENGTH accepted");
   check(!e.gfaRead(0x4050, 1) && !e.read(0x00F8, 1), "H: nothing else while it is in flight");
+
+  // --- I ------------------------------------------------------------------
+  {
+    FakeOptolink io2;
+    Engine e2(&io2);
+    e2.onResponse([](const uint8_t *, uint8_t, uint16_t) { ++g_responses; });
+    e2.onError([](optolink::OptolinkResult r, uint16_t) {
+      ++g_errors;
+      g_last_error = r;
+    });
+    e2.begin();
+    check(handshake(e2, io2), "I: P300 link up");
+    const int errors_before = g_errors;
+    check(e2.gfaRead(0x4050, 4), "I: four-byte gfa read accepted");
+    pump(e2);
+    io2.clear_written();
+    io2.feed({0x06, 0x05});
+    pump(e2);
+    io2.clear_written();
+    io2.feed({0x11, 0x22});  // two of four bytes, then silence
+    pump(e2);
+    advance(e2, Engine::REQUEST_TIMEOUT_MS + 1);
+    check(g_errors == errors_before + 1 && g_last_error == optolink::OptolinkResult::TIMEOUT, "I: TIMEOUT mid-answer");
+    check(io2.written() == Bytes({0x04}), "I: RESET sends EOT");
+    io2.clear_written();
+    io2.feed({0x05});
+    pump(e2);
+    check(io2.written() == Bytes({0x16, 0x00, 0x00}), "I: then exactly 16 00 00");
+  }
 
   std::printf("vs2 gfa read: %d failure(s)\n", g_fail);
   return g_fail == 0 ? 0 : 1;
