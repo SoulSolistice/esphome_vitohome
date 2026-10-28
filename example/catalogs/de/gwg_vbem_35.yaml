@@ -331,7 +331,6 @@ sensor:
     access: xram  # Vitosoft XRAM_READ
     length: 2
     converter: noconv
-    signed: true
     unit_of_measurement: "bar"
     device_class: pressure
     filters:
@@ -769,6 +768,40 @@ sensor:
     converter: noconv
     filters:
       - multiply: 0.1
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.5 + -16); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "(86) Verschiebung SPR 30L oben"
+    id: GWG_BEMK86VerschiebungSPR30Loben
+    address: 0x0020
+    access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
+    length: 1
+    converter: noconv
+    unit_of_measurement: "K"
+    filters:
+      - multiply: 0.5
+      - offset: -16
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.5 + -16); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "(85) Verschiebung SPR 30L unten"
+    id: GWG_BEMK85VerschiebungSPR30Lunten
+    address: 0x001F
+    access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
+    length: 1
+    converter: noconv
+    unit_of_measurement: "K"
+    filters:
+      - multiply: 0.5
+      - offset: -16
     state_class: measurement
     disabled_by_default: true
     update_interval: 3600s
@@ -1781,7 +1814,7 @@ number:
 
   # --- Codierungen / Anlage ---
   # vito: quickcheck
-    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(46) Drehzahl der Heizkreispumpe im reduzierten Betrieb"
     id: GWG_BEMK46DrehzahlreduziertHKP
@@ -1798,7 +1831,7 @@ number:
     update_interval: 3600s
 
   # vito: quickcheck
-    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(38) Minimale Vorlauftemperatur"
     id: GWG_BEMK38MinimalVorlauftemperatur
@@ -1816,7 +1849,7 @@ number:
     update_interval: 3600s
 
   # vito: quickcheck
-    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(42) Kesselmaximaltemperatur im Heizbetrieb"
     id: GWG_BEMK42Kesselmaximaltemperatur_ab35
@@ -1869,7 +1902,7 @@ number:
 
   # --- Codierungen / Warmwasser ---
   # vito: quickcheck
-    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(A0) Kesseloffset-Temperatur bei Trinkwasserbereitung"
     id: GWG_BEMKA0KesseloffsetbeiTW
@@ -1903,7 +1936,7 @@ number:
     update_interval: 3600s
 
   # vito: quickcheck
-    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(A7) Temperatur bei Zusatzfunktion"
     id: GWG_BEMKA7TemperaturbeiZusatzfunktion
@@ -1921,7 +1954,7 @@ number:
     update_interval: 3600s
 
   # vito: quickcheck
-    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(A1) Nachlaufzeit Ladepumpe"
     id: GWG_BEMKA1NachlaufzeitLadepumpe
@@ -1934,42 +1967,6 @@ number:
     min_value: 0
     max_value: 255
     step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-    # NOTE: conversion 'MultOffset': display value = raw * 0.5 + -16; raw noconv emitted (no encode path for the transform)
-  - platform: vitohome
-    name: "(86) Verschiebung SPR 30L oben"
-    id: GWG_BEMK86VerschiebungSPR30Loben
-    address: 0x0020
-    access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
-    length: 1
-    converter: noconv
-    signed: true
-    unit_of_measurement: "K"
-    min_value: -16
-    max_value: 16
-    step: 0.5
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-    # NOTE: conversion 'MultOffset': display value = raw * 0.5 + -16; raw noconv emitted (no encode path for the transform)
-  - platform: vitohome
-    name: "(85) Verschiebung SPR 30L unten"
-    id: GWG_BEMK85VerschiebungSPR30Lunten
-    address: 0x001F
-    access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
-    length: 1
-    converter: noconv
-    signed: true
-    unit_of_measurement: "K"
-    min_value: -16
-    max_value: 16
-    step: 0.5
     mode: box
     disabled_by_default: true
     update_interval: 3600s
@@ -1992,7 +1989,7 @@ number:
     update_interval: 3600s
 
   # vito: quickcheck
-    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(B4) P-Anteil Regelung DLH"
     id: GWG_BEMKB4PAnteilRegelungDLH
@@ -2008,7 +2005,7 @@ number:
     update_interval: 3600s
 
   # --- Codierungen / Sonstiges ---
-    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(49) Laufzeit Brenner (* 100 h)"
     id: GWG_BEMK49Brennerlaufzeit100
@@ -2024,7 +2021,7 @@ number:
     update_interval: 3600s
 
   # vito: quickcheck
-    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(45) Maximaldrehzahl der Heizkreispumpe"
     id: GWG_K45MaximaldrehzahlHKP
@@ -2041,7 +2038,7 @@ number:
     update_interval: 3600s
 
   # vito: quickcheck
-    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(44) Mindestdrehzahl der Heizkreispumpe"
     id: GWG_K44MindestdrehzahlHKP
@@ -2057,7 +2054,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(50) Laufzeit Brenner"
     id: GWG_BEMK50Brennerlaufzeit
@@ -2075,7 +2072,7 @@ number:
     update_interval: 3600s
 
   # --- (ohne Gruppenzuordnung) ---
-    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(11) Heizkreispumpendrehzahl im reduzierten BereichByte"
     id: GWG_K11HKPDrehzahlreduziertByte
@@ -2547,7 +2544,7 @@ select:
       2: "2 bei reduziertem Betrieb"
       3: "3 ungültige Einstellung"
 
-    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(108) Wirkung externes Sperren auf"
     id: GWG_K108Wirkung_externes_Sperren

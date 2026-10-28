@@ -662,6 +662,55 @@ sensor:
     disabled_by_default: true
     update_interval: 3600s
 
+  # --- Codierungen / PM1 ---
+  # vito: circuit=boiler quickcheck
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 3); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "(09) Nachstellzeit Funktion 2⁄6"
+    id: K89_KonfiFkt2u6NachstellzeitZielTR
+    address: 0x8709
+    length: 1
+    converter: noconv
+    unit_of_measurement: "s"
+    device_class: duration
+    filters:
+      - multiply: 3
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=boiler quickcheck
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 3); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "(0C) Nachstellzeit Funktion 3⁄4"
+    id: K8C_KonfiFkt3u4Nachstellzeit
+    address: 0x870C
+    length: 1
+    converter: noconv
+    unit_of_measurement: "s"
+    device_class: duration
+    filters:
+      - multiply: 3
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=boiler quickcheck
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 3); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "(12) Nachstellzeit Funktion 7"
+    id: K92_KonfiFkt7Nachstellzeit
+    address: 0x8712
+    length: 1
+    converter: noconv
+    unit_of_measurement: "s"
+    device_class: duration
+    filters:
+      - multiply: 3
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
   # --- LON Objekte / Node Objekt ---
   - platform: vitohome
     name: "Alarm Anlagennummer"
@@ -2806,26 +2855,6 @@ number:
     update_interval: 3600s
 
   # vito: circuit=boiler quickcheck
-    # NOTE: conversion 'MultOffset': display value = raw * 3; raw noconv emitted (no encode path for the transform)
-  - platform: vitohome
-    name: "(09) Nachstellzeit Funktion 2⁄6"
-    id: K89_KonfiFkt2u6NachstellzeitZielTR
-    address: 0x8709
-    length: 1
-    converter: noconv
-    unit_of_measurement: "s"
-    device_class: duration
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=boiler quickcheck
   - platform: vitohome
     name: "(0A) Soll-Differenztemperatur Funktion 3⁄4"
     id: K8A_KonfiFkt3u4DifferenztempSoll
@@ -2853,26 +2882,6 @@ number:
     min_value: 0.1
     max_value: 10
     step: 0.1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=boiler quickcheck
-    # NOTE: conversion 'MultOffset': display value = raw * 3; raw noconv emitted (no encode path for the transform)
-  - platform: vitohome
-    name: "(0C) Nachstellzeit Funktion 3⁄4"
-    id: K8C_KonfiFkt3u4Nachstellzeit
-    address: 0x870C
-    length: 1
-    converter: noconv
-    unit_of_measurement: "s"
-    device_class: duration
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
     mode: box
     disabled_by_default: true
     update_interval: 3600s
@@ -2953,26 +2962,6 @@ number:
     min_value: 0.1
     max_value: 10
     step: 0.1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=boiler quickcheck
-    # NOTE: conversion 'MultOffset': display value = raw * 3; raw noconv emitted (no encode path for the transform)
-  - platform: vitohome
-    name: "(12) Nachstellzeit Funktion 7"
-    id: K92_KonfiFkt7Nachstellzeit
-    address: 0x8712
-    length: 1
-    converter: noconv
-    unit_of_measurement: "s"
-    device_class: duration
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
     mode: box
     disabled_by_default: true
     update_interval: 3600s

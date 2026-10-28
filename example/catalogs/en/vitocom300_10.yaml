@@ -203,6 +203,19 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # --- Funktionskontrolle / Internet ---
+  # vito: level=td
+    # NOTE: conversion 'FixedStringTerminalZeroes' has no preset; raw noconv emitted; no encode path for the conversion -> read-only
+  - platform: vitohome
+    name: "Process ID"
+    id: vlogVSVerbindungProzessID
+    address: 0xAE89
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
   # --- (ohne Gruppenzuordnung) ---
   - platform: vitohome
     name: "Number of requirements master socket"
@@ -625,24 +638,6 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-    # NOTE: conversion 'FixedStringTerminalZeroes' has no preset; raw noconv emitted
-  - platform: vitohome
-    name: "Process ID"
-    id: vlogVSVerbindungProzessID
-    address: 0xAE89
-    length: 1
-    converter: noconv
     # Borders absent, or out of range for this byte width, in
     # the export. These placeholders pass `esphome config` but
     # pin the value to 0 - set real min/max/step before use.

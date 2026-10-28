@@ -389,7 +389,6 @@ sensor:
     access: xram  # Vitosoft XRAM_READ
     length: 2
     converter: noconv
-    signed: true
     unit_of_measurement: "bar"
     device_class: pressure
     filters:
@@ -880,6 +879,40 @@ sensor:
     converter: noconv
     filters:
       - multiply: 0.1
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.5 + -16); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "(85) Offset SPR 30L bottom"
+    id: GWG_BEMK85VerschiebungSPR30Lunten
+    address: 0x001F
+    access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
+    length: 1
+    converter: noconv
+    unit_of_measurement: "K"
+    filters:
+      - multiply: 0.5
+      - offset: -16
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.5 + -16); value transform has no encode path -> demoted to sensor
+  - platform: vitohome
+    name: "(86) Offset SPR 30L top"
+    id: GWG_BEMK86VerschiebungSPR30Loben
+    address: 0x0020
+    access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
+    length: 1
+    converter: noconv
+    unit_of_measurement: "K"
+    filters:
+      - multiply: 0.5
+      - offset: -16
     state_class: measurement
     disabled_by_default: true
     update_interval: 3600s
@@ -1634,7 +1667,7 @@ number:
 
   # --- Codierungen / Warmwasser ---
   # vito: quickcheck
-    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(A7) Temperature with auxiliary function"
     id: GWG_BEMKA7TemperaturbeiZusatzfunktion
@@ -1652,7 +1685,7 @@ number:
     update_interval: 3600s
 
   # vito: quickcheck
-    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(A0) Boiler offset temperature during DHW heating"
     id: GWG_BEMKA0KesseloffsetbeiTW
@@ -1670,7 +1703,7 @@ number:
 
   # --- Codierungen / Sonstiges ---
   # vito: quickcheck
-    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(44) Minimum speed of heating circuit pump"
     id: GWG_K44MindestdrehzahlHKP
@@ -1687,7 +1720,7 @@ number:
     update_interval: 3600s
 
   # vito: quickcheck
-    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(45) Maximum speed of heating circuit pump"
     id: GWG_K45MaximaldrehzahlHKP
@@ -1704,7 +1737,7 @@ number:
     update_interval: 3600s
 
   # --- (ohne Gruppenzuordnung) ---
-    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(11) Heating circuit pump speed in reduced range byte"
     id: GWG_K11HKPDrehzahlreduziertByte
@@ -1751,7 +1784,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(38) Minimum flow temperature in heating mode"
     id: GWG_K38Vorlaufminimaltemperatur
@@ -1819,7 +1852,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(50) Runtime burner"
     id: GWG_BEMK50Brennerlaufzeit
@@ -1852,7 +1885,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(49) Runtime burner (* 100 h)"
     id: GWG_BEMK49Brennerlaufzeit100
@@ -1884,7 +1917,7 @@ number:
     update_interval: 3600s
 
   # vito: quickcheck
-    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(A1) Run-on time primary pump"
     id: GWG_BEMKA1NachlaufzeitLadepumpe
@@ -1897,42 +1930,6 @@ number:
     min_value: 0
     max_value: 255
     step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-    # NOTE: conversion 'MultOffset': display value = raw * 0.5 + -16; raw noconv emitted (no encode path for the transform)
-  - platform: vitohome
-    name: "(85) Offset SPR 30L bottom"
-    id: GWG_BEMK85VerschiebungSPR30Lunten
-    address: 0x001F
-    access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
-    length: 1
-    converter: noconv
-    signed: true
-    unit_of_measurement: "K"
-    min_value: -16
-    max_value: 16
-    step: 0.5
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-    # NOTE: conversion 'MultOffset': display value = raw * 0.5 + -16; raw noconv emitted (no encode path for the transform)
-  - platform: vitohome
-    name: "(86) Offset SPR 30L top"
-    id: GWG_BEMK86VerschiebungSPR30Loben
-    address: 0x0020
-    access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
-    length: 1
-    converter: noconv
-    signed: true
-    unit_of_measurement: "K"
-    min_value: -16
-    max_value: 16
-    step: 0.5
     mode: box
     disabled_by_default: true
     update_interval: 3600s
@@ -2001,7 +1998,7 @@ number:
     update_interval: 3600s
 
   # vito: quickcheck
-    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(B4) Proportional component control unit inst. water heater"
     id: GWG_BEMKB4PAnteilRegelungDLH
@@ -2334,7 +2331,7 @@ select:
       0: "0 DHW circulation pump"
       1: "1 Output signal DHW heating"
 
-    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35; raw noconv emitted (no encode path for the transform)
+    # NOTE: conversion 'NoConversion': display value = raw * 5 + 35?; the borders read as raw, noconv emitted
   - platform: vitohome
     name: "(108) Effect of external blocking on"
     id: GWG_K108Wirkung_externes_Sperren
