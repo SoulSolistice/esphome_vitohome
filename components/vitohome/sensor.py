@@ -23,6 +23,7 @@ from . import (
     emit_access,
     emit_bit_mask,
     emit_poll_interval,
+    poll_update_interval,
     pop_poll_interval,
     read_access,
     resolve_signed,
@@ -118,7 +119,7 @@ CONFIG_SCHEMA = cv.All(
             # A field of one byte (decode.h, "bit fields"): extracted, then
             # scaled by the converter. Read-only here, so any 1-byte shape.
             cv.Optional(CONF_BIT_MASK): BIT_MASK_SCHEMA,
-            cv.Optional(CONF_UPDATE_INTERVAL): cv.update_interval,
+            cv.Optional(CONF_UPDATE_INTERVAL): poll_update_interval,
             # A GWG access mode (GWG only), selecting the TYPE byte per
             # GWGAccessMode (constants.h), `rpc` (P300 only) or `gfa` (KW and
             # P300); all checked in _final_validate (__init__.py). Default

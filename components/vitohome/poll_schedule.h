@@ -15,12 +15,22 @@ namespace esphome::vitohome {
 // immediately. Because 0 is meaningful, a computed next-due of exactly 0 is
 // nudged to 1 -- a one-millisecond error once every 49.7 days, versus a spurious
 // "never polled" flag.
+// `update_interval: never` arrives as ESPHome's SCHEDULER_DONT_RUN, the
+// largest uint32_t: never due. Treated as an ordinary interval it put the next
+// due time 1 ms in the past -- polled on EVERY hub tick. Every other interval 
+// must stay below 2^31 ms for the signed difference above; the config 
+// validation (POLL_INTERVAL_MAX_MS in __init__.py) rejects longer ones.
+inline constexpr uint32_t POLL_NEVER = 0xFFFFFFFFu;
+inline constexpr uint32_t POLL_INTERVAL_MAX_MS = 0x7FFFFFFFu;
+
 struct PollDecision {
   bool due;
   uint32_t next_due_ms;
 };
 
 inline PollDecision poll_schedule_step(uint32_t now, uint32_t next_due_ms, uint32_t interval_ms, uint32_t slack_ms) {
+  if (interval_ms == POLL_NEVER)
+    return {false, next_due_ms};
   if (interval_ms == 0) {
     // 0 = "poll on every hub cycle"; nothing to schedule.
     return {true, 0};

@@ -22,6 +22,7 @@ from . import (
     emit_uint32_table,
     emit_write_target,
     field_width,
+    poll_update_interval,
     pop_poll_interval,
     raw_fits,
     validate_bit_field,
@@ -82,7 +83,7 @@ CONFIG_SCHEMA = cv.All(
             # rmw_pending_); see validate_bit_field for the shape rules.
             cv.Optional(CONF_BIT_MASK): BIT_MASK_SCHEMA,
             cv.Optional(CONF_READ_BACK, default=True): cv.boolean,
-            cv.Optional(CONF_UPDATE_INTERVAL): cv.update_interval,
+            cv.Optional(CONF_UPDATE_INTERVAL): poll_update_interval,
         }
     )
     .extend(cv.COMPONENT_SCHEMA),

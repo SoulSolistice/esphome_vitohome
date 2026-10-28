@@ -10,6 +10,7 @@ from . import (
     datapoint_expression,
     emit_option_table,
     emit_poll_interval,
+    poll_update_interval,
     pop_poll_interval,
     validate_fault_codes,
     validate_length_in,
@@ -51,7 +52,7 @@ CONFIG_SCHEMA = cv.All(
             # the wire read identical to the error_history text_sensor's.
             cv.Optional(CONF_LENGTH, default=9): validate_length_in(1, 9),
             cv.Required(CONF_CODES): _CODES_MAP,
-            cv.Optional(CONF_UPDATE_INTERVAL): cv.update_interval,
+            cv.Optional(CONF_UPDATE_INTERVAL): poll_update_interval,
         }
     )
     .extend(cv.COMPONENT_SCHEMA),

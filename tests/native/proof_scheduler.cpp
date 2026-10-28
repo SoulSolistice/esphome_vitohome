@@ -161,6 +161,39 @@ void test_slack_does_not_double_fire() {
 
 }  // namespace
 
+// `update_interval: never` (ESPHome's SCHEDULER_DONT_RUN, 0xFFFFFFFF) is never
+// due -- not on the first cycle, not ever. As an ordinary interval it put the
+// next due time 1 ms in the past and polled on every tick (external review,
+// 2026-10-28).
+void test_never_is_never_due() {
+  using esphome::vitohome::POLL_NEVER;
+  for (uint32_t now : {0u, 1u, 60000u, 123456789u, 0xFFFFFFF0u}) {
+    PollDecision d = poll_schedule_step(now, 0, POLL_NEVER, SLACK);
+    assert(!d.due);
+    d = poll_schedule_step(now, now + 1, POLL_NEVER, SLACK);
+    assert(!d.due);
+  }
+  std::puts("ok: never -> never due");
+}
+
+// Every interval the config accepts (up to POLL_INTERVAL_MAX_MS, 24.8 days)
+// schedules forward: after a poll the entity is not due again a tick later,
+// and is due once the interval has passed -- from any start, across the wrap.
+void test_every_accepted_interval_schedules_forward() {
+  using esphome::vitohome::POLL_INTERVAL_MAX_MS;
+  for (uint32_t interval : {2 * HUB_TICK, 3600000u, 86400000u, 864000000u, 2073600000u, POLL_INTERVAL_MAX_MS}) {
+    for (uint32_t start : {0u, 7u, 0x7FFFFFFFu, 0xFFFF0000u}) {
+      PollDecision first = poll_schedule_step(start, 0, interval, SLACK);
+      assert(first.due);
+      PollDecision next_tick = poll_schedule_step(start + HUB_TICK, first.next_due_ms, interval, SLACK);
+      assert(!next_tick.due);
+      PollDecision later = poll_schedule_step(start + interval, first.next_due_ms, interval, SLACK);
+      assert(later.due);
+    }
+  }
+  std::puts("ok: intervals up to 2^31-1 ms schedule forward");
+}
+
 int main() {
   test_zero_interval_always_due();
   test_first_poll_is_due();
@@ -170,6 +203,8 @@ int main() {
   test_long_stall_reanchors();
   test_wraparound();
   test_slack_does_not_double_fire();
+  test_never_is_never_due();
+  test_every_accepted_interval_schedules_forward();
   std::puts("proof_scheduler: all checks passed");
   return 0;
 }
