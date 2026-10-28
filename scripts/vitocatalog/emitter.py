@@ -646,10 +646,11 @@ def build_entity_spec(
         return _build_bit_field_spec(ev, protocol, partial_writes, ro_blocks)
 
     conv, conv_kind = CONVERSION_MAP.get(ev.conversion, (None, PLAIN))
+    unmapped_conversion = conv is None and (ev.conversion or "") not in ("", "NoConversion", "MultOffset")
     note: str | None = None
     # Value-transform filters (multiply/offset) for READ-ONLY sensors whose
-    # factor cannot be expressed as a component converter. Writables never get
-    # filters (there is no encode-side transform); they keep raw noconv + note.
+    # factor cannot be expressed as a component converter. A writable that
+    # needs one is demoted to a sensor below (no encode-side transform).
     value_filters: list[tuple[str, float]] = []
     force_signed = False
     writable = _is_writable(ev, protocol)
@@ -717,14 +718,22 @@ def build_entity_spec(
             note = f"conversion {ev.conversion!r} (factor {f_val:g}) -> {preset}"
         elif f_val is not None and (f_val != 1.0 or o_val != 0.0):
             conv = "noconv"
-            if writable:
-                # No encode-side transform exists; the raw register value is
-                # what gets written. The display transform goes into the note.
+            if writable and ev.conversion != "MultOffset":
+                # A NoConversion row carrying a factor/offset pair: the pair is
+                # often stale and the borders describe the raw value (1..100 %
+                # step 1 next to 5/35 on GWG_K45...). Written raw, as before.
                 note = (
                     f"conversion {ev.conversion!r}: display value = raw * {f_val:g}"
                     + (f" + {o_val:g}" if o_val else "")
-                    + "; raw noconv emitted (no encode path for the transform)"
+                    + "?; the borders read as raw, noconv emitted"
                 )
+            # An explicit MultOffset has no encode-side transform, so it is
+            # read-only even where Vitosoft lets it be written. Emitting it as a
+            # raw `noconv` number with the physical bounds, unit and step wrote
+            # the wrong register value: on GWG_VWMS_36 "(85) Offset SPR 30L
+            # bottom" (raw * 0.5 - 16, range -16..16 K) 0 K staged raw 00,
+            # which the device reads as -16 K (external review, 2026-10-28).
+            # The filters make the read correct and demote it below.
             else:
                 if f_val != 1.0:
                     value_filters.append(("multiply", f_val))
@@ -739,6 +748,14 @@ def build_entity_spec(
     if conv is None:
         conv = "noconv"
         note = f"conversion {ev.conversion!r} has no preset; raw noconv emitted"
+    # A named conversion without a preset changes the value in a way no
+    # converter here encodes, while the borders and unit describe the converted
+    # value: written as raw it would stage the wrong register value (the same
+    # defect as the multiply/offset case above). Read-only; the identity
+    # conversions stay writable.
+    if writable and unmapped_conversion and conv == "noconv" and not value_filters:
+        writable = False
+        note = (note + "; " if note else "") + "no encode path for the conversion -> read-only"
 
     # A datapoint is a field carved from a firmware block: BlockLength is the
     # whole block at `addr`, ByteLength the field's own width, BytePosition its
@@ -786,8 +803,8 @@ def build_entity_spec(
         writable = False
         note = (note + "; " if note else "") + f"converter {conv!r} is read-only -> demoted to sensor"
     # A display value that needs a multiply/offset filter has no encode-side
-    # transform either; read-only keeps the filtered value correct. (Filters
-    # are collected only for non-writables above, so this is defensive.)
+    # transform either; read-only keeps the filtered value correct. This is
+    # where a writable multiply/offset datapoint (above) becomes a sensor.
     if writable and value_filters:
         writable = False
         note = (note + "; " if note else "") + "value transform has no encode path -> demoted to sensor"
@@ -1105,6 +1122,14 @@ def build_entity_spec(
     # carries the negative part of the range in the offset filter.
     if bounds_scale is not None:
         neg_range = False
+    # Likewise a multiply/offset transform: the lower border describes the
+    # displayed value, and the raw one is (lower - offset) / factor -- the
+    # GWG_VWMS_36 offsets (-16..16 K = raw * 0.5 - 16) have raw 0..64, unsigned.
+    elif neg_range and value_filters:
+        factor = next((v for k, v in value_filters if k == "multiply"), 1.0)
+        offset = next((v for k, v in value_filters if k == "offset"), 0.0)
+        if factor:
+            neg_range = (float(lo_hint) - offset) / factor < 0
 
     signed_val = None
     signed_comment = None
