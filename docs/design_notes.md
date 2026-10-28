@@ -2657,10 +2657,13 @@ happen in production.
   (a parameter *and* 30 records) and the `*ErrorIndex` tables.
 - **F0 on a unit (§6).** The hub reads `0x00F0` (2 bytes) at boot and links it
   raw; the finder and `--identify` read it as Vitosoft's datapoint does, one
-  little-endian Int compared with the decimal ranges. Open: a capture from a
-  `VScotHO1_200*` / `VScotHC1_200*` unit confirming it, and what the other
-  families answer there (the read is fail-soft, but unconfirmed on any unit,
-  the reference one included).
+  little-endian Int compared with the decimal ranges. The reference unit does
+  not serve it: VScotHO1_72 (P300, boot of 2026-10-27) answers
+  `41 05 00 01 00 F0 02 F8` with the error frame `06 41 06 03 01 00 F0 01 01 FC`
+  (code `01`, address not served), and identification finishes without F0 --
+  the fail-soft path, confirmed. Open: a capture from a `VScotHO1_200*` /
+  `VScotHC1_200*` unit confirming the read, and what the other families answer
+  there.
 - **Bit-field writes on hardware (§5b).** Confirmed on VScotHO1_72 (P300) on
   2026-10-14: fail-closed, the read / merge / write / read-back sequence,
   preservation of non-zero neighbouring bits, and adjacency during a poll burst.
@@ -2668,11 +2671,17 @@ happen in production.
   write is confirmed -- two flags of `0x0005` toggled back-to-back, and an
   `FF FF` address being refused. A 1-byte write into a 2-byte block was shown to
   overwrite byte 1 (§5b, §8g).
-- **The burner-control chip read at boot (§6).** Confirmed by a raw read on
-  VScotHO1_72 (P300, `0x24`); the boot-time read itself and its log line still
-  want a hardware run. Open: what a KW unit answers at `0x7650`, and whether
-  the 10 devices with a GFA history but no declared `GFA_Kennung` (`V100KC4B`,
-  `V200…`, `V300…`) answer there at all.
+- **The burner-control chip read at boot (§6).** Confirmed on VScotHO1_72.
+  P300, boot of 2026-10-27: after `F8`/4 (`20 CB 03 51`) the hub reads `7650`/1
+  and gets `06 41 06 01 01 76 50 01 24 F3`, and logs `Device identification:
+  0x20CB (VScotHO1) HW=0x03 SW=0x51 GFA=0x24 (NEC)` (repeated in
+  `dump_config`). KW, same unit, 2026-10-26: `F7 76 50 01 -> 24`, the same
+  byte (§2, burner-control reads). Over both protocols `0x7650` equals P80,
+  the chip byte in the burner control's own space (`6B 40 50 01 -> 24`). A
+  VDensHO1 (0x20C2, P300) reportedly answers `0x7650` with `20`, again equal
+  to its P80 (second-hand, not our capture). Open: whether the 10 devices
+  with a GFA history but no declared `GFA_Kennung` (`V100KC4B`, `V200…`,
+  `V300…`) answer there at all.
 - **RF level sign (§8i).** `ecnUnit.dBm` values are emitted negated, on the
   strength of the German "-dBm" label and the unsigned `Byte` type. Unverified:
   the reference unit has no RF participant.
