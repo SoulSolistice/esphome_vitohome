@@ -630,8 +630,57 @@ re-establishes P300 (EOT, ENQ, SYNC, ACK). An ENQ while the KW session idles
 is answered with SYNC straight away. The detour costs up to two ENQ waits
 (the controller offers one about every 2 s when idle), so the hub keeps GFA
 reads together: after one, the next queued GFA read is moved to the front of
-the read lane (address-space affinity, `dispatch_next_`). Not yet confirmed
-on a unit; `tests/native/proof_vs2_gfa.cpp` pins the byte sequence.
+the read lane (address-space affinity, `dispatch_next_`).
+`tests/native/proof_vs2_gfa.cpp` pins the byte sequence.
+
+Confirmed on VScotHO1_72 (P300, 2026-10-27), raw GFA read of P80:
+
+```
+>>> 04                  EOT, leaving P300
+<<< 06                  the controller ACKs the EOT first (dropped)
+<<< 05                  ENQ, 1.95 s later
+>>> 01 6B 40 50 01
+<<< 24                  P80
+>>> 04                  after GFA_LINGER_MS
+<<< 05                  ENQ, 1.98 s later
+>>> 16 00 00 / <<< 06   P300 again
+```
+
+4.4 s on the link, nearly all of it the two ENQ waits. The same address as a
+plain P300 read answers error code `01`, so the `24` comes from the burner
+control.
+
+**This is Vitosoft's own route.** Its function-code list has
+`GFA_READ = 201` (0xC9), but sent as a whole P300 flags byte
+(`41 05 00 C9 40 50 01 5F`) it is refused the same way as `0x6B`:
+`06 41 06 03 C9 40 50 01 05 68`, error code `05` (VScotHO1_72,
+2026-10-27; a VDensHO1 0x20C2 answers identically). An independent reading
+of Vitosoft's interface assemblies (not checked here) has 201 as its
+internal command number: the KW serializer turns it into `6B <addr> <len>`,
+and `VSKOStart` switches the interface to KW (`VSManager.ChangeInterface`)
+before the burner-control reads, `VSKOStop` restoring the previous one. The
+export fits: all 269 `VSKO_*` event types (and 4 unnamed ones) read with
+`GFA_READ`, under the `~35_FA_VSKO*` menus. Two shortcuts are reported not to
+work on that VDensHO1: `16 00 00` right after the EOT, before the ENQ (no
+ACK), and entering P300 on an idle ENQ without EOT (about 1 s slower).
+
+Error code `05` is the controller's answer to a function code it lacks. The
+P300 flags byte is a 3-bit message id over a 5-bit function code, so a
+Vitosoft function-code number sent whole lands on whatever its low five bits
+name. On that VDensHO1, Vitosoft's XRAM_READ (0x31), Port_READ (0x33),
+BE_READ (0x35), KBUS_MEMBERLIST_READ (0x5D) and KBUS_VIRTUAL_READ (0x5F) all
+drew `05`, like 0x6B and 0xC9 here. KMBUS_RAM_READ (0x41) and
+KMBUS_EEPROM_READ (0x43) were answered, but 0x41 is Virtual_READ (function 1)
+with message id 2 and returned exactly the virtual data, and 0x43 is
+Physical_READ (function 3). Function codes 3 (Physical_READ, RAM) and 5
+(EEPROM_READ; its `0x1000..0x11FF` window is the coding plug) do work there.
+No P300 or KW device in the export reads through either, so the catalogs
+gain nothing from them.
+
+**Spurious `FF`.** On that VDensHO1 a GFA read occasionally answers `FF` in
+place of the value, P80 included: about 0.5 % of reads with roughly 50 ms
+between them, 0.18 % with 150 ms. Not seen here yet. The hub publishes a GFA
+answer as it arrives, so a one-byte `FF` would show as a value.
 
 **The address space**, from the export:
 
