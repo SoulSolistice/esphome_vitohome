@@ -170,6 +170,12 @@ void VS2Engine::_setState(State state) {
   optolink_log_i("state %i --> %i", static_cast<std::underlying_type<State>::type>(_state),
                  static_cast<std::underlying_type<State>::type>(state));
   _state = state;
+  // _bytesTransferred counts within one state (SYNC sent, packet sent, KW
+  // telegram sent, KW answer received); every state that counts starts at 0.
+  // Before this, the request watchdog could leave a partial KW answer's count
+  // behind on its way to RESET, and _init() then sent SYNC from past the end
+  // of the 3-byte array with a wrapped length (found by fuzz_raw_engines).
+  _bytesTransferred = 0;
 }
 
 void VS2Engine::_reset() {
