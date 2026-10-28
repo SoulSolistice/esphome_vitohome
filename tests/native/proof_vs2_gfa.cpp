@@ -106,6 +106,10 @@ int main() {
   pump(e);
   check(io.written() == Bytes({0x04}), "A: EOT leaves P300");
   io.clear_written();
+  // The controller ACKs the EOT before its ENQ (VScotHO1_72, 2026-10-27).
+  io.feed({0x06});
+  pump(e);
+  check(io.written().empty(), "A: the ACK of the EOT is dropped");
   io.feed({0x05});
   pump(e);
   check(io.written() == Bytes({0x01, 0x6B, 0x40, 0x50, 0x01}), "A: the ENQ is answered with 01 6B 40 50 01");

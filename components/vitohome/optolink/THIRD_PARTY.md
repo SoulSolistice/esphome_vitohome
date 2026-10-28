@@ -671,8 +671,8 @@ These are intentional divergences from upstream `edc059a7`:
       watchdog restarts when the detour starts and when the telegram goes
       out. Answers up to `GFA_MAX_LENGTH` (64) bytes.
     Hardware: KW, VScotHO1_72 with burner control `0x24`, 2026-10-26 -- `6B 40
-    50 01` answered `24` where `F7 40 50 01` answered `FF`. The P300 detour is
-    not confirmed on a unit yet. READ/WRITE/RPC frames and the P300 parser are
+    50 01` answered `24` where `F7 40 50 01` answered `FF`; P300, same unit,
+    2026-10-27 -- the detour read `24` and returned to P300 (4.4 s). READ/WRITE/RPC frames and the P300 parser are
     byte-identical to before. Proofs:
     `tests/native/proof_vs1_gfa.cpp`, `tests/native/proof_vs2_gfa.cpp`, and the
     refusal frame as a seed in `tests/native/fuzz_corpus_vs2.h`.
