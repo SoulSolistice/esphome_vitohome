@@ -198,6 +198,19 @@ void p300_cases() {
   check(g_responses == responses + 1 && g_payload == Bytes({0x00}), "F: completes on the one ack byte");
   check(!e.kwTelegram(0xF4, 0x2306, optolink::VS2Engine::KW_MAX_PAYLOAD + 1, data),
         "F: payload above KW_MAX_PAYLOAD refused");
+
+  // A non-zero acknowledgement is no acknowledgement: DEVICE_ERROR, and back
+  // to P300 through RESET.
+  responses = g_responses;
+  errors = g_errors;
+  check(e.kwTelegram(0xF4, 0x2306, 1, data), "F: another write on the session accepted");
+  pump(e);
+  io.clear_written();
+  io.feed({0x05});
+  pump(e);
+  check(g_responses == responses && g_errors == errors + 1 && g_last_error == optolink::OptolinkResult::DEVICE_ERROR,
+        "F: a non-zero ack is DEVICE_ERROR");
+  check(io.written() == Bytes({0x04}), "F: and RESET sends EOT");
 }
 
 void kw_cases() {

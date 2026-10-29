@@ -436,6 +436,14 @@ void VS2Engine::_kwReceive() {
   if (_bytesTransferred < expected)
     return;
   _bytesTransferred = 0;
+  // As on a KW link (VS1Engine::_receive()): after a telegram with payload
+  // anything but 0x00 is no acknowledgement, and the session is unknown.
+  if (_kwHasPayload && _kwAnswer[0] != 0x00) {
+    optolink_log_w("kw write ack byte 0x%02x (expected 0x00)", static_cast<unsigned>(_kwAnswer[0]));
+    _setState(State::RESET);
+    _tryOnError(OptolinkResult::DEVICE_ERROR);
+    return;
+  }
   _setState(State::KW_CHAIN);
   if (_onResponseCallback) {
     _onResponseCallback(_kwAnswer, expected, _currentAddress);

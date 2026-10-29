@@ -83,6 +83,21 @@ int main() {
   check(g_responses == 2 && g_errors == 0, "chained read completed");
   check(g_last_len == 2 && g_last_payload[0] == 0x54 && g_last_payload[1] == 0x01, "payload = 54 01");
 
+  // --- a write answered with anything but 00 did not take -------------------
+  const uint8_t one[1] = {0x03};
+  check(adapter.write(0x2301, one, 1), "write accepted");
+  pump(adapter);
+  uart.clear_written();
+  uart.feed({0x05});  // the controller's ENQ where the ack belongs
+  pump(adapter);
+  check(g_responses == 2 && g_errors == 1, "non-zero ack is an error, not a response");
+  check(!adapter.isBusy(), "engine idle after it");
+  // The session restarts on the next ENQ.
+  check(adapter.read(0x5525, 2), "next read accepted");
+  uart.feed({0x05});
+  pump(adapter);
+  check(ends_with(uart.written(), {0x01, 0xF7, 0x55, 0x25, 0x02}), "it goes out on a fresh ENQ (01 F7 ...)");
+
   std::printf("vs1 write-ack completion: %d failure(s)\n", failures);
   return failures == 0 ? 0 : 1;
 }
