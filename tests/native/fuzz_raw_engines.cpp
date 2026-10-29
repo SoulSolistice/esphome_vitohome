@@ -25,7 +25,9 @@
 //       GWG (outside the EEPROM pairs) <length> bytes, or the one
 //       acknowledgement byte after a payload; the detour the same; a P300
 //       answer at most the frame's 250 payload bytes;
-//   (3) afterwards the engine is idle and takes the next request.
+//   (3) afterwards the engine is idle and takes the next request;
+//   (4) a KW telegram with payload, native or over the detour, delivers only
+//       the acknowledgement 00 -- any other byte is an error.
 //
 // Same two-build arrangement as fuzz_parser_vs2.cpp; seeds in
 // fuzz_corpus_raw_engines.h.
@@ -63,6 +65,9 @@ int g_completions = 0;
 bool g_shape_ok = true;
 uint8_t g_expect_length = 0;  // 0: any length up to g_max_length
 uint8_t g_max_length = 0;
+// A KW telegram with payload (native or over the detour) is acknowledged with
+// 00; anything else is an error, never a delivered answer.
+bool g_ack_must_be_zero = false;
 volatile uint32_t g_sink = 0;
 
 void on_response(const uint8_t *data, uint8_t length, uint16_t) {
@@ -72,6 +77,8 @@ void on_response(const uint8_t *data, uint8_t length, uint16_t) {
   // A P300 write acknowledgement carries no data, and its length is the
   // frame's DataLength, nothing a consumer reads.
   if (data != nullptr && length > g_max_length)
+    g_shape_ok = false;
+  if (g_ack_must_be_zero && (data == nullptr || length != 1 || data[0] != 0x00))
     g_shape_ok = false;
   if (data != nullptr) {
     for (uint8_t i = 0; i < length; ++i)
@@ -141,6 +148,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
   g_shape_ok = true;
   g_expect_length = 0;
   g_max_length = 250;
+  g_ack_must_be_zero = false;
   bool accepted = false;
   bool idle_after = false;
   bool next_taken = false;
@@ -166,6 +174,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
       wire(*e);
       g_expect_length = has_payload ? 1 : length;
       g_max_length = optolink::VS2Engine::KW_MAX_LENGTH;
+      g_ack_must_be_zero = has_payload;
       accepted = e->kwTelegram(code, address, length, payload);
       run_script(*e, io, script, script_len);
       settle(*e);
@@ -179,6 +188,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
       wire(*e);
       g_expect_length = has_payload ? 1 : length;
       g_max_length = 255;
+      g_ack_must_be_zero = has_payload;
       accepted = e->telegram(code, address, length, payload);
       run_script(*e, io, script, script_len);
       settle(*e);

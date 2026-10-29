@@ -196,13 +196,20 @@ void VS1Engine::_receive() {
   // timed out. The coincidence len == 1 for the common 1-byte writes
   // (Betriebsart, setpoints) is what masked this. vcontrold's KW setaddr
   // ("RECV 1 SR") also reads exactly one byte and does not validate its
-  // value; we complete on it and warn if it is not the documented 0x00.
-  // Generalised with telegram(): every telegram that carries a payload (a
-  // write's shape) is answered with the one acknowledgement byte.
+  // value. Generalised with telegram(): every telegram that carries a payload
+  // (a write's shape) is answered with the one acknowledgement byte.
   const uint8_t expected = _currentRequest.hasPayload() ? 1 : _currentLength;
   if (_bytesTransferred == expected) {
     if (_currentRequest.hasPayload() && _responseBuffer[0] != 0x00) {
+      // Anything but 0x00 is no acknowledgement -- the controller's ENQ, a
+      // refusal -- so the write did not take. It used to be logged and
+      // reported as success. The session is unknown after it: back to INIT 
+      // for a fresh sync.
       optolink_log_w("write ack byte 0x%02x (expected 0x00)", static_cast<unsigned>(_responseBuffer[0]));
+      _bytesTransferred = 0;
+      _setState(State::INIT);
+      _tryOnError(OptolinkResult::DEVICE_ERROR);
+      return;
     }
     _bytesTransferred = 0;
     _setState(State::SYNC_RECV);

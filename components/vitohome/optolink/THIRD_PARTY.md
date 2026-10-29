@@ -745,6 +745,12 @@ These are intentional divergences from upstream `edc059a7`:
       already waiting past the deadline is not taken for data.
     - VS2 detour: the same rule in `_kwReceive()` (`KW_ANSWER_TIMEOUT_MS`),
       returning through RESET.
+    - VS1 and the VS2 detour: after a telegram with payload, an
+      acknowledgement other than `0x00` is DEVICE_ERROR (back to INIT, or
+      through RESET over P300). Item 11 completed on any byte and only logged
+      a non-zero one, so a missing acknowledgement read as success 
+      (`proof_vs1_write.cpp`, `proof_raw_engines.cpp` case F, and the fuzz 
+      oracle that a delivered acknowledgement is `00`).
     - VS2: `_resetAck()` answers the ENQ with a pending KW telegram
       (`_kwStart()`) instead of SYNC: after the EOT the controller speaks KW,
       so the telegram goes out one ENQ wait (about 2 s) sooner.
