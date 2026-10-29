@@ -4,6 +4,7 @@
 #ifdef VITOHOME_TIME_SYNC
 
 #include "esphome/components/time/real_time_clock.h"
+#include "decode.h"
 #include "vito_entity.h"
 
 namespace esphome::vitohome {
@@ -91,6 +92,12 @@ class VitoClock final : public VitoEntityBase {
     this->sync_on_boot_ = sync_on_boot;
     this->set_clock_address(clock_address);
   }
+  // time_sync.weekday_base: how the clock counts its weekday byte, when known
+  // (decode.h WeekdayBase). Unset, it is read off the clock (resolve_weekday_base).
+  void set_weekday_base(WeekdayBase base) {
+    this->configured_base_ = base;
+    this->configured_base_ok_ = true;
+  }
 
   // Driven from VitoHomeComponent::update(), so the granularity is the hub's
   // update_interval -- the same tick the old time_sync_tick_() ran on.
@@ -136,8 +143,14 @@ class VitoClock final : public VitoEntityBase {
   uint32_t interval_ms_{0};         // 0 = no periodic sync
   uint32_t drift_threshold_s_{60};  // write only above this drift
   bool sync_on_boot_{true};         // sync once the source first syncs
-  bool did_boot_{false};            // first-synced-time handling completed
-  uint32_t next_sync_ms_{0};        // next periodic deadline
+  // The weekday convention: configured (set_weekday_base), or learned from a
+  // read that decided it (a Sunday); see resolve_weekday_base().
+  WeekdayBase configured_base_{WeekdayBase::SUNDAY_0};
+  bool configured_base_ok_{false};
+  WeekdayBase learned_base_{WeekdayBase::SUNDAY_0};
+  bool learned_ok_{false};
+  bool did_boot_{false};      // first-synced-time handling completed
+  uint32_t next_sync_ms_{0};  // next periodic deadline
 
   // Set by the time source's on_time_sync callback, never cleared. now() being
   // is_valid() is not enough to write the boiler: it only checks year >= 2019,

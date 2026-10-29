@@ -68,3 +68,23 @@ def test_no_platform_uses_the_unbounded_validator():
         hits = re.finditer(r"CONF_UPDATE_INTERVAL\)\s*:\s*cv\.update_interval", src)
         offenders.extend(f"{name}:{src.count(chr(10), 0, m.start()) + 1}" for m in hits)
     assert not offenders, offenders
+
+
+def test_weekday_base_values_follow_the_cpp_enum():
+    # set_clock_weekday_base() takes the index into WEEKDAY_BASES minus one,
+    # cast to decode.h's WeekdayBase: the order must match.
+    from components.vitohome import WEEKDAY_BASES
+
+    with open(os.path.join(_COMPONENT, "decode.h"), encoding="utf-8") as f:
+        header = f.read()
+    m = re.search(r"enum class WeekdayBase : uint8_t \{([^}]*)\}", header)
+    names = [n.strip().lower() for n in m.group(1).split(",")]
+    assert list(WEEKDAY_BASES[1:]) == names[: len(WEEKDAY_BASES) - 1]
+
+
+def test_weekday_base_is_auto_by_default_and_takes_the_three():
+    assert TIME_SYNC_SCHEMA({})["weekday_base"] == "auto"
+    for value in ("sunday_0", "monday_0", "MONDAY_1"):
+        assert TIME_SYNC_SCHEMA({"weekday_base": value})["weekday_base"] == value.lower()
+    with pytest.raises(cv.Invalid):
+        TIME_SYNC_SCHEMA({"weekday_base": "iso"})

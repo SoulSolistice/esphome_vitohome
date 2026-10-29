@@ -90,6 +90,11 @@ CONF_SYNC_ON_BOOT = "sync_on_boot"
 # on_time_sync fired -- a merely valid-looking time is not trusted, see
 # VitoClock::source_synced_). All three are user-overridable. interval: 0s
 # disables the periodic check (boot-only).
+CONF_WEEKDAY_BASE = "weekday_base"
+WEEKDAY_BASE_AUTO = "auto"
+# Values in decode.h's WeekdayBase order (set_clock_weekday_base()).
+WEEKDAY_BASES = (WEEKDAY_BASE_AUTO, "sunday_0", "monday_0", "monday_1")
+
 TIME_SYNC_SCHEMA = cv.Schema(
     {
         cv.Optional(CONF_INTERVAL, default="24h"): cv.All(
@@ -97,6 +102,11 @@ TIME_SYNC_SCHEMA = cv.Schema(
         ),
         cv.Optional(CONF_DRIFT_THRESHOLD, default="60s"): cv.positive_time_period_seconds,
         cv.Optional(CONF_SYNC_ON_BOOT, default=True): cv.boolean,
+        # How the clock counts its weekday byte. `auto` reads it off the clock:
+        # a Sunday read decides, any other day sunday=0 and monday=1..sunday=7
+        # look alike, and a sync that writes a Sunday before the clock has
+        # shown which writes 0 with a warning (decode.h, WeekdayBase).
+        cv.Optional(CONF_WEEKDAY_BASE, default=WEEKDAY_BASE_AUTO): cv.one_of(*WEEKDAY_BASES, lower=True),
         # The device clock datapoint. NOT a constant across Viessmann devices --
         # source-confirmed against the Vitosoft DPDefinitions.xml link tables,
         # which carry three distinct schemes:
@@ -1581,3 +1591,5 @@ async def to_code(config):
                 sync[CONF_CLOCK_ADDRESS],
             )
         )
+        if sync[CONF_WEEKDAY_BASE] != WEEKDAY_BASE_AUTO:
+            cg.add(var.set_clock_weekday_base(WEEKDAY_BASES.index(sync[CONF_WEEKDAY_BASE]) - 1))

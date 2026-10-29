@@ -75,6 +75,10 @@ vitohome:
     interval: 24h
     drift_threshold: 60s
     sync_on_boot: true
+    # How the clock counts its weekday byte. `auto` (the default) reads it off
+    # the clock; only a Sunday read tells sunday=0 from monday=1..sunday=7, so
+    # a clock known to count monday=1..sunday=7 (VScotHO1_72's does) can say so.
+    weekday_base: auto
 
 # Per-day switching-time programs for heating circuit 1 (Monday..Sunday).
 #

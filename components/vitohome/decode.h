@@ -352,12 +352,24 @@ inline int64_t civil_seconds(const BcdDateTime &dt) {
 // On 0x20CB the Wednesday read of 0x088E (0x03) fits SUNDAY_0 and MONDAY_1
 // alike. What tells them apart is a Sunday, and the unit's own fault records
 // (0x7507 / 0x7590, 2026-10-26 log) carry 0x07 for Sunday 2026-03-29: MONDAY_1.
-// The clock itself says which (clock_weekday_base).
-enum class WeekdayBase : uint8_t { SUNDAY_0, MONDAY_0, MONDAY_1 };
+// The clock itself says which (clock_weekday_base) -- on a Sunday. On Monday
+// to Saturday SUNDAY_0 and MONDAY_1 count the same, so a read then says only
+// SUNDAY_0_OR_MONDAY_1. That is enough to write any day but a Sunday; for a
+// Sunday the convention must come from elsewhere (resolve_weekday_base()).
+// Taking the ambiguity as SUNDAY_0 wrote weekday 0 on a Sunday to a MONDAY_1
+// clock whose stale date was a weekday (external review, 2026-10-28).
+enum class WeekdayBase : uint8_t { SUNDAY_0, MONDAY_0, MONDAY_1, SUNDAY_0_OR_MONDAY_1 };
+
+inline bool weekday_base_decided(WeekdayBase base) { return base != WeekdayBase::SUNDAY_0_OR_MONDAY_1; }
 
 // ESPHome ESPTime::day_of_week is sunday=1..saturday=7. Map ESPTime -> the
-// device's weekday byte in its convention.
-inline uint8_t device_weekday_from_esptime(uint8_t dow_sun1, WeekdayBase base = WeekdayBase::SUNDAY_0) {
+// device's weekday byte in its convention. With SUNDAY_0_OR_MONDAY_1 the byte
+// is the same either way except on a Sunday, which writes 0 and sets
+// *undecided (when given): the caller has written a guess.
+inline uint8_t device_weekday_from_esptime(uint8_t dow_sun1, WeekdayBase base = WeekdayBase::SUNDAY_0,
+                                           bool *undecided = nullptr) {
+  if (undecided != nullptr)
+    *undecided = base == WeekdayBase::SUNDAY_0_OR_MONDAY_1 && dow_sun1 == 1;
   if (base == WeekdayBase::MONDAY_1)
     return static_cast<uint8_t>(dow_sun1 == 1 ? 7 : dow_sun1 - 1);
   return static_cast<uint8_t>((dow_sun1 + (base == WeekdayBase::MONDAY_0 ? 5 : 6)) % 7);
@@ -367,8 +379,8 @@ inline uint8_t device_weekday_from_esptime(uint8_t dow_sun1, WeekdayBase base = 
 // the block's own date. SUNDAY_0 and MONDAY_0 differ on every day, so the byte
 // picks one of them; MONDAY_1 equals SUNDAY_0 from Monday to Saturday and
 // differs only on a Sunday (7 against 0). So on Monday..Saturday a matching
-// byte reports SUNDAY_0, which writes exactly the byte a MONDAY_1 clock
-// expects; on a Sunday the byte decides between all three.
+// byte reports SUNDAY_0_OR_MONDAY_1; on a Sunday the byte decides between all
+// three.
 // Returns false, leaving *out alone, when the block does not decode or the
 // byte matches none (a clock never set, a non-BCD byte).
 inline bool clock_weekday_base(const uint8_t *data, std::size_t data_len, std::size_t offset, WeekdayBase *out) {
@@ -380,7 +392,7 @@ inline bool clock_weekday_base(const uint8_t *data, std::size_t data_len, std::s
   // rejects years before 1990, so the day count is positive.
   const auto from_sunday = static_cast<uint8_t>((civil_days(dt.year, dt.month, dt.day) + 4) % 7);
   if (weekday == from_sunday) {
-    *out = WeekdayBase::SUNDAY_0;
+    *out = from_sunday == 0 ? WeekdayBase::SUNDAY_0 : WeekdayBase::SUNDAY_0_OR_MONDAY_1;
     return true;
   }
   if (weekday == (from_sunday + 6) % 7) {
@@ -394,6 +406,20 @@ inline bool clock_weekday_base(const uint8_t *data, std::size_t data_len, std::s
   return false;
 }
 
+// The convention a sync writes with: a configured one wins; otherwise this
+// read's when it decides, else one an earlier read decided (`learned`), else
+// the read's ambiguity -- or SUNDAY_0_OR_MONDAY_1 when nothing was read.
+inline WeekdayBase resolve_weekday_base(bool configured_ok, WeekdayBase configured, bool read_ok, WeekdayBase read,
+                                        bool learned_ok, WeekdayBase learned) {
+  if (configured_ok)
+    return configured;
+  if (read_ok && weekday_base_decided(read))
+    return read;
+  if (learned_ok)
+    return learned;
+  return WeekdayBase::SUNDAY_0_OR_MONDAY_1;
+}
+
 // Name of a WeekdayBase for log lines.
 inline const char *weekday_base_name(WeekdayBase base) {
   switch (base) {
@@ -401,6 +427,8 @@ inline const char *weekday_base_name(WeekdayBase base) {
       return "monday=0";
     case WeekdayBase::MONDAY_1:
       return "monday=1..sunday=7";
+    case WeekdayBase::SUNDAY_0_OR_MONDAY_1:
+      return "sunday=0 or monday=1 (alike Monday..Saturday)";
     default:
       return "sunday=0";
   }

@@ -174,25 +174,35 @@ void VitoClock::handle_read_(const ResponseView &response) {
     return;
 
   // Count the weekday the way this clock does. The read above carries the
-  // answer: its weekday byte against its own date. On Monday..Saturday a
-  // sunday=0 and a monday=1..sunday=7 clock read the same byte, and both take
-  // the same write; only a Sunday tells them apart (0 against 7), and then the
-  // byte read here decides. Sunday-based is the fallback for a clock that is
-  // unreadable or whose byte fits none (a clock never set).
-  WeekdayBase base = WeekdayBase::SUNDAY_0;
+  // answer -- its weekday byte against its own date -- but only on a Sunday
+  // does it tell sunday=0 from monday=1..sunday=7; any other day it says
+  // "either" (decode.h). A configured weekday_base wins; a deciding read is
+  // remembered for later syncs.
+  WeekdayBase read_base = WeekdayBase::SUNDAY_0_OR_MONDAY_1;
+  bool read_ok = false;
   if (device_time_ok) {
-    if (clock_weekday_base(response.data, response.data_length, 0, &base)) {
-      ESP_LOGD(TAG, "System-time sync: device weekday byte 0x%02X fits %s", response.data[4], weekday_base_name(base));
+    read_ok = clock_weekday_base(response.data, response.data_length, 0, &read_base);
+    if (read_ok) {
+      ESP_LOGD(TAG, "System-time sync: device weekday byte 0x%02X fits %s", response.data[4],
+               weekday_base_name(read_base));
+      if (weekday_base_decided(read_base)) {
+        this->learned_base_ = read_base;
+        this->learned_ok_ = true;
+      }
     } else {
-      ESP_LOGW(TAG,
-               "System-time sync: device weekday byte 0x%02X fits no known weekday counting; "
-               "writing it sunday=0",
-               response.data[4]);
+      ESP_LOGW(TAG, "System-time sync: device weekday byte 0x%02X fits no known weekday counting", response.data[4]);
     }
   }
+  const WeekdayBase base = resolve_weekday_base(this->configured_base_ok_, this->configured_base_, read_ok, read_base,
+                                                this->learned_ok_, this->learned_base_);
 
   uint8_t buffer[CLOCK_LEN];
-  const uint8_t weekday = device_weekday_from_esptime(time.day_of_week, base);
+  bool undecided = false;
+  const uint8_t weekday = device_weekday_from_esptime(time.day_of_week, base, &undecided);
+  if (undecided) {
+    ESP_LOGW(TAG, "System-time sync: writing a Sunday, and this clock has not shown whether it counts sunday=0 or "
+                  "monday=1..sunday=7; writing 0. Set time_sync.weekday_base to be sure.");
+  }
 
   if (!encode_datetime_bcd(time.year, time.month, time.day_of_month, weekday, time.hour, time.minute, time.second,
                            buffer)) {

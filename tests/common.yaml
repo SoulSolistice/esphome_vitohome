@@ -59,6 +59,10 @@ vitohome:
   log_frames: ${log_frames}
   # Drives -DVITOHOME_TIME_SYNC; see the time: block above.
   time_id: test_time
+  # An explicit weekday counting compiles set_clock_weekday_base() (the
+  # default `auto` emits no call).
+  time_sync:
+    weekday_base: monday_1
   # The raw lane defaults to 0 (the scan console is opt-in). This config drives
   # queue_raw_read/queue_raw_write from the lambdas below, so it has to ask for
   # a lane -- without this they would be rejected at runtime with a warning.

@@ -706,7 +706,7 @@ static void test_clock_weekday_base() {
   uint8_t clock[] = {0x20, 0x26, 0x10, 0x07, 0x03, 0x12, 0x00, 0x00};
   WeekdayBase base = WeekdayBase::MONDAY_0;
   CHECK(clock_weekday_base(clock, 8, 0, &base));
-  CHECK(base == WeekdayBase::SUNDAY_0);
+  CHECK(base == WeekdayBase::SUNDAY_0_OR_MONDAY_1);  // a Wednesday cannot tell
   clock[4] = 0x02;
   CHECK(clock_weekday_base(clock, 8, 0, &base));
   CHECK(base == WeekdayBase::MONDAY_0);
@@ -730,7 +730,7 @@ static void test_clock_weekday_base() {
   uint8_t sunday[] = {0x20, 0x26, 0x10, 0x11, 0x06, 0x08, 0x00, 0x00};
   CHECK(clock_weekday_base(sunday, 8, 0, &base) && base == WeekdayBase::MONDAY_0);
   uint8_t saturday[] = {0x20, 0x26, 0x10, 0x10, 0x06, 0x08, 0x00, 0x00};
-  CHECK(clock_weekday_base(saturday, 8, 0, &base) && base == WeekdayBase::SUNDAY_0);
+  CHECK(clock_weekday_base(saturday, 8, 0, &base) && base == WeekdayBase::SUNDAY_0_OR_MONDAY_1);
 
   // Writing in the device's convention: ESPHome Wednesday is 4 (sunday=1).
   CHECK(device_weekday_from_esptime(4, WeekdayBase::SUNDAY_0) == 3);
@@ -757,7 +757,7 @@ static void test_clock_weekday_base() {
   // Monday..Saturday a monday=1 clock reads like sunday=0 (today's 0x088E,
   // Monday 2026-10-26, read `20:26:10:26:01:15:30:15`), and both write the same.
   const uint8_t monday[] = {0x20, 0x26, 0x10, 0x26, 0x01, 0x15, 0x30, 0x15};
-  CHECK(clock_weekday_base(monday, 8, 0, &base) && base == WeekdayBase::SUNDAY_0);
+  CHECK(clock_weekday_base(monday, 8, 0, &base) && base == WeekdayBase::SUNDAY_0_OR_MONDAY_1);
   for (uint8_t dow = 2; dow <= 7; ++dow)
     CHECK(device_weekday_from_esptime(dow, WeekdayBase::MONDAY_1) == device_weekday_from_esptime(dow));
   CHECK(device_weekday_from_esptime(1, WeekdayBase::MONDAY_1) == 7);  // Sunday
@@ -767,6 +767,36 @@ static void test_clock_weekday_base() {
   CHECK(encode_datetime_bcd(2026, 11, 1, device_weekday_from_esptime(1, WeekdayBase::MONDAY_1), 8, 0, 0, buf));
   const uint8_t want[] = {0x20, 0x26, 0x11, 0x01, 0x07, 0x08, 0x00, 0x00};
   CHECK(std::memcmp(buf, want, 8) == 0);
+
+  // The ambiguity is explicit (external review, 2026-10-28). It writes any day
+  // but a Sunday exactly as both conventions do, and flags a Sunday as a guess.
+  bool undecided = true;
+  for (uint8_t dow = 2; dow <= 7; ++dow) {
+    CHECK(device_weekday_from_esptime(dow, WeekdayBase::SUNDAY_0_OR_MONDAY_1, &undecided) ==
+          device_weekday_from_esptime(dow, WeekdayBase::MONDAY_1));
+    CHECK(!undecided);
+  }
+  CHECK(device_weekday_from_esptime(1, WeekdayBase::SUNDAY_0_OR_MONDAY_1, &undecided) == 0 && undecided);
+  CHECK(device_weekday_from_esptime(1, WeekdayBase::MONDAY_1, &undecided) == 7 && !undecided);
+
+  // The reviewed case: a monday=1 clock whose stale date is a Saturday (06),
+  // corrected on a Sunday. The Saturday read cannot decide; an earlier Sunday
+  // read (07) did, and is what the write follows: 7, not 0.
+  const WeekdayBase ambiguous = WeekdayBase::SUNDAY_0_OR_MONDAY_1;
+  CHECK(resolve_weekday_base(false, WeekdayBase::SUNDAY_0, true, ambiguous, true, WeekdayBase::MONDAY_1) ==
+        WeekdayBase::MONDAY_1);
+  CHECK(device_weekday_from_esptime(
+            1, resolve_weekday_base(false, WeekdayBase::SUNDAY_0, true, ambiguous, true, WeekdayBase::MONDAY_1)) == 7);
+  // A configured convention wins over everything.
+  CHECK(resolve_weekday_base(true, WeekdayBase::MONDAY_1, true, WeekdayBase::SUNDAY_0, true, WeekdayBase::MONDAY_0) ==
+        WeekdayBase::MONDAY_1);
+  // A deciding read wins over what was learned.
+  CHECK(resolve_weekday_base(false, WeekdayBase::SUNDAY_0, true, WeekdayBase::MONDAY_0, true, WeekdayBase::MONDAY_1) ==
+        WeekdayBase::MONDAY_0);
+  // Nothing decides: the ambiguity stays visible.
+  CHECK(resolve_weekday_base(false, WeekdayBase::SUNDAY_0, true, ambiguous, false, WeekdayBase::SUNDAY_0) == ambiguous);
+  CHECK(resolve_weekday_base(false, WeekdayBase::SUNDAY_0, false, WeekdayBase::SUNDAY_0, false,
+                             WeekdayBase::SUNDAY_0) == ambiguous);
 
   CHECK(std::strcmp(weekday_base_name(WeekdayBase::MONDAY_1), "monday=1..sunday=7") == 0);
 }
