@@ -129,7 +129,7 @@ def test_inverted_range_rejected():
 
 
 # The EFFECTIVE range is checked, with the defaults to_code() applies when a
-# bound is left out (`min_temperature: 40` alone passed and gave 40..37, 
+# bound is left out (`min_temperature: 40` alone passed and gave 40..37,
 # pinning every target to 37).
 def test_min_above_the_default_max_rejected():
     with pytest.raises(cv.Invalid, match="effective range 40..37"):

@@ -38,6 +38,17 @@ static_assert(IS_GWG ? gwg_mode(space_from_gwg(optolink::GWGAccessMode::BE)) == 
                      : space_from_gwg(optolink::GWGAccessMode::BE) == AddressSpace::OWN,
               "GWG modes map only on GWG");
 
+// The hub watchdog's telegram count: a GWG EEPROM read takes one telegram per
+// address, everything else one.
+static_assert(read_telegram_count(AddressSpace::GWG_EEPROM, 16) == (IS_GWG ? 16 : 1), "EEPROM per address");
+static_assert(read_telegram_count(AddressSpace::GWG_EEPROM, 1) == 1, "one address, one telegram");
+static_assert(read_telegram_count(AddressSpace::OWN, 48) == 1, "an own read is one telegram");
+static_assert(read_telegram_count(AddressSpace::GWG_XRAM, 8) == 1, "an XRAM read is one telegram");
+static_assert(in_flight_watchdog_ms(10000, 16) == 160000, "budget per telegram");
+static_assert(in_flight_watchdog_ms(10000, 0) == 10000, "at least one telegram");
+// 48 bytes (RAW_READ_MAX) at 10 s each stays far inside uint32_t.
+static_assert(in_flight_watchdog_ms(10000, 48) == 480000, "no overflow at the raw cap");
+
 int main() {
   std::printf("  %-5s address-space table ok\n", PROTOCOL_NAME);
   return 0;
