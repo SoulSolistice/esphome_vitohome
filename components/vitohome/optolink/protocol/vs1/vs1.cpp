@@ -203,7 +203,7 @@ void VS1Engine::_receive() {
     if (_currentRequest.hasPayload() && _responseBuffer[0] != 0x00) {
       // Anything but 0x00 is no acknowledgement -- the controller's ENQ, a
       // refusal -- so the write did not take. It used to be logged and
-      // reported as success. The session is unknown after it: back to INIT 
+      // reported as success. The session is unknown after it: back to INIT
       // for a fresh sync.
       optolink_log_w("write ack byte 0x%02x (expected 0x00)", static_cast<unsigned>(_responseBuffer[0]));
       _bytesTransferred = 0;

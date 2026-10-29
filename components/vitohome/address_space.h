@@ -91,6 +91,23 @@ constexpr bool space_writable(AddressSpace space) {
 // GFA read leaves the link for KW and returns, up to two ENQ waits.
 constexpr bool space_has_switch_cost(AddressSpace space) { return IS_P300 && space == AddressSpace::GFA; }
 
+// How many telegrams a read of `length` bytes in `space` takes on the wire. A
+// GWG EEPROM read is answered as a complement pair per address, so the engine
+// reads one address per telegram (GWGEngine::read(), kEepromPairLength) and
+// re-arms its own timeout for each; after a burst fallback each one waits for
+// an ENQ. Every other read is one telegram.
+constexpr uint8_t read_telegram_count(AddressSpace space, uint8_t length) {
+  return (IS_GWG && space == AddressSpace::GWG_EEPROM && length > 1) ? length : 1;
+}
+
+// The hub's last-resort watchdog for one operation: `per_telegram_ms` for each
+// telegram it takes. A single budget for a whole multi-telegram GWG EEPROM read
+// cut off a valid 16-byte read after burst fallback (about 19 s at 1.2 s per
+// ENQ) while the engine was still progressing.
+constexpr uint32_t in_flight_watchdog_ms(uint32_t per_telegram_ms, uint8_t telegrams) {
+  return per_telegram_ms * (telegrams == 0 ? 1u : telegrams);
+}
+
 // GWG's access mode for a space: PHYSICAL for OWN (and anything that is no
 // GWG mode, which never reaches a GWG engine -- see space_available()).
 constexpr optolink::GWGAccessMode gwg_mode(AddressSpace space) {

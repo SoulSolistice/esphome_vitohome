@@ -17,8 +17,8 @@ namespace esphome::vitohome {
 // "never polled" flag.
 // `update_interval: never` arrives as ESPHome's SCHEDULER_DONT_RUN, the
 // largest uint32_t: never due. Treated as an ordinary interval it put the next
-// due time 1 ms in the past -- polled on EVERY hub tick. Every other interval 
-// must stay below 2^31 ms for the signed difference above; the config 
+// due time 1 ms in the past -- polled on EVERY hub tick. Every other interval
+// must stay below 2^31 ms for the signed difference above; the config
 // validation (POLL_INTERVAL_MAX_MS in __init__.py) rejects longer ones.
 inline constexpr uint32_t POLL_NEVER = 0xFFFFFFFFu;
 inline constexpr uint32_t POLL_INTERVAL_MAX_MS = 0x7FFFFFFFu;

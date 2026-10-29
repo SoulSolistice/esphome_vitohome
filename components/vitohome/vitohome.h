@@ -543,6 +543,10 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   VitoEntityBase *in_flight_{nullptr};
   OpType in_flight_op_{OpType::NONE};
   uint32_t in_flight_started_ms_{0};
+  // The watchdog budget of the operation in flight (in_flight_watchdog_ms()).
+  uint32_t in_flight_watchdog_ms_{IN_FLIGHT_WATCHDOG_MS};
+  // Start the watchdog for an operation of `telegrams` telegrams.
+  void arm_watchdog_(uint8_t telegrams = 1);
 
   // --- read-modify-write (bit fields and whole blocks) ------------------------
   //

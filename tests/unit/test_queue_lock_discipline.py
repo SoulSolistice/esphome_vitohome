@@ -4,10 +4,9 @@ RingBuffer::consume_front_if() / move_first_to_front_if() call the caller's
 lambda with the queue's mutex held -- on ESP32 a non-recursive FreeRTOS mutex.
 Anything that can reach user code from there (publishing a state runs its
 automations synchronously, an entity's error handler may publish or queue a
-write) can take the same lock again and deadlock the task. External review,
-2026-10-28: a permanently refused raw operation published its FAILED result
-from inside the raw queue's consumer; a scan_result automation queueing the
-next read then blocked forever.
+write) can take the same lock again and deadlock the task: A permanently
+refused raw operation published its FAILED result from inside the raw queue's
+consumer; a scan_result automation queueing the next read then blocked forever.
 
 The hub is not host-compiled, so this is a structural check of its source:
 every lambda handed to those calls is extracted and searched for calls that
@@ -94,3 +93,13 @@ def test_the_check_would_catch_the_reviewed_deadlock():
     """
     bodies = list(_lambda_bodies(old))
     assert bodies and re.search(r"raw_handle_\w+\s*\(", _strip_comments(bodies[0][2]))
+
+
+def test_every_dispatch_arms_the_watchdog_through_its_budget():
+    # The watchdog budget follows the operation (arm_watchdog_());
+    # a dispatch that set in_flight_started_ms_ directly
+    # would run on a stale budget.
+    with open(os.path.join(_COMPONENT, "vitohome.cpp"), encoding="utf-8") as f:
+        src = f.read()
+    assignments = re.findall(r"in_flight_started_ms_\s*=", src)
+    assert len(assignments) == 1, "in_flight_started_ms_ is set only in arm_watchdog_()"

@@ -426,7 +426,7 @@ static void test_move_first_to_front_if() {
 }
 
 // A consumer that queues onto its own ring takes the lock again: on ESP32 a
-// deadlock. The host stand-in aborts instead; run it in a child and 
+// deadlock. The host stand-in aborts instead; run it in a child and
 // expect the abort.
 static void test_reentry_is_caught() {
   std::fflush(stdout);

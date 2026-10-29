@@ -379,18 +379,18 @@ void VitoHomeComponent::loop() {
   if (this->in_flight_ != nullptr || this->ident_in_flight_ || this->raw_in_flight_) {
     const uint32_t now = App.get_loop_component_start_time();
 
-    if (now - this->in_flight_started_ms_ > IN_FLIGHT_WATCHDOG_MS) {
+    if (now - this->in_flight_started_ms_ > this->in_flight_watchdog_ms_) {
       // A lost engine callback is a link-health signal too.
       this->link_note_error_();
 
       if (this->ident_in_flight_) {
-        ESP_LOGW(TAG, "Identification read exceeded watchdog (%" PRIu32 " ms)", IN_FLIGHT_WATCHDOG_MS);
+        ESP_LOGW(TAG, "Identification read exceeded watchdog (%" PRIu32 " ms)", this->in_flight_watchdog_ms_);
 
         this->ident_in_flight_ = false;
         this->ident_handle_error_();
       } else if (this->raw_in_flight_) {
         ESP_LOGW(TAG, "Raw %s 0x%04X exceeded watchdog (%" PRIu32 " ms)", this->raw_is_write_ ? "write" : "read",
-                 this->raw_dp_.address(), IN_FLIGHT_WATCHDOG_MS);
+                 this->raw_dp_.address(), this->in_flight_watchdog_ms_);
 
         this->raw_in_flight_ = false;
         this->raw_handle_error_(optolink::OptolinkResult::TIMEOUT);
@@ -401,7 +401,7 @@ void VitoHomeComponent::loop() {
                  this->in_flight_op_ == OpType::WRITE      ? "write"
                  : this->in_flight_op_ == OpType::RMW_READ ? "read-before-write"
                                                            : "read",
-                 this->in_flight_->get_datapoint().name(), IN_FLIGHT_WATCHDOG_MS);
+                 this->in_flight_->get_datapoint().name(), this->in_flight_watchdog_ms_);
 
         VitoEntityBase *entity = this->in_flight_;
         const OpType operation = this->in_flight_op_;
@@ -453,6 +453,11 @@ void VitoHomeComponent::loop() {
 
   // Dispatch the next queued request if the bus is idle.
   this->dispatch_next_();
+}
+
+void VitoHomeComponent::arm_watchdog_(uint8_t telegrams) {
+  this->in_flight_started_ms_ = App.get_loop_component_start_time();
+  this->in_flight_watchdog_ms_ = in_flight_watchdog_ms(IN_FLIGHT_WATCHDOG_MS, telegrams);
 }
 
 void VitoHomeComponent::dispatch_raw_front_() {
@@ -519,7 +524,14 @@ void VitoHomeComponent::dispatch_raw_front_() {
     // counts as one for the address-space affinity.
     this->last_space_ = operation.layer == RawLayer::KW && space_has_switch_cost(AddressSpace::GFA) ? AddressSpace::GFA
                                                                                                     : operation.space;
-    this->in_flight_started_ms_ = App.get_loop_component_start_time();
+    // A GWG EEPROM read, through its access mode or the generic route's 0xAE,
+    // takes one telegram per address.
+    const bool gwg_eeprom_type = operation.layer == RawLayer::GWG &&
+                                 operation.code == optolink::gwgReadTypeByte(optolink::GWGAccessMode::EEPROM);
+    this->arm_watchdog_(
+        operation.is_write
+            ? 1
+            : read_telegram_count(gwg_eeprom_type ? AddressSpace::GWG_EEPROM : operation.space, operation.length));
 
     ESP_LOGV(TAG, "Dispatched raw %s 0x%04X len %u", label, operation.address, operation.length);
 
@@ -557,7 +569,7 @@ void VitoHomeComponent::dispatch_next_() {
     const bool ident_dispatched = this->send_read_(this->ident_dp_.address(), this->ident_dp_.length(), ident_space);
     if (ident_dispatched) {
       this->ident_in_flight_ = true;
-      this->in_flight_started_ms_ = App.get_loop_component_start_time();
+      this->arm_watchdog_();
 
       ESP_LOGV(TAG, "Dispatched identification read 0x%04X len %u", this->ident_dp_.address(),
                this->ident_dp_.length());
@@ -629,7 +641,7 @@ void VitoHomeComponent::dispatch_next_() {
       }
       this->in_flight_ = entity;
       this->in_flight_op_ = OpType::RMW_READ;
-      this->in_flight_started_ms_ = App.get_loop_component_start_time();
+      this->arm_watchdog_(read_telegram_count(entity->space(), wdp.length()));
       entity->write_queued_ = false;
       entity->write_in_flight_ = true;
       ESP_LOGV(TAG, "Dispatched read-before-write for %s (%u bytes, bit_mask 0x%02X)", entity->get_datapoint().name(),
@@ -663,7 +675,7 @@ void VitoHomeComponent::dispatch_next_() {
     this->in_flight_ = entity;
     this->in_flight_op_ = OpType::WRITE;
     this->last_space_ = entity->space();
-    this->in_flight_started_ms_ = App.get_loop_component_start_time();
+    this->arm_watchdog_();
 
     // The entity has left the queue and is now in flight. Clearing
     // write_queued_ here lets a newer value enqueue while this request waits
@@ -722,7 +734,7 @@ void VitoHomeComponent::dispatch_next_() {
 
     this->in_flight_ = entity;
     this->in_flight_op_ = OpType::READ;
-    this->in_flight_started_ms_ = App.get_loop_component_start_time();
+    this->arm_watchdog_(read_telegram_count(entity->space(), datapoint.length()));
     this->last_space_ = entity->space();
 
     ESP_LOGV(TAG, "Dispatched read for %s", entity->get_datapoint().name());
@@ -1525,7 +1537,7 @@ void VitoHomeComponent::rmw_dispatch_write_() {
   this->rmw_pending_ = nullptr;
   this->in_flight_ = entity;
   this->in_flight_op_ = OpType::WRITE;
-  this->in_flight_started_ms_ = App.get_loop_component_start_time();
+  this->arm_watchdog_();
   // From here the ordinary WRITE completion paths apply (ACK, read-back,
   // supersede, error, watchdog). Arm the read-back check.
   this->rmw_verify_entity_ = entity;
