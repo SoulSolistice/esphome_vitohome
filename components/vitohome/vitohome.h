@@ -158,6 +158,15 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 #endif
   }
 
+  // time_sync.weekday_base (0 sunday=0, 1 monday=0, 2 monday=1..sunday=7);
+  // not called when the option is `auto`.
+  void set_clock_weekday_base(uint8_t base) {
+#ifdef VITOHOME_TIME_SYNC
+    this->clock_.set_weekday_base(static_cast<WeekdayBase>(base));
+#else
+    (void) base;
+#endif
+  }
   void set_time_sync(uint32_t interval_ms, uint32_t drift_threshold_s, bool sync_on_boot, uint16_t clock_address) {
 #ifdef VITOHOME_TIME_SYNC
     this->clock_.set_config(interval_ms, drift_threshold_s, sync_on_boot, clock_address);
