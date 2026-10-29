@@ -1371,6 +1371,14 @@ been read once (`VitoClimate::ready_()`). A first mode read that matches no
 preset still counts as read, so a device in an unmapped Betriebsart does not
 hide the whole climate; the log says the coarse mode is unconfirmed.
 
+Commands follow the same rule (external review, 2026-10-28). `control()` used
+to set and publish the new setpoint, preset and mode as soon as the write was
+queued -- before `ready_()` at boot, and kept after a failed write until the
+next poll. It now only queues: the read-back publishes the device's view, or
+with `read_back: false` the acknowledged write does; a failed write is logged
+and changes nothing. `tests/unit/test_climate_publish_contract.py` keeps
+`control()` free of state changes.
+
 Not a component issue, recorded because it looked like one: `esphome logs`
 prints `Current Temperature: 0.00°C` and `Fan Mode: ON` for this climate. The
 device sends neither -- it advertises no current temperature and no fan modes,

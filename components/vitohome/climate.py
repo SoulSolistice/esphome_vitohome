@@ -143,6 +143,12 @@ OPERATING_MODE_SCHEMA = cv.Schema(
 )
 
 
+# The setpoint clamp when `visual:` leaves a bound out (degC). One pair for
+# the validator and to_code(), so the range checked is the range emitted.
+SETPOINT_MIN_DEFAULT = 3
+SETPOINT_MAX_DEFAULT = 37
+
+
 def _validate_setpoint_range(config):
     """The setpoint is encoded as a single unsigned whole-degree degC byte
     (vito_climate.cpp: static_cast<uint8_t>(lroundf(t)) after clamping the target
@@ -184,15 +190,18 @@ def _validate_setpoint_range(config):
                 [CONF_VISUAL, key],
             )
         bounds[key] = value
-    if (
-        CONF_MIN_TEMPERATURE in bounds
-        and CONF_MAX_TEMPERATURE in bounds
-        and bounds[CONF_MIN_TEMPERATURE] > bounds[CONF_MAX_TEMPERATURE]
-    ):
+    # The EFFECTIVE range, with the defaults to_code() applies: checking only a
+    # pair given in full let `min_temperature: 40` alone through, an effective
+    # 40..37 that pinned every target to 37.
+    lo = bounds.get(CONF_MIN_TEMPERATURE, SETPOINT_MIN_DEFAULT)
+    hi = bounds.get(CONF_MAX_TEMPERATURE, SETPOINT_MAX_DEFAULT)
+    if lo > hi:
+        given = CONF_MAX_TEMPERATURE if CONF_MAX_TEMPERATURE in bounds else CONF_MIN_TEMPERATURE
         raise cv.Invalid(
-            "visual.max_temperature must be >= visual.min_temperature: an "
-            "inverted setpoint clamp range would pin every target to one bound",
-            [CONF_VISUAL, CONF_MAX_TEMPERATURE],
+            f"visual.max_temperature must be >= visual.min_temperature (effective range "
+            f"{lo:g}..{hi:g}, an unset bound defaulting to {SETPOINT_MIN_DEFAULT}/{SETPOINT_MAX_DEFAULT}): "
+            "an inverted setpoint clamp range would pin every target to one bound",
+            [CONF_VISUAL, given],
         )
     return config
 
@@ -265,8 +274,8 @@ async def to_code(config):
 
     # Setpoint clamp range from the standard visual block (also the HA gauge).
     visual = config.get(CONF_VISUAL, {})
-    sp_min = int(visual.get(CONF_MIN_TEMPERATURE, 3))
-    sp_max = int(visual.get(CONF_MAX_TEMPERATURE, 37))
+    sp_min = int(visual.get(CONF_MIN_TEMPERATURE, SETPOINT_MIN_DEFAULT))
+    sp_max = int(visual.get(CONF_MAX_TEMPERATURE, SETPOINT_MAX_DEFAULT))
     cg.add(var.set_setpoint_range(sp_min, sp_max))
 
     # Setpoint channel: read == write at target_address, one integer degC byte.

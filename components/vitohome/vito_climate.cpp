@@ -28,6 +28,23 @@ void VitoClimateChannel::handle_response(const ResponseView &response) {
   }
 }
 
+void VitoClimateChannel::handle_write_response(const ResponseView & /*response*/) {
+  // With read_back on, the hub's read-back publishes the device's view.
+  if (this->wants_read_back() || this->write_length() < 1)
+    return;
+  if (this->kind_ == SETPOINT) {
+    this->parent_->on_setpoint_written(this->write_data()[0]);
+  } else {
+    this->parent_->on_mode_written(this->write_data()[0]);
+  }
+}
+
+void VitoClimateChannel::handle_write_error(optolink::OptolinkResult error) {
+  // Nothing was published for the request, so there is nothing to undo.
+  ESP_LOGW(TAG, "%s: %s write failed (%s); state unchanged", this->parent_->get_name().c_str(),
+           this->kind_ == SETPOINT ? "setpoint" : "mode", optolink::errorToString(error));
+}
+
 // --- channel wiring (needs the complete hub type) --------------------------
 
 void VitoClimate::configure_setpoint(VitoHomeComponent *hub, const optolink::Datapoint &dp, uint32_t poll_ms) {
@@ -105,9 +122,13 @@ const VitoClimatePreset *VitoClimate::first_preset_with_mode_(climate::ClimateMo
   return nullptr;
 }
 
+// Publishes nothing: the request is only queued. The device's read-back (or,
+// with read_back off, its acknowledgement) publishes the new state, so Home
+// Assistant never shows a mode or setpoint the device has not accepted -- the
+// contract every other entity keeps (design_notes.md §5c). It used to publish
+// at queue time and keep that state after a failed write (external review,
+// 2026-10-28), and before ready_() at boot.
 void VitoClimate::control(const climate::ClimateCall &call) {
-  bool changed = false;
-
   // Target temperature -> room setpoint (1-byte integer degC). Clamp to the
   // configured range, then write; the read-back publishes the device's view.
   if (call.get_target_temperature().has_value()) {
@@ -117,10 +138,7 @@ void VitoClimate::control(const climate::ClimateCall &call) {
     if (t > this->setpoint_max_)
       t = this->setpoint_max_;
     const uint8_t byte = static_cast<uint8_t>(lroundf(t));
-    if (this->setpoint_.write_byte(byte)) {
-      this->target_temperature = t;  // optimistic; read-back reconciles
-      changed = true;
-    } else {
+    if (!this->setpoint_.write_byte(byte)) {
       ESP_LOGE(TAG, "%s: setpoint write could not be queued", this->get_name().c_str());
     }
   }
@@ -135,11 +153,7 @@ void VitoClimate::control(const climate::ClimateCall &call) {
       p = this->first_preset_with_mode_(*call.get_mode());
     }
     if (p != nullptr) {
-      if (this->mode_.write_byte(p->write_value)) {
-        this->set_custom_preset_(p->name);
-        this->mode = p->mode;  // optimistic; read-back reconciles
-        changed = true;
-      } else {
+      if (!this->mode_.write_byte(p->write_value)) {
         ESP_LOGE(TAG, "%s: mode write could not be queued", this->get_name().c_str());
       }
     } else if (call.has_custom_preset() || call.get_mode().has_value()) {
@@ -151,9 +165,26 @@ void VitoClimate::control(const climate::ClimateCall &call) {
                this->get_name().c_str());
     }
   }
+}
 
-  if (changed)
+void VitoClimate::on_setpoint_written(uint8_t value) {
+  this->target_temperature = static_cast<float>(value);
+  this->setpoint_known_ = true;
+  if (this->ready_())
     this->publish_state();
+}
+
+void VitoClimate::on_mode_written(uint8_t write_value) {
+  for (uint16_t i = 0; i < this->preset_count_; i++) {
+    if (this->presets_[i].write_value == write_value) {
+      this->set_custom_preset_(this->presets_[i].name);
+      this->mode = this->presets_[i].mode;
+      this->mode_known_ = true;
+      if (this->ready_())
+        this->publish_state();
+      return;
+    }
+  }
 }
 
 void VitoClimate::on_setpoint_read(const ResponseView &response) {

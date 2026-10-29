@@ -126,3 +126,31 @@ def test_inverted_range_rejected():
     # Equal bounds are a degenerate-but-legal single-value clamp.
     ok = {CONF_VISUAL: {CONF_MIN_TEMPERATURE: 20, CONF_MAX_TEMPERATURE: 20}}
     assert _validate_setpoint_range(ok) is ok
+
+
+# The EFFECTIVE range is checked, with the defaults to_code() applies when a
+# bound is left out (`min_temperature: 40` alone passed and gave 40..37, 
+# pinning every target to 37).
+def test_min_above_the_default_max_rejected():
+    with pytest.raises(cv.Invalid, match="effective range 40..37"):
+        _validate_setpoint_range({CONF_VISUAL: {CONF_MIN_TEMPERATURE: 40}})
+
+
+def test_max_below_the_default_min_rejected():
+    with pytest.raises(cv.Invalid, match="effective range 3..2"):
+        _validate_setpoint_range({CONF_VISUAL: {CONF_MAX_TEMPERATURE: 2}})
+
+
+def test_one_bound_inside_the_default_range_allowed():
+    for visual in ({CONF_MIN_TEMPERATURE: 37}, {CONF_MAX_TEMPERATURE: 3}):
+        cfg = {CONF_VISUAL: visual}
+        assert _validate_setpoint_range(cfg) is cfg
+
+
+def test_validator_and_codegen_share_the_defaults():
+    import components.vitohome.climate as climate_py
+
+    with open(climate_py.__file__, encoding="utf-8") as f:
+        src = f.read()
+    assert "visual.get(CONF_MIN_TEMPERATURE, SETPOINT_MIN_DEFAULT)" in src
+    assert "visual.get(CONF_MAX_TEMPERATURE, SETPOINT_MAX_DEFAULT)" in src

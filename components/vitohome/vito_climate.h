@@ -25,8 +25,11 @@ class VitoClimateChannel final : public VitoEntityBase {
   void set_read_back(bool v) { this->read_back_ = v; }
 
   void handle_response(const ResponseView &response) override;
-  void handle_error(optolink::OptolinkResult /*error*/) override {}          // keep last state
-  void handle_write_response(const ResponseView & /*response*/) override {}  // read-back reconciles
+  void handle_error(optolink::OptolinkResult /*error*/) override {}  // keep last state
+  // The climate publishes only what the device confirmed: the read-back, or
+  // with read_back off the acknowledged write. A failed write changes nothing.
+  void handle_write_response(const ResponseView &response) override;
+  void handle_write_error(optolink::OptolinkResult error) override;
   const char *entity_kind() const override { return "climate"; }
   void dump_config() override {}
 
@@ -102,6 +105,9 @@ class VitoClimate final : public climate::Climate, public Component {
 
   // --- channel read callbacks ----------------------------------------------
   void on_setpoint_read(const ResponseView &response);
+  // A write the device acknowledged, when no read-back follows (read_back off).
+  void on_setpoint_written(uint8_t value);
+  void on_mode_written(uint8_t write_value);
   void on_mode_read(const ResponseView &response);
 
  protected:
