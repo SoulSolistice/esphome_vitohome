@@ -126,6 +126,8 @@ function parseCatalogYaml(yamlText) {
   let pendingComments = [];
   let currentEntity = null;
   let inNestedMap = null;
+  // A blank line was seen inside the current entity (see the loop).
+  let blankInEntity = false;
 
   const finalizeEntity = () => {
     if (!currentEntity) return;
@@ -158,6 +160,7 @@ function parseCatalogYaml(yamlText) {
     parsedEntities.push(currentEntity);
     currentEntity = null;
     inNestedMap = null;
+    blankInEntity = false;
   };
 
   for (let i = 0; i < lines.length; i++) {
@@ -196,10 +199,16 @@ function parseCatalogYaml(yamlText) {
       continue;
     }
 
+    // A blank line does not end an entity: valid YAML may hold one between
+    // its keys, and ending there dropped every key after it from the export.
+    // The next entity, a section or a group ends it; a comment after a blank
+    // line belongs to the next entity, as the generator writes them.
     if (trimmed === "") {
-      if (currentEntity) finalizeEntity();
+      if (currentEntity) blankInEntity = true;
       continue;
     }
+
+    if (trimmed.startsWith("#") && blankInEntity) finalizeEntity();
 
     if (trimmed.startsWith("#")) {
       // The tag line stays in the raw lines (an export keeps it) but is no note.
@@ -257,6 +266,7 @@ function parseCatalogYaml(yamlText) {
     }
 
     if (!currentEntity) continue;
+    blankInEntity = false;
     currentEntity.rawLines.push(line);
 
     // A block list (`filters:` and its `- multiply: 0.1` items) is not a map of
