@@ -54,6 +54,14 @@ bool PacketVS2::createPacket(PacketType pt, FunctionCode fc, uint8_t id, uint16_
     optolink_log_w("Payload too large: %u > 250", len);
     return false;
   }
+  // A request is sent length() bytes at a time, and length() and the engine's
+  // byte count are uint8_t: a 250-byte payload makes a 256-byte frame that
+  // wraps to 0 and goes out empty. Requests stop at 249; a 250-byte RESPONSE
+  // is only ever parsed.
+  if (pt == PacketType::REQUEST && has_payload && len > MAX_REQUEST_PAYLOAD) {
+    optolink_log_w("Request payload too large to send: %u > %u", len, MAX_REQUEST_PAYLOAD);
+    return false;
+  }
   const std::size_t needed = has_payload ? static_cast<std::size_t>(len) + 6 : 6;
   if (needed > _buffer.size()) {
     optolink_log_e("buffer overflow: need %u > %u", static_cast<unsigned>(needed),
@@ -86,9 +94,9 @@ bool PacketVS2::setLength(uint8_t length) {
   return true;
 }
 
-// NOTE: uint8_t arithmetic -- wraps to 0 when the length byte is 255.
-// Unreachable today (createPacket caps write payloads at 250 and the raw lane
-// at 32), but a live trap if those caps are ever raised.
+// NOTE: uint8_t arithmetic -- wraps to 0 when the length byte is 255, which
+// only a parsed 250-byte RESPONSE carries: createPacket() keeps a REQUEST, the
+// only frame sent, to 249 payload bytes (MAX_REQUEST_PAYLOAD).
 uint8_t PacketVS2::length() const { return _buffer[0] + 1; }
 
 PacketType PacketVS2::packetType() const { return static_cast<PacketType>(_buffer[1]); }

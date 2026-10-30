@@ -35,6 +35,9 @@ class PacketVS2 {
 
  public:
   static constexpr std::size_t kMaxFrame = 256;
+  // The largest payload a REQUEST can carry and still be sent: its frame
+  // (length byte .. last payload byte, 6 + payload) must fit length()'s uint8_t.
+  static constexpr uint8_t MAX_REQUEST_PAYLOAD = 249;
 
   PacketVS2();
   ~PacketVS2() = default;

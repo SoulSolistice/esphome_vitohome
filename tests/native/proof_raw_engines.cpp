@@ -312,12 +312,39 @@ void gwg_cases() {
 }
 }  // namespace
 
+// The largest frame each builder makes is one its uint8_t length() can state
+// and the engine can send; one byte more is refused.
+void frame_limit_cases() {
+  std::printf("-- frame limits --\n");
+  uint8_t data[255];
+  for (unsigned i = 0; i < sizeof(data); ++i)
+    data[i] = static_cast<uint8_t>(i);
+
+  optolink::PacketVS2 p300;
+  const uint8_t max_req = optolink::PacketVS2::MAX_REQUEST_PAYLOAD;
+  check(p300.createPacket(optolink::PacketType::REQUEST, optolink::FunctionCode::WRITE, 0, 0x2000, max_req, data) &&
+            p300.length() == 6 + max_req,
+        "P300: a 249-byte request payload, length 255");
+  check(!p300.createPacket(optolink::PacketType::REQUEST, optolink::FunctionCode::WRITE, 0, 0x2000, max_req + 1, data),
+        "P300: a 250-byte request payload refused");
+
+  optolink::PacketVS1 kw;
+  check(kw.createTelegram(0xF4, 0x2000, 251, data) && kw.length() == 255, "KW: 251 payload bytes, length 255");
+  check(!kw.createTelegram(0xF4, 0x2000, 252, data), "KW: 252 refused");
+  check(kw.createTelegram(0xF7, 0x2000, 255) && kw.length() == 4, "KW: a 255-byte read is a 4-byte frame");
+
+  optolink::PacketGWG gwg;
+  check(gwg.createTelegram(0x99, 0x10, 250, data) && gwg.length() == 255, "GWG: 250 payload bytes, length 255");
+  check(!gwg.createTelegram(0x99, 0x10, 251, data), "GWG: 251 refused");
+}
+
 int main() {
   std::printf("== generic telegrams (raw_op) ==\n");
   optolink::optolink_test_clock_freeze();
   p300_cases();
   kw_cases();
   gwg_cases();
+  frame_limit_cases();
   std::printf("raw engines: %d failure(s)\n", g_fail);
   return g_fail == 0 ? 0 : 1;
 }

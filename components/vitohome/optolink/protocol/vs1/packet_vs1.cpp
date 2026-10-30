@@ -43,6 +43,12 @@ bool PacketVS1::createTelegram(uint8_t type, uint16_t addr, uint8_t len, const u
 
   // bounds check against the fixed buffer (fail-soft, no overflow)
   const std::size_t needed = data ? static_cast<std::size_t>(len) + 4 : 4;
+  // length() and the engine's byte count are uint8_t: a frame of 256 bytes
+  // or more would wrap and go out short.
+  if (needed > 0xFF) {
+    optolink_log_w("frame too long to send: %u bytes", static_cast<unsigned>(needed));
+    return false;
+  }
   if (needed > _buffer.size()) {
     optolink_log_e("buffer overflow: need %u > %u", static_cast<unsigned>(needed),
                    static_cast<unsigned>(_buffer.size()));
@@ -65,8 +71,7 @@ bool PacketVS1::createTelegram(uint8_t type, uint16_t addr, uint8_t len, const u
   return true;
 }
 
-// NOTE: uint8_t -- a payload of 252+ bytes would wrap. Unreachable: the raw
-// lane caps payloads at 32 and entity writes at 8.
+// uint8_t: createTelegram() refuses a frame above 255 bytes.
 uint8_t PacketVS1::length() const { return _length; }
 
 bool PacketVS1::hasPayload() const { return _hasPayload; }
