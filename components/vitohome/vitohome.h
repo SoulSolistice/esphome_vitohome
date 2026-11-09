@@ -261,6 +261,20 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   void set_gwg_burst_omits_enq_ack(bool omit) { optolink::gwgBurstOmitsEnqAck = omit; }
   bool gwg_burst_omits_enq_ack() const { return optolink::gwgBurstOmitsEnqAck; }
 
+  // GWG response deadline (ms), diagnostic -- see optolink::gwgResponseTimeoutMs
+  // in constants.h for why it exists and what a longer one costs. Clamped to
+  // optolink::GWG_RESPONSE_TIMEOUT_{MIN,MAX}_MS (50..2000) and logged; takes
+  // effect on the next telegram. Same not-a-YAML-key rule as the flags above:
+  // it is for finding out how long a datapoint takes to answer, after which the
+  // default goes back in.
+  //
+  //   id(vito).set_gwg_response_timeout_ms(1500);   // a test
+  //   id(vito).set_gwg_response_timeout_ms(250);    // the default again
+  //
+  // Compiles and is accepted on every build; only the GWG engine reads it.
+  void set_gwg_response_timeout_ms(uint32_t ms);
+  uint32_t gwg_response_timeout_ms() const { return optolink::gwgResponseTimeoutMs; }
+
   // True once the GWG engine has given up on bursting for this session (see
   // GWGEngine::BURST_FAILURES_BEFORE_FALLBACK). Latched, never cleared: the
   // engine itself does not re-enable bursting short of a reboot. A test that

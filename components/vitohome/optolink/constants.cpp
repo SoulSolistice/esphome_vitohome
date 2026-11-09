@@ -21,6 +21,10 @@ bool gwgWriteEotBeforePayload = false;
 // request omits the leading 0x01, which acknowledges an ENQ it does not answer.
 bool gwgBurstOmitsEnqAck = true;
 
+// GWG response deadline -- see the comment on the declaration in constants.h.
+// Default: GWGEngine::RESPONSE_TIMEOUT_MS.
+uint32_t gwgResponseTimeoutMs = 250;
+
 const char *errorToString(OptolinkResult error) {
   if (error == OptolinkResult::TIMEOUT) {
     return "timeout";

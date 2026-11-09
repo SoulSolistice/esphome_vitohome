@@ -277,6 +277,28 @@ extern bool gwgWriteEotBeforePayload;
 // be set back from a lambda: VitoHomeComponent::set_gwg_burst_omits_enq_ack().
 extern bool gwgBurstOmitsEnqAck;
 
+// GWG response deadline (ms), diagnostic. GWGEngine::RESPONSE_TIMEOUT_MS
+// (250) is the default and the value every hardware capture so far was taken
+// against; this variable is what the engine actually reads, so a lambda can
+// lengthen it at runtime (VitoHomeComponent::set_gwg_response_timeout_ms()).
+//
+// Why it exists (issue #35, GWG_VBEM 0x2053 HW=0x01 SW=0x1E, 2026-11-07): all
+// 54 `kmbus_eeprom` datapoints of the catalog went unanswered within 250 ms,
+// while every other mode answered in 23-50 ms. Those reads are forwarded over
+// the KM-Bus to the burner control, so the answer may simply arrive later.
+// Raising the deadline is how to find out; the late-answer report
+// (GWGEngine::OnLateAnswerCallback) says by how much.
+//
+// The cost of a longer deadline is the misread RESPONSE_TIMEOUT_MS exists to
+// stop: the device's idle ENQ (0x05, every 749-2070 ms) can complete a
+// one-byte read that the device ignored. Keep it below the shortest idle-ENQ
+// gap seen (749 ms) unless the read under test is longer than one byte, and
+// set it back afterwards. Clamped to GWG_RESPONSE_TIMEOUT_{MIN,MAX}_MS by the
+// hub setter.
+extern uint32_t gwgResponseTimeoutMs;
+inline constexpr uint32_t GWG_RESPONSE_TIMEOUT_MIN_MS = 50;
+inline constexpr uint32_t GWG_RESPONSE_TIMEOUT_MAX_MS = 2000;
+
 constexpr uint8_t gwgWriteTypeByte(GWGAccessMode mode) {
   switch (mode) {
     case GWGAccessMode::VIRTUAL:

@@ -19,7 +19,12 @@
 //   (5) repeated burst failures disable bursting for the session, and a burst
 //       success resets the counter;
 //   (6) writes and the read-back that follows them ride the window as well --
-//       bursting only ever removes a wait, it never adds one.
+//       bursting only ever removes a wait, it never adds one;
+//   (9) a datapoint that never answers does NOT trip the fallback: a
+//       burst-sent read that times out is retried once on a fresh ENQ, and
+//       only an answer there counts as a burst failure (issue #35);
+//  (10) bytes that arrive after the deadline are reported, not lost;
+//  (11) the response deadline can be lengthened at runtime for a test.
 //
 // Built with -DVITOHOME_PROTOCOL_GWG by build_and_run_protocols.sh.
 #include <cstdio>
@@ -50,6 +55,37 @@ static void sync_and_complete(Engine &a, FakeOptolink &u, uint8_t addr, uint8_t 
   u.feed({value});
   pump(a);
   u.clear_written();
+}
+
+// A confirmed burst failure: after a completed transaction, a burst-sent read
+// of `addr` goes unanswered, and its retry on the next ENQ is answered.
+static void burst_fails_enq_answers(Engine &a, FakeOptolink &u, uint8_t sync_addr, uint8_t addr) {
+  sync_and_complete(a, u, sync_addr, 0x01);
+  a.read(addr, 1);
+  pump(a);
+  u.clear_written();
+  optolink::optolink_test_clock_advance(400);  // past RESPONSE_TIMEOUT_MS (250)
+  pump(a);
+  u.feed({0x05});
+  a.loop();
+  u.feed({0x01});
+  pump(a);
+  u.clear_written();
+}
+
+// A datapoint that does not answer: burst-sent and on the retry's ENQ alike.
+static void burst_and_enq_silent(Engine &a, FakeOptolink &u, uint8_t sync_addr, uint8_t addr) {
+  sync_and_complete(a, u, sync_addr, 0x01);
+  a.read(addr, 1);
+  pump(a);
+  u.clear_written();
+  optolink::optolink_test_clock_advance(400);
+  pump(a);
+  u.feed({0x05});
+  a.loop();
+  u.clear_written();
+  optolink::optolink_test_clock_advance(400);
+  pump(a);
 }
 
 int main() {
@@ -159,7 +195,9 @@ int main() {
 
   // --- (4) a TIMEOUT invalidates the sync ----------------------------------
   // After a failure we no longer know where the device's cadence is, so the
-  // next request must NOT ride the window -- it re-syncs.
+  // next request must NOT ride the window -- it re-syncs. A burst-sent read is
+  // first retried on a fresh ENQ (see (9)); the TIMEOUT comes when the retry
+  // goes unanswered too.
   const int errors_before = g_errors;
   check(adapter.read(0x0073, 1), "read accepted (device will stay silent)");
   pump(adapter);
@@ -167,7 +205,16 @@ int main() {
   uart.clear_written();
   optolink::optolink_test_clock_advance(400);  // past RESPONSE_TIMEOUT_MS (250)
   pump(adapter);
-  check(g_errors == errors_before + 1, "silent device -> TIMEOUT");
+  check(g_errors == errors_before, "burst-sent read unanswered -> no TIMEOUT yet");
+  check(uart.written().empty(), "  the retry waits for an ENQ (the sync is gone)");
+  uart.feed({0x05});
+  adapter.loop();
+  const std::vector<uint8_t> want73 = {0x01, 0xCB, 0x73, 0x01, 0x04};
+  check(uart.written() == want73, "  and goes out on it, with the 0x01");
+  uart.clear_written();
+  optolink::optolink_test_clock_advance(400);
+  pump(adapter);
+  check(g_errors == errors_before + 1, "silent device -> TIMEOUT after the retry");
   check(adapter.read(0x0074, 1), "next read accepted");
   pump(adapter);
   check(uart.written().empty(), "TIMEOUT invalidated the sync -> waits for an ENQ");
@@ -214,20 +261,13 @@ int main() {
 
   // --- (5) repeated burst failures disable bursting ------------------------
   // BURST_FAILURES_BEFORE_FALLBACK consecutive burst-sent requests going
-  // unanswered means this unit does not honour the reuse (the wiki may simply
-  // be right about it), so the engine gives up on bursting for good.
+  // unanswered -- each one answered when retried on an ENQ -- means this unit
+  // does not honour the reuse (the wiki may simply be right about it), so the
+  // engine gives up on bursting for good.
   std::printf("  (driving %u consecutive burst failures ...)\n",
               static_cast<unsigned>(optolink::GWGEngine::BURST_FAILURES_BEFORE_FALLBACK));
-  for (uint8_t i = 0; i < optolink::GWGEngine::BURST_FAILURES_BEFORE_FALLBACK; ++i) {
-    // Re-establish a sync with a completed transaction, then let the next
-    // (burst-sent) one go unanswered.
-    sync_and_complete(adapter, uart, static_cast<uint8_t>(0x50 + i), 0x01);
-    adapter.read(static_cast<uint8_t>(0x60 + i), 1);
-    pump(adapter);
-    uart.clear_written();
-    optolink::optolink_test_clock_advance(400);  // past RESPONSE_TIMEOUT_MS (250)
-    pump(adapter);
-  }
+  for (uint8_t i = 0; i < optolink::GWGEngine::BURST_FAILURES_BEFORE_FALLBACK; ++i)
+    burst_fails_enq_answers(adapter, uart, static_cast<uint8_t>(0x50 + i), static_cast<uint8_t>(0x60 + i));
   // Bursting is now off: even with a fresh sync, the engine waits for an ENQ.
   sync_and_complete(adapter, uart, 0x006F, 0x26);
   check(adapter.read(0x0075, 1), "read accepted after burst fallback");
@@ -262,14 +302,8 @@ int main() {
     });
     a2.begin();
 
-    for (uint8_t i = 0; i < optolink::GWGEngine::BURST_FAILURES_BEFORE_FALLBACK; ++i) {
-      sync_and_complete(a2, u2, static_cast<uint8_t>(0x50 + i), 0x01);
-      a2.read(static_cast<uint8_t>(0x60 + i), 1);
-      pump(a2);
-      u2.clear_written();
-      optolink::optolink_test_clock_advance(400);
-      pump(a2);
-    }
+    for (uint8_t i = 0; i < optolink::GWGEngine::BURST_FAILURES_BEFORE_FALLBACK; ++i)
+      burst_fails_enq_answers(a2, u2, static_cast<uint8_t>(0x50 + i), static_cast<uint8_t>(0x60 + i));
     check(fallbacks == 1, "burst fallback notified the hub");
     check(reported == optolink::GWGEngine::BURST_FAILURES_BEFORE_FALLBACK, "  reported the failure count");
 
@@ -342,6 +376,168 @@ int main() {
     }
     optolink::gwgBurstOmitsEnqAck = saved;
     check(optolink::gwgBurstOmitsEnqAck == true, "flag restored to its default (omit)");
+  }
+
+  // --- (9) a datapoint that never answers does not trip the fallback --------
+  // Issue #35 (GWG_VBEM 0x2053 SW=0x1E): 54 consecutive `kmbus_eeprom`
+  // entities went unanswered, and the first two of them switched bursting off
+  // for the session although the unit bursts fine. A burst-sent read that times
+  // out is now retried on a fresh ENQ; silent there as well, the datapoint is
+  // what does not answer, and the burst counter is left alone.
+  {
+    FakeOptolink u9;
+    Engine a9(&u9);
+    int fallbacks = 0;
+    int timeouts = 0;
+    a9.onResponse([](const uint8_t *, uint8_t, uint16_t) {});
+    a9.onError([&](optolink::OptolinkResult r, uint16_t) {
+      if (r == optolink::OptolinkResult::TIMEOUT)
+        timeouts++;
+    });
+    a9.onBurstFallback([&](uint8_t) { fallbacks++; });
+    a9.begin();
+
+    for (uint8_t i = 0; i < 5; ++i)
+      burst_and_enq_silent(a9, u9, static_cast<uint8_t>(0x50 + i), 0x6E);
+    check(timeouts == 5, "5 silent datapoints -> one TIMEOUT each, after the retry");
+    check(fallbacks == 0, "  and no burst fallback: the ENQ-paced retries were silent too");
+
+    sync_and_complete(a9, u9, 0x6F, 0x26);
+    a9.read(0x0070, 1);
+    pump(a9);
+    const std::vector<uint8_t> burst70 = {0xCB, 0x70, 0x01, 0x04};
+    check(u9.written() == burst70, "  bursting still on after them");
+    u9.feed({0x5F});
+    pump(a9);
+  }
+
+  // --- (10) bytes after the deadline are reported, not lost -----------------
+  // The timeout branch drains the receive buffer, and INIT discards whatever
+  // is not an ENQ -- so before this report a late answer left no trace, and a
+  // TIMEOUT could not tell "too late" from "never".
+  {
+    FakeOptolink u10;
+    Engine a10(&u10);
+    std::vector<optolink::GWGEngine::LateAnswer> reports;
+    int timeouts = 0;
+    a10.onResponse([](const uint8_t *, uint8_t, uint16_t) {});
+    a10.onError([&](optolink::OptolinkResult r, uint16_t) {
+      if (r == optolink::OptolinkResult::TIMEOUT)
+        timeouts++;
+    });
+    a10.onLateAnswer([&](const optolink::GWGEngine::LateAnswer &l) { reports.push_back(l); });
+    a10.begin();
+
+    // ENQ-paced (cold), so the TIMEOUT comes straight away, without a retry.
+    a10.read(0x006E, 1);
+    u10.feed({0x05});
+    a10.loop();
+    u10.clear_written();
+    optolink::optolink_test_clock_advance(300);
+    pump(a10);
+    check(timeouts == 1, "ENQ-paced read unanswered -> TIMEOUT");
+    optolink::optolink_test_clock_advance(300);
+    u10.feed({0x3C});
+    pump(a10);
+    check(reports.empty(), "  the report stays open while more may come");
+    optolink::optolink_test_clock_advance(optolink::GWGEngine::LATE_WATCH_MS);
+    pump(a10);
+    const bool one = reports.size() == 1;
+    check(one, "  and is delivered once the watch lapses");
+    if (one) {
+      const auto &r = reports[0];
+      check(r.address == 0x6E && r.received == 0 && r.expected == 1, "  address, nothing before the deadline, 1 due");
+      check(r.late_count == 1 && r.late_stored == 1 && r.late[0] == 0x3C, "  the late byte itself");
+      check(r.first_late_ms == 600, "  600 ms after the request: the deadline it needed");
+      check(r.deadline_ms == 250 && !r.retried, "  against the 250 ms default, not a retry");
+    }
+
+    // Silent: a TIMEOUT and nothing else.
+    a10.read(0x006F, 1);
+    u10.feed({0x05});
+    a10.loop();
+    optolink::optolink_test_clock_advance(300);
+    pump(a10);
+    optolink::optolink_test_clock_advance(optolink::GWGEngine::LATE_WATCH_MS + 1);
+    pump(a10);
+    check(reports.size() == 1, "a silent datapoint: TIMEOUT only, no report");
+
+    // Short: one of two bytes before the deadline.
+    a10.read(0x0088, 2);
+    u10.feed({0x05});
+    a10.loop();
+    u10.feed({0x01});
+    pump(a10);
+    optolink::optolink_test_clock_advance(300);
+    pump(a10);
+    optolink::optolink_test_clock_advance(optolink::GWGEngine::LATE_WATCH_MS + 1);
+    pump(a10);
+    check(reports.size() == 2 && reports[1].received == 1 && reports[1].expected == 2 && reports[1].late_count == 0,
+          "a short answer: 1 of 2 bytes reported");
+
+    // The next telegram closes the report: whatever follows its ENQ is its own.
+    a10.read(0x006E, 1);
+    u10.feed({0x05});
+    a10.loop();
+    u10.clear_written();
+    optolink::optolink_test_clock_advance(300);
+    pump(a10);
+    a10.read(0x006F, 1);  // the hub queues the next poll at once
+    optolink::optolink_test_clock_advance(200);
+    u10.feed({0x3C, 0x05});
+    pump(a10);
+    check(reports.size() == 3 && reports[2].late_count == 1 && reports[2].first_late_ms == 500,
+          "the next request's ENQ closes the report (late byte before it kept)");
+    const std::vector<uint8_t> next6f = {0x01, 0xCB, 0x6F, 0x01, 0x04};
+    check(u10.written() == next6f, "  and that request goes out on it");
+    u10.feed({0x26});
+    pump(a10);
+  }
+
+  // --- (11) the response deadline is a runtime variable ---------------------
+  // set_gwg_response_timeout_ms() exists to find out how long a datapoint
+  // needs (issue #35); the request watchdog has to grow with it, or the ENQ
+  // wait it also covers would be cut short.
+  {
+    const uint32_t saved = optolink::gwgResponseTimeoutMs;
+    FakeOptolink u11;
+    Engine a11(&u11);
+    int responses = 0;
+    int errors = 0;
+    uint8_t value = 0;
+    a11.onResponse([&](const uint8_t *d, uint8_t, uint16_t) {
+      responses++;
+      value = d[0];
+    });
+    a11.onError([&](optolink::OptolinkResult, uint16_t) { errors++; });
+    a11.begin();
+
+    optolink::gwgResponseTimeoutMs = 1000;
+    a11.read(0x006E, 1);
+    u11.feed({0x05});
+    a11.loop();
+    optolink::optolink_test_clock_advance(600);
+    pump(a11);
+    check(errors == 0, "1000 ms deadline: no TIMEOUT 600 ms in");
+    u11.feed({0x3C});
+    pump(a11);
+    check(responses == 1 && value == 0x3C, "  the 600 ms answer is delivered");
+
+    optolink::optolink_test_clock_advance(optolink::GWGEngine::ENQ_VALIDITY_MS + 100);  // no burst
+    pump(a11);  // read() stamps the request with the engine's last loop() time
+    a11.read(0x006F, 1);
+    pump(a11);
+    optolink::optolink_test_clock_advance(optolink::GWGEngine::REQUEST_TIMEOUT_MS + 200);
+    pump(a11);
+    check(errors == 0, "  the request watchdog grew by the same 750 ms");
+    u11.feed({0x05});
+    a11.loop();
+    u11.feed({0x26});
+    pump(a11);
+    check(responses == 2 && errors == 0, "  and the late ENQ still carries the read");
+
+    optolink::gwgResponseTimeoutMs = saved;
+    check(optolink::gwgResponseTimeoutMs == optolink::GWGEngine::RESPONSE_TIMEOUT_MS, "deadline restored (250 ms)");
   }
 
   std::printf("gwg burst: %d failure(s)\n", failures);

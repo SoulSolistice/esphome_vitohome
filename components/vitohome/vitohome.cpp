@@ -1,5 +1,6 @@
 #include "vitohome.h"
 
+#include <algorithm>
 #include <cinttypes>
 #include <cstdio>
 #include <cstring>
@@ -281,6 +282,27 @@ void VitoHomeComponent::setup() {
              "see gwgBurstOmitsEnqAck).",
              static_cast<unsigned>(consecutive_failures), optolink::gwgBurstOmitsEnqAck ? "omit" : "carry");
   });
+
+  // Late-answer report (2026-11-08, issue #35). WARNING: a TIMEOUT alone does
+  // not say whether the device answered too late, too short, or not at all, and
+  // the deadline it needs is exactly what set_gwg_response_timeout_ms() tests.
+  this->vito_->onLateAnswer([](const optolink::GWGEngine::LateAnswer &late) {
+    char hex[3 * sizeof(late.late) + 1] = "";
+    for (uint8_t i = 0; i < late.late_stored; ++i)
+      snprintf(hex + 3 * i, sizeof(hex) - 3 * i, " %02X", late.late[i]);
+    if (late.late_count == 0) {
+      ESP_LOGW(TAG, "GWG 0x%04X: %u of %u byte(s) within the %" PRIu32 " ms deadline, nothing after it%s", late.address,
+               late.received, late.expected, late.deadline_ms,
+               late.retried ? " (burst-sent; retrying on a fresh ENQ)" : "");
+      return;
+    }
+    ESP_LOGW(TAG,
+             "GWG 0x%04X: %u of %u byte(s) within the %" PRIu32 " ms deadline; %u late byte(s), the first %" PRIu32
+             " ms after the request:%s%s%s",
+             late.address, late.received, late.expected, late.deadline_ms, late.late_count, late.first_late_ms, hex,
+             late.late_count > late.late_stored ? " ..." : "",
+             late.retried ? " (burst-sent; retrying on a fresh ENQ)" : "");
+  });
 #endif
 
   if (!this->vito_->begin()) {
@@ -458,6 +480,19 @@ void VitoHomeComponent::loop() {
 void VitoHomeComponent::arm_watchdog_(uint8_t telegrams) {
   this->in_flight_started_ms_ = App.get_loop_component_start_time();
   this->in_flight_watchdog_ms_ = in_flight_watchdog_ms(IN_FLIGHT_WATCHDOG_MS, telegrams);
+}
+
+void VitoHomeComponent::set_gwg_response_timeout_ms(uint32_t ms) {
+  // The upper bound keeps a retried burst read (two deadlines plus an ENQ wait,
+  // see GWGEngine::_requestTimeoutMs()) inside one IN_FLIGHT_WATCHDOG_MS budget.
+  const uint32_t clamped =
+      std::min(std::max(ms, optolink::GWG_RESPONSE_TIMEOUT_MIN_MS), optolink::GWG_RESPONSE_TIMEOUT_MAX_MS);
+  optolink::gwgResponseTimeoutMs = clamped;
+  if (clamped != ms) {
+    ESP_LOGW(TAG, "GWG response deadline %" PRIu32 " ms is out of range; using %" PRIu32 " ms", ms, clamped);
+  } else {
+    ESP_LOGI(TAG, "GWG response deadline set to %" PRIu32 " ms", clamped);
+  }
 }
 
 void VitoHomeComponent::dispatch_raw_front_() {

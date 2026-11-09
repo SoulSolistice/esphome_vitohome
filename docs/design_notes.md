@@ -263,6 +263,45 @@ could already trip the fallback and lose the device id before any user
 action. If `GWG burst disabled` still shows up in a log, that unit differs —
 report it.
 
+**A silent datapoint is not a burst failure** (issue #35, Vitodens 200 WB2,
+GWG_VBEM `0x2053` SW `0x1E`). That unit answered every physical, eeprom, xram,
+port and be read in 23–50 ms, burst-sent or not, but none of its 54
+`kmbus_eeprom` reads (the GFA behind the VR20 KM-Bus). Two of those in a row
+disabled bursting for good, although bursting was fine — the datapoint was
+silent. A burst-sent read that times out is now retried once on a fresh ENQ
+with the `0x01` sync: if the retry is answered, the burst failed (and counts
+towards the fallback); if the retry times out too, the datapoint is silent and
+the burst counter is left alone. Writes are never retried, because a lost
+answer does not mean a lost write; a burst-sent write timeout still counts.
+
+The engine also reports what arrived around a timeout. Bytes drained at the
+deadline, and every non-ENQ byte up to the next request's ENQ (at most
+`GWGEngine::LATE_WATCH_MS`, 2500 ms), are logged once as a warning:
+
+```text
+GWG 0x006E: 0 of 1 byte(s) within the 250 ms deadline; 1 late byte(s), the first 640 ms after the request: 4B
+```
+
+GWG has no framing, so this is a diagnostic, not a decode: a data byte `0x05`
+and the device's idle ENQ cannot be told apart. The warning says whether the
+datapoint answers slowly (raise the deadline) or never (leave it out).
+
+The 250 ms answer deadline is the default of `optolink::gwgResponseTimeoutMs`,
+settable at run time from a lambda, between 50 and 2000 ms:
+
+```yaml
+button:
+  - platform: template
+    name: "GWG deadline 1500 ms"
+    on_press:
+      - lambda: id(vito).set_gwg_response_timeout_ms(1500);
+```
+
+`id(vito).gwg_response_timeout_ms()` reads it back. The request watchdog grows
+by the same amount. This is a test aid, not a tuning knob: while a request
+waits, the device's idle ENQ (also `0x05`) can land inside the window and be
+read as the payload.
+
 #### The two windows, separated
 
 `VS1Engine` used one 50 ms `SYNC_WINDOW_MS` for two unrelated jobs. They are now

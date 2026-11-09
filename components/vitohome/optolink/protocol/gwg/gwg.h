@@ -45,6 +45,12 @@ per address, checks each pair and delivers only the value bytes.
 Fail-soft: the constructor no longer abort()s on serial-interface allocation
 failure; it leaves the engine in a failed state and begin() returns false (see
 THIRD_PARTY.md), so the wrapper mark_failed()s instead of the firmware aborting.
+Burst retry (2026-11-08): a burst-sent read that times out is retried once on a
+fresh ENQ, so only a burst that fails where an ENQ-paced copy succeeds counts
+toward the fallback. Late-answer report: bytes arriving after a TIMEOUT are
+reported through onLateAnswer() instead of being dropped unseen. The response
+deadline is a runtime variable (optolink::gwgResponseTimeoutMs). See
+THIRD_PARTY.md #30.
 */
 
 #pragma once
@@ -107,6 +113,33 @@ class GWGEngine {
   // message. Mirrors OnTimingCallback exactly.
   typedef std::function<void(uint8_t consecutive_failures)> OnBurstFallbackCallback;
 
+  // Late-answer report, GWG-only (2026-11-08, issue #35). A TIMEOUT says only
+  // that no complete answer arrived within the response deadline; it does not
+  // say whether the device answered late, answered short, or stayed silent --
+  // and the timeout branch empties the receive buffer without a trace, so a
+  // late answer used to vanish. This report keeps what did arrive: the bytes
+  // of the timed-out telegram, plus every non-ENQ byte the engine consumes for
+  // LATE_WATCH_MS after it (or until the next telegram goes out, whichever
+  // comes first). first_late_ms, measured from the end of the request write,
+  // is the deadline the device would have needed.
+  //
+  // Fires only when something arrived (received or late_count non-zero); a
+  // silent datapoint produces just its TIMEOUT. A late 0x05 is not counted --
+  // GWG has no framing, so a data byte 0x05 and the device's idle ENQ are
+  // indistinguishable -- except in the bytes drained at the deadline itself.
+  struct LateAnswer {
+    uint16_t address;
+    uint8_t received;        // bytes of the telegram that arrived before the deadline
+    uint8_t expected;        // bytes that telegram was waiting for
+    uint8_t late_count;      // bytes after the deadline (capped at 255)
+    uint8_t late_stored;     // how many of them are in `late`
+    uint32_t first_late_ms;  // end of request write -> first late byte
+    uint32_t deadline_ms;    // the response deadline that expired
+    bool retried;            // a burst-sent read that is being retried on a fresh ENQ
+    std::array<uint8_t, 8> late;
+  };
+  typedef std::function<void(const LateAnswer &)> OnLateAnswerCallback;
+
   // Named timeout (ms). GWG deliberately uses a 3000ms request watchdog,
   // distinct from VS2/VS1's 4000ms - value byte-identical to upstream. It is
   // measured from read()/write() (i.e. it also covers the ENQ wait in INIT),
@@ -158,7 +191,17 @@ class GWGEngine {
   // draining the interface, never after. See the comment at the top of
   // _receive() -- checking after the drain makes the whole guard inert under
   // the host stalls it was written for.
+  //
+  // This is the DEFAULT. The engine reads optolink::gwgResponseTimeoutMs, which
+  // starts at this value and can be changed at runtime for a test (see
+  // constants.h); the request watchdog grows with it (_requestTimeoutMs()).
   static constexpr uint32_t RESPONSE_TIMEOUT_MS = 250;
+
+  // How long after a TIMEOUT the engine keeps collecting bytes for the
+  // late-answer report (see OnLateAnswerCallback). Above the largest response
+  // deadline a test can set (GWG_RESPONSE_TIMEOUT_MAX_MS), so a device that
+  // needs that long still shows up as late rather than silent.
+  static constexpr uint32_t LATE_WATCH_MS = 2500;
 
   // Burst window (ms): how long a sync stays usable for a FURTHER telegram
   // without waiting for the device's next ENQ.
@@ -197,6 +240,18 @@ class GWGEngine {
   // about some units, so bursting is self-correcting rather than assumed: two
   // failures (one tolerated glitch) and it falls back to waiting for an ENQ
   // every time, permanently, with a warning. Any burst success resets it.
+  //
+  // What counts as a burst failure (2026-11-08, issue #35): a burst-sent READ
+  // that times out is retried once on a fresh ENQ, and only the outcome of
+  // that retry decides. Answered on the ENQ, it was the burst that failed and
+  // the counter advances; unanswered again, it is the DATAPOINT that does not
+  // answer -- the burst frame proved nothing either way -- and the counter is
+  // left alone. Before this, any datapoint that never answers tripped the
+  // fallback: the 54 consecutive `kmbus_eeprom` entities of GWG_VBEM_03 did,
+  // on a unit whose 141 other datapoints burst fine. The retry costs one ENQ
+  // wait plus a second deadline on such a datapoint, which the hub's poll
+  // backoff (poll_backoff_interval()) keeps rare. A burst-sent WRITE is not
+  // retried -- repeating a write is not free -- and still counts directly.
   static constexpr uint8_t BURST_FAILURES_BEFORE_FALLBACK = 2;
 
   // Fixed response buffer: bounds the largest GWG datapoint payload. 256 is a
@@ -247,6 +302,10 @@ class GWGEngine {
         _sentInBurst(false),
         _burstFailures(0),
         _burstDisabled(false),
+        _retryUnburst(false),
+        _lateWatch(false),
+        _lateSendMillis(0),
+        _late{},
         _bytesTransferred(0),
         _interface(nullptr),
         _currentAddress(0),
@@ -261,7 +320,8 @@ class GWGEngine {
         _onResponseCallback(nullptr),
         _onErrorCallback(nullptr),
         _onTimingCallback(nullptr),
-        _onBurstFallbackCallback(nullptr) {
+        _onBurstFallbackCallback(nullptr),
+        _onLateAnswerCallback(nullptr) {
     assert(interface != nullptr);
     _interface = new (std::nothrow) internals::GenericInterface<C>(interface);
     if (!_interface) {
@@ -282,6 +342,7 @@ class GWGEngine {
   void onError(OnErrorCallback callback);
   void onTiming(OnTimingCallback callback);
   void onBurstFallback(OnBurstFallbackCallback callback);
+  void onLateAnswer(OnLateAnswerCallback callback);
 
   // access is additive (default GWGAccessMode::PHYSICAL): every existing
   // 2-argument call site is source- and behaviour-compatible, and produces
@@ -344,6 +405,15 @@ class GWGEngine {
   bool _sentInBurst;
   uint8_t _burstFailures;
   bool _burstDisabled;
+  // The read in flight is the fresh-ENQ retry of a burst-sent copy that timed
+  // out (see BURST_FAILURES_BEFORE_FALLBACK). Cleared by every terminal
+  // outcome and by every new request.
+  bool _retryUnburst;
+  // Late-answer report in progress (see OnLateAnswerCallback). _lateSendMillis
+  // is the end of the request write the report measures from.
+  bool _lateWatch;
+  uint32_t _lateSendMillis;
+  LateAnswer _late;
   uint8_t _bytesTransferred;
   internals::SerialInterface *_interface;
   uint16_t _currentAddress;
@@ -368,6 +438,7 @@ class GWGEngine {
   OnErrorCallback _onErrorCallback;
   OnTimingCallback _onTimingCallback;
   OnBurstFallbackCallback _onBurstFallbackCallback;
+  OnLateAnswerCallback _onLateAnswerCallback;
 
   inline void _setState(State state);
 
@@ -377,9 +448,25 @@ class GWGEngine {
     return BURST_ENABLED && !_burstDisabled && _syncValid && (_currentMillis - _lastSyncMillis) <= ENQ_VALIDITY_MS;
   }
 
+  // REQUEST_TIMEOUT_MS, lengthened by however much a test raised the response
+  // deadline above its default, so the ENQ wait it also covers is not eaten.
+  static uint32_t _requestTimeoutMs() {
+    return gwgResponseTimeoutMs > RESPONSE_TIMEOUT_MS
+               ? REQUEST_TIMEOUT_MS + (gwgResponseTimeoutMs - RESPONSE_TIMEOUT_MS)
+               : REQUEST_TIMEOUT_MS;
+  }
+
   void _init();
   void _send();
   void _receive();
+
+  // A burst failure confirmed (see BURST_FAILURES_BEFORE_FALLBACK): advance
+  // the counter and fall back once it is reached.
+  void _noteBurstFailure();
+  // Late-answer report (see OnLateAnswerCallback).
+  void _openLateWatch(bool retried);
+  void _noteLateByte(uint8_t byte);
+  void _closeLateWatch();
 
   void _tryOnResponse(uint8_t length);
   void _tryOnError(OptolinkResult result);

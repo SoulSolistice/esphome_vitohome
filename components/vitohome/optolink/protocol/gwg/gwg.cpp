@@ -17,6 +17,7 @@ void GWGEngine::onResponse(OnResponseCallback callback) { _onResponseCallback = 
 void GWGEngine::onError(OnErrorCallback callback) { _onErrorCallback = callback; }
 void GWGEngine::onTiming(OnTimingCallback callback) { _onTimingCallback = callback; }
 void GWGEngine::onBurstFallback(OnBurstFallbackCallback callback) { _onBurstFallbackCallback = callback; }
+void GWGEngine::onLateAnswer(OnLateAnswerCallback callback) { _onLateAnswerCallback = callback; }
 
 bool GWGEngine::read(uint16_t address, uint8_t length, GWGAccessMode access) {
   if (_busy) {
@@ -37,6 +38,7 @@ bool GWGEngine::read(uint16_t address, uint8_t length, GWGAccessMode access) {
     _eepromLength = eeprom ? length : 0;
     _eepromIndex = 0;
     _eepromUnserved = false;
+    _retryUnburst = false;
     _busy = true;
     _requestTime = _currentMillis;
     optolink_log_i("reading packet OK");
@@ -63,6 +65,7 @@ bool GWGEngine::write(uint16_t address, const uint8_t *data, uint8_t length, GWG
     _currentLength = length;
     _eepromPairs = false;  // EEPROM writes keep their single-frame layout
     _eepromUnserved = false;
+    _retryUnburst = false;
     _busy = true;
     _requestTime = _currentMillis;
     optolink_log_i("writing packet OK");
@@ -90,6 +93,7 @@ bool GWGEngine::telegram(uint8_t type, uint16_t address, uint8_t length, const u
     _currentLength = length;
     _eepromPairs = false;
     _eepromUnserved = false;
+    _retryUnburst = false;
     _busy = true;
     _requestTime = _currentMillis;
     optolink_log_i("telegram 0x%02x OK", type);
@@ -129,10 +133,12 @@ void GWGEngine::loop() {
       // begin() not yet called
       break;
   }
-  if (_busy && _currentMillis - _requestTime > REQUEST_TIMEOUT_MS) {
+  if (_busy && _currentMillis - _requestTime > _requestTimeoutMs()) {
     _setState(State::INIT);
     _tryOnError(OptolinkResult::TIMEOUT);
   }
+  if (_lateWatch && _currentMillis - _lateSendMillis > LATE_WATCH_MS)
+    _closeLateWatch();
 }
 
 void GWGEngine::end() {
@@ -151,7 +157,11 @@ void GWGEngine::_setState(State state) {
 
 void GWGEngine::_init() {
   if (_interface->available()) {
-    if (_interface->read() == internals::ProtocolBytes.ENQ && _busy) {
+    const uint8_t byte = _interface->read();
+    if (byte == internals::ProtocolBytes.ENQ && _busy) {
+      // The next telegram goes out on this ENQ; anything arriving from here on
+      // belongs to it, not to the late-answer report.
+      _closeLateWatch();
       _bytesTransferred = 0;
       _enqAgeMillis = _loopGapMillis;    // timing instrument (see OnTimingCallback)
       _lastSyncMillis = _currentMillis;  // burst window opens (see ENQ_VALIDITY_MS)
@@ -176,7 +186,10 @@ void GWGEngine::_init() {
     // A byte was consumed but it was not a usable ENQ (line noise, or a
     // straggler while idle). Stop here rather than falling through: more bytes
     // may still be buffered, and the burst path below must only ever run on a
-    // genuinely empty interface.
+    // genuinely empty interface. A straggler after a TIMEOUT may be the late
+    // answer to it, so it goes to the late-answer report.
+    if (byte != internals::ProtocolBytes.ENQ)
+      _noteLateByte(byte);
     return;
   }
   // Burst (see ENQ_VALIDITY_MS): nothing is buffered, but a sync we already
@@ -192,6 +205,7 @@ void GWGEngine::_init() {
     // Starting the transfer index at 1 skips it; _send() indexes the frame by
     // _bytesTransferred and completes at length(), so it needs no change and
     // stays re-entrant across loop iterations on a partial write.
+    _closeLateWatch();
     _bytesTransferred = gwgBurstOmitsEnqAck ? 1 : 0;
     _enqAgeMillis = _currentMillis - _lastSyncMillis;  // age of the sync we are riding
     _sentInBurst = true;
@@ -240,29 +254,32 @@ void GWGEngine::_receive() {
   // datapoint of value 0x05 are indistinguishable. The cost is a discarded
   // genuine response when the host stalls >250 ms; the alternative is
   // publishing a sync byte as a temperature.
-  if (_currentMillis - _lastMillis > RESPONSE_TIMEOUT_MS) {
+  if (_currentMillis - _lastMillis > gwgResponseTimeoutMs) {
+    // A burst-sent read gets one retry on a fresh ENQ before anything is
+    // concluded (see BURST_FAILURES_BEFORE_FALLBACK).
+    const bool retry = _sentInBurst && !_burstDisabled && !_currentRequest.hasPayload() && !_retryUnburst;
     // Drop whatever is buffered along with the transaction. Every byte in there
     // predates the deadline, so a stale ENQ left behind would be picked up by
     // _init() as a fresh sync byte and burn the next request on a window that
-    // has already closed.
+    // has already closed. The late-answer report keeps a copy first.
+    _openLateWatch(retry);
     while (_interface->available())
-      _interface->read();
+      _noteLateByte(_interface->read());
     _bytesTransferred = 0;
     // Out of sync: we no longer know where the device's ENQ cadence is, so the
     // next request waits for a real one rather than riding a stale window.
     _syncValid = false;
-    if (_sentInBurst && !_burstDisabled && ++_burstFailures >= BURST_FAILURES_BEFORE_FALLBACK) {
-      _burstDisabled = true;
-      optolink_log_w("GWG burst disabled: %u consecutive burst-sent requests went unanswered; "
-                     "falling back to one telegram per ENQ",
-                     static_cast<unsigned>(_burstFailures));
-      // The log above is compiled out in every normal build (see
-      // OnBurstFallbackCallback); the callback is what the operator actually
-      // sees. Fires once -- _burstDisabled is latched just above.
-      if (_onBurstFallbackCallback)
-        _onBurstFallbackCallback(_burstFailures);
-    }
     _setState(State::INIT);
+    if (retry) {
+      // Same telegram, still in flight: INIT waits for the device's ENQ (the
+      // sync is gone, so it cannot burst) and sends it again with the 0x01.
+      // The request watchdog restarts, as for each EEPROM sub-read.
+      _retryUnburst = true;
+      _requestTime = _currentMillis;
+      return;
+    }
+    if (_sentInBurst && !_burstDisabled)
+      _noteBurstFailure();  // a write: not retried, counts as before
     _tryOnError(OptolinkResult::TIMEOUT);
     return;
   }
@@ -303,6 +320,9 @@ void GWGEngine::_receive() {
     _syncValid = true;
     if (_sentInBurst)
       _burstFailures = 0;
+    else if (_retryUnburst && !_burstDisabled)
+      _noteBurstFailure();  // unanswered when burst-sent, answered on an ENQ
+    _retryUnburst = false;
     _setState(State::INIT);
     if (_eepromPairs) {
       const uint8_t complement = _responseBuffer[_eepromIndex];
@@ -343,6 +363,52 @@ void GWGEngine::_receive() {
   }
 }
 
+void GWGEngine::_noteBurstFailure() {
+  if (++_burstFailures < BURST_FAILURES_BEFORE_FALLBACK)
+    return;
+  _burstDisabled = true;
+  optolink_log_w("GWG burst disabled: %u consecutive burst-sent requests went unanswered; "
+                 "falling back to one telegram per ENQ",
+                 static_cast<unsigned>(_burstFailures));
+  // The log above is compiled out in every normal build (see
+  // OnBurstFallbackCallback); the callback is what the operator actually
+  // sees. Fires once -- _burstDisabled is latched just above, and every
+  // caller checks it first.
+  if (_onBurstFallbackCallback)
+    _onBurstFallbackCallback(_burstFailures);
+}
+
+void GWGEngine::_openLateWatch(bool retried) {
+  _closeLateWatch();  // a report still open belongs to an earlier telegram
+  _lateWatch = true;
+  _lateSendMillis = _sendCompleteMillis;
+  _late = LateAnswer{};
+  _late.address = _currentAddress;
+  _late.received = _bytesTransferred;
+  _late.expected = _currentRequest.hasPayload() ? 1 : _currentLength;
+  _late.deadline_ms = gwgResponseTimeoutMs;
+  _late.retried = retried;
+}
+
+void GWGEngine::_noteLateByte(uint8_t byte) {
+  if (!_lateWatch)
+    return;
+  if (_late.late_count == 0)
+    _late.first_late_ms = _currentMillis - _lateSendMillis;
+  if (_late.late_stored < _late.late.size())
+    _late.late[_late.late_stored++] = byte;
+  if (_late.late_count < 0xFF)
+    ++_late.late_count;
+}
+
+void GWGEngine::_closeLateWatch() {
+  if (!_lateWatch)
+    return;
+  _lateWatch = false;
+  if ((_late.received != 0 || _late.late_count != 0) && _onLateAnswerCallback)
+    _onLateAnswerCallback(_late);
+}
+
 void GWGEngine::_tryOnResponse(uint8_t length) {
   if (_onResponseCallback) {
     _onResponseCallback(_responseBuffer.data(), length, _currentAddress);
@@ -351,9 +417,11 @@ void GWGEngine::_tryOnResponse(uint8_t length) {
   // matching VS1/VS2. Without this, GWG refuses every read/write after the
   // first success (one-shot). See THIRD_PARTY.md.
   _busy = false;
+  _retryUnburst = false;
 }
 
 void GWGEngine::_tryOnError(OptolinkResult result) {
+  _retryUnburst = false;
   if (_onErrorCallback) {
     _onErrorCallback(result, _currentAddress);
   }

@@ -760,7 +760,29 @@ These are intentional divergences from upstream `edc059a7`:
     `kw_detour_queued_on_reset`, `kw_telegram_ignored` in
     `fuzz_corpus_raw_engines.h`.
 
-Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28 and 29 are the only intentional changes to on-wire/runtime
+30. **GWG burst retry, late-answer report, runtime response deadline
+    (behavioral divergence, issue #35).** Item 21 counted every burst-sent
+    request that timed out as a burst failure, so a datapoint that never
+    answers tripped the session-long fallback on a unit that bursts fine:
+    GWG_VBEM 0x2053 SW=0x1E, 2026-11-07 -- 54 consecutive `kmbus_eeprom`
+    entities unanswered, 141 entities in the other modes answered in
+    23-50 ms. Changes:
+    - A burst-sent READ that times out is sent once more on a fresh ENQ
+      (with the 0x01), still as the same request. Answered there, the burst
+      failed and the counter advances; unanswered, the datapoint does not
+      answer and the counter is left alone; TIMEOUT is reported then. Writes
+      are not retried and count as before.
+    - The timeout branch no longer drops the bytes it drains without a trace:
+      they, the partial answer, and every non-ENQ byte consumed in INIT for
+      `LATE_WATCH_MS` afterwards go to `onLateAnswer()`, with the time from
+      the end of the request write to the first late byte.
+    - The response deadline is `optolink::gwgResponseTimeoutMs` (default
+      `RESPONSE_TIMEOUT_MS`, 250 ms), settable from a lambda for a test; the
+      request watchdog grows with it.
+    Proof: `proof_gwg_burst.cpp` sections (4), (5), (7), (9), (10) and
+    (11).
+
+Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29 and 30 are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16 are structural (no behavior change from any call
 site that exists -- item 16 alters bytes only on a RESPONSE-construction path
 nothing exercises); item 17 changes only construction-failure handling
