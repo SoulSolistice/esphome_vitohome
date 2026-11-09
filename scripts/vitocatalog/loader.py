@@ -697,15 +697,24 @@ class Catalog:
         if addr is None:
             addr = _address_from_name(raw_name)
 
+        conversion = f.get("Conversion") or acc.get("conversion") or ""
+
         # value = raw * factor + offset. The export writes the placeholder pair
         # -0.1067 / 6992.58 on rows without a real transform, and
         # ConversionFactor 0 is its "no scaling" sentinel (common on
         # NoConversion rows) -- a literal 0x multiplier is never meaningful, so
         # both count as absent. A real 0 offset is fine and handled at the call
         # site.
+        #
+        # Except on a MultOffset row, where the pair is the transform itself:
+        # it is GWG_Timer1Min's (the one MultOffset row in the export carrying
+        # it), most likely the row the stale copies on 660 others descend from.
+        # Raw 64972 on a GWG_VBEM unit (issue #35) is 64972 * -0.1067 + 6992.58
+        # = 60.07, against that row's 0..60 border; dropped, the catalog
+        # shipped the raw counter as seconds.
         def _fval(acc_key: str, dp_key: str, *, is_factor: bool) -> float | None:
             s = f.get(dp_key, "") or acc.get(acc_key) or ""
-            if s in _FACTOR_PLACEHOLDERS:
+            if s in _FACTOR_PLACEHOLDERS and conversion != "MultOffset":
                 return None
             try:
                 v = float(s)
@@ -721,7 +730,7 @@ class Catalog:
             id=eid,
             name=_friendly(raw_name, self._text),
             address=addr,
-            conversion=(f.get("Conversion") or acc.get("conversion") or ""),
+            conversion=conversion,
             access_type=_intval(f.get("Type")) or 1,
             block_length=pick("block_length", "BlockLength"),
             byte_length=pick("byte_length", "ByteLength"),

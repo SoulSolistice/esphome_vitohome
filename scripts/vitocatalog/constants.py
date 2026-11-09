@@ -311,8 +311,8 @@ _CONV_LENGTHS = {
 }
 
 # Vitosoft's unsigned integer ParameterTypes. The *HighByteFirst variants are
-# not listed: they also change the byte order, which is not modelled for
-# div2/div10 (no reachable div2/div10 datapoint carries one).
+# not listed: they are big-endian, and build_entity_spec turns a multi-byte one
+# into rotatebytes or a hint before signedness matters.
 _UNSIGNED_PARAMETER_TYPES = ("byte", "int", "int4")
 
 # Single-telegram READ payload cap for P300/VS2 (mirror of

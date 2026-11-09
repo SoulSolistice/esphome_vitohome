@@ -302,7 +302,18 @@ def generate(
 
     ro_blocks = _read_only_blocks(events, protocol)
 
-    for ev in sorted(events, key=lambda e: e.address or 0):
+    # Within one address, a "Rohwert" row (Vitosoft's raw companion of a
+    # converted datapoint at the same field, e.g. GWG_Timer13MinRohwert next to
+    # GWG_Timer13Min) sorts last. The field de-duplication below keeps the first
+    # event of a field, and in link order the raw twin came first for the GWG
+    # timers, so every GWG catalog shipped the raw counter instead of the minutes
+    # (issue #35: raw 58224 is 13.0 min). Python's sort is stable, so every other
+    # event keeps its order.
+    def _raw_companion_last(ev: Event) -> tuple:
+        raw = "Rohwert" in (ev.tech or "") or "Rohwert" in (ev.name or "")
+        return (ev.address or 0, raw)
+
+    for ev in sorted(events, key=_raw_companion_last):
         # Special datapoints are handled independently of profile/name filters.
         if emit_device_id and _is_identification(ev):
             continue  # represented by the device_id entity above

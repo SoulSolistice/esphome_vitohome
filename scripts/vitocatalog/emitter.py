@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 from .constants import (
     _CONV_LENGTHS,
     _CONV_SCALE,
@@ -36,6 +38,35 @@ from .transforms import (
     _unit_for,
     _unit_negated,
 )
+
+
+def _accuracy_decimals(conv: str, filters: list[tuple[str, float]], conv_kind: str) -> int | None:
+    """Decimals a numeric sensor needs to show its own resolution.
+
+    ESPHome defaults accuracy_decimals to 0, and Home Assistant displays the
+    state at that precision: a div2 temperature 35.5 showed as 36, the
+    Wasserdruck of GWG catalogs (raw * 0.0052 - 0.65 bar) in whole bar (issue
+    #35, `Accuracy Decimals: 0` on every scaled sensor in the log). Derived
+    from the decode itself -- the converter's scale times every multiply
+    filter, plus the offset's own decimals -- capped at 3. None when 0 is
+    right (unscaled and integer-scaled values), so the line is left out."""
+    if conv_kind == COUNTER:
+        return 1
+    scale = _CONV_SCALE.get(conv, 1.0)
+    offsets: list[float] = []
+    for kind, value in filters:
+        if kind == "multiply":
+            scale *= abs(value)
+        elif kind == "offset":
+            offsets.append(value)
+    decimals = 0
+    if 0.0 < scale < 1.0:
+        decimals = math.ceil(-math.log10(scale) - 1e-9)
+    for value in offsets:
+        frac = f"{value:.6f}".rstrip("0").partition(".")[2]
+        decimals = max(decimals, len(frac))
+    decimals = min(decimals, 3)
+    return decimals or None
 
 
 def _mode_select_caveat() -> list[str]:
@@ -582,7 +613,7 @@ def _build_bit_field_spec(
         device_class=dc,
         filters=filters,
         state_class="total_increasing" if conv_kind == COUNTER else "measurement",
-        accuracy_decimals=1 if conv_kind == COUNTER else None,
+        accuracy_decimals=_accuracy_decimals(conv, filters, conv_kind),
         disabled_by_default=True,
         update_interval=poll,
         notes=notes,
@@ -794,6 +825,37 @@ def build_entity_spec(
     enum_opts = _dedup_option_labels(_enum_options(ev))
     neg_opts = _negative_option_count(ev)
     is_bit = bit_len > 0
+
+    # Vitosoft's *HighByteFirst ParameterTypes store a multi-byte value
+    # big-endian; every other row is little-endian (GWG timers: raw 0D 00 =
+    # 13 min). Every converter here except rotatebytes decodes little-endian,
+    # so such a row would publish a byte-swapped value (vcLanModemReset~0xAE01:
+    # 60 min stored 00 3C would read 15360 min). The one shape the component
+    # can decode is an unsigned 2-byte raw value -> rotatebytes (read-only, the
+    # demotion below); anything else is a hint, never a wrong decode.
+    ptype_raw = (getattr(ev, "parameter_type", "") or "").strip()
+    ptype = ptype_raw.lower()
+    if "highbytefirst" in ptype and length >= 2 and not is_bit:
+        plain_word = (
+            length == 2
+            and ptype == "inthighbytefirst"
+            and conv == "noconv"
+            and not value_filters
+            and not enum_opts
+            and bounds_scale is None
+        )
+        if not plain_word:
+            return CommentSpec(
+                [
+                    (
+                        f"# {name} @ 0x{addr:04X}: Vitosoft ParameterType {ptype_raw} stores this"
+                        f" {length}-byte {ev.conversion or 'raw'} value big-endian; only an unsigned 2-byte raw"
+                        " value is decodable (rotatebytes) -> custom decode"
+                    )
+                ]
+            )
+        conv, conv_kind = "rotatebytes", PLAIN
+        note = (note + "; " if note else "") + f"ParameterType {ptype_raw}: big-endian -> rotatebytes"
 
     # `writable` was resolved above; the demotions below narrow it further.
     # A converter without an encode path (sec2hour, rotatebytes are read-only
@@ -1163,7 +1225,7 @@ def build_entity_spec(
         negated_unit_comment=neg_unit,
         filters=value_filters,
         state_class="total_increasing" if conv_kind == COUNTER else "measurement",
-        accuracy_decimals=1 if conv_kind == COUNTER else None,
+        accuracy_decimals=_accuracy_decimals(conv, value_filters, conv_kind),
         disabled_by_default=True,
         update_interval=poll,
         notes=notes,
