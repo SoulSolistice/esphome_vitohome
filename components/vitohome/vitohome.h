@@ -382,6 +382,10 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   void on_response_(const ResponseView &response, uint16_t request_address);
   void on_error_(optolink::OptolinkResult error, uint16_t request_address);
+  // Poll backoff bookkeeping (poll_backoff_interval() in poll_schedule.h): a
+  // poll read of `entity` timed out, or it answered.
+  void note_poll_timeout_(VitoEntityBase *entity);
+  void note_poll_answer_(VitoEntityBase *entity);
 
   // --- bit-field read-modify-write (see rmw_pending_) ------------------------
   void rmw_handle_read_(VitoEntityBase *entity, const ResponseView &response);
@@ -515,6 +519,11 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 #endif
 
   uint32_t last_refresh_all_ms_{0};
+  // Every answer the engine delivered, of any lane. A poll timeout advances an
+  // entity's backoff streak only if this moved since its previous timeout, i.e.
+  // the link answered something in between (note_poll_timeout_). Wraps
+  // harmlessly: only equality is ever tested.
+  uint32_t answers_total_{0};
 
   static constexpr uint32_t REFRESH_ALL_MIN_INTERVAL_MS = 5000;
 

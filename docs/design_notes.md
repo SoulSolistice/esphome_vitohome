@@ -302,6 +302,14 @@ by the same amount. This is a test aid, not a tuning knob: while a request
 waits, the device's idle ENQ (also `0x05`) can land inside the window and be
 read as the payload.
 
+**Poll backoff.** An entity whose reads time out while the link answers others
+is polled less often: after `POLL_BACKOFF_AFTER` (3) timeouts in a row at 2x
+its interval, then 4x, 8x and at most 16x (`poll_backoff_interval()` in
+`poll_schedule.h`). A timeout counts towards the streak only if some other read
+was answered since the previous one, so a dead link does not back everything
+off. The first answer restores the interval. Every-cycle (0) and
+`never`-polled entities are untouched.
+
 #### The two windows, separated
 
 `VS1Engine` used one 50 ms `SYNC_WINDOW_MS` for two unrelated jobs. They are now

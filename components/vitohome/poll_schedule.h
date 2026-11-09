@@ -55,4 +55,33 @@ inline PollDecision poll_schedule_step(uint32_t now, uint32_t next_due_ms, uint3
   return {true, next};
 }
 
+// Poll backoff for a datapoint that keeps timing out while the link is alive
+// (2026-11-08, issue #35: 54 `kmbus_eeprom` entities on a GWG unit that never
+// answered them, each costing a 250 ms deadline plus an ENQ wait, every
+// minute). `timeout_streak` counts consecutive TIMEOUTs that each followed
+// some other answer on the link (VitoHomeComponent::note_poll_timeout_), so a
+// dead link -- every entity timing out -- does not back anything off.
+//
+// From POLL_BACKOFF_AFTER timeouts on, the interval doubles per further
+// timeout, up to POLL_BACKOFF_MAX_FACTOR: a 60 s entity is polled every 2, 4,
+// 8, then 16 minutes, and on its old interval again after its first answer.
+// It never stops: a datapoint that only answers in some burner phases still
+// gets a chance. Interval 0 ("every hub cycle") and POLL_NEVER are left alone.
+inline constexpr uint8_t POLL_BACKOFF_AFTER = 3;
+inline constexpr uint32_t POLL_BACKOFF_MAX_FACTOR = 16;
+
+inline uint32_t poll_backoff_interval(uint32_t interval_ms, uint8_t timeout_streak) {
+  if (interval_ms == 0 || interval_ms == POLL_NEVER || timeout_streak < POLL_BACKOFF_AFTER)
+    return interval_ms;
+  const uint8_t doublings = static_cast<uint8_t>(timeout_streak - POLL_BACKOFF_AFTER + 1);
+  uint32_t factor = 1;
+  for (uint8_t i = 0; i < doublings && factor < POLL_BACKOFF_MAX_FACTOR; ++i)
+    factor *= 2;
+  // Saturate below POLL_INTERVAL_MAX_MS: the scheduler's signed differences
+  // need intervals under 2^31 ms.
+  if (interval_ms > POLL_INTERVAL_MAX_MS / factor)
+    return POLL_INTERVAL_MAX_MS;
+  return interval_ms * factor;
+}
+
 }  // namespace esphome::vitohome

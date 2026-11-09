@@ -242,6 +242,10 @@ class VitoEntityBase {
   // argument the hub passes to poll_schedule_step().
   uint32_t next_due_ms_{0};
   bool read_queued_{false};
+  // Poll backoff (poll_backoff_interval()): consecutive poll TIMEOUTs with the
+  // link otherwise alive, and the hub's answer count at the last of them.
+  uint8_t timeout_streak_{0};
+  uint32_t answers_at_timeout_{0};
   // write_queued_ means "sitting in the hub write_queue_, awaiting dispatch";
   // write_in_flight_ means "dispatched to the engine, awaiting ACK/error". They
   // are deliberately independent: a value changed while a write is in flight

@@ -220,6 +220,7 @@ void VitoHomeComponent::setup() {
 #ifdef VITOHOME_PROTOCOL_GWG
     this->gwg_note_all_ff_(data, length);
 #endif
+    ++this->answers_total_;
     this->on_response_(ResponseView{data, length, address}, address);
   });
 
@@ -853,7 +854,8 @@ void VitoHomeComponent::schedule_due_entities_() {
       continue;
     }
 
-    const PollDecision decision = poll_schedule_step(now, entity->next_due_ms_, entity->poll_interval(), slack);
+    const PollDecision decision = poll_schedule_step(
+        now, entity->next_due_ms_, poll_backoff_interval(entity->poll_interval(), entity->timeout_streak_), slack);
 
     if (!decision.due)
       continue;
@@ -1496,6 +1498,7 @@ void VitoHomeComponent::on_response_(const ResponseView &response, uint16_t requ
 
   if (operation == OpType::READ) {
     entity->read_queued_ = false;
+    this->note_poll_answer_(entity);
     if (this->rmw_verify_entity_ == entity)
       this->rmw_verify_read_back_(entity, response);
     entity->handle_response(response);
@@ -1772,6 +1775,34 @@ void VitoHomeComponent::link_note_error_() {
   }
 }
 
+void VitoHomeComponent::note_poll_timeout_(VitoEntityBase *entity) {
+  // A dead link times every entity out; that is the link-health monitor's
+  // business, not a reason to poll anything less. So after the first timeout
+  // the streak advances only if the link answered something since this
+  // entity's previous one.
+  if (entity->timeout_streak_ != 0 && entity->answers_at_timeout_ == this->answers_total_)
+    return;
+  entity->answers_at_timeout_ = this->answers_total_;
+  if (entity->timeout_streak_ < 0xFF)
+    ++entity->timeout_streak_;
+  const uint32_t interval = entity->poll_interval();
+  if (entity->timeout_streak_ == POLL_BACKOFF_AFTER && interval != 0 && interval != POLL_NEVER) {
+    ESP_LOGW(TAG,
+             "%s: %u timeouts in a row while other datapoints answer; polling it less often (every %" PRIu32
+             " s, up to %" PRIu32 "x) until it answers",
+             entity->get_datapoint().name(), static_cast<unsigned>(POLL_BACKOFF_AFTER),
+             poll_backoff_interval(interval, entity->timeout_streak_) / 1000u, POLL_BACKOFF_MAX_FACTOR);
+  }
+}
+
+void VitoHomeComponent::note_poll_answer_(VitoEntityBase *entity) {
+  if (entity->timeout_streak_ >= POLL_BACKOFF_AFTER) {
+    ESP_LOGI(TAG, "%s answers again; polling every %" PRIu32 " s", entity->get_datapoint().name(),
+             entity->poll_interval() / 1000u);
+  }
+  entity->timeout_streak_ = 0;
+}
+
 void VitoHomeComponent::on_error_(optolink::OptolinkResult error, uint16_t request_address) {
   if (this->ident_in_flight_) {
     this->ident_in_flight_ = false;
@@ -1835,6 +1866,8 @@ void VitoHomeComponent::on_error_(optolink::OptolinkResult error, uint16_t reque
     if (this->rmw_verify_entity_ == entity)
       this->rmw_verify_entity_ = nullptr;  // the read-back failed; never verify a later poll against it
     entity->read_queued_ = false;
+    if (error == optolink::OptolinkResult::TIMEOUT)
+      this->note_poll_timeout_(entity);
     entity->handle_error(error);
   } else if (operation == OpType::WRITE) {
     if (this->rmw_verify_entity_ == entity)

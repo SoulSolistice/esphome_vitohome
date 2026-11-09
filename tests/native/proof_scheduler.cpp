@@ -194,6 +194,31 @@ void test_every_accepted_interval_schedules_forward() {
   std::puts("ok: intervals up to 2^31-1 ms schedule forward");
 }
 
+// Poll backoff (issue #35): a datapoint that keeps timing out while the link
+// answers other reads is polled at 2x, 4x, 8x, then at most 16x its interval,
+// and every-cycle / never-polled entities are not touched.
+void test_backoff_interval() {
+  using esphome::vitohome::POLL_BACKOFF_AFTER;
+  using esphome::vitohome::POLL_INTERVAL_MAX_MS;
+  using esphome::vitohome::POLL_NEVER;
+  using esphome::vitohome::poll_backoff_interval;
+  for (uint8_t streak = 0; streak < POLL_BACKOFF_AFTER; ++streak)
+    assert(poll_backoff_interval(HUB_TICK, streak) == HUB_TICK);
+  assert(poll_backoff_interval(HUB_TICK, POLL_BACKOFF_AFTER) == 2 * HUB_TICK);
+  assert(poll_backoff_interval(HUB_TICK, POLL_BACKOFF_AFTER + 1) == 4 * HUB_TICK);
+  assert(poll_backoff_interval(HUB_TICK, POLL_BACKOFF_AFTER + 2) == 8 * HUB_TICK);
+  assert(poll_backoff_interval(HUB_TICK, POLL_BACKOFF_AFTER + 3) == 16 * HUB_TICK);
+  assert(poll_backoff_interval(HUB_TICK, 255) == 16 * HUB_TICK);
+  assert(poll_backoff_interval(0, 255) == 0);
+  assert(poll_backoff_interval(POLL_NEVER, 255) == POLL_NEVER);
+  assert(poll_backoff_interval(POLL_INTERVAL_MAX_MS / 2, 255) == POLL_INTERVAL_MAX_MS);
+  // The backed-off interval schedules like any other one.
+  PollDecision first = poll_schedule_step(1000, 0, poll_backoff_interval(HUB_TICK, POLL_BACKOFF_AFTER), SLACK);
+  assert(first.due && first.next_due_ms == 1000 + 2 * HUB_TICK);
+  assert(!poll_schedule_step(1000 + HUB_TICK, first.next_due_ms, 2 * HUB_TICK, SLACK).due);
+  std::puts("ok: poll backoff doubles from 3 timeouts on, capped at 16x");
+}
+
 int main() {
   test_zero_interval_always_due();
   test_first_poll_is_due();
@@ -205,6 +230,7 @@ int main() {
   test_slack_does_not_double_fire();
   test_never_is_never_due();
   test_every_accepted_interval_schedules_forward();
+  test_backoff_interval();
   std::puts("proof_scheduler: all checks passed");
   return 0;
 }
