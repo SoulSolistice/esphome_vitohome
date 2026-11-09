@@ -46,6 +46,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 3600s
 
@@ -62,6 +63,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 3600s
 
@@ -76,6 +78,7 @@ sensor:
     filters:
       - multiply: 0.02
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 3600s
 
@@ -90,6 +93,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 3600s
 
@@ -106,6 +110,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 3600s
 
@@ -123,6 +128,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 3600s
 
@@ -139,6 +145,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 3600s
 
@@ -153,6 +160,7 @@ sensor:
     filters:
       - multiply: 0.02
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 3600s
 
@@ -167,6 +175,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 3600s
 
@@ -183,6 +192,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 3600s
 
@@ -200,6 +210,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 3600s
 
@@ -216,6 +227,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 3600s
 
@@ -230,6 +242,7 @@ sensor:
     filters:
       - multiply: 0.02
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 3600s
 
@@ -244,6 +257,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 3600s
 
@@ -260,6 +274,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 3600s
 
@@ -277,6 +292,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 3600s
 
@@ -293,6 +309,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 3600s
 
@@ -329,6 +346,7 @@ sensor:
     unit_of_measurement: "MWh"
     device_class: energy
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -410,6 +428,7 @@ sensor:
     unit_of_measurement: "MWh"
     device_class: energy
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -514,6 +533,7 @@ sensor:
     unit_of_measurement: "MWh"
     device_class: energy
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -596,6 +616,7 @@ sensor:
     unit_of_measurement: "MWh"
     device_class: energy
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -612,6 +633,7 @@ sensor:
     filters:
       - multiply: 0.1
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -664,6 +686,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -680,6 +703,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -696,6 +720,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -712,6 +737,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -728,6 +754,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -744,6 +771,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -760,6 +788,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -777,6 +806,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -793,6 +823,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -810,6 +841,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -826,6 +858,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -843,6 +876,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -859,6 +893,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -876,6 +911,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -904,6 +940,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -920,6 +957,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -944,6 +982,7 @@ sensor:
     unit_of_measurement: "MWh"
     device_class: energy
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -970,6 +1009,7 @@ sensor:
     unit_of_measurement: "MWh"
     device_class: energy
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -1048,6 +1088,7 @@ sensor:
     unit_of_measurement: "A"
     device_class: current
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -1078,6 +1119,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -1094,6 +1136,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -1110,6 +1153,7 @@ sensor:
     filters:
       - multiply: 0.015625
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -1124,6 +1168,7 @@ sensor:
     unit_of_measurement: "L/min"
     device_class: volume_flow_rate
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 

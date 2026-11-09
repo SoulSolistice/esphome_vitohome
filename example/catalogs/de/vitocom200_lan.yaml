@@ -37,6 +37,46 @@
 # ============================================================
 
 sensor:
+  # --- Konfiguration / Modem GSM ---
+    # NOTE: ParameterType IntHighByteFirst: big-endian -> rotatebytes; converter 'rotatebytes' is read-only -> demoted to sensor
+  - platform: vitohome
+    name: "GPRS Verbindungskontrolle"
+    id: vcLanGPRSCheck
+    address: 0xC15D
+    length: 2
+    converter: rotatebytes
+    unit_of_measurement: "s"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+    # NOTE: ParameterType IntHighByteFirst: big-endian -> rotatebytes; converter 'rotatebytes' is read-only -> demoted to sensor
+  - platform: vitohome
+    name: "Zyklischer Modemreset"
+    id: vcLanModemReset
+    address: 0xAE01
+    length: 2
+    converter: rotatebytes
+    unit_of_measurement: "min"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+    # NOTE: ParameterType IntHighByteFirst: big-endian -> rotatebytes; converter 'rotatebytes' is read-only -> demoted to sensor
+  - platform: vitohome
+    name: "Maximale Verbindungsdauer WAN"
+    id: vcLanZwangstrennung
+    address: 0xAE03
+    length: 2
+    converter: rotatebytes
+    unit_of_measurement: "min"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
   # --- Konfiguration / Versionen ---
   - platform: vitohome
     name: "Version Neuron"
@@ -219,54 +259,6 @@ number:
     # pin the value to 0 - set real min/max/step before use.
     min_value: 0
     max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  - platform: vitohome
-    name: "GPRS Verbindungskontrolle"
-    id: vcLanGPRSCheck
-    address: 0xC15D
-    length: 2
-    converter: noconv
-    unit_of_measurement: "s"
-    device_class: duration
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  - platform: vitohome
-    name: "Zyklischer Modemreset"
-    id: vcLanModemReset
-    address: 0xAE01
-    length: 2
-    converter: noconv
-    unit_of_measurement: "min"
-    device_class: duration
-    min_value: 0
-    max_value: 255
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  - platform: vitohome
-    name: "Maximale Verbindungsdauer WAN"
-    id: vcLanZwangstrennung
-    address: 0xAE03
-    length: 2
-    converter: noconv
-    unit_of_measurement: "min"
-    device_class: duration
-    min_value: 0
-    max_value: 255
     step: 1
     mode: box
     disabled_by_default: true

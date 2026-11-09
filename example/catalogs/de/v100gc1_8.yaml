@@ -57,6 +57,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -72,6 +73,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -86,6 +88,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -100,6 +103,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -115,6 +119,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -128,6 +133,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -169,6 +175,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -183,6 +190,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -195,6 +203,7 @@ sensor:
     converter: div2
     unit_of_measurement: "%"
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -209,6 +218,7 @@ sensor:
     signed: false  # Vitosoft ParameterType Byte, lower border 0
     unit_of_measurement: "%"
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -279,6 +289,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -293,6 +304,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -307,6 +319,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -359,6 +372,7 @@ sensor:
     converter: div1000
     unit_of_measurement: "L"
     state_class: measurement
+    accuracy_decimals: 3
     disabled_by_default: true
     update_interval: 60s
 
@@ -412,6 +426,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -438,6 +453,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -519,6 +535,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -531,6 +548,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -543,6 +561,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -555,6 +574,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -567,6 +587,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -579,6 +600,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -726,6 +748,7 @@ sensor:
     signed: false  # Vitosoft ParameterType Byte, lower border 0
     unit_of_measurement: "%"
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -739,6 +762,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -752,6 +776,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -781,6 +806,7 @@ sensor:
     signed: false  # Vitosoft ParameterType Byte, lower border 0
     unit_of_measurement: "%"
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -794,6 +820,7 @@ sensor:
     signed: false  # Vitosoft ParameterType Byte, lower border 0
     unit_of_measurement: "%"
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -837,6 +864,7 @@ sensor:
     signed: false  # Vitosoft ParameterType Byte, lower border 0
     unit_of_measurement: "%"
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -850,6 +878,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -863,6 +892,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -876,6 +906,7 @@ sensor:
     signed: false  # Vitosoft ParameterType Byte, lower border 0
     unit_of_measurement: "%"
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -890,6 +921,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -903,6 +935,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
@@ -1092,6 +1125,7 @@ sensor:
     signed: false  # Vitosoft ParameterType Byte, lower border 0
     unit_of_measurement: "%/K"
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -1120,6 +1154,7 @@ sensor:
     signed: false  # Vitosoft ParameterType Byte, lower border 0
     unit_of_measurement: "%/K"
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -1404,6 +1439,7 @@ sensor:
     signed: false  # Vitosoft ParameterType Byte, lower border 0
     unit_of_measurement: "%/K"
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -1432,6 +1468,7 @@ sensor:
     signed: false  # Vitosoft ParameterType Byte, lower border 0
     unit_of_measurement: "%/K"
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 

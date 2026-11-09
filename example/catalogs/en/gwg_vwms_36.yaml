@@ -66,6 +66,7 @@ sensor:
     length: 1
     converter: div10
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -94,6 +95,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -118,6 +120,7 @@ sensor:
     length: 1
     converter: div10
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -147,6 +150,7 @@ sensor:
     filters:
       - multiply: 0.39215
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -161,6 +165,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -175,6 +180,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -188,6 +194,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -206,6 +213,7 @@ sensor:
       - multiply: 0.125
       - offset: 5
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -220,6 +228,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -236,6 +245,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -251,6 +261,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -266,6 +277,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -281,6 +293,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -295,6 +308,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -309,6 +323,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -341,20 +356,7 @@ sensor:
     update_interval: 60s
 
   # --- Diagnose2 / Sonstiges ---
-  - platform: vitohome
-    name: "13-minute time raw value"
-    id: GWG_Timer13MinRohwert
-    address: 0x0042
-    access: xram  # Vitosoft XRAM_READ
-    length: 2
-    converter: noconv
-    unit_of_measurement: "min"
-    device_class: duration
-    state_class: measurement
-    disabled_by_default: true
-    update_interval: 60s
-
-    # NOTE: conversion 'MultOffset' has no preset; raw noconv emitted
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * -0.1067 + 6992.58)
   - platform: vitohome
     name: "1-minute timer"
     id: GWG_Timer1Min
@@ -364,20 +366,47 @@ sensor:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    filters:
+      - multiply: -0.1067
+      - offset: 6992.58
     state_class: measurement
+    accuracy_decimals: 2
     disabled_by_default: true
     update_interval: 60s
 
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * -0.00177833 + 116.54)
   - platform: vitohome
-    name: "7-minute time raw value"
-    id: GWG_Timer7MinRohwert
-    address: 0x0040
+    name: "13-minute timer"
+    id: GWG_Timer13Min
+    address: 0x0042
     access: xram  # Vitosoft XRAM_READ
     length: 2
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    filters:
+      - multiply: -0.00177833333
+      - offset: 116.54
     state_class: measurement
+    accuracy_decimals: 3
+    disabled_by_default: true
+    update_interval: 60s
+
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * -0.00177833 + 116.54)
+  - platform: vitohome
+    name: "Run-on timer"
+    id: GWG_TimerNachlauf
+    address: 0x003A
+    access: xram  # Vitosoft XRAM_READ
+    length: 2
+    converter: noconv
+    unit_of_measurement: "min"
+    device_class: duration
+    filters:
+      - multiply: -0.00177833333
+      - offset: 116.54
+    state_class: measurement
+    accuracy_decimals: 3
     disabled_by_default: true
     update_interval: 60s
 
@@ -395,6 +424,7 @@ sensor:
       - multiply: 0.0052
       - offset: -0.65
     state_class: measurement
+    accuracy_decimals: 3
     disabled_by_default: true
     update_interval: 60s
 
@@ -410,16 +440,21 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * -0.00177833 + 116.54)
   - platform: vitohome
-    name: "Run-on timer raw value"
-    id: GWG_TimerNachlaufRohwert
-    address: 0x003A
+    name: "7-minute timer"
+    id: GWG_Timer7Min
+    address: 0x0040
     access: xram  # Vitosoft XRAM_READ
     length: 2
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    filters:
+      - multiply: -0.00177833333
+      - offset: 116.54
     state_class: measurement
+    accuracy_decimals: 3
     disabled_by_default: true
     update_interval: 60s
 
@@ -518,6 +553,7 @@ sensor:
     filters:
       - multiply: 0.392156862
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -534,6 +570,7 @@ sensor:
     filters:
       - multiply: 0.392156862
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -561,6 +598,7 @@ sensor:
     filters:
       - multiply: 0.392156862
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -577,6 +615,7 @@ sensor:
     filters:
       - multiply: 0.392156862
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -593,6 +632,7 @@ sensor:
     filters:
       - multiply: 0.392156862
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -609,6 +649,7 @@ sensor:
     filters:
       - multiply: 0.392156862
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -625,6 +666,7 @@ sensor:
     filters:
       - multiply: 0.392156862
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -665,6 +707,7 @@ sensor:
     filters:
       - multiply: 0.2
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -678,6 +721,7 @@ sensor:
     converter: div2
     unit_of_measurement: "K"
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -691,6 +735,7 @@ sensor:
     converter: div2
     unit_of_measurement: "K"
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -747,6 +792,7 @@ sensor:
     filters:
       - multiply: 0.2
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -760,6 +806,7 @@ sensor:
     converter: div2
     unit_of_measurement: "K"
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -773,6 +820,7 @@ sensor:
     converter: div2
     unit_of_measurement: "K"
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -846,6 +894,7 @@ sensor:
       - multiply: 0.125
       - offset: -5
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 3600s
 
@@ -863,6 +912,7 @@ sensor:
     filters:
       - multiply: 0.1
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 3600s
 
@@ -880,6 +930,7 @@ sensor:
     filters:
       - multiply: 0.1
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 3600s
 
@@ -897,6 +948,7 @@ sensor:
       - multiply: 0.5
       - offset: -16
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 3600s
 
@@ -914,6 +966,7 @@ sensor:
       - multiply: 0.5
       - offset: -16
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 3600s
 
@@ -980,6 +1033,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 

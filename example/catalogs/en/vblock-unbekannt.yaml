@@ -288,6 +288,7 @@ sensor:
     unit_of_measurement: "V"
     device_class: voltage
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -301,6 +302,7 @@ sensor:
     unit_of_measurement: "bar"
     device_class: pressure
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -314,6 +316,7 @@ sensor:
     unit_of_measurement: "mV"
     device_class: voltage
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -354,6 +357,7 @@ sensor:
     unit_of_measurement: "Hz"
     device_class: frequency
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -367,6 +371,7 @@ sensor:
     unit_of_measurement: "Hz"
     device_class: frequency
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -379,6 +384,7 @@ sensor:
     converter: div1000
     signed: true
     state_class: measurement
+    accuracy_decimals: 3
     disabled_by_default: true
     update_interval: 60s
 
@@ -622,6 +628,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -635,6 +642,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -648,6 +656,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -661,6 +670,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -674,6 +684,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
@@ -687,6 +698,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
 
