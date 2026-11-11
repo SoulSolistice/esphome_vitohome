@@ -99,6 +99,22 @@ class VitoEntityBase {
       std::memcpy(this->rpc_prefix_, prefix.data(), this->rpc_prefix_len_);
   }
   bool is_rpc() const { return this->space_ == AddressSpace::RPC; }
+
+  // Whether the telegram that reads this entity is the telegram that reads
+  // `other`: the same access space, address and length, and for a remote
+  // procedure call the same parameter. The hub then needs only one of them on
+  // the wire and hands the answer to both (read coalescing; vitohome.cpp,
+  // share_read_). What each entity takes from the answer -- a byte offset, a
+  // bit mask, a converter -- does not enter into it.
+  bool reads_same_datapoint(const VitoEntityBase &other) const {
+    if (this->space_ != other.space_ || this->datapoint_.address() != other.datapoint_.address() ||
+        this->datapoint_.length() != other.datapoint_.length())
+      return false;
+    if (this->space_ != AddressSpace::RPC)
+      return true;
+    return this->rpc_prefix_len_ == other.rpc_prefix_len_ &&
+           std::memcmp(this->rpc_prefix_, other.rpc_prefix_, this->rpc_prefix_len_) == 0;
+  }
   const uint8_t *rpc_prefix() const { return this->rpc_prefix_; }
   uint8_t rpc_prefix_len() const { return this->rpc_prefix_len_; }
 

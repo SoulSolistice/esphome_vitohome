@@ -274,6 +274,29 @@ template<typename T> class RingBuffer {
     return false;
   }
 
+  // Remove the first element equal to `value`, keeping the order of the rest.
+  // Returns false when there is none. O(n) under the lock.
+  //
+  // For the hub's read coalescing: an entity waiting in the read lane for a
+  // datapoint whose answer has just arrived for another entity leaves the lane
+  // without a telegram of its own.
+  [[nodiscard]] bool remove(const T &value) {
+    LockGuard lock(this->mutex_);
+
+    for (std::size_t i = 0; i < this->count_; ++i) {
+      if (!(this->slots_[this->slot_unlocked_(i)] == value))
+        continue;
+      // Close the gap from the front: shift the elements ahead of it one
+      // place toward the tail, then drop the (now duplicated) front slot.
+      for (std::size_t j = i; j > 0; --j)
+        this->slots_[this->slot_unlocked_(j)] = this->slots_[this->slot_unlocked_(j - 1)];
+      this->head_ = this->slot_unlocked_(1);
+      --this->count_;
+      return true;
+    }
+    return false;
+  }
+
   // Copy, but do not remove, the current front item.
   //
   // Returns false and leaves `value` unchanged when empty. The returned value
