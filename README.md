@@ -145,7 +145,9 @@ provides several things you would otherwise have to build by hand:
 the one optical link across every entity: **identification → interactive scan
 console → user writes → background clock-sync → routine reads**. A slider drag
 or mode change therefore never waits behind a full poll cycle, while the
-non-urgent clock sync yields to everything a person is waiting on. Values are
+non-urgent clock sync yields to everything a person is waiting on. Entities
+that read the same datapoint (the flags of one coding byte, the fields of one
+block) share one telegram per poll cycle instead of sending one each. Values are
 decoded in double precision and narrowed to `float32` only at publish time, so
 large counters don't lose resolution; a datapoint reports unavailable only
 after several consecutive read failures, not on a single transient glitch.

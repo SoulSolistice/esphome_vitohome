@@ -1380,6 +1380,37 @@ switch on one block both show the post-write state without waiting for their
 next poll (`VitoHomeComponent::refresh_siblings_`). The writing entity gets its
 usual read-back.
 
+**Read coalescing.** Entities that read one datapoint and differ only in what
+they take from it (coding flags of one byte, fields of one block, a sensor and
+a text_sensor on one register) used to send one telegram each. In the generated
+catalogs 14,453 of 82,650 entities (17%) repeat another entity's read. When a
+poll read completes, the hub now takes every other entity that is *waiting in
+the read lane for the same telegram* out of the lane and hands it the same
+outcome (`share_read_response_` / `share_read_error_`).
+
+- "The same telegram" is `VitoEntityBase::reads_same_datapoint()`: access
+  space, address, length, and for `access: rpc` the parameter. Byte offset, bit
+  mask, converter and write address play no part. Proof:
+  `tests/native/proof_read_coalesce.cpp`, per protocol.
+- Errors are shared as well as answers. That is where it pays most: a
+  datapoint that does not answer costs its timeout once per cycle, not once per
+  entity (on GWG a deadline plus an ENQ wait each).
+- Only entities already waiting are served. Nothing is delivered to an entity
+  that did not ask, so its own `update_interval` still decides when it reads.
+- Freshness: any read that completes after a write's ACK shows the state after
+  that write, so a shared answer is as good as the entity's own, with one
+  exception: an entity whose own write is queued behind the read in flight is
+  handed the pre-write value. Its write's ACK re-reads it (read-back, or
+  sibling refresh), so the stale value stands for one transaction.
+- `VitoClock` neither shares nor is skipped: it does not poll, and it runs its
+  own state machine on its reads.
+- The sibling refresh above needs one telegram for the whole group now: the
+  writer's read-back is shared with the siblings queued behind it.
+
+Not verified on hardware. The hub has no host harness; the two building blocks
+(`RingBuffer::remove()`, `reads_same_datapoint()`) are proven on the host and
+the hub code is compile-checked.
+
 **Interior shape, deprecated.** `byte_offset` with `state_address` (block read
 at the base, field written to its own interior address) still validates, but
 warns at `esphome config`: the interior address is not a declared write

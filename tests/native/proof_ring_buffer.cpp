@@ -446,7 +446,48 @@ static void test_reentry_is_caught() {
   check(WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT, "re-entering a ring from its consumer aborts");
 }
 
+static void test_remove() {
+  std::printf("== remove (read coalescing: a waiting entity leaves the lane) ==\n");
+  RingBuffer<int> q;
+  check(q.reserve(5), "reserve(5) succeeds");
+  int out = -1;
+  check(!q.remove(1), "empty ring: nothing to remove");
+  for (int e = 1; e <= 5; e++)
+    check(q.push_back(e), "queue 1..5");
+  check(!q.remove(9), "absent element: false");
+  check(q.size() == 5, "absent element: buffer unchanged");
+  check(q.remove(3), "remove 3 (mid-queue)");
+  check(q.remove(1), "remove 1 (the head)");
+  check(q.remove(5), "remove 5 (the tail)");
+  check(q.size() == 2, "three gone, two left");
+  check(q.try_pop_front(out) && out == 2 && q.try_pop_front(out) && out == 4 && q.empty(),
+        "the rest keep their order: 2, 4");
+
+  // Across the wrap: head_ ends up at the last slot of the backing, so the
+  // removed element sits past the wrap point.
+  RingBuffer<int> w;
+  check(w.reserve(4), "reserve(4) succeeds");
+  for (int e = 1; e <= 4; e++)
+    check(w.push_back(e), "fill 1..4");
+  check(w.try_pop_front(out) && w.try_pop_front(out) && w.try_pop_front(out), "drain three: head at slot 3");
+  check(w.push_back(5) && w.push_back(6) && w.push_back(7), "refill across the wrap: 4, 5, 6, 7");
+  check(w.remove(6), "remove 6 (past the wrap)");
+  check(w.push_back(8), "the freed slot is usable again");
+  const int want[] = {4, 5, 7, 8};
+  bool order = true;
+  for (int v : want)
+    order = order && w.try_pop_front(out) && out == v;
+  check(order && w.empty(), "order is 4, 5, 7, 8");
+
+  // A single-slot ring.
+  RingBuffer<int> one;
+  check(one.reserve(1) && one.push_back(42), "one slot, one element");
+  check(one.remove(42) && one.empty(), "removed; empty");
+  check(one.push_back(43) && one.try_pop_front(out) && out == 43, "still usable");
+}
+
 int main() {
+  test_remove();
   test_unreserved();
   test_reserve_one_shot();
   test_fifo_and_full();

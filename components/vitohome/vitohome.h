@@ -403,6 +403,33 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // next poll.
   void refresh_siblings_(VitoEntityBase *writer);
 
+  // --- read coalescing --------------------------------------------------------
+  // Several entities often read one datapoint and differ only in what they
+  // take from it: eight coding flags of one byte, the fields of one block, a
+  // sensor and a text_sensor on the same register. In the generated catalogs
+  // 17% of all entities repeat another entity's read (14,453 of 82,650). Each
+  // used to send its own telegram.
+  //
+  // When a poll read completes, every OTHER entity that is waiting in the read
+  // lane for the same telegram (VitoEntityBase::reads_same_datapoint()) leaves
+  // the lane and is handed the same outcome: the answer, or the error. One
+  // telegram then serves the group, which matters most where it hurts most --
+  // a datapoint that does not answer costs its timeout once, not once per
+  // entity.
+  //
+  // Only entities already waiting are served: nothing is delivered to an entity
+  // that did not ask, so an entity's own interval still decides when it reads.
+  // The answer is at least as fresh as the one the waiting entity would have
+  // fetched itself, except in one ordering -- its own write queued behind the
+  // read in flight -- and that write's ACK re-reads it anyway (read-back, or
+  // refresh_siblings_()).
+  void share_read_response_(VitoEntityBase *reader, const ResponseView &response);
+  void share_read_error_(VitoEntityBase *reader, optolink::OptolinkResult error);
+  // The next entity waiting in the read lane for `reader`'s telegram, taken
+  // out of the lane, or nullptr. `from` is where to resume the scan of
+  // entities_; it is advanced past the returned entity.
+  VitoEntityBase *take_waiting_on_same_read_(VitoEntityBase *reader, std::size_t &from);
+
   // --- identification -------------------------------------------------------
 
   void ident_start_();

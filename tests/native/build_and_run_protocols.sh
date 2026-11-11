@@ -62,6 +62,10 @@ for sel in "P300:" "KW:-DVITOHOME_PROTOCOL_KW" "GWG:-DVITOHOME_PROTOCOL_GWG"; do
   flag="${sel#*:}"
   g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread ${flag:+"$flag"} -I"$ROOT" -I"$OPTO"     proof_address_space.cpp "${SRCS[@]}" -o address_space
   ./address_space
+  g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread ${flag:+"$flag"} -I"$ROOT" -I"$OPTO" \
+    proof_read_coalesce.cpp "${SRCS[@]}" "$OPTO/datapoint/datapoint.cpp" "$OPTO/datapoint/converter.cpp" \
+    -o read_coalesce
+  ./read_coalesce
 done
 
 echo "== generic telegrams: P300 request / KW detour / KW / GWG (#28) =="

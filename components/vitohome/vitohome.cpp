@@ -1538,6 +1538,7 @@ void VitoHomeComponent::on_response_(const ResponseView &response, uint16_t requ
     if (this->rmw_verify_entity_ == entity)
       this->rmw_verify_read_back_(entity, response);
     entity->handle_response(response);
+    this->share_read_response_(entity, response);
     return;
   }
 
@@ -1682,6 +1683,65 @@ void VitoHomeComponent::refresh_siblings_(VitoEntityBase *writer) {
   if (queued > 0)
     ESP_LOGD(TAG, "%s: refreshing %u entit%s sharing 0x%04X", writer->get_datapoint().name(), queued,
              queued == 1 ? "y" : "ies", address);
+}
+
+// ---------------------------------------------------------------------------
+// Read coalescing (see share_read_response_ in vitohome.h)
+// ---------------------------------------------------------------------------
+
+VitoEntityBase *VitoHomeComponent::take_waiting_on_same_read_(VitoEntityBase *reader, std::size_t &from) {
+  const std::size_t count = this->entities_.size();
+  while (from < count) {
+    VitoEntityBase *e = this->entities_[from++];
+    // read_queued_ covers "in the lane" and "in flight". The one in flight is
+    // `reader`, so on any other entity the flag means it sits in the lane.
+    // VitoClock (no polling) runs its own state machine on its reads and is
+    // left to them.
+    if (e == nullptr || e == reader || !e->read_queued_ || !e->wants_polling() || !e->reads_same_datapoint(*reader))
+      continue;
+    if (!this->read_queue_.remove(e))
+      continue;  // flagged but not in the lane: nothing to take
+    e->read_queued_ = false;
+    return e;
+  }
+  return nullptr;
+}
+
+void VitoHomeComponent::share_read_response_(VitoEntityBase *reader, const ResponseView &response) {
+  // One entity at a time, each fully out of the lane before its handler runs:
+  // a handler publishes, and an automation on that state may queue a write or
+  // a read of its own.
+  unsigned shared = 0;
+  std::size_t from = 0;
+  while (VitoEntityBase *e = this->take_waiting_on_same_read_(reader, from)) {
+    this->note_poll_answer_(e);
+    // A read-modify-write waiting for its read-back takes this answer as that
+    // read-back: any read that completes after the merged write was sent
+    // shows the device's state after it.
+    if (this->rmw_verify_entity_ == e)
+      this->rmw_verify_read_back_(e, response);
+    e->handle_response(response);
+    ++shared;
+  }
+  if (shared > 0)
+    ESP_LOGV(TAG, "%s: answer shared with %u more entit%s reading 0x%04X", reader->get_datapoint().name(), shared,
+             shared == 1 ? "y" : "ies", reader->get_datapoint().address());
+}
+
+void VitoHomeComponent::share_read_error_(VitoEntityBase *reader, optolink::OptolinkResult error) {
+  unsigned shared = 0;
+  std::size_t from = 0;
+  while (VitoEntityBase *e = this->take_waiting_on_same_read_(reader, from)) {
+    if (this->rmw_verify_entity_ == e)
+      this->rmw_verify_entity_ = nullptr;  // as for the reader: never verify a later poll against it
+    if (error == optolink::OptolinkResult::TIMEOUT)
+      this->note_poll_timeout_(e);
+    e->handle_error(error);
+    ++shared;
+  }
+  if (shared > 0)
+    ESP_LOGD(TAG, "%s: %s also reported to %u more entit%s reading 0x%04X", reader->get_datapoint().name(),
+             optolink::errorToString(error), shared, shared == 1 ? "y" : "ies", reader->get_datapoint().address());
 }
 
 bool VitoHomeComponent::refresh_all() {
@@ -1930,6 +1990,7 @@ void VitoHomeComponent::on_error_(optolink::OptolinkResult error, uint16_t reque
     if (error == optolink::OptolinkResult::TIMEOUT)
       this->note_poll_timeout_(entity);
     entity->handle_error(error);
+    this->share_read_error_(entity, error);
   } else if (operation == OpType::WRITE) {
     if (this->rmw_verify_entity_ == entity)
       this->rmw_verify_entity_ = nullptr;
