@@ -116,10 +116,24 @@ namespace esphome::vitohome {
 // jump the queue for an entity whose ordinary poll is already waiting in it
 // (request_priority_read(); the read_queued_ flag forbids a second copy).
 //
-// consume_front_if() supports the hub's dispatch pattern. It holds the queue
-// lock while the caller attempts to hand the front item to the protocol engine
-// and removes the item only when that hand-off succeeds. This avoids the race
-// inherent in a separate try_front() followed later by try_pop_front().
+// The hub's dispatch pattern is try_front() / drop_front(): look at the head,
+// hand it to the protocol engine, and remove it once the engine has accepted
+// it. Between the two calls no lock is held, so nothing the hand-off triggers
+// (an error handler, a publish, an automation that queues the next item) can
+// deadlock on this queue. The pair is safe on one condition: ONE consumer, and
+// only that consumer's task removes elements or changes the head (push_front,
+// move_to_front, remove). A producer on another task may push_back() at any
+// time; that never changes which element is at the head of a non-empty queue.
+// The hub meets the condition: every one of those calls is made from its own
+// loop.
+//
+// There used to be a consume_front_if(consumer) that ran the hand-off under the
+// lock instead. It closed a race this design does not have (no second
+// consumer), at the price of a non-recursive mutex held across engine calls:
+// a FAILED result published from inside it deadlocked when an automation queued
+// the next raw operation (external review, 2026-10-28), and from then on a
+// source-scanning test had to keep every such callback free of calls that lead
+// out of the hub.
 //
 // T is stored in a preconstructed array and copied by trivial assignment. This
 // keeps queue operations bounded and prevents constructors, destructors, or
@@ -131,12 +145,6 @@ template<typename T> class RingBuffer {
   static_assert(std::is_trivially_copy_assignable<T>::value, "RingBuffer requires trivially copy-assignable elements");
 
  public:
-  enum class ConsumeResult : uint8_t {
-    EMPTY,
-    RETAINED,
-    REMOVED,
-  };
-
   RingBuffer() = default;
 
   RingBuffer(const RingBuffer &) = delete;
@@ -326,28 +334,18 @@ template<typename T> class RingBuffer {
     return true;
   }
 
-  // Invoke `consumer(front)` while holding the queue mutex.
+  // Remove the front item without copying it out; a no-op when empty.
   //
-  // The front item is removed only if consumer() returns true. The consumer
-  // must remain short and must not call another method on this RingBuffer,
-  // because ESPHome's Mutex is non-recursive.
-  //
-  // This is used for protocol dispatch: the engine copies the request
-  // synchronously, so holding the queue lock over read()/write() is bounded and
-  // prevents another consumer or push_front() from changing the observed item.
-  template<typename Consumer> ConsumeResult consume_front_if(Consumer &&consumer) {
+  // The second half of the dispatch pattern (see the class comment): the
+  // caller has looked at the head with try_front() and has just handed it on.
+  void drop_front() {
     LockGuard lock(this->mutex_);
 
     if (this->count_ == 0)
-      return ConsumeResult::EMPTY;
-
-    const T value = this->slots_[this->head_];
-    if (!std::forward<Consumer>(consumer)(value))
-      return ConsumeResult::RETAINED;
+      return;
 
     this->head_ = this->slot_unlocked_(1);
     --this->count_;
-    return ConsumeResult::REMOVED;
   }
 
  private:
