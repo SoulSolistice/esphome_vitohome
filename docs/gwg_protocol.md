@@ -107,6 +107,11 @@ layouts are switchable at run time (`set_gwg_write_eot_before_payload()`).
 Given the `be` results above, an `eeprom` datapoint is the only candidate left
 for a first write test, and those are codings.
 
+The engine completes a write on any single answer byte. Which value means
+"taken" is unknown (KW uses `0x00`), so the byte is not checked but shown: the
+raw result reads `write ACK (1 byte), answered XX`, and an entity write logs
+it at DEBUG. Only a read-back proves that a write landed.
+
 ## Identification
 
 - Four bytes at `virtual` `0xF8`: group, ident, hardware index (HX, `0xFA`),
