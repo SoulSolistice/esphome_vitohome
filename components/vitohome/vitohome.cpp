@@ -1318,8 +1318,16 @@ void VitoHomeComponent::raw_handle_response_(const ResponseView &response) {
       offset = 0;
   }
   if (this->raw_is_write_ && this->raw_layer_ == RawLayer::NONE) {
-    snprintf(buffer, sizeof(buffer), "0x%04X: write ACK (%u byte%s)", this->raw_dp_.address(), this->raw_write_len_,
-             this->raw_write_len_ == 1 ? "" : "s");
+    const int written = snprintf(buffer, sizeof(buffer), "0x%04X: write ACK (%u byte%s)", this->raw_dp_.address(),
+                                 this->raw_write_len_, this->raw_write_len_ == 1 ? "" : "s");
+    // KW and GWG acknowledge a write with one byte. KW's is 0x00, checked by
+    // the engine. GWG's value is not known -- no GWG write has been confirmed
+    // -- and its engine completes on any byte, so the byte is shown: it is
+    // what a first write test has to report. A P300 acknowledgement frame
+    // carries no data.
+    if (response.data != nullptr && response.data_length >= 1 && written > 0 &&
+        written < static_cast<int>(sizeof(buffer)))
+      snprintf(buffer + written, sizeof(buffer) - written, ", answered %02X", response.data[0]);
   } else if (response.data == nullptr || response.data_length == 0) {
     // A P300 write acknowledgement carries no data.
     snprintf(buffer + offset, sizeof(buffer) - offset, "0x%04X: ACK, no data", response.address);
@@ -1471,7 +1479,13 @@ void VitoHomeComponent::on_response_(const ResponseView &response, uint16_t requ
   if (operation == OpType::WRITE) {
     entity->write_in_flight_ = false;
 
-    ESP_LOGD(TAG, "Write to %s acknowledged", entity->get_datapoint().name());
+    // The acknowledgement byte of KW and GWG (see raw_handle_response_); P300
+    // has none.
+    if (response.data != nullptr && response.data_length >= 1) {
+      ESP_LOGD(TAG, "Write to %s acknowledged (answered 0x%02X)", entity->get_datapoint().name(), response.data[0]);
+    } else {
+      ESP_LOGD(TAG, "Write to %s acknowledged", entity->get_datapoint().name());
+    }
 
     // If control() queued a newer value while this request was in flight, this
     // ACK belongs to the older payload. The entity's pending_* member and write
