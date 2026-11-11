@@ -12,8 +12,11 @@ frameworks. It is developed and tested against a VScotHO1 unit (device
 `0x20CB`). It implements the P300 (VS2) protocol (the default) and KW (VS1),
 both confirmed on a VScotHO1. GWG is also selectable via the `protocol:` option
 but remains **untested**. Selecting a non-default protocol logs a warning at
-compile time, and the component fails fast at start-up if the configured
-protocol doesn't establish a link. Feedback from anyone running GWG is welcome.
+compile time. If the configured protocol doesn't establish a link within the
+start-up window (90 s, or three poll intervals if that is longer), the
+component logs an error, reports the link offline and raises its error status,
+and keeps trying: a boiler that was off when the ESP booted is picked up, and
+identified, once it answers. Feedback from anyone running GWG is welcome.
 
 ## ⚠️ Read this before writing to your controller
 

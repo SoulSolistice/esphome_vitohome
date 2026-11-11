@@ -389,7 +389,7 @@ void VitoHomeComponent::loop() {
   this->iface_.frame_tick();
 
   // Start-up protocol verification: confirm the configured protocol actually
-  // established a link, or fail the component with a clear message.
+  // established a link, or say so with a clear message.
   if (this->protocol_verify_pending_) {
     if (this->link_established_) {
       this->protocol_verify_pending_ = false;
@@ -399,13 +399,21 @@ void VitoHomeComponent::loop() {
       // distance at INT32_MAX so this comparison remains valid.
       this->protocol_verify_pending_ = false;
 
-      ESP_LOGE(TAG, "%s link not established; check wiring and that the device speaks this protocol", PROTOCOL_NAME);
+      // Reported, not fatal. This used to mark_failed() the component, which
+      // is right for a wrong `protocol:` and wrong for everything else that
+      // looks the same from here: a boiler that is switched off or in service
+      // when the ESP boots, an Optolink head that is not on yet. Those ended
+      // in a dead component until someone rebooted the ESP. The hub keeps
+      // polling instead; the link goes online on the first answer
+      // (link_note_alive_() clears the error), and identification is repeated
+      // then if it had failed.
+      ESP_LOGE(TAG,
+               "%s link not established; check wiring and that the device speaks this protocol. "
+               "Still trying.",
+               PROTOCOL_NAME);
 
       this->publish_link_(false);
-      this->mark_failed(LOG_STR("no Optolink link established"));
-
-      // Do not continue into watchdog handling or dispatch after failure.
-      return;
+      this->status_set_error(LOG_STR("no Optolink link established"));
     }
   }
 
@@ -1730,9 +1738,25 @@ void VitoHomeComponent::publish_link_(bool up) {
 }
 
 void VitoHomeComponent::link_note_alive_() {
+  const bool was_online = this->link_state_ == 1;
   this->link_established_ = true;
   this->link_error_streak_ = 0;
   this->publish_link_(true);
+  // Raised when the start-up window passed without a link (loop()).
+  this->status_clear_error();
+  // The link came up, for the first time or again. If identification ran
+  // while the device was not answering, it ended as "unknown" and would stay
+  // that way until a reboot: repeat it now. Only on this edge, so a device
+  // that answers but does not serve the identification addresses is asked
+  // once per link-up, not continuously. Safe from inside the engine callback
+  // that calls this: it only moves the state machine, and the response being
+  // delivered belongs to whatever is in flight, which is not identification
+  // (its state was DONE).
+  if (!was_online && this->identify_device_ && this->ident_state_ == IdentState::DONE &&
+      (this->ident_group_ < 0 || this->ident_controller_ < 0)) {
+    ESP_LOGI(TAG, "Link is up; repeating the device identification that failed earlier");
+    this->ident_start_();
+  }
   // Mirror the link state onto the STANDARD component status as well, not only
   // onto the optional connectivity binary_sensor. The binary_sensor is opt-in,
   // so without this a user who did not configure one gets no indication at all
@@ -1859,7 +1883,16 @@ void VitoHomeComponent::on_error_(optolink::OptolinkResult error, uint16_t reque
 
   switch (error) {
     case optolink::OptolinkResult::TIMEOUT:
-      ESP_LOGE(TAG, "[TIMEOUT] %s (0x%04X) - Optolink not responding", name, request_address);
+      // While the link is known to be offline every request times out, and the
+      // hub keeps asking (it no longer gives up when the device is absent at
+      // boot). "Optolink link offline" has said it once; repeating it per
+      // datapoint at ERROR would fill the log for as long as the device stays
+      // away.
+      if (this->link_state_ == 0) {
+        ESP_LOGV(TAG, "[TIMEOUT] %s (0x%04X) - link offline", name, request_address);
+      } else {
+        ESP_LOGE(TAG, "[TIMEOUT] %s (0x%04X) - Optolink not responding", name, request_address);
+      }
       break;
 
     case optolink::OptolinkResult::LENGTH:

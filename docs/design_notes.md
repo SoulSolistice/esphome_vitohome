@@ -139,9 +139,15 @@ signedness rules.
   datapoint/converter translation units — the engine layer has no Datapoint
   dependency).
 - **Link is verified at runtime.** After `begin()`, the hub watches for the first
-  successful exchange within a window; it logs the established link, or fails
-  fast if the configured protocol never establishes one — so a wrong `protocol:`
-  surfaces at start-up, not as silent dead air.
+  successful exchange within a window; it logs the established link, or, if
+  the configured protocol never establishes one, an error — so a wrong
+  `protocol:` surfaces at start-up, not as silent dead air. It also publishes
+  the link offline and raises the component's error status, and it keeps
+  polling. It used to `mark_failed()` here, which a wrong `protocol:` deserves
+  and a boiler that is off at ESP boot does not: that needed a reboot of the
+  ESP to recover. The first answer clears the error, and identification is
+  repeated on that link-up if it had ended as "unknown". While the link is
+  offline, per-datapoint timeouts are logged at VERBOSE, not ERROR.
 
 ### GWG access modes (`access:`)
 
