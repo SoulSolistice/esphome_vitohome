@@ -1,7 +1,8 @@
 """ESPHome component for Viessmann Optolink (vendored optolink engine).
 
-P300 (VS2) is the validated protocol; KW (VS1) and GWG are build-time selectable
-through the same engine template (protocol_select.h) but untested. Platforms:
+P300 (VS2) and KW (VS1) are confirmed on hardware. GWG is build-time selectable
+through the same engine template (protocol_select.h); its reads are confirmed on
+three units, its writes on none (docs/gwg_protocol.md). Platforms:
 sensor, binary_sensor, text_sensor, number, select, switch, text, button,
 climate and event. The component decodes and encodes raw Optolink payloads
 itself (see ``decode.h``) and uses the in-tree optolink engine (under
@@ -355,10 +356,10 @@ VitoClimatePreset = vitohome_ns.struct("VitoClimatePreset")
 
 VitoHomeComponent = vitohome_ns.class_("VitoHomeComponent", cg.PollingComponent, uart.UARTDevice)
 
-# Selectable protocols. P300 (VS2) is the only one exercised on hardware; KW
-# (VS1) and GWG build through the same engine template but untested -- selecting
-# either emits a warning at compile time. The value is the build-flag token
-# (P300/KW/GWG) that selects the engine via protocol_select.h.
+# Selectable protocols. P300 (VS2) and KW (VS1) are confirmed on hardware. GWG
+# builds through the same engine template; its reads are confirmed, its writes
+# are not, and selecting it says so at compile time. The value is the
+# build-flag token (P300/KW/GWG) that selects the engine via protocol_select.h.
 PROTOCOLS = {
     "P300": "P300",
     "VS2": "P300",
@@ -1517,10 +1518,13 @@ async def to_code(config):
     if protocol == "GWG":
         # KW graduated to hardware-confirmed (VScotHO1_72 field logs 2026-07:
         # reads, multi-byte clock writes after THIRD_PARTY.md #11, Schaltzeiten,
-        # Betriebsart round-trips). GWG remains implemented + host-proven only.
+        # Betriebsart round-trips). GWG reads are confirmed on three 0x2053
+        # units (issues #13, #21, #35); no GWG write has been confirmed, and
+        # not every access mode answers on every unit (docs/gwg_protocol.md).
         _LOGGER.warning(
-            "vitohome protocol 'GWG' is selectable but UNTESTED on hardware; "
-            "P300 and KW are the validated protocols. Please report results.",
+            "vitohome protocol 'GWG': reads are confirmed on hardware, writes are NOT -- no GWG "
+            "write has been verified on any unit, and not every access mode answers on every "
+            "unit. See docs/gwg_protocol.md, and please report results.",
         )
 
     if config[CONF_LOG_FRAMES]:

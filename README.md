@@ -10,8 +10,10 @@ diagnostic and a force-refresh `button`.
 vitohome targets ESP32 boards and works under both the ESP-IDF and Arduino
 frameworks. It is developed and tested against a VScotHO1 unit (device
 `0x20CB`). It implements the P300 (VS2) protocol (the default) and KW (VS1),
-both confirmed on a VScotHO1. GWG is also selectable via the `protocol:` option
-but remains **untested**. Selecting a non-default protocol logs a warning at
+both confirmed on a VScotHO1. GWG is also selectable via the `protocol:` option:
+its reads are confirmed on three units (device `0x2053`), its **writes on
+none**, and not every access mode answers on every unit (see
+[docs/gwg_protocol.md](docs/gwg_protocol.md)). Selecting GWG logs a warning at
 compile time. If the configured protocol doesn't establish a link within the
 start-up window (90 s, or three poll intervals if that is longer), the
 component logs an error, reports the link offline and raises its error status,
