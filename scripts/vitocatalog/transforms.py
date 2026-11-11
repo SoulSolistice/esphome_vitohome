@@ -651,7 +651,7 @@ def _bound_fits(value_str: str, length: int, conv: str, is_signed: bool) -> bool
     signed/unsigned range check), so a border the generator emits is not
     rejected at ``esphome config`` time. Borders that do not fit (e.g. a
     year-valued bound on a 1-byte field, or a display unit that is not the raw
-    encoding) fall back to the 0/0/1 placeholder instead.
+    encoding) make the datapoint read-only instead (build_entity_spec).
     """
     try:
         v = float(value_str)

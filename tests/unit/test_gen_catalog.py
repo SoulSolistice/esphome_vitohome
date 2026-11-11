@@ -80,7 +80,7 @@ def test_routing(catalog):
     assert _platform_of(catalog, "4") == "text_sensor"  # read-only enum
     assert _platform_of(catalog, "5") == "select"  # writable enum
     assert _platform_of(catalog, "6") == "number"  # writable + borders
-    assert _platform_of(catalog, "7") == "number"  # writable, no borders
+    assert _platform_of(catalog, "7") == "sensor"  # writable, no borders -> read-only
     assert _platform_of(catalog, "8") == "comment"  # DateTimeBCD
 
 

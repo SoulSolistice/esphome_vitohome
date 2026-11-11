@@ -113,6 +113,15 @@ jobs:
       # the step above. See the script header.
       - name: Validate user-curated configs
         run: bash scripts/validate_user_curated.sh
+      # The generated catalogs (example/catalogs/) against the component's
+      # schema: a sample, one per protocol and code path plus the largest, each
+      # included into a minimal device config the way a user includes it. The
+      # generator's unit tests check its output against fixtures, not against
+      # the schema, and nothing else includes a generated catalog. Config-only.
+      # `--all` (every catalog, both languages) is for a local run after
+      # regenerating. See the script header.
+      - name: Validate generated catalogs (sample)
+        run: bash scripts/validate_catalogs.sh
 
   compile:
     name: ${{ matrix.config }}

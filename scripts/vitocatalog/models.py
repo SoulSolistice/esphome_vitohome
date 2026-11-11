@@ -149,7 +149,6 @@ class EntitySpec:
     min_value: str | float | None = None
     max_value: str | float | None = None
     step: str | float | None = None
-    bounds_placeholder_comment: bool = False  # min/max/step are the 0/0/1 placeholders
     mode: str | None = None
     negated_unit_comment: bool = False  # value stored as a magnitude, negated by a filter (_unit_negated)
     filters: list[tuple[str, float]] = field(default_factory=list)

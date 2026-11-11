@@ -347,6 +347,15 @@ each with its `index.csv` and `gfa/` companions) and the shared
 `example/catalogs/resolve.json` (which also lists the GFA chips), and
 refuses to run without the full `Textresource_de.xml` / `Textresource_en.xml`.
 
+After regenerating, check the result against the component's config schema:
+
+```
+bash scripts/validate_catalogs.sh --all
+```
+
+includes every catalog into a minimal device config and runs `esphome config`
+on it. Without `--all` it checks the sample CI runs on every push.
+
 ### Using the output
 
 Include the emitted file from your device YAML and define the `vitohome:` hub
