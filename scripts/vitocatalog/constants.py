@@ -215,6 +215,16 @@ ACTION_WARNING = [
     "# Remote_Procedure_Call), at once and without asking. Nothing here undoes",
     "# it. It is disabled by default: enable it only once you know what it does.",
 ]
+# Above every datapoint Vitosoft marks writable but gives no usable range for
+# (build_entity_spec). The first line is also how the renderer counts them for
+# the catalog header.
+NO_BORDERS_CAUTION = [
+    "# CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no",
+    "# usable range for it (borders absent or equal, a zero step, or outside",
+    "# the byte width). It is emitted READ-ONLY. To write it, declare it as a",
+    "# `number` with a min_value / max_value / step you have confirmed on the",
+    "# unit: nothing in this catalog bounds what you would send.",
+]
 # Mirrors components/vitohome/__init__.py RPC_PREFIX_MAX. Vitosoft's longest
 # PrefixRead is three bytes.
 RPC_PREFIX_MAX = 4

@@ -136,9 +136,23 @@ def test_two_byte_value_overflow_falls_through_to_number():
     ev = _event(
         byte_length=2,
         values=[_enum_value(0x10000, "TooBig")],
+        lower="0",
+        upper="100",
+        stepping="1",
     )
     platform, _lines = gc.emit_entity(ev, "full")
     assert platform == "number"
+
+
+def test_two_byte_value_overflow_without_borders_is_read_only():
+    # The same enum without borders: a number has no range to offer, so the
+    # datapoint is read-only (see test_gen_catalog_borderless.py).
+    ev = _event(
+        byte_length=2,
+        values=[_enum_value(0x10000, "TooBig")],
+    )
+    platform, _lines = gc.emit_entity(ev, "full")
+    assert platform == "text_sensor"
 
 
 def test_ecnsys_90_byte_block_expands_to_ten_system_slots():
@@ -319,6 +333,9 @@ def test_interior_writable_number_is_a_block_mode_number():
         byte_position=1,
         values=[],
         enum_type=False,
+        lower="0",
+        upper="100",
+        stepping="1",
     )
     platform, lines = gc.emit_entity(ev, "full")
     body = "\n".join(lines)
@@ -339,6 +356,9 @@ def test_interior_multibyte_number_field_emits_byte_length():
         byte_position=4,
         values=[],
         enum_type=False,
+        lower="0",
+        upper="100",
+        stepping="1",
     )
     platform, lines = gc.emit_entity(ev, "full")
     body = "\n".join(lines)

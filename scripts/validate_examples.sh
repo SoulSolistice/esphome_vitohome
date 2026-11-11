@@ -43,9 +43,9 @@
 # ESPHome-specific tags (!secret, !include) that a plain PyYAML load rejects.
 #
 # example/catalogs/ is excluded wholesale: every file in it is a generated
-# catalog package by definition (scripts/gen_catalog.py output). Validating
-# them standalone is meaningless; they are exercised through the configs that
-# include them.
+# catalog package by definition (scripts/gen_catalog.py output), and a package
+# cannot be validated standalone. scripts/validate_catalogs.sh validates them
+# the way they are used: included into a minimal device config.
 #
 # Usage: bash scripts/validate_examples.sh   (from the repo root)
 set -euo pipefail

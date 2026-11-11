@@ -14,6 +14,7 @@ from .constants import (
     DIV,
     MAX_P300_READ_LENGTH,
     MAX_TEXT_BLOCK_LENGTH,
+    NO_BORDERS_CAUTION,
     NON_NUMERIC_CONVERSIONS,
     PLAIN,
     PROTO_P300,
@@ -183,10 +184,6 @@ def render_entity_lines(spec: EntitySpec) -> list[str]:
             lines.append(f"  # on 0x{spec.on_value:02X} = {spec.on_label}; off 0x{spec.off_value:02X} = {spec.off_label}")
 
     if spec.platform == "number":
-        if spec.bounds_placeholder_comment:
-            lines.append("  # Borders absent, or out of range for this byte width, in")
-            lines.append("  # the export. These placeholders pass `esphome config` but")
-            lines.append("  # pin the value to 0 - set real min/max/step before use.")
         lines.append(f"  min_value: {spec.min_value}")
         lines.append(f"  max_value: {spec.max_value}")
         lines.append(f"  step: {spec.step}")
@@ -576,8 +573,8 @@ def _build_bit_field_spec(
         if lo != "" and hi != "" and step not in ("", "0") and _fits(lo) and _fits(hi):
             min_v, max_v, step_v = lo, hi, step
         else:
-            # The field's own range is known exactly, which beats the 0/0/1
-            # placeholder that whole-byte numbers fall back to.
+            # The field's own range is known exactly, so unlike a whole-byte
+            # number without borders it need not be emitted read-only.
             notes.append(f"borders absent or outside the {bit_len}-bit field -> the field range 0..{fmax}")
             min_v, max_v, step_v = "0", f"{fmax * scale:g}", f"{scale:g}"
         return EntitySpec(
@@ -1035,6 +1032,9 @@ def build_entity_spec(
         )
 
     vals = getattr(ev, "values", None) or []
+    # Set when a writable datapoint has to be emitted read-only for want of a
+    # range (NO_BORDERS_CAUTION).
+    caution: list[str] = []
     if writable:
         lo = ev.lower or (vals[0].lower if vals else "")
         hi = ev.upper or (vals[0].upper if vals else "")
@@ -1043,7 +1043,7 @@ def build_entity_spec(
         # div2/div10 are already signed in the component; every other converter
         # is unsigned by default and needs an explicit `signed: true` to accept
         # a negative bound (otherwise the number validator rejects it and the
-        # borders fall back to the 0/0/1 placeholders).
+        # datapoint is emitted read-only, see below).
         try:
             _lo_neg = lo != "" and float(lo) < 0
         except (TypeError, ValueError):
@@ -1058,8 +1058,8 @@ def build_entity_spec(
             # Declared unsigned with a non-negative border: override the
             # converter's signed default (see _declared_unsigned). This also
             # lets an upper border above the signed range fit -- 127.5 on a
-            # 1-byte div2 is raw 255, unsigned -- instead of falling back to
-            # the 0/0/1 placeholders.
+            # 1-byte div2 is raw 255, unsigned -- instead of the datapoint
+            # being emitted read-only.
             is_signed = False
             signed_val = False
             signed_comment = f"Vitosoft ParameterType {getattr(ev, 'parameter_type', '')}, borders {lo}..{hi}"
@@ -1071,28 +1071,42 @@ def build_entity_spec(
             and step not in ("", "0")
             and _bound_fits(lo, length, conv, is_signed)
             and _bound_fits(hi, length, conv, is_signed)
+            # An empty range is no range: 94 datapoints carry the borders 0..0
+            # (step 1), which is the same "can only write 0" entity as one
+            # without borders.
+            and float(hi) > float(lo)
         )
-        return EntitySpec(
-            platform="number",
-            name=name,
-            address=addr,
-            length=w_len,
-            byte_offset=w_off,
-            byte_length=w_blen,
-            converter=conv,
-            signed=signed_val,
-            signed_comment=signed_comment,
-            unit=unit or None,
-            device_class=dc,
-            min_value=lo if have_bounds else 0,
-            max_value=hi if have_bounds else 0,
-            step=step if have_bounds else 1,
-            bounds_placeholder_comment=not have_bounds,
-            mode="box",
-            disabled_by_default=True,
-            update_interval=poll,
-            notes=notes,
-        )
+        if have_bounds:
+            return EntitySpec(
+                platform="number",
+                name=name,
+                address=addr,
+                length=w_len,
+                byte_offset=w_off,
+                byte_length=w_blen,
+                converter=conv,
+                signed=signed_val,
+                signed_comment=signed_comment,
+                unit=unit or None,
+                device_class=dc,
+                min_value=lo,
+                max_value=hi,
+                step=step,
+                mode="box",
+                disabled_by_default=True,
+                update_interval=poll,
+                notes=notes,
+            )
+        # No usable borders. A number needs a range, and the export gives none
+        # that fits (absent, empty, a zero step, or outside the byte width). The
+        # catalogs used to carry a 0/0/1 stand-in, which passes `esphome
+        # config` and leaves a live entity whose only possible write is 0, to a
+        # parameter whose real range nobody knows (1,972 of them over 172
+        # catalogs, 2026-11-10 audit). The datapoint is emitted read-only
+        # instead, through the sensor / text_sensor / binary_sensor path below,
+        # under a CAUTION that says it is writable and why it is not offered
+        # as such.
+        caution = list(NO_BORDERS_CAUTION)
 
     # --- read-only: single-bit binary_sensor, enum text_sensor, or sensor ---
     if is_bit:
@@ -1145,6 +1159,7 @@ def build_entity_spec(
             disabled_by_default=True,
             update_interval=poll,
             notes=notes,
+            leading_comments=caution,
         )
 
     if enum_opts:
@@ -1166,6 +1181,7 @@ def build_entity_spec(
             disabled_by_default=True,
             update_interval=poll,
             notes=notes,
+            leading_comments=caution,
         )
 
     # Numeric sensor. Signedness: div2/div10 are signed by component default.
@@ -1229,6 +1245,7 @@ def build_entity_spec(
         disabled_by_default=True,
         update_interval=poll,
         notes=notes,
+        leading_comments=caution,
     )
 
 

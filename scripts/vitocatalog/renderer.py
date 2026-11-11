@@ -11,6 +11,7 @@ from .constants import (
     ACCESS_PLATFORMS,
     ACTION_WARNING,
     GFA_PLATFORMS,
+    NO_BORDERS_CAUTION,
     PROTO_GWG,
     PROTO_P300,
     RPC_PLATFORMS,
@@ -689,11 +690,22 @@ def generate(
         out.append("# 'Pegel' per RF participant); each such name carries its id in parentheses,")
         out.append("# since ESPHome requires a unique name per platform.")
         out.append("#")
+    no_borders = sum(
+        1
+        for chunks in buckets.values()
+        for _key, _label, lines in chunks
+        if any(ln.strip() == NO_BORDERS_CAUTION[0] for ln in lines)
+    )
+    if no_borders:
+        out.append(f"# WRITABLE WITHOUT A RANGE: {no_borders} datapoint(s) are writable in Vitosoft, but")
+        out.append("# the export gives no usable borders for them. Each is emitted READ-ONLY")
+        out.append("# under a CAUTION comment. Making one a `number` means choosing its")
+        out.append("# range yourself, and nothing here checks it: confirm the range on the")
+        out.append("# unit (or its service manual) first, and take extra care writing it.")
+        out.append("#")
     out.append("# VERIFY ON HARDWARE: not every address answers on every firmware.")
     out.append("# Run `esphome config` then `esphome compile`/`run` before relying")
-    out.append("# on any value. number entities whose borders were absent in the")
-    out.append("# export get min/max/step = 0/0/1 placeholders: valid config, but")
-    out.append("# pinned to 0 until you fill in the real bounds.")
+    out.append("# on any value.")
     out.append("# ============================================================")
     out.append("")
 

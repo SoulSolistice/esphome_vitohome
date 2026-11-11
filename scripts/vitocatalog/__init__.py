@@ -35,6 +35,7 @@ from .constants import (  # noqa: F401
     MAX_P300_READ_LENGTH,
     MAX_RMW_BLOCK,
     MAX_TEXT_BLOCK_LENGTH,
+    NO_BORDERS_CAUTION,
     NON_NUMERIC_CONVERSIONS,
     PLAIN,
     POLL_CODING,
