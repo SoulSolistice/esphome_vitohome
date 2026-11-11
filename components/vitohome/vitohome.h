@@ -762,8 +762,11 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // slot if a callback is ever lost because of an engine defect.
   static constexpr uint32_t IN_FLIGHT_WATCHDOG_MS = 10000;
 
-  // Start-up protocol check. The selected engine must establish verified
+  // Start-up protocol check. The selected engine should establish verified
   // protocol activity within max(PROTOCOL_VERIFY_MIN_MS, 3 * hub interval).
+  // If it does not, the hub logs an error, publishes the link offline and
+  // raises the component's error status -- and keeps polling: the device may
+  // simply be off. The first answer clears all three (link_note_alive_()).
   //
   // The implementation caps the derived interval to INT32_MAX because the
   // rollover-safe signed-difference deadline comparison is valid only for
