@@ -109,7 +109,7 @@ signedness rules.
 |---|---|---|
 | P300 / VS2 | `P300` (default) | **Hardware-confirmed** on a VScotHO1 (`0x20CB`). |
 | KW / VS1 | `KW` | **Hardware-confirmed** on a VScotHO1. |
-| GWG | `GWG` | Implemented; **first hardware evidence 2026-08-23** (single unit, one capture). Read/write path exercised on the wire; the capture also exposed the ENQ-misread defect fixed in THIRD_PARTY.md #18. Still labelled as needing broader verification — the address map for that unit is not established. |
+| GWG | `GWG` | **Reads hardware-confirmed** on three `0x2053` units (issues #13, #21, #35; first capture 2026-08-23, which exposed the ENQ-misread defect fixed in THIRD_PARTY.md #18). `physical`, `virtual`, `eeprom`, `xram` and `port` answer; `be` and `kmbus_eeprom` did not return data on the units that tried them. **No write is confirmed.** Per-mode status and open questions: [gwg_protocol.md](gwg_protocol.md). |
 
 - **4800 8E2 is mandatory.** `esphome config` rejects any
   baud/data-bit/stop-bit/parity mismatch on the referenced `uart:` (final

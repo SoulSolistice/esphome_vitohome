@@ -617,9 +617,10 @@ def generate(
         out.append("# terminator in a write frame has no source at all (see")
         out.append("# gwgWriteEotBeforePayload). Reads are unaffected by that choice.")
         out.append("#")
-        out.append("# On the read side only `physical` has hardware confirmation; the other")
-        out.append("# modes are sourced from Vitosoft, the openv wiki and vcontrold, which")
-        out.append("# agree. Verify on the unit before relying on a value.")
+        out.append("# On the read side `physical`, `virtual`, `eeprom`, `xram` and `port` have")
+        out.append("# answered on hardware; not every mode answers on every unit. What each")
+        out.append("# mode did on the units reported so far is in docs/gwg_protocol.md.")
+        out.append("# Verify on the unit before relying on a value.")
         if dropped_wide_addr:
             out.append("#")
             out.append(f"# {dropped_wide_addr} datapoint(s) with an address above 0xFF were dropped")
