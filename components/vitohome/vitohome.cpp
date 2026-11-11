@@ -231,7 +231,8 @@ void VitoHomeComponent::setup() {
     //   * NACK means the device received the request and actively rejected it.
     //   * DEVICE_ERROR is a COMPLETE, checksum-valid error frame from the
     //     device -- proof the peer answered in this protocol.
-    //   * TIMEOUT means no usable reply arrived within the engine watchdog.
+    //   * TIMEOUT means no usable reply arrived within the engine watchdog. On
+    //     GWG only a request that never went out counts (see below).
     //   * ERROR is malformed traffic (an invalid frame after a start byte),
     //     possibly line noise; CRC/LENGTH likewise indicate corruption. None
     //     of these establishes either a healthy response or a silent link.
@@ -245,7 +246,20 @@ void VitoHomeComponent::setup() {
         break;
 
       case optolink::OptolinkResult::TIMEOUT:
+#ifdef VITOHOME_PROTOCOL_GWG
+        // GWG has no error telegram: an address the unit does not serve in the
+        // requested mode goes unanswered, and that is a TIMEOUT too. Only a
+        // request that never went out -- no ENQ from the device -- says
+        // anything about the link (GWGEngine::lastTimeoutWasUnsynced()). A
+        // request the device took and did not answer proves nothing either way
+        // and is ignored here like malformed traffic. Issue #35: consecutive
+        // silent `kmbus_eeprom` datapoints published the link offline about 14
+        // times in 6.5 minutes on a unit that kept sending ENQs.
+        if (this->vito_->lastTimeoutWasUnsynced())
+          this->link_note_error_();
+#else
         this->link_note_error_();
+#endif
         break;
 
       case optolink::OptolinkResult::ERROR:
