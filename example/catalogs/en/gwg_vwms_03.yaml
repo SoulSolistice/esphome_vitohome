@@ -31,9 +31,10 @@
 # terminator in a write frame has no source at all (see
 # gwgWriteEotBeforePayload). Reads are unaffected by that choice.
 #
-# On the read side only `physical` has hardware confirmation; the other
-# modes are sourced from Vitosoft, the openv wiki and vcontrold, which
-# agree. Verify on the unit before relying on a value.
+# On the read side `physical`, `virtual`, `eeprom`, `xram` and `port` have
+# answered on hardware; not every mode answers on every unit. What each
+# mode did on the units reported so far is in docs/gwg_protocol.md.
+# Verify on the unit before relying on a value.
 #
 # 1 datapoint(s) with an address above 0xFF were dropped
 # (GWG addresses a single byte).
@@ -51,9 +52,7 @@
 #
 # VERIFY ON HARDWARE: not every address answers on every firmware.
 # Run `esphome config` then `esphome compile`/`run` before relying
-# on any value. number entities whose borders were absent in the
-# export get min/max/step = 0/0/1 placeholders: valid config, but
-# pinned to 0 until you fill in the real bounds.
+# on any value.
 # ============================================================
 
 sensor:

@@ -40,14 +40,38 @@
 # 'Pegel' per RF participant); each such name carries its id in parentheses,
 # since ESPHome requires a unique name per platform.
 #
+# WRITABLE WITHOUT A RANGE: 16 datapoint(s) are writable in Vitosoft, but
+# the export gives no usable borders for them. Each is emitted READ-ONLY
+# under a CAUTION comment. Making one a `number` means choosing its
+# range yourself, and nothing here checks it: confirm the range on the
+# unit (or its service manual) first, and take extra care writing it.
+#
 # VERIFY ON HARDWARE: not every address answers on every firmware.
 # Run `esphome config` then `esphome compile`/`run` before relying
-# on any value. number entities whose borders were absent in the
-# export get min/max/step = 0/0/1 placeholders: valid config, but
-# pinned to 0 until you fill in the real bounds.
+# on any value.
 # ============================================================
 
 sensor:
+  # --- Codierung 1 / Elektroheizung ---
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(790B) Bivalence temperature instantaneous water heater"
+    id: WPR3_eHeizung_Bivalenztemperatur
+    address: 0x790B
+    length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    disabled_by_default: true
+    update_interval: 3600s
+
   # --- Codierung 1 / Kommunikation LON ---
   - platform: vitohome
     name: "Viessmann - system number"
@@ -58,6 +82,82 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
+  # --- Codierung 1 / Pufferspeicher ---
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(7208) Temp. limit op. status fixed value for buffer cylinder"
+    id: WPR3_HeizSpeicher_PufferSperreFestwert
+    address: 0x7208
+    length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Codierung 1 Solaranlage ---
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(7A01) Solar thermal system max. temperature solar"
+    id: WPR_Solaranlage_TempMax_solar
+    address: 0x7A01
+    length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(7A02) Solar thermal system hysteresis solar start"
+    id: WPR_Solaranlage_Hysterese_SolarEin
+    address: 0x7A02
+    length: 2
+    converter: div10
+    unit_of_measurement: "K"
+    state_class: measurement
+    accuracy_decimals: 1
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(7A03) Solar thermal system hysteresis solar stop"
+    id: WPR_Solaranlage_Hysterese_SolarAus
+    address: 0x7A03
+    length: 2
+    converter: div10
+    unit_of_measurement: "K"
+    state_class: measurement
+    accuracy_decimals: 1
+    disabled_by_default: true
+    update_interval: 3600s
 
   # --- Codierung 2 / Verdichter2 ---
   # vito: quickcheck
@@ -2848,6 +2948,21 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Energy statement factor"
+    id: WPR_WO1H_EnergiebilanzFaktor
+    address: 0x163F
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
   # --- Statistic / SchaltzyklenAnlage ---
   - platform: vitohome
     name: "Natural cooling control (WPR_RelaisZyklen_NatCooling_Ansteuerung)"
@@ -3110,6 +3225,26 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
+  # --- VBC702 AW ---
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(7313) Hysteresis flow OFF"
+    id: WPR3_Split_Hysterese_Vorlauf_Aus
+    address: 0x7313
+    length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    disabled_by_default: true
+    update_interval: 3600s
 
   # --- (ohne Gruppenzuordnung) ---
   - platform: vitohome
@@ -5939,6 +6074,159 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(601C) Optimum output DHW"
+    id: WPR3_Split_Opt_Leistung_WW
+    address: 0x601C
+    length: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(6032) Cylinder primary pump non-standard profiles"
+    id: WPR3_Split_Speicherladepumpe_Nonstandard_Profile
+    address: 0x6032
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Temperature differential output controller actuator primary source"
+    id: WPR3_Split_TempDifferenz_Leistungsregler_Aktor_Primaerquelle
+    address: 0x7327
+    length: 2
+    converter: div10
+    unit_of_measurement: "K"
+    state_class: measurement
+    accuracy_decimals: 1
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Set temperature value output controller actuator primary source (min)"
+    id: WPR3_Split_TempSollwert_Leistungsregler_Aktor_Primaerquelle_Min
+    address: 0x7328
+    length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Set temperature value output controller actuator primary source (max)"
+    id: WPR3_Split_TempSollwert_Leistungsregler_Aktor_Primaerquelle_Max
+    address: 0x7329
+    length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Actuator primary source non-standard profiles"
+    id: WPR3_Split_Aktor_Primaerquelle_Nonstandard_Profile
+    address: 0x7332
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(7347) Temperature differential output controller secondary pump"
+    id: WPR3_Split_TempDifferenz_Leistungsregler_Sekundaerpumpe
+    address: 0x7347
+    length: 2
+    converter: div10
+    unit_of_measurement: "K"
+    state_class: measurement
+    accuracy_decimals: 1
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(7348) Set temperature value output controller secondary pump"
+    id: WPR3_Split_TempSollwert_Leistungsregler_Sekundaerpumpe
+    address: 0x7348
+    length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(7352) Secondary pump non-standard profiles"
+    id: WPR3_Split_Sekundaerpumpe_Nonstandard_Profile
+    address: 0x7352
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
 binary_sensor:
   # --- DiagnosisDiagnosis1 / Allgemein ---
   # vito: overview
@@ -6920,26 +7208,6 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-  # --- Codierung 1 / Elektroheizung ---
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(790B) Bivalence temperature instantaneous water heater"
-    id: WPR3_eHeizung_Bivalenztemperatur
-    address: 0x790B
-    length: 2
-    converter: div10
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # --- Codierung 1 / HK / HK1 ---
   # vito: circuit=hk1 overview quickcheck trend
   - platform: vitohome
@@ -7438,25 +7706,6 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(7208) Temp. limit op. status fixed value for buffer cylinder"
-    id: WPR3_HeizSpeicher_PufferSperreFestwert
-    address: 0x7208
-    length: 2
-    converter: div10
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # --- Codierung 1 / Verdichter1 ---
   # vito: quickcheck
   - platform: vitohome
@@ -7631,61 +7880,6 @@ number:
     update_interval: 3600s
 
   # --- Codierung 1 Solaranlage ---
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(7A01) Solar thermal system max. temperature solar"
-    id: WPR_Solaranlage_TempMax_solar
-    address: 0x7A01
-    length: 2
-    converter: div10
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(7A02) Solar thermal system hysteresis solar start"
-    id: WPR_Solaranlage_Hysterese_SolarEin
-    address: 0x7A02
-    length: 2
-    converter: div10
-    unit_of_measurement: "K"
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(7A03) Solar thermal system hysteresis solar stop"
-    id: WPR_Solaranlage_Hysterese_SolarAus
-    address: 0x7A03
-    length: 2
-    converter: div10
-    unit_of_measurement: "K"
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   - platform: vitohome
     name: "(7A07) Solar thermal system flow rate solar"
     id: WPR_Solaranlage_Volumenstrom_Solar
@@ -9775,43 +9969,6 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-  # --- Statistic / Energiebilanz ---
-  - platform: vitohome
-    name: "Energy statement factor"
-    id: WPR_WO1H_EnergiebilanzFaktor
-    address: 0x163F
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # --- VBC702 AW ---
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(7313) Hysteresis flow OFF"
-    id: WPR3_Split_Hysterese_Vorlauf_Aus
-    address: 0x7313
-    length: 2
-    converter: div10
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # --- (ohne Gruppenzuordnung) ---
   - platform: vitohome
     name: "Stop optimisation A1M1 - experience-based setback period"
@@ -9986,23 +10143,6 @@ number:
 
   # vito: quickcheck
   - platform: vitohome
-    name: "(601C) Optimum output DHW"
-    id: WPR3_Split_Opt_Leistung_WW
-    address: 0x601C
-    length: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
     name: "(6021) Minimum output cylinder primary pump"
     id: WPR3_Split_Min_Leistung_SLP
     address: 0x6021
@@ -10166,23 +10306,6 @@ number:
     unit_of_measurement: "%"
     min_value: 0
     max_value: 100
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(6032) Cylinder primary pump non-standard profiles"
-    id: WPR3_Split_Speicherladepumpe_Nonstandard_Profile
-    address: 0x6032
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
     step: 1
     mode: box
     disabled_by_default: true
@@ -10394,59 +10517,6 @@ number:
     update_interval: 3600s
 
   - platform: vitohome
-    name: "Temperature differential output controller actuator primary source"
-    id: WPR3_Split_TempDifferenz_Leistungsregler_Aktor_Primaerquelle
-    address: 0x7327
-    length: 2
-    converter: div10
-    unit_of_measurement: "K"
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  - platform: vitohome
-    name: "Set temperature value output controller actuator primary source (min)"
-    id: WPR3_Split_TempSollwert_Leistungsregler_Aktor_Primaerquelle_Min
-    address: 0x7328
-    length: 2
-    converter: div10
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  - platform: vitohome
-    name: "Set temperature value output controller actuator primary source (max)"
-    id: WPR3_Split_TempSollwert_Leistungsregler_Aktor_Primaerquelle_Max
-    address: 0x7329
-    length: 2
-    converter: div10
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  - platform: vitohome
     name: "Curve actuator primary source (min)"
     id: WPR3_Split_Kennlinie_Aktor_Primaerquelle_Min
     address: 0x7330
@@ -10469,22 +10539,6 @@ number:
     unit_of_measurement: "%"
     min_value: 0
     max_value: 100
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  - platform: vitohome
-    name: "Actuator primary source non-standard profiles"
-    id: WPR3_Split_Aktor_Primaerquelle_Nonstandard_Profile
-    address: 0x7332
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
     step: 1
     mode: box
     disabled_by_default: true
@@ -10581,43 +10635,6 @@ number:
 
   # vito: quickcheck
   - platform: vitohome
-    name: "(7347) Temperature differential output controller secondary pump"
-    id: WPR3_Split_TempDifferenz_Leistungsregler_Sekundaerpumpe
-    address: 0x7347
-    length: 2
-    converter: div10
-    unit_of_measurement: "K"
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(7348) Set temperature value output controller secondary pump"
-    id: WPR3_Split_TempSollwert_Leistungsregler_Sekundaerpumpe
-    address: 0x7348
-    length: 2
-    converter: div10
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
     name: "(7350) Curve secondary pump (min)"
     id: WPR3_Split_Kennlinie_Sekundaerpumpe_Min
     address: 0x7350
@@ -10640,23 +10657,6 @@ number:
     unit_of_measurement: "%"
     min_value: 0
     max_value: 100
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(7352) Secondary pump non-standard profiles"
-    id: WPR3_Split_Sekundaerpumpe_Nonstandard_Profile
-    address: 0x7352
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
     step: 1
     mode: box
     disabled_by_default: true

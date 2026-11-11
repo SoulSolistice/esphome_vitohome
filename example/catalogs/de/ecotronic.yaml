@@ -34,18 +34,42 @@
 # master writes them; without a LON module they hold no data (0xFF
 # 'invalid'). --profile full includes them.
 #
-# 30 entity name(s) repeat within their platform in Vitosoft (e.g. one
+# 32 entity name(s) repeat within their platform in Vitosoft (e.g. one
 # 'Pegel' per RF participant); each such name carries its id in parentheses,
 # since ESPHome requires a unique name per platform.
 #
+# WRITABLE WITHOUT A RANGE: 27 datapoint(s) are writable in Vitosoft, but
+# the export gives no usable borders for them. Each is emitted READ-ONLY
+# under a CAUTION comment. Making one a `number` means choosing its
+# range yourself, and nothing here checks it: confirm the range on the
+# unit (or its service manual) first, and take extra care writing it.
+#
 # VERIFY ON HARDWARE: not every address answers on every firmware.
 # Run `esphome config` then `esphome compile`/`run` before relying
-# on any value. number entities whose borders were absent in the
-# export get min/max/step = 0/0/1 placeholders: valid config, but
-# pinned to 0 until you fill in the real bounds.
+# on any value.
 # ============================================================
 
 sensor:
+  # --- Bedienung / Warmwasser ---
+  # vito: circuit=dhw overview quickcheck trend
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "WW Rücklauftemperatur Soll"
+    id: Ecotronic_WW_R_cklauftemperatur_Soll
+    address: 0x6204
+    length: 2
+    converter: div10
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    disabled_by_default: true
+    update_interval: 3600s
+
   # --- Diagnose / Beschickung ---
   # vito: circuit=boiler overview trend
     # NOTE: conversion 'NoConversion' with fractional stepping: borders 0..100 step 0.1 imply value = raw * 0.1 (raw 0..1000). UNVERIFIED inference -- read-only until a hardware write confirms it
@@ -336,6 +360,22 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
+
+  # vito: circuit=boiler overview trend
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Brennerstarts (Ecotronic_Kesselstarts)"
+    id: Ecotronic_Kesselstarts
+    address: 0x08A3
+    length: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
 
   # vito: circuit=boiler overview
   - platform: vitohome
@@ -978,6 +1018,21 @@ sensor:
     update_interval: 60s
 
   # --- Diagnose 2 / Regelung ---
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "KSK HW-Version"
+    id: Ecotronic_0D02
+    address: 0x0D02
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
   - platform: vitohome
     name: "KSK Seriennummer"
     id: Ecotronic_0D00
@@ -1109,6 +1164,281 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
+  # --- Codierungen / Kessel ---
+  # vito: circuit=boiler quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(1C) Kesselpumpe Minimaldrehzahl"
+    id: Ecotronic_KP_Min_Drehzahl
+    address: 0x57AE
+    length: 1
+    converter: noconv
+    unit_of_measurement: "%"
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=boiler quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(1D) Kesselpumpe Maximaldrehzahl"
+    id: Ecotronic_KP_Max_Drehzahl
+    address: 0x57AD
+    length: 1
+    converter: noconv
+    unit_of_measurement: "%"
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=boiler quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Abgastemperatur Grenzwert"
+    id: Ecotronic_Abgastemperatur_Grenzwert
+    address: 0x5780
+    length: 2
+    converter: noconv
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Funktionskontrolle / Allgemein ---
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(46) Leistungsregler"
+    id: Ecotronic_Leistungsregler
+    address: 0x57D0
+    length: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(47) Materialregler"
+    id: Ecotronic_Materialregler
+    address: 0x57D2
+    length: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(4A) Materialregler Verzögerung"
+    id: Ecotronic_Materialregler_Verzoegerung
+    address: 0x57C2
+    length: 2
+    converter: noconv
+    unit_of_measurement: "s"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(4D) Einschublaufzeit Kessel Zünden Nachfüllen"
+    id: Ecotronic_Einschublaufzeit_Kessel
+    address: 0x57CA
+    length: 2
+    converter: noconv
+    unit_of_measurement: "s"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(53) Materialregler Volllast"
+    id: Ecotronic_Materialregler_Volllast
+    address: 0x57DA
+    length: 1
+    converter: noconv
+    unit_of_measurement: "%"
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(55) Materialregler Abgasgebläse"
+    id: Ecotronic_Materialregler_Abgasgeblaese
+    address: 0x57DE
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(56) Materialregler Teillast"
+    id: Ecotronic_Materialregler_Teillast
+    address: 0x57DF
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(7A) Kesseltemperatur Maximal"
+    id: Ecotronic_Kesseltemperatur_Maximal
+    address: 0x57F6
+    length: 2
+    converter: noconv
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(82) Primärluftklappe Maximal"
+    id: Ecotronic_Primaerluftklappe_Maximal
+    address: 0x57D6
+    length: 1
+    converter: noconv
+    unit_of_measurement: "%"
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(83) Primärluftklappe Teillast"
+    id: Ecotronic_Primaerluftklappe_Teillast
+    address: 0x5798
+    length: 2
+    converter: noconv
+    unit_of_measurement: "%"
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(84) Primärluftklappe Anheizen"
+    id: Ecotronic_Primaerluftklappe_Anheizen
+    address: 0x57D7
+    length: 1
+    converter: noconv
+    unit_of_measurement: "%"
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(87) Sekundärluftklappe Minimal"
+    id: Ecotronic_Sekundaerluftklappe_Minimal
+    address: 0x5794
+    length: 2
+    converter: noconv
+    unit_of_measurement: "%"
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(8C) Laufzeit Kessel Nachlauf"
+    id: Ecotronic_Laufzeit_Kessel_Nachlauf
+    address: 0x5796
+    length: 2
+    converter: noconv
+    unit_of_measurement: "min"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
 
   # --- Funktionskontrolle / Beschickung ---
   # vito: level=td quickcheck
@@ -1506,7 +1836,132 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # --- Bedienung / Beschickung ---
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Umschalteinheit Laufzeit Sonde 1"
+    id: Ecotronic_Umschalteinheit_Laufzeit_Sonde_1
+    address: 0x5738
+    length: 1
+    converter: noconv
+    unit_of_measurement: "%"
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Umschalteinheit Laufzeit Sonde 6"
+    id: Ecotronic_Umschalteinheit_Laufzeit_Sonde_6
+    address: 0x573D
+    length: 1
+    converter: noconv
+    unit_of_measurement: "%"
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
   # --- DiagnosisDeviceData / Lan Modul ---
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "IP Adresse"
+    id: HO2B_IP_Adresse
+    address: 0xD006
+    length: 4
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Subnetzmaske"
+    id: Ecotronic_LAN_Netzmaske
+    address: 0xD00A
+    length: 4
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Standard Gateway"
+    id: Ecotronic_LAN_Gateway
+    address: 0xD00E
+    length: 4
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Primärer DNS Server"
+    id: Ecotronic_LAN_Prim_r_DNS_Server
+    address: 0xD012
+    length: 4
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Sekundärer DNS Server"
+    id: Ecotronic_LAN_Sek_DNS_Server
+    address: 0xD016
+    length: 4
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Proxy Port"
+    id: Ecotronic_LAN_Proxy_Port
+    address: 0xD03B
+    length: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
   - platform: vitohome
     name: "LAN Card Firmware Version"
     id: HO2B_LAN_Card_Firmware
@@ -1771,7 +2226,7 @@ sensor:
     update_interval: 600s
 
   - platform: vitohome
-    name: "Brennerstarts"
+    name: "Brennerstarts (NRF_K8A_Brennerstarts)"
     id: NRF_K8A_Brennerstarts
     address: 0x088A
     length: 4
@@ -4654,25 +5109,6 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-  # vito: circuit=dhw overview quickcheck trend
-  - platform: vitohome
-    name: "WW Rücklauftemperatur Soll"
-    id: Ecotronic_WW_R_cklauftemperatur_Soll
-    address: 0x6204
-    length: 2
-    converter: div10
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # --- BedienungM1 / Betriebsdaten ---
   # vito: circuit=hk1 overview quickcheck trend
   - platform: vitohome
@@ -5031,24 +5467,6 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-  # --- Information / Kessel ---
-  # vito: circuit=boiler overview trend
-  - platform: vitohome
-    name: "Brennerstarts"
-    id: Ecotronic_Kesselstarts
-    address: 0x08A3
-    length: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # --- Information / Solar ---
   # vito: circuit=solar overview trend
   - platform: vitohome
@@ -5063,23 +5481,6 @@ number:
     min_value: 10
     max_value: 70
     step: 0.1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # --- Diagnose 2 / Regelung ---
-  - platform: vitohome
-    name: "KSK HW-Version"
-    id: Ecotronic_0D02
-    address: 0x0D02
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
     mode: box
     disabled_by_default: true
     update_interval: 3600s
@@ -5168,42 +5569,6 @@ number:
 
   # vito: circuit=boiler quickcheck
   - platform: vitohome
-    name: "(1C) Kesselpumpe Minimaldrehzahl"
-    id: Ecotronic_KP_Min_Drehzahl
-    address: 0x57AE
-    length: 1
-    converter: noconv
-    unit_of_measurement: "%"
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=boiler quickcheck
-  - platform: vitohome
-    name: "(1D) Kesselpumpe Maximaldrehzahl"
-    id: Ecotronic_KP_Max_Drehzahl
-    address: 0x57AD
-    length: 1
-    converter: noconv
-    unit_of_measurement: "%"
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=boiler quickcheck
-  - platform: vitohome
     name: "(3C) Abgasgebläse Drehzahl Start"
     id: Ecotronic_Abgasventilator_Drehzahl_Start
     address: 0x579A
@@ -5258,22 +5623,6 @@ number:
     device_class: temperature
     min_value: 50
     max_value: 75
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=boiler quickcheck
-  - platform: vitohome
-    name: "Abgastemperatur Grenzwert"
-    id: Ecotronic_Abgastemperatur_Grenzwert
-    address: 0x5780
-    length: 2
-    converter: noconv
-    unit_of_measurement: "°C"
-    device_class: temperature
-    min_value: 220
-    max_value: 220
     step: 1
     mode: box
     disabled_by_default: true
@@ -5902,241 +6251,6 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-  # --- Funktionskontrolle / Allgemein ---
-  # vito: level=td
-  - platform: vitohome
-    name: "(46) Leistungsregler"
-    id: Ecotronic_Leistungsregler
-    address: 0x57D0
-    length: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-  - platform: vitohome
-    name: "(47) Materialregler"
-    id: Ecotronic_Materialregler
-    address: 0x57D2
-    length: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-  - platform: vitohome
-    name: "(4A) Materialregler Verzögerung"
-    id: Ecotronic_Materialregler_Verzoegerung
-    address: 0x57C2
-    length: 2
-    converter: noconv
-    unit_of_measurement: "s"
-    device_class: duration
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-  - platform: vitohome
-    name: "(4D) Einschublaufzeit Kessel Zünden Nachfüllen"
-    id: Ecotronic_Einschublaufzeit_Kessel
-    address: 0x57CA
-    length: 2
-    converter: noconv
-    unit_of_measurement: "s"
-    device_class: duration
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-  - platform: vitohome
-    name: "(53) Materialregler Volllast"
-    id: Ecotronic_Materialregler_Volllast
-    address: 0x57DA
-    length: 1
-    converter: noconv
-    unit_of_measurement: "%"
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-  - platform: vitohome
-    name: "(55) Materialregler Abgasgebläse"
-    id: Ecotronic_Materialregler_Abgasgeblaese
-    address: 0x57DE
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-  - platform: vitohome
-    name: "(56) Materialregler Teillast"
-    id: Ecotronic_Materialregler_Teillast
-    address: 0x57DF
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-  - platform: vitohome
-    name: "(7A) Kesseltemperatur Maximal"
-    id: Ecotronic_Kesseltemperatur_Maximal
-    address: 0x57F6
-    length: 2
-    converter: noconv
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-  - platform: vitohome
-    name: "(82) Primärluftklappe Maximal"
-    id: Ecotronic_Primaerluftklappe_Maximal
-    address: 0x57D6
-    length: 1
-    converter: noconv
-    unit_of_measurement: "%"
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-  - platform: vitohome
-    name: "(83) Primärluftklappe Teillast"
-    id: Ecotronic_Primaerluftklappe_Teillast
-    address: 0x5798
-    length: 2
-    converter: noconv
-    unit_of_measurement: "%"
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-  - platform: vitohome
-    name: "(84) Primärluftklappe Anheizen"
-    id: Ecotronic_Primaerluftklappe_Anheizen
-    address: 0x57D7
-    length: 1
-    converter: noconv
-    unit_of_measurement: "%"
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-  - platform: vitohome
-    name: "(87) Sekundärluftklappe Minimal"
-    id: Ecotronic_Sekundaerluftklappe_Minimal
-    address: 0x5794
-    length: 2
-    converter: noconv
-    unit_of_measurement: "%"
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-  - platform: vitohome
-    name: "(8C) Laufzeit Kessel Nachlauf"
-    id: Ecotronic_Laufzeit_Kessel_Nachlauf
-    address: 0x5796
-    length: 2
-    converter: noconv
-    unit_of_measurement: "min"
-    device_class: duration
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # --- Funktionskontrolle / Kaskade ---
   # vito: circuit=cascade quickcheck
   - platform: vitohome
@@ -6289,139 +6403,6 @@ number:
     device_class: duration
     min_value: 10
     max_value: 120
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
-    name: "Umschalteinheit Laufzeit Sonde 1"
-    id: Ecotronic_Umschalteinheit_Laufzeit_Sonde_1
-    address: 0x5738
-    length: 1
-    converter: noconv
-    unit_of_measurement: "%"
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
-    name: "Umschalteinheit Laufzeit Sonde 6"
-    id: Ecotronic_Umschalteinheit_Laufzeit_Sonde_6
-    address: 0x573D
-    length: 1
-    converter: noconv
-    unit_of_measurement: "%"
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # --- DiagnosisDeviceData / Lan Modul ---
-  - platform: vitohome
-    name: "IP Adresse"
-    id: HO2B_IP_Adresse
-    address: 0xD006
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  - platform: vitohome
-    name: "Subnetzmaske"
-    id: Ecotronic_LAN_Netzmaske
-    address: 0xD00A
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  - platform: vitohome
-    name: "Standard Gateway"
-    id: Ecotronic_LAN_Gateway
-    address: 0xD00E
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  - platform: vitohome
-    name: "Primärer DNS Server"
-    id: Ecotronic_LAN_Prim_r_DNS_Server
-    address: 0xD012
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  - platform: vitohome
-    name: "Sekundärer DNS Server"
-    id: Ecotronic_LAN_Sek_DNS_Server
-    address: 0xD016
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  - platform: vitohome
-    name: "Proxy Port"
-    id: Ecotronic_LAN_Proxy_Port
-    address: 0xD03B
-    length: 2
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
     step: 1
     mode: box
     disabled_by_default: true

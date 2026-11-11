@@ -21,9 +21,7 @@
 #
 # VERIFY ON HARDWARE: not every address answers on every firmware.
 # Run `esphome config` then `esphome compile`/`run` before relying
-# on any value. number entities whose borders were absent in the
-# export get min/max/step = 0/0/1 placeholders: valid config, but
-# pinned to 0 until you fill in the real bounds.
+# on any value.
 # ============================================================
 
 sensor:

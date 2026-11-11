@@ -20,12 +20,115 @@
 # screen, quick check and trend recorder), and gfa=<chips> (the burner-
 # control chips a GFA datapoint is listed for). ESPHome ignores them.
 #
+# WRITABLE WITHOUT A RANGE: 33 datapoint(s) are writable in Vitosoft, but
+# the export gives no usable borders for them. Each is emitted READ-ONLY
+# under a CAUTION comment. Making one a `number` means choosing its
+# range yourself, and nothing here checks it: confirm the range on the
+# unit (or its service manual) first, and take extra care writing it.
+#
 # VERIFY ON HARDWARE: not every address answers on every firmware.
 # Run `esphome config` then `esphome compile`/`run` before relying
-# on any value. number entities whose borders were absent in the
-# export get min/max/step = 0/0/1 placeholders: valid config, but
-# pinned to 0 until you fill in the real bounds.
+# on any value.
 # ============================================================
+
+sensor:
+  # --- Process ---
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "BatteryEnergyStorageSystem.Battery.VoltageOfBattery"
+    id: BatteryEnergyStorageSystem_Battery_VoltageOfBattery
+    entity_category: diagnostic
+    address: 0x7883
+    length: 4
+    converter: div100
+    unit_of_measurement: "V"
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 2
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "BatteryEnergyStorageSystem.Grid.VoltagePhase1"
+    id: BatteryEnergyStorageSystem_Grid_VoltagePhase1
+    entity_category: diagnostic
+    address: 0x783F
+    length: 4
+    converter: div100
+    unit_of_measurement: "V"
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 2
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "BatteryEnergyStorageSystem.Grid.VoltagePhase2"
+    id: BatteryEnergyStorageSystem_Grid_VoltagePhase2
+    entity_category: diagnostic
+    address: 0x7841
+    length: 4
+    converter: div100
+    unit_of_measurement: "V"
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 2
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "BatteryEnergyStorageSystem.Grid.VoltagePhase3"
+    id: BatteryEnergyStorageSystem_Grid_VoltagePhase3
+    entity_category: diagnostic
+    address: 0x7843
+    length: 4
+    converter: div100
+    unit_of_measurement: "V"
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 2
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "BatteryEnergyStorageSystem.Notification.ErrorCode"
+    id: BatteryEnergyStorageSystem_Notification_ErrorCode
+    entity_category: diagnostic
+    address: 0x7605
+    length: 4
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
 
 number:
   # --- Diagnostic ---
@@ -309,42 +412,6 @@ number:
   # --- Process ---
   # vito: overview
   - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Battery.VoltageOfBattery"
-    id: BatteryEnergyStorageSystem_Battery_VoltageOfBattery
-    address: 0x7883
-    length: 4
-    converter: div100
-    unit_of_measurement: "V"
-    device_class: voltage
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.StorageMode"
-    id: BatteryEnergyStorageSystem_StorageMode
-    address: 0x0000
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
     name: "BatteryEnergyStorageSystem.ActivePower"
     id: BatteryEnergyStorageSystem_ActivePower
     address: 0x7837
@@ -355,24 +422,6 @@ number:
     device_class: power
     min_value: -99999
     max_value: 99999
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.SelfConsumptionMode"
-    id: BatteryEnergyStorageSystem_SelfConsumptionMode
-    address: 0x9C8B
-    length: 4
-    converter: noconv
-    unit_of_measurement: "K"
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
     step: 1
     mode: box
     disabled_by_default: true
@@ -411,23 +460,6 @@ number:
 
   # vito: overview
   - platform: vitohome
-    name: "BatteryEnergyStorageSystem.RemoteControl"
-    id: BatteryEnergyStorageSystem_RemoteControl
-    address: 0x9CD7
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
     name: "BatteryEnergyStorageSystem.PowerSetpointReactive"
     id: BatteryEnergyStorageSystem_PowerSetpointReactive
     address: 0x9CD9
@@ -438,23 +470,6 @@ number:
     device_class: reactive_power
     min_value: -99999
     max_value: 99999
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.EnergySavingMode"
-    id: BatteryEnergyStorageSystem_EnergySavingMode
-    address: 0x9F65
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
     step: 1
     mode: box
     disabled_by_default: true
@@ -494,23 +509,6 @@ number:
 
   # vito: overview
   - platform: vitohome
-    name: "ApplicationArea"
-    id: BatteryEnergyStorageSystem_Battery_ApplicationArea
-    address: 0x7951
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
     name: "BatteryEnergyStorageSystem.Battery.ChargePowerOfStorageMax"
     id: BatteryEnergyStorageSystem_Battery_ChargePowerOfStorageMax
     address: 0x9F5B
@@ -536,80 +534,6 @@ number:
     device_class: power
     min_value: 0
     max_value: 999999
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Battery.OperationStatusBattery"
-    id: BatteryEnergyStorageSystem_Battery_OperationStatusBattery
-    address: 0x9D2C
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Grid.VoltagePhase1"
-    id: BatteryEnergyStorageSystem_Grid_VoltagePhase1
-    address: 0x783F
-    length: 4
-    converter: div100
-    unit_of_measurement: "V"
-    device_class: voltage
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Grid.VoltagePhase2"
-    id: BatteryEnergyStorageSystem_Grid_VoltagePhase2
-    address: 0x7841
-    length: 4
-    converter: div100
-    unit_of_measurement: "V"
-    device_class: voltage
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Grid.VoltagePhase3"
-    id: BatteryEnergyStorageSystem_Grid_VoltagePhase3
-    address: 0x7843
-    length: 4
-    converter: div100
-    unit_of_measurement: "V"
-    device_class: voltage
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
     step: 1
     mode: box
     disabled_by_default: true
@@ -667,380 +591,6 @@ number:
 
   # vito: overview
   - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Grid.OperationStatusGrid"
-    id: BatteryEnergyStorageSystem_Grid_OperationStatusGrid
-    address: 0x78A3
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Master.OperationModeRelay1"
-    id: BatteryEnergyStorageSystem_Master_OperationModeRelay1
-    address: 0x9E7F
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Master.OperationModeRelay2"
-    id: BatteryEnergyStorageSystem_Master_OperationModeRelay2
-    address: 0x9E81
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Master.OperationModeRelay3"
-    id: BatteryEnergyStorageSystem_Master_OperationModeRelay3
-    address: 0x9E83
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Master.OperationModeRelay4"
-    id: BatteryEnergyStorageSystem_Master_OperationModeRelay4
-    address: 0x9E85
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Master.OperationModeRelay5"
-    id: BatteryEnergyStorageSystem_Master_OperationModeRelay5
-    address: 0x9E87
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Master.OperationModeRelay6"
-    id: BatteryEnergyStorageSystem_Master_OperationModeRelay6
-    address: 0x9E89
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Master.OperationStatus"
-    id: BatteryEnergyStorageSystem_Master_OperationStatus
-    address: 0x7927
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Slave1.OperationModeRelay1"
-    id: BatteryEnergyStorageSystem_Slave1_OperationModeRelay1
-    address: 0x9E8B
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Slave1.OperationModeRelay2"
-    id: BatteryEnergyStorageSystem_Slave1_OperationModeRelay2
-    address: 0x9E8D
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Slave1.OperationModeRelay3"
-    id: BatteryEnergyStorageSystem_Slave1_OperationModeRelay3
-    address: 0x9E8F
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Slave1.OperationModeRelay4"
-    id: BatteryEnergyStorageSystem_Slave1_OperationModeRelay4
-    address: 0x9E91
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Slave1.OperationModeRelay5"
-    id: BatteryEnergyStorageSystem_Slave1_OperationModeRelay5
-    address: 0x9E93
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Slave1.OperationModeRelay6"
-    id: BatteryEnergyStorageSystem_Slave1_OperationModeRelay6
-    address: 0x9E95
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Slave2.OperationStatus"
-    id: BatteryEnergyStorageSystem_Slave2_OperationStatus
-    address: 0x794F
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Slave2.OperationModeRelay1"
-    id: BatteryEnergyStorageSystem_Slave2_OperationModeRelay1
-    address: 0x9E97
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Slave2.OperationModeRelay2"
-    id: BatteryEnergyStorageSystem_Slave2_OperationModeRelay2
-    address: 0x9E99
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Slave2.OperationModeRelay3"
-    id: BatteryEnergyStorageSystem_Slave2_OperationModeRelay3
-    address: 0x9E9B
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Slave2.OperationModeRelay4"
-    id: BatteryEnergyStorageSystem_Slave2_OperationModeRelay4
-    address: 0x9E9D
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Slave2.OperationModeRelay5"
-    id: BatteryEnergyStorageSystem_Slave2_OperationModeRelay5
-    address: 0x9E9F
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Slave2.OperationModeRelay6"
-    id: BatteryEnergyStorageSystem_Slave2_OperationModeRelay6
-    address: 0x9EA1
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Notification.ErrorCode"
-    id: BatteryEnergyStorageSystem_Notification_ErrorCode
-    address: 0x7605
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-  - platform: vitohome
     name: "BatteryEnergyStorageSystem.ReactivePower"
     id: BatteryEnergyStorageSystem_ReactivePower
     address: 0x7855
@@ -1056,23 +606,6 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-  # vito: overview
-  - platform: vitohome
-    name: "BatteryEnergyStorageSystem.Slave1.OperationStatus"
-    id: BatteryEnergyStorageSystem_Slave1_OperationStatus
-    address: 0x794D
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
 text_sensor:
   - platform: vitohome
     type: device_id
@@ -1080,6 +613,1050 @@ text_sensor:
     id: device_type
     icon: "mdi:identifier"
     entity_category: diagnostic
+
+  # --- Process ---
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.StorageMode"
+    id: BatteryEnergyStorageSystem_StorageMode
+    entity_category: diagnostic
+    address: 0x0000
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0000: "Wertpräzision = RefreshRate"
+      0x03E8: "Wertpräzision = RefreshRate (0x3E8)"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.SelfConsumptionMode"
+    id: BatteryEnergyStorageSystem_SelfConsumptionMode
+    entity_category: diagnostic
+    address: 0x9C8B
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x046A: "Wertpräzision = RefreshRate"
+      0x0469: "Wertpräzision = RefreshRate (0x469)"
+      0x03CD: "Wertpräzision = RefreshRate (0x3CD)"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.RemoteControl"
+    id: BatteryEnergyStorageSystem_RemoteControl
+    entity_category: diagnostic
+    address: 0x9CD7
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0323: "Wertpräzision = RefreshRate"
+      0x0322: "Wertpräzision = RefreshRate (0x322)"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.EnergySavingMode"
+    id: BatteryEnergyStorageSystem_EnergySavingMode
+    entity_category: diagnostic
+    address: 0x9F65
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x012F: "Wertpräzision = RefreshRate"
+      0x0134: "Wertpräzision = RefreshRate (0x134)"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "ApplicationArea"
+    id: BatteryEnergyStorageSystem_Battery_ApplicationArea
+    entity_category: diagnostic
+    address: 0x7951
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0A3A: "Wertpräzision = RefreshRate"
+      0x0A36: "Wertpräzision = RefreshRate (0xA36)"
+      0x0A37: "Wertpräzision = RefreshRate (0xA37)"
+      0x0A38: "Wertpräzision = RefreshRate (0xA38)"
+      0x0A39: "Wertpräzision = RefreshRate (0xA39)"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Battery.OperationStatusBattery"
+    id: BatteryEnergyStorageSystem_Battery_OperationStatusBattery
+    entity_category: diagnostic
+    address: 0x9D2C
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x012F: "Wertpräzision = RefreshRate"
+      0x0134: "Wertpräzision = RefreshRate (0x134)"
+      0x08F1: "Wertpräzision = RefreshRate (0x8F1)"
+      0x08F2: "Wertpräzision = RefreshRate (0x8F2)"
+      0x0978: "Wertpräzision = RefreshRate (0x978)"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Grid.OperationStatusGrid"
+    id: BatteryEnergyStorageSystem_Grid_OperationStatusGrid
+    entity_category: diagnostic
+    address: 0x78A3
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0000: "Wertpräzision = RefreshRate"
+      0x0888: "2184 = Energiesparen am Netz"
+      0x012F: "Wertpräzision = RefreshRate (0x12F)"
+      0x0572: "Wertpräzision = RefreshRate (0x572)"
+      0x05B5: "Wertpräzision = RefreshRate (0x5B5)"
+      0x05BA: "Wertpräzision = RefreshRate (0x5BA)"
+      0x06FB: "Wertpräzision = RefreshRate (0x6FB)"
+      0x0887: "Wertpräzision = RefreshRate (0x887)"
+      0x0889: "Wertpräzision = RefreshRate (0x889)"
+      0x088A: "Wertpräzision = RefreshRate (0x88A)"
+      0x0BFC: "3068 = Eigenverbrauchsoptimierung am Netz"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Master.OperationModeRelay1"
+    id: BatteryEnergyStorageSystem_Master_OperationModeRelay1
+    entity_category: diagnostic
+    address: 0x9E7F
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0102: "Wertpräzision = RefreshRate"
+      0x012F: "Wertpräzision = RefreshRate (0x12F)"
+      0x0134: "Wertpräzision = RefreshRate (0x134)"
+      0x053C: "Wertpräzision = RefreshRate (0x53C)"
+      0x053E: "Wertpräzision = RefreshRate (0x53E)"
+      0x053F: "Wertpräzision = RefreshRate (0x53F)"
+      0x0545: "Wertpräzision = RefreshRate (0x545)"
+      0x054F: "Wertpräzision = RefreshRate (0x54F)"
+      0x0A48: "Wertpräzision = RefreshRate (0xA48)"
+      0x0A49: "2633 = 1-stufiger Lastabwurf"
+      0x0A4A: "2634 = 1-stufiger Lastabwurf oder 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4B: "2635 = 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4C: "2636 = Timer 1"
+      0x0A4D: "2637 = Timer 2"
+      0x0A4E: "2638 = Steuerung zusätzliche Verbraucher"
+      0x0A4F: "2639 = Relais an, wenn Generator läuft"
+      0x0A50: "2640 = Relais an, wenn ext. Quelle vorhanden"
+      0x0A51: "2641 = Relais an, wenn öff. Netz vorhanden"
+      0x0A52: "2642 = Relais aus, bei Fehler"
+      0x0A53: "2643 = Relais an, bei Warnung"
+      0x0A54: "2644 = Relais an, wenn Cluster läuft"
+      0x0A55: "2645 = Batterieraumlüfter"
+      0x0A56: "2646 = Elektrolytpumpe"
+      0x0A57: "2647 = ComSync"
+      0x0A58: "2648 = Relais an bei Leistungsbegrenzung"
+      0x0A59: "2649 = Netztrennung im Netzersatz-Betrieb"
+      0x0A5A: "2650 = Erdung im Netzersatz-Betrieb"
+      0x0B54: "2900 = Batterieraumlüfter im Multicluster"
+      0x0B55: "2901 = Lastabwurf im Multicluster"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Master.OperationModeRelay2"
+    id: BatteryEnergyStorageSystem_Master_OperationModeRelay2
+    entity_category: diagnostic
+    address: 0x9E81
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0102: "Wertpräzision = RefreshRate"
+      0x012F: "Wertpräzision = RefreshRate (0x12F)"
+      0x0134: "Wertpräzision = RefreshRate (0x134)"
+      0x053C: "Wertpräzision = RefreshRate (0x53C)"
+      0x053E: "Wertpräzision = RefreshRate (0x53E)"
+      0x053F: "Wertpräzision = RefreshRate (0x53F)"
+      0x0545: "Wertpräzision = RefreshRate (0x545)"
+      0x054F: "Wertpräzision = RefreshRate (0x54F)"
+      0x0A48: "Wertpräzision = RefreshRate (0xA48)"
+      0x0A49: "2633 = 1-stufiger Lastabwurf"
+      0x0A4A: "2634 = 1-stufiger Lastabwurf oder 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4B: "2635 = 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4C: "2636 = Timer 1"
+      0x0A4D: "2637 = Timer 2"
+      0x0A4E: "2638 = Steuerung zusätzliche Verbraucher"
+      0x0A4F: "2639 = Relais an, wenn Generator läuft"
+      0x0A50: "2640 = Relais an, wenn ext. Quelle vorhanden"
+      0x0A51: "2641 = Relais an, wenn öff. Netz vorhanden"
+      0x0A52: "2642 = Relais aus, bei Fehler"
+      0x0A53: "2643 = Relais an, bei Warnung"
+      0x0A54: "2644 = Relais an, wenn Cluster läuft"
+      0x0A55: "2645 = Batterieraumlüfter"
+      0x0A56: "2646 = Elektrolytpumpe"
+      0x0A57: "2647 = ComSync"
+      0x0A58: "2648 = Relais an bei Leistungsbegrenzung"
+      0x0A59: "2649 = Netztrennung im Netzersatz-Betrieb"
+      0x0A5A: "2650 = Erdung im Netzersatz-Betrieb"
+      0x0B54: "2900 = Batterieraumlüfter im Multicluster"
+      0x0B55: "2901 = Lastabwurf im Multicluster"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Master.OperationModeRelay3"
+    id: BatteryEnergyStorageSystem_Master_OperationModeRelay3
+    entity_category: diagnostic
+    address: 0x9E83
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0102: "Wertpräzision = RefreshRate"
+      0x012F: "Wertpräzision = RefreshRate (0x12F)"
+      0x0134: "Wertpräzision = RefreshRate (0x134)"
+      0x053C: "Wertpräzision = RefreshRate (0x53C)"
+      0x053E: "Wertpräzision = RefreshRate (0x53E)"
+      0x053F: "Wertpräzision = RefreshRate (0x53F)"
+      0x0545: "Wertpräzision = RefreshRate (0x545)"
+      0x054F: "Wertpräzision = RefreshRate (0x54F)"
+      0x0A48: "Wertpräzision = RefreshRate (0xA48)"
+      0x0A49: "2633 = 1-stufiger Lastabwurf"
+      0x0A4A: "2634 = 1-stufiger Lastabwurf oder 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4B: "2635 = 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4C: "2636 = Timer 1"
+      0x0A4D: "2637 = Timer 2"
+      0x0A4E: "2638 = Steuerung zusätzliche Verbraucher"
+      0x0A4F: "2639 = Relais an, wenn Generator läuft"
+      0x0A50: "2640 = Relais an, wenn ext. Quelle vorhanden"
+      0x0A51: "2641 = Relais an, wenn öff. Netz vorhanden"
+      0x0A52: "2642 = Relais aus, bei Fehler"
+      0x0A53: "2643 = Relais an, bei Warnung"
+      0x0A54: "2644 = Relais an, wenn Cluster läuft"
+      0x0A55: "2645 = Batterieraumlüfter"
+      0x0A56: "2646 = Elektrolytpumpe"
+      0x0A57: "2647 = ComSync"
+      0x0A58: "2648 = Relais an bei Leistungsbegrenzung"
+      0x0A59: "2649 = Netztrennung im Netzersatz-Betrieb"
+      0x0A5A: "2650 = Erdung im Netzersatz-Betrieb"
+      0x0B54: "2900 = Batterieraumlüfter im Multicluster"
+      0x0B55: "2901 = Lastabwurf im Multicluster"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Master.OperationModeRelay4"
+    id: BatteryEnergyStorageSystem_Master_OperationModeRelay4
+    entity_category: diagnostic
+    address: 0x9E85
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0102: "Wertpräzision = RefreshRate"
+      0x012F: "Wertpräzision = RefreshRate (0x12F)"
+      0x0134: "Wertpräzision = RefreshRate (0x134)"
+      0x053C: "Wertpräzision = RefreshRate (0x53C)"
+      0x053E: "Wertpräzision = RefreshRate (0x53E)"
+      0x053F: "Wertpräzision = RefreshRate (0x53F)"
+      0x0545: "Wertpräzision = RefreshRate (0x545)"
+      0x054F: "Wertpräzision = RefreshRate (0x54F)"
+      0x0A48: "Wertpräzision = RefreshRate (0xA48)"
+      0x0A49: "2633 = 1-stufiger Lastabwurf"
+      0x0A4A: "2634 = 1-stufiger Lastabwurf oder 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4B: "2635 = 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4C: "2636 = Timer 1"
+      0x0A4D: "2637 = Timer 2"
+      0x0A4E: "2638 = Steuerung zusätzliche Verbraucher"
+      0x0A4F: "2639 = Relais an, wenn Generator läuft"
+      0x0A50: "2640 = Relais an, wenn ext. Quelle vorhanden"
+      0x0A51: "2641 = Relais an, wenn öff. Netz vorhanden"
+      0x0A52: "2642 = Relais aus, bei Fehler"
+      0x0A53: "2643 = Relais an, bei Warnung"
+      0x0A54: "2644 = Relais an, wenn Cluster läuft"
+      0x0A55: "2645 = Batterieraumlüfter"
+      0x0A56: "2646 = Elektrolytpumpe"
+      0x0A57: "2647 = ComSync"
+      0x0A58: "2648 = Relais an bei Leistungsbegrenzung"
+      0x0A59: "2649 = Netztrennung im Netzersatz-Betrieb"
+      0x0A5A: "2650 = Erdung im Netzersatz-Betrieb"
+      0x0B54: "2900 = Batterieraumlüfter im Multicluster"
+      0x0B55: "2901 = Lastabwurf im Multicluster"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Master.OperationModeRelay5"
+    id: BatteryEnergyStorageSystem_Master_OperationModeRelay5
+    entity_category: diagnostic
+    address: 0x9E87
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0102: "Wertpräzision = RefreshRate"
+      0x012F: "Wertpräzision = RefreshRate (0x12F)"
+      0x0134: "Wertpräzision = RefreshRate (0x134)"
+      0x053C: "Wertpräzision = RefreshRate (0x53C)"
+      0x053E: "Wertpräzision = RefreshRate (0x53E)"
+      0x053F: "Wertpräzision = RefreshRate (0x53F)"
+      0x0545: "Wertpräzision = RefreshRate (0x545)"
+      0x054F: "Wertpräzision = RefreshRate (0x54F)"
+      0x0A48: "Wertpräzision = RefreshRate (0xA48)"
+      0x0A49: "2633 = 1-stufiger Lastabwurf"
+      0x0A4A: "2634 = 1-stufiger Lastabwurf oder 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4B: "2635 = 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4C: "2636 = Timer 1"
+      0x0A4D: "2637 = Timer 2"
+      0x0A4E: "2638 = Steuerung zusätzliche Verbraucher"
+      0x0A4F: "2639 = Relais an, wenn Generator läuft"
+      0x0A50: "2640 = Relais an, wenn ext. Quelle vorhanden"
+      0x0A51: "2641 = Relais an, wenn öff. Netz vorhanden"
+      0x0A52: "2642 = Relais aus, bei Fehler"
+      0x0A53: "2643 = Relais an, bei Warnung"
+      0x0A54: "2644 = Relais an, wenn Cluster läuft"
+      0x0A55: "2645 = Batterieraumlüfter"
+      0x0A56: "2646 = Elektrolytpumpe"
+      0x0A57: "2647 = ComSync"
+      0x0A58: "2648 = Relais an bei Leistungsbegrenzung"
+      0x0A59: "2649 = Netztrennung im Netzersatz-Betrieb"
+      0x0A5A: "2650 = Erdung im Netzersatz-Betrieb"
+      0x0B54: "2900 = Batterieraumlüfter im Multicluster"
+      0x0B55: "2901 = Lastabwurf im Multicluster"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Master.OperationModeRelay6"
+    id: BatteryEnergyStorageSystem_Master_OperationModeRelay6
+    entity_category: diagnostic
+    address: 0x9E89
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0102: "Wertpräzision = RefreshRate"
+      0x012F: "Wertpräzision = RefreshRate (0x12F)"
+      0x0134: "Wertpräzision = RefreshRate (0x134)"
+      0x053C: "Wertpräzision = RefreshRate (0x53C)"
+      0x053E: "Wertpräzision = RefreshRate (0x53E)"
+      0x053F: "Wertpräzision = RefreshRate (0x53F)"
+      0x0545: "Wertpräzision = RefreshRate (0x545)"
+      0x054F: "Wertpräzision = RefreshRate (0x54F)"
+      0x0A48: "Wertpräzision = RefreshRate (0xA48)"
+      0x0A49: "2633 = 1-stufiger Lastabwurf"
+      0x0A4A: "2634 = 1-stufiger Lastabwurf oder 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4B: "2635 = 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4C: "2636 = Timer 1"
+      0x0A4D: "2637 = Timer 2"
+      0x0A4E: "2638 = Steuerung zusätzliche Verbraucher"
+      0x0A4F: "2639 = Relais an, wenn Generator läuft"
+      0x0A50: "2640 = Relais an, wenn ext. Quelle vorhanden"
+      0x0A51: "2641 = Relais an, wenn öff. Netz vorhanden"
+      0x0A52: "2642 = Relais aus, bei Fehler"
+      0x0A53: "2643 = Relais an, bei Warnung"
+      0x0A54: "2644 = Relais an, wenn Cluster läuft"
+      0x0A55: "2645 = Batterieraumlüfter"
+      0x0A56: "2646 = Elektrolytpumpe"
+      0x0A57: "2647 = ComSync"
+      0x0A58: "2648 = Relais an bei Leistungsbegrenzung"
+      0x0A59: "2649 = Netztrennung im Netzersatz-Betrieb"
+      0x0A5A: "2650 = Erdung im Netzersatz-Betrieb"
+      0x0B54: "2900 = Batterieraumlüfter im Multicluster"
+      0x0B55: "2901 = Lastabwurf im Multicluster"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Master.OperationStatus"
+    id: BatteryEnergyStorageSystem_Master_OperationStatus
+    entity_category: diagnostic
+    address: 0x7927
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0000: "Wertpräzision = RefreshRate"
+      0x01C7: "Wertpräzision = RefreshRate (0x1C7)"
+      0x0023: "Wertpräzision = RefreshRate (0x23)"
+      0x012F: "Wertpräzision = RefreshRate (0x12F)"
+      0x0133: "Wertpräzision = RefreshRate (0x133)"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Slave1.OperationModeRelay1"
+    id: BatteryEnergyStorageSystem_Slave1_OperationModeRelay1
+    entity_category: diagnostic
+    address: 0x9E8B
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0102: "Wertpräzision = RefreshRate"
+      0x012F: "Wertpräzision = RefreshRate (0x12F)"
+      0x0134: "Wertpräzision = RefreshRate (0x134)"
+      0x053C: "Wertpräzision = RefreshRate (0x53C)"
+      0x053E: "Wertpräzision = RefreshRate (0x53E)"
+      0x053F: "Wertpräzision = RefreshRate (0x53F)"
+      0x0545: "Wertpräzision = RefreshRate (0x545)"
+      0x054F: "Wertpräzision = RefreshRate (0x54F)"
+      0x0A48: "Wertpräzision = RefreshRate (0xA48)"
+      0x0A49: "2633 = 1-stufiger Lastabwurf"
+      0x0A4A: "2634 = 1-stufiger Lastabwurf oder 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4B: "2635 = 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4C: "2636 = Timer 1"
+      0x0A4D: "2637 = Timer 2"
+      0x0A4E: "2638 = Steuerung zusätzliche Verbraucher"
+      0x0A4F: "2639 = Relais an, wenn Generator läuft"
+      0x0A50: "2640 = Relais an, wenn ext. Quelle vorhanden"
+      0x0A51: "2641 = Relais an, wenn öff. Netz vorhanden"
+      0x0A52: "2642 = Relais aus, bei Fehler"
+      0x0A53: "2643 = Relais an, bei Warnung"
+      0x0A54: "2644 = Relais an, wenn Cluster läuft"
+      0x0A55: "2645 = Batterieraumlüfter"
+      0x0A56: "2646 = Elektrolytpumpe"
+      0x0A57: "2647 = ComSync"
+      0x0A58: "2648 = Relais an bei Leistungsbegrenzung"
+      0x0A59: "2649 = Netztrennung im Netzersatz-Betrieb"
+      0x0A5A: "2650 = Erdung im Netzersatz-Betrieb"
+      0x0B54: "2900 = Batterieraumlüfter im Multicluster"
+      0x0B55: "2901 = Lastabwurf im Multicluster"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Slave1.OperationModeRelay2"
+    id: BatteryEnergyStorageSystem_Slave1_OperationModeRelay2
+    entity_category: diagnostic
+    address: 0x9E8D
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0102: "Wertpräzision = RefreshRate"
+      0x012F: "Wertpräzision = RefreshRate (0x12F)"
+      0x0134: "Wertpräzision = RefreshRate (0x134)"
+      0x053C: "Wertpräzision = RefreshRate (0x53C)"
+      0x053E: "Wertpräzision = RefreshRate (0x53E)"
+      0x053F: "Wertpräzision = RefreshRate (0x53F)"
+      0x0545: "Wertpräzision = RefreshRate (0x545)"
+      0x054F: "Wertpräzision = RefreshRate (0x54F)"
+      0x0A48: "Wertpräzision = RefreshRate (0xA48)"
+      0x0A49: "2633 = 1-stufiger Lastabwurf"
+      0x0A4A: "2634 = 1-stufiger Lastabwurf oder 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4B: "2635 = 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4C: "2636 = Timer 1"
+      0x0A4D: "2637 = Timer 2"
+      0x0A4E: "2638 = Steuerung zusätzliche Verbraucher"
+      0x0A4F: "2639 = Relais an, wenn Generator läuft"
+      0x0A50: "2640 = Relais an, wenn ext. Quelle vorhanden"
+      0x0A51: "2641 = Relais an, wenn öff. Netz vorhanden"
+      0x0A52: "2642 = Relais aus, bei Fehler"
+      0x0A53: "2643 = Relais an, bei Warnung"
+      0x0A54: "2644 = Relais an, wenn Cluster läuft"
+      0x0A55: "2645 = Batterieraumlüfter"
+      0x0A56: "2646 = Elektrolytpumpe"
+      0x0A57: "2647 = ComSync"
+      0x0A58: "2648 = Relais an bei Leistungsbegrenzung"
+      0x0A59: "2649 = Netztrennung im Netzersatz-Betrieb"
+      0x0A5A: "2650 = Erdung im Netzersatz-Betrieb"
+      0x0B54: "2900 = Batterieraumlüfter im Multicluster"
+      0x0B55: "2901 = Lastabwurf im Multicluster"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Slave1.OperationModeRelay3"
+    id: BatteryEnergyStorageSystem_Slave1_OperationModeRelay3
+    entity_category: diagnostic
+    address: 0x9E8F
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0102: "Wertpräzision = RefreshRate"
+      0x012F: "Wertpräzision = RefreshRate (0x12F)"
+      0x0134: "Wertpräzision = RefreshRate (0x134)"
+      0x053C: "Wertpräzision = RefreshRate (0x53C)"
+      0x053E: "Wertpräzision = RefreshRate (0x53E)"
+      0x053F: "Wertpräzision = RefreshRate (0x53F)"
+      0x0545: "Wertpräzision = RefreshRate (0x545)"
+      0x054F: "Wertpräzision = RefreshRate (0x54F)"
+      0x0A48: "Wertpräzision = RefreshRate (0xA48)"
+      0x0A49: "2633 = 1-stufiger Lastabwurf"
+      0x0A4A: "2634 = 1-stufiger Lastabwurf oder 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4B: "2635 = 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4C: "2636 = Timer 1"
+      0x0A4D: "2637 = Timer 2"
+      0x0A4E: "2638 = Steuerung zusätzliche Verbraucher"
+      0x0A4F: "2639 = Relais an, wenn Generator läuft"
+      0x0A50: "2640 = Relais an, wenn ext. Quelle vorhanden"
+      0x0A51: "2641 = Relais an, wenn öff. Netz vorhanden"
+      0x0A52: "2642 = Relais aus, bei Fehler"
+      0x0A53: "2643 = Relais an, bei Warnung"
+      0x0A54: "2644 = Relais an, wenn Cluster läuft"
+      0x0A55: "2645 = Batterieraumlüfter"
+      0x0A56: "2646 = Elektrolytpumpe"
+      0x0A57: "2647 = ComSync"
+      0x0A58: "2648 = Relais an bei Leistungsbegrenzung"
+      0x0A59: "2649 = Netztrennung im Netzersatz-Betrieb"
+      0x0A5A: "2650 = Erdung im Netzersatz-Betrieb"
+      0x0B54: "2900 = Batterieraumlüfter im Multicluster"
+      0x0B55: "2901 = Lastabwurf im Multicluster"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Slave1.OperationModeRelay4"
+    id: BatteryEnergyStorageSystem_Slave1_OperationModeRelay4
+    entity_category: diagnostic
+    address: 0x9E91
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0102: "Wertpräzision = RefreshRate"
+      0x012F: "Wertpräzision = RefreshRate (0x12F)"
+      0x0134: "Wertpräzision = RefreshRate (0x134)"
+      0x053C: "Wertpräzision = RefreshRate (0x53C)"
+      0x053E: "Wertpräzision = RefreshRate (0x53E)"
+      0x053F: "Wertpräzision = RefreshRate (0x53F)"
+      0x0545: "Wertpräzision = RefreshRate (0x545)"
+      0x054F: "Wertpräzision = RefreshRate (0x54F)"
+      0x0A48: "Wertpräzision = RefreshRate (0xA48)"
+      0x0A49: "2633 = 1-stufiger Lastabwurf"
+      0x0A4A: "2634 = 1-stufiger Lastabwurf oder 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4B: "2635 = 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4C: "2636 = Timer 1"
+      0x0A4D: "2637 = Timer 2"
+      0x0A4E: "2638 = Steuerung zusätzliche Verbraucher"
+      0x0A4F: "2639 = Relais an, wenn Generator läuft"
+      0x0A50: "2640 = Relais an, wenn ext. Quelle vorhanden"
+      0x0A51: "2641 = Relais an, wenn öff. Netz vorhanden"
+      0x0A52: "2642 = Relais aus, bei Fehler"
+      0x0A53: "2643 = Relais an, bei Warnung"
+      0x0A54: "2644 = Relais an, wenn Cluster läuft"
+      0x0A55: "2645 = Batterieraumlüfter"
+      0x0A56: "2646 = Elektrolytpumpe"
+      0x0A57: "2647 = ComSync"
+      0x0A58: "2648 = Relais an bei Leistungsbegrenzung"
+      0x0A59: "2649 = Netztrennung im Netzersatz-Betrieb"
+      0x0A5A: "2650 = Erdung im Netzersatz-Betrieb"
+      0x0B54: "2900 = Batterieraumlüfter im Multicluster"
+      0x0B55: "2901 = Lastabwurf im Multicluster"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Slave1.OperationModeRelay5"
+    id: BatteryEnergyStorageSystem_Slave1_OperationModeRelay5
+    entity_category: diagnostic
+    address: 0x9E93
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0102: "Wertpräzision = RefreshRate"
+      0x012F: "Wertpräzision = RefreshRate (0x12F)"
+      0x0134: "Wertpräzision = RefreshRate (0x134)"
+      0x053C: "Wertpräzision = RefreshRate (0x53C)"
+      0x053E: "Wertpräzision = RefreshRate (0x53E)"
+      0x053F: "Wertpräzision = RefreshRate (0x53F)"
+      0x0545: "Wertpräzision = RefreshRate (0x545)"
+      0x054F: "Wertpräzision = RefreshRate (0x54F)"
+      0x0A48: "Wertpräzision = RefreshRate (0xA48)"
+      0x0A49: "2633 = 1-stufiger Lastabwurf"
+      0x0A4A: "2634 = 1-stufiger Lastabwurf oder 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4B: "2635 = 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4C: "2636 = Timer 1"
+      0x0A4D: "2637 = Timer 2"
+      0x0A4E: "2638 = Steuerung zusätzliche Verbraucher"
+      0x0A4F: "2639 = Relais an, wenn Generator läuft"
+      0x0A50: "2640 = Relais an, wenn ext. Quelle vorhanden"
+      0x0A51: "2641 = Relais an, wenn öff. Netz vorhanden"
+      0x0A52: "2642 = Relais aus, bei Fehler"
+      0x0A53: "2643 = Relais an, bei Warnung"
+      0x0A54: "2644 = Relais an, wenn Cluster läuft"
+      0x0A55: "2645 = Batterieraumlüfter"
+      0x0A56: "2646 = Elektrolytpumpe"
+      0x0A57: "2647 = ComSync"
+      0x0A58: "2648 = Relais an bei Leistungsbegrenzung"
+      0x0A59: "2649 = Netztrennung im Netzersatz-Betrieb"
+      0x0A5A: "2650 = Erdung im Netzersatz-Betrieb"
+      0x0B54: "2900 = Batterieraumlüfter im Multicluster"
+      0x0B55: "2901 = Lastabwurf im Multicluster"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Slave1.OperationModeRelay6"
+    id: BatteryEnergyStorageSystem_Slave1_OperationModeRelay6
+    entity_category: diagnostic
+    address: 0x9E95
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0102: "Wertpräzision = RefreshRate"
+      0x012F: "Wertpräzision = RefreshRate (0x12F)"
+      0x0134: "Wertpräzision = RefreshRate (0x134)"
+      0x053C: "Wertpräzision = RefreshRate (0x53C)"
+      0x053E: "Wertpräzision = RefreshRate (0x53E)"
+      0x053F: "Wertpräzision = RefreshRate (0x53F)"
+      0x0545: "Wertpräzision = RefreshRate (0x545)"
+      0x054F: "Wertpräzision = RefreshRate (0x54F)"
+      0x0A48: "Wertpräzision = RefreshRate (0xA48)"
+      0x0A49: "2633 = 1-stufiger Lastabwurf"
+      0x0A4A: "2634 = 1-stufiger Lastabwurf oder 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4B: "2635 = 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4C: "2636 = Timer 1"
+      0x0A4D: "2637 = Timer 2"
+      0x0A4E: "2638 = Steuerung zusätzliche Verbraucher"
+      0x0A4F: "2639 = Relais an, wenn Generator läuft"
+      0x0A50: "2640 = Relais an, wenn ext. Quelle vorhanden"
+      0x0A51: "2641 = Relais an, wenn öff. Netz vorhanden"
+      0x0A52: "2642 = Relais aus, bei Fehler"
+      0x0A53: "2643 = Relais an, bei Warnung"
+      0x0A54: "2644 = Relais an, wenn Cluster läuft"
+      0x0A55: "2645 = Batterieraumlüfter"
+      0x0A56: "2646 = Elektrolytpumpe"
+      0x0A57: "2647 = ComSync"
+      0x0A58: "2648 = Relais an bei Leistungsbegrenzung"
+      0x0A59: "2649 = Netztrennung im Netzersatz-Betrieb"
+      0x0A5A: "2650 = Erdung im Netzersatz-Betrieb"
+      0x0B54: "2900 = Batterieraumlüfter im Multicluster"
+      0x0B55: "2901 = Lastabwurf im Multicluster"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Slave2.OperationStatus"
+    id: BatteryEnergyStorageSystem_Slave2_OperationStatus
+    entity_category: diagnostic
+    address: 0x794F
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0000: "Wertpräzision = RefreshRate"
+      0x01C7: "Wertpräzision = RefreshRate (0x1C7)"
+      0x0023: "Wertpräzision = RefreshRate (0x23)"
+      0x012F: "Wertpräzision = RefreshRate (0x12F)"
+      0x0133: "Wertpräzision = RefreshRate (0x133)"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Slave2.OperationModeRelay1"
+    id: BatteryEnergyStorageSystem_Slave2_OperationModeRelay1
+    entity_category: diagnostic
+    address: 0x9E97
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0102: "Wertpräzision = RefreshRate"
+      0x012F: "Wertpräzision = RefreshRate (0x12F)"
+      0x0134: "Wertpräzision = RefreshRate (0x134)"
+      0x053C: "Wertpräzision = RefreshRate (0x53C)"
+      0x053E: "Wertpräzision = RefreshRate (0x53E)"
+      0x053F: "Wertpräzision = RefreshRate (0x53F)"
+      0x0545: "Wertpräzision = RefreshRate (0x545)"
+      0x054F: "Wertpräzision = RefreshRate (0x54F)"
+      0x0A48: "Wertpräzision = RefreshRate (0xA48)"
+      0x0A49: "2633 = 1-stufiger Lastabwurf"
+      0x0A4A: "2634 = 1-stufiger Lastabwurf oder 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4B: "2635 = 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4C: "2636 = Timer 1"
+      0x0A4D: "2637 = Timer 2"
+      0x0A4E: "2638 = Steuerung zusätzliche Verbraucher"
+      0x0A4F: "2639 = Relais an, wenn Generator läuft"
+      0x0A50: "2640 = Relais an, wenn ext. Quelle vorhanden"
+      0x0A51: "2641 = Relais an, wenn öff. Netz vorhanden"
+      0x0A52: "2642 = Relais aus, bei Fehler"
+      0x0A53: "2643 = Relais an, bei Warnung"
+      0x0A54: "2644 = Relais an, wenn Cluster läuft"
+      0x0A55: "2645 = Batterieraumlüfter"
+      0x0A56: "2646 = Elektrolytpumpe"
+      0x0A57: "2647 = ComSync"
+      0x0A58: "2648 = Relais an bei Leistungsbegrenzung"
+      0x0A59: "2649 = Netztrennung im Netzersatz-Betrieb"
+      0x0A5A: "2650 = Erdung im Netzersatz-Betrieb"
+      0x0B54: "2900 = Batterieraumlüfter im Multicluster"
+      0x0B55: "2901 = Lastabwurf im Multicluster"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Slave2.OperationModeRelay2"
+    id: BatteryEnergyStorageSystem_Slave2_OperationModeRelay2
+    entity_category: diagnostic
+    address: 0x9E99
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0102: "Wertpräzision = RefreshRate"
+      0x012F: "Wertpräzision = RefreshRate (0x12F)"
+      0x0134: "Wertpräzision = RefreshRate (0x134)"
+      0x053C: "Wertpräzision = RefreshRate (0x53C)"
+      0x053E: "Wertpräzision = RefreshRate (0x53E)"
+      0x053F: "Wertpräzision = RefreshRate (0x53F)"
+      0x0545: "Wertpräzision = RefreshRate (0x545)"
+      0x054F: "Wertpräzision = RefreshRate (0x54F)"
+      0x0A48: "Wertpräzision = RefreshRate (0xA48)"
+      0x0A49: "2633 = 1-stufiger Lastabwurf"
+      0x0A4A: "2634 = 1-stufiger Lastabwurf oder 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4B: "2635 = 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4C: "2636 = Timer 1"
+      0x0A4D: "2637 = Timer 2"
+      0x0A4E: "2638 = Steuerung zusätzliche Verbraucher"
+      0x0A4F: "2639 = Relais an, wenn Generator läuft"
+      0x0A50: "2640 = Relais an, wenn ext. Quelle vorhanden"
+      0x0A51: "2641 = Relais an, wenn öff. Netz vorhanden"
+      0x0A52: "2642 = Relais aus, bei Fehler"
+      0x0A53: "2643 = Relais an, bei Warnung"
+      0x0A54: "2644 = Relais an, wenn Cluster läuft"
+      0x0A55: "2645 = Batterieraumlüfter"
+      0x0A56: "2646 = Elektrolytpumpe"
+      0x0A57: "2647 = ComSync"
+      0x0A58: "2648 = Relais an bei Leistungsbegrenzung"
+      0x0A59: "2649 = Netztrennung im Netzersatz-Betrieb"
+      0x0A5A: "2650 = Erdung im Netzersatz-Betrieb"
+      0x0B54: "2900 = Batterieraumlüfter im Multicluster"
+      0x0B55: "2901 = Lastabwurf im Multicluster"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Slave2.OperationModeRelay3"
+    id: BatteryEnergyStorageSystem_Slave2_OperationModeRelay3
+    entity_category: diagnostic
+    address: 0x9E9B
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0102: "Wertpräzision = RefreshRate"
+      0x012F: "Wertpräzision = RefreshRate (0x12F)"
+      0x0134: "Wertpräzision = RefreshRate (0x134)"
+      0x053C: "Wertpräzision = RefreshRate (0x53C)"
+      0x053E: "Wertpräzision = RefreshRate (0x53E)"
+      0x053F: "Wertpräzision = RefreshRate (0x53F)"
+      0x0545: "Wertpräzision = RefreshRate (0x545)"
+      0x054F: "Wertpräzision = RefreshRate (0x54F)"
+      0x0A48: "Wertpräzision = RefreshRate (0xA48)"
+      0x0A49: "2633 = 1-stufiger Lastabwurf"
+      0x0A4A: "2634 = 1-stufiger Lastabwurf oder 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4B: "2635 = 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4C: "2636 = Timer 1"
+      0x0A4D: "2637 = Timer 2"
+      0x0A4E: "2638 = Steuerung zusätzliche Verbraucher"
+      0x0A4F: "2639 = Relais an, wenn Generator läuft"
+      0x0A50: "2640 = Relais an, wenn ext. Quelle vorhanden"
+      0x0A51: "2641 = Relais an, wenn öff. Netz vorhanden"
+      0x0A52: "2642 = Relais aus, bei Fehler"
+      0x0A53: "2643 = Relais an, bei Warnung"
+      0x0A54: "2644 = Relais an, wenn Cluster läuft"
+      0x0A55: "2645 = Batterieraumlüfter"
+      0x0A56: "2646 = Elektrolytpumpe"
+      0x0A57: "2647 = ComSync"
+      0x0A58: "2648 = Relais an bei Leistungsbegrenzung"
+      0x0A59: "2649 = Netztrennung im Netzersatz-Betrieb"
+      0x0A5A: "2650 = Erdung im Netzersatz-Betrieb"
+      0x0B54: "2900 = Batterieraumlüfter im Multicluster"
+      0x0B55: "2901 = Lastabwurf im Multicluster"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Slave2.OperationModeRelay4"
+    id: BatteryEnergyStorageSystem_Slave2_OperationModeRelay4
+    entity_category: diagnostic
+    address: 0x9E9D
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0102: "Wertpräzision = RefreshRate"
+      0x012F: "Wertpräzision = RefreshRate (0x12F)"
+      0x0134: "Wertpräzision = RefreshRate (0x134)"
+      0x053C: "Wertpräzision = RefreshRate (0x53C)"
+      0x053E: "Wertpräzision = RefreshRate (0x53E)"
+      0x053F: "Wertpräzision = RefreshRate (0x53F)"
+      0x0545: "Wertpräzision = RefreshRate (0x545)"
+      0x054F: "Wertpräzision = RefreshRate (0x54F)"
+      0x0A48: "Wertpräzision = RefreshRate (0xA48)"
+      0x0A49: "2633 = 1-stufiger Lastabwurf"
+      0x0A4A: "2634 = 1-stufiger Lastabwurf oder 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4B: "2635 = 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4C: "2636 = Timer 1"
+      0x0A4D: "2637 = Timer 2"
+      0x0A4E: "2638 = Steuerung zusätzliche Verbraucher"
+      0x0A4F: "2639 = Relais an, wenn Generator läuft"
+      0x0A50: "2640 = Relais an, wenn ext. Quelle vorhanden"
+      0x0A51: "2641 = Relais an, wenn öff. Netz vorhanden"
+      0x0A52: "2642 = Relais aus, bei Fehler"
+      0x0A53: "2643 = Relais an, bei Warnung"
+      0x0A54: "2644 = Relais an, wenn Cluster läuft"
+      0x0A55: "2645 = Batterieraumlüfter"
+      0x0A56: "2646 = Elektrolytpumpe"
+      0x0A57: "2647 = ComSync"
+      0x0A58: "2648 = Relais an bei Leistungsbegrenzung"
+      0x0A59: "2649 = Netztrennung im Netzersatz-Betrieb"
+      0x0A5A: "2650 = Erdung im Netzersatz-Betrieb"
+      0x0B54: "2900 = Batterieraumlüfter im Multicluster"
+      0x0B55: "2901 = Lastabwurf im Multicluster"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Slave2.OperationModeRelay5"
+    id: BatteryEnergyStorageSystem_Slave2_OperationModeRelay5
+    entity_category: diagnostic
+    address: 0x9E9F
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0102: "Wertpräzision = RefreshRate"
+      0x012F: "Wertpräzision = RefreshRate (0x12F)"
+      0x0134: "Wertpräzision = RefreshRate (0x134)"
+      0x053C: "Wertpräzision = RefreshRate (0x53C)"
+      0x053E: "Wertpräzision = RefreshRate (0x53E)"
+      0x053F: "Wertpräzision = RefreshRate (0x53F)"
+      0x0545: "Wertpräzision = RefreshRate (0x545)"
+      0x054F: "Wertpräzision = RefreshRate (0x54F)"
+      0x0A48: "Wertpräzision = RefreshRate (0xA48)"
+      0x0A49: "2633 = 1-stufiger Lastabwurf"
+      0x0A4A: "2634 = 1-stufiger Lastabwurf oder 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4B: "2635 = 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4C: "2636 = Timer 1"
+      0x0A4D: "2637 = Timer 2"
+      0x0A4E: "2638 = Steuerung zusätzliche Verbraucher"
+      0x0A4F: "2639 = Relais an, wenn Generator läuft"
+      0x0A50: "2640 = Relais an, wenn ext. Quelle vorhanden"
+      0x0A51: "2641 = Relais an, wenn öff. Netz vorhanden"
+      0x0A52: "2642 = Relais aus, bei Fehler"
+      0x0A53: "2643 = Relais an, bei Warnung"
+      0x0A54: "2644 = Relais an, wenn Cluster läuft"
+      0x0A55: "2645 = Batterieraumlüfter"
+      0x0A56: "2646 = Elektrolytpumpe"
+      0x0A57: "2647 = ComSync"
+      0x0A58: "2648 = Relais an bei Leistungsbegrenzung"
+      0x0A59: "2649 = Netztrennung im Netzersatz-Betrieb"
+      0x0A5A: "2650 = Erdung im Netzersatz-Betrieb"
+      0x0B54: "2900 = Batterieraumlüfter im Multicluster"
+      0x0B55: "2901 = Lastabwurf im Multicluster"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Slave2.OperationModeRelay6"
+    id: BatteryEnergyStorageSystem_Slave2_OperationModeRelay6
+    entity_category: diagnostic
+    address: 0x9EA1
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0102: "Wertpräzision = RefreshRate"
+      0x012F: "Wertpräzision = RefreshRate (0x12F)"
+      0x0134: "Wertpräzision = RefreshRate (0x134)"
+      0x053C: "Wertpräzision = RefreshRate (0x53C)"
+      0x053E: "Wertpräzision = RefreshRate (0x53E)"
+      0x053F: "Wertpräzision = RefreshRate (0x53F)"
+      0x0545: "Wertpräzision = RefreshRate (0x545)"
+      0x054F: "Wertpräzision = RefreshRate (0x54F)"
+      0x0A48: "Wertpräzision = RefreshRate (0xA48)"
+      0x0A49: "2633 = 1-stufiger Lastabwurf"
+      0x0A4A: "2634 = 1-stufiger Lastabwurf oder 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4B: "2635 = 1. Stufe bei 2-stufigem Lastabwurf"
+      0x0A4C: "2636 = Timer 1"
+      0x0A4D: "2637 = Timer 2"
+      0x0A4E: "2638 = Steuerung zusätzliche Verbraucher"
+      0x0A4F: "2639 = Relais an, wenn Generator läuft"
+      0x0A50: "2640 = Relais an, wenn ext. Quelle vorhanden"
+      0x0A51: "2641 = Relais an, wenn öff. Netz vorhanden"
+      0x0A52: "2642 = Relais aus, bei Fehler"
+      0x0A53: "2643 = Relais an, bei Warnung"
+      0x0A54: "2644 = Relais an, wenn Cluster läuft"
+      0x0A55: "2645 = Batterieraumlüfter"
+      0x0A56: "2646 = Elektrolytpumpe"
+      0x0A57: "2647 = ComSync"
+      0x0A58: "2648 = Relais an bei Leistungsbegrenzung"
+      0x0A59: "2649 = Netztrennung im Netzersatz-Betrieb"
+      0x0A5A: "2650 = Erdung im Netzersatz-Betrieb"
+      0x0B54: "2900 = Batterieraumlüfter im Multicluster"
+      0x0B55: "2901 = Lastabwurf im Multicluster"
+
+  # vito: overview
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "BatteryEnergyStorageSystem.Slave1.OperationStatus"
+    id: BatteryEnergyStorageSystem_Slave1_OperationStatus
+    entity_category: diagnostic
+    address: 0x794D
+    length: 2
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x0000: "Wertpräzision = RefreshRate"
+      0x01C7: "Wertpräzision = RefreshRate (0x1C7)"
+      0x0023: "Wertpräzision = RefreshRate (0x23)"
+      0x012F: "Wertpräzision = RefreshRate (0x12F)"
+      0x0133: "Wertpräzision = RefreshRate (0x133)"
 
 # --- datapoints needing custom decode (not auto-emitted) ---
 # BatteryEnergyStorageSystem.IPAddress @ 0x9CDF: NoConversion length 32 > 4 bytes -> custom decode

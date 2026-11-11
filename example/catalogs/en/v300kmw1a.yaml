@@ -41,11 +41,15 @@
 # 'Pegel' per RF participant); each such name carries its id in parentheses,
 # since ESPHome requires a unique name per platform.
 #
+# WRITABLE WITHOUT A RANGE: 4 datapoint(s) are writable in Vitosoft, but
+# the export gives no usable borders for them. Each is emitted READ-ONLY
+# under a CAUTION comment. Making one a `number` means choosing its
+# range yourself, and nothing here checks it: confirm the range on the
+# unit (or its service manual) first, and take extra care writing it.
+#
 # VERIFY ON HARDWARE: not every address answers on every firmware.
 # Run `esphome config` then `esphome compile`/`run` before relying
-# on any value. number entities whose borders were absent in the
-# export get min/max/step = 0/0/1 placeholders: valid config, but
-# pinned to 0 until you fill in the real bounds.
+# on any value.
 # ============================================================
 
 sensor:
@@ -827,6 +831,27 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # --- Codierungen / SM1 ---
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Flow rate at max. speed"
+    id: SM1_K0F_Volumenstrom_Max_Drehzahl
+    address: 0xCF0F
+    length: 1
+    converter: div10
+    signed: false  # Vitosoft ParameterType Int, lower border 1
+    unit_of_measurement: "L/min"
+    device_class: volume_flow_rate
+    state_class: measurement
+    accuracy_decimals: 1
+    disabled_by_default: true
+    update_interval: 3600s
+
   # --- LON Objekte / Node Objekt ---
   # vito: level=td
   - platform: vitohome
@@ -1584,6 +1609,58 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(20) Reset time low loss header"
+    id: NRx_KonfiHWPuReglernachstellzeit
+    address: 0x7720
+    length: 1
+    converter: noconv
+    unit_of_measurement: "s"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(22) Derivative time low loss header"
+    id: NRx_KonfiHWPuVorhaltezeit
+    address: 0x7722
+    length: 1
+    converter: noconv
+    unit_of_measurement: "s"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(8B) EEPROM status"
+    id: K8B_KonfiEEPROM_Status
+    entity_category: diagnostic
+    address: 0x778B
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
 
 binary_sensor:
   # --- Information / Heizkreis A1 ---
@@ -3705,26 +3782,6 @@ number:
 
   # vito: quickcheck
   - platform: vitohome
-    name: "Flow rate at max. speed"
-    id: SM1_K0F_Volumenstrom_Max_Drehzahl
-    address: 0xCF0F
-    length: 1
-    converter: div10
-    signed: false  # Vitosoft ParameterType Int, borders 1..70
-    unit_of_measurement: "L/min"
-    device_class: volume_flow_rate
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
     name: "Set cylinder temperature solar"
     id: SM1_K11_Speichersolltemperatur
     address: 0xCF11
@@ -4185,57 +4242,6 @@ number:
     unit_of_measurement: "%/K"
     min_value: 0
     max_value: 255
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(20) Reset time low loss header"
-    id: NRx_KonfiHWPuReglernachstellzeit
-    address: 0x7720
-    length: 1
-    converter: noconv
-    unit_of_measurement: "s"
-    device_class: duration
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(22) Derivative time low loss header"
-    id: NRx_KonfiHWPuVorhaltezeit
-    address: 0x7722
-    length: 1
-    converter: noconv
-    unit_of_measurement: "s"
-    device_class: duration
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  - platform: vitohome
-    name: "(8B) EEPROM status"
-    id: K8B_KonfiEEPROM_Status
-    address: 0x778B
-    length: 1
-    converter: noconv
-    min_value: 0
-    max_value: 0
     step: 1
     mode: box
     disabled_by_default: true
