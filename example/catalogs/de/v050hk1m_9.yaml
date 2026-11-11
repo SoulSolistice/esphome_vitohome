@@ -38,11 +38,15 @@
 # master writes them; without a LON module they hold no data (0xFF
 # 'invalid'). --profile full includes them.
 #
+# WRITABLE WITHOUT A RANGE: 1 datapoint(s) are writable in Vitosoft, but
+# the export gives no usable borders for them. Each is emitted READ-ONLY
+# under a CAUTION comment. Making one a `number` means choosing its
+# range yourself, and nothing here checks it: confirm the range on the
+# unit (or its service manual) first, and take extra care writing it.
+#
 # VERIFY ON HARDWARE: not every address answers on every firmware.
 # Run `esphome config` then `esphome compile`/`run` before relying
-# on any value. number entities whose borders were absent in the
-# export get min/max/step = 0/0/1 placeholders: valid config, but
-# pinned to 0 until you fill in the real bounds.
+# on any value.
 # ============================================================
 
 sensor:
@@ -615,6 +619,22 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
+
+  # --- (ohne Gruppenzuordnung) ---
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Reset Regelung"
+    id: K7C_KonfiResetRegelung
+    address: 0x777C
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
 
 binary_sensor:
   # --- Information / HeizkreisM1 ---
@@ -1336,23 +1356,6 @@ number:
     device_class: temperature
     min_value: 4
     max_value: 37
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # --- (ohne Gruppenzuordnung) ---
-  - platform: vitohome
-    name: "Reset Regelung"
-    id: K7C_KonfiResetRegelung
-    address: 0x777C
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
     step: 1
     mode: box
     disabled_by_default: true

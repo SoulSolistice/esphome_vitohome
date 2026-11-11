@@ -42,11 +42,15 @@
 # 'Pegel' per RF participant); each such name carries its id in parentheses,
 # since ESPHome requires a unique name per platform.
 #
+# WRITABLE WITHOUT A RANGE: 1 datapoint(s) are writable in Vitosoft, but
+# the export gives no usable borders for them. Each is emitted READ-ONLY
+# under a CAUTION comment. Making one a `number` means choosing its
+# range yourself, and nothing here checks it: confirm the range on the
+# unit (or its service manual) first, and take extra care writing it.
+#
 # VERIFY ON HARDWARE: not every address answers on every firmware.
 # Run `esphome config` then `esphome compile`/`run` before relying
-# on any value. number entities whose borders were absent in the
-# export get min/max/step = 0/0/1 placeholders: valid config, but
-# pinned to 0 until you fill in the real bounds.
+# on any value.
 # ============================================================
 
 sensor:
@@ -1484,6 +1488,23 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(8B) EEPROM status"
+    id: K8B_KonfiEEPROM_Status
+    entity_category: diagnostic
+    address: 0x778B
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
 
   # vito: level=td
   - platform: vitohome
@@ -3882,20 +3903,6 @@ number:
     update_interval: 3600s
 
   # --- Funktionskontrolle / Zusatzinfo ---
-  # vito: level=td
-  - platform: vitohome
-    name: "(8B) EEPROM status"
-    id: K8B_KonfiEEPROM_Status
-    address: 0x778B
-    length: 1
-    converter: noconv
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # vito: level=td
   - platform: vitohome
     name: "(8C) Version of control unit software - upper byte"

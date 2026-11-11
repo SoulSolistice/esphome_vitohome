@@ -29,15 +29,85 @@
 # list and LON identity, read by P300 function code 0x07). Without a LON
 # module they hold only the unit's own defaults. --profile full includes them.
 #
+# WRITABLE WITHOUT A RANGE: 9 datapoint(s) are writable in Vitosoft, but
+# the export gives no usable borders for them. Each is emitted READ-ONLY
+# under a CAUTION comment. Making one a `number` means choosing its
+# range yourself, and nothing here checks it: confirm the range on the
+# unit (or its service manual) first, and take extra care writing it.
+#
 # VERIFY ON HARDWARE: not every address answers on every firmware.
 # Run `esphome config` then `esphome compile`/`run` before relying
-# on any value. number entities whose borders were absent in the
-# export get min/max/step = 0/0/1 placeholders: valid config, but
-# pinned to 0 until you fill in the real bounds.
+# on any value.
 # ============================================================
 
 sensor:
+  # --- Diagnose / Kommunikation ---
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Subscriber number"
+    id: vcLanTeilnehmernummer
+    address: 0x7777
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "System number"
+    id: vcLanAnlagennummer
+    address: 0x7776
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Konfiguration / Allgemein ---
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Sign of life of Vitocom"
+    id: vcLanLebenszeichen
+    address: 0xBA09
+    length: 1
+    converter: noconv
+    unit_of_measurement: "h"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
   # --- Konfiguration / Modem GSM ---
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Number of rings before call is taken"
+    id: vcLanAnzahlKlingelzeichen
+    address: 0xAEA9
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
     # NOTE: ParameterType IntHighByteFirst: big-endian -> rotatebytes; converter 'rotatebytes' is read-only -> demoted to sensor
   - platform: vitohome
     name: "GPRS connection control"
@@ -100,6 +170,26 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # --- Funktionskontrolle / Anlage ---
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Maximum wait time for message from fault manager"
+    id: vcLanWartezeitMeldungFehlermanager
+    entity_category: diagnostic
+    address: 0xBB0A
+    length: 1
+    converter: noconv
+    unit_of_measurement: "min"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
   # --- (ohne Gruppenzuordnung) ---
     # NOTE: conversion 'FixedStringTerminalZeroes' has no preset; raw noconv emitted; no encode path for the conversion -> read-only
   - platform: vitohome
@@ -112,60 +202,56 @@ sensor:
     disabled_by_default: true
     update_interval: 3600s
 
-number:
-  # --- Diagnose / Kommunikation ---
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
   - platform: vitohome
-    name: "Subscriber number"
-    id: vcLanTeilnehmernummer
-    address: 0x7777
+    name: "Maximum wait time for a new ring"
+    id: vcLanMaxTimeForNextRing
+    address: 0xAEAA
     length: 1
     converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  - platform: vitohome
-    name: "System number"
-    id: vcLanAnlagennummer
-    address: 0x7776
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # --- Konfiguration / Allgemein ---
-  # vito: level=td
-  - platform: vitohome
-    name: "Sign of life of Vitocom"
-    id: vcLanLebenszeichen
-    address: 0xBA09
-    length: 1
-    converter: noconv
-    unit_of_measurement: "h"
+    unit_of_measurement: "s"
     device_class: duration
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
+    state_class: measurement
     disabled_by_default: true
     update_interval: 3600s
 
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Interval time alarm manager"
+    id: vcLanIntervallzeitAlarmManager
+    entity_category: diagnostic
+    address: 0xBA01
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Power restored"
+    id: vcLanSpannungswiederkehr
+    address: 0xBA02
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+number:
+  # --- Konfiguration / Allgemein ---
   # vito: level=td quickcheck
     # NOTE: writes are a read-modify-write of the whole 2-byte block
   - platform: vitohome
@@ -241,111 +327,6 @@ number:
     converter: noconv
     min_value: 0
     max_value: 99
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # --- Konfiguration / Modem GSM ---
-  # vito: level=td
-  - platform: vitohome
-    name: "Number of rings before call is taken"
-    id: vcLanAnzahlKlingelzeichen
-    address: 0xAEA9
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # --- Funktionskontrolle / Anlage ---
-  # vito: level=td
-  - platform: vitohome
-    name: "Maximum wait time for message from fault manager"
-    id: vcLanWartezeitMeldungFehlermanager
-    address: 0xBB0A
-    length: 1
-    converter: noconv
-    unit_of_measurement: "min"
-    device_class: duration
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # --- (ohne Gruppenzuordnung) ---
-  - platform: vitohome
-    name: "Baud rate MP_modem interface"
-    id: vcLanBaudrate
-    address: 0xACCA
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  - platform: vitohome
-    name: "Maximum wait time for a new ring"
-    id: vcLanMaxTimeForNextRing
-    address: 0xAEAA
-    length: 1
-    converter: noconv
-    unit_of_measurement: "s"
-    device_class: duration
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  - platform: vitohome
-    name: "Interval time alarm manager"
-    id: vcLanIntervallzeitAlarmManager
-    address: 0xBA01
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  - platform: vitohome
-    name: "Power restored"
-    id: vcLanSpannungswiederkehr
-    address: 0xBA02
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
     step: 1
     mode: box
     disabled_by_default: true
@@ -555,6 +536,23 @@ text_sensor:
       0xFF: "No WAN dial-up"
 
   # --- (ohne Gruppenzuordnung) ---
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    type: enum
+    name: "Baud rate MP_modem interface"
+    id: vcLanBaudrate
+    address: 0xACCA
+    length: 1
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x00: "57600"
+      0x01: "115200"
+
   # System fault history slot 1 of 10 (ecnsysEventType~Error,
   # 90-byte block at 0x7507 + 0*9; vcontrold getError0).
   # Slot 1 = newest entry -- hardware-confirmed on VScotHO1_72.

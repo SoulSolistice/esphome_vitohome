@@ -46,11 +46,15 @@
 # 'Pegel' per RF participant); each such name carries its id in parentheses,
 # since ESPHome requires a unique name per platform.
 #
+# WRITABLE WITHOUT A RANGE: 3 datapoint(s) are writable in Vitosoft, but
+# the export gives no usable borders for them. Each is emitted READ-ONLY
+# under a CAUTION comment. Making one a `number` means choosing its
+# range yourself, and nothing here checks it: confirm the range on the
+# unit (or its service manual) first, and take extra care writing it.
+#
 # VERIFY ON HARDWARE: not every address answers on every firmware.
 # Run `esphome config` then `esphome compile`/`run` before relying
-# on any value. number entities whose borders were absent in the
-# export get min/max/step = 0/0/1 placeholders: valid config, but
-# pinned to 0 until you fill in the real bounds.
+# on any value.
 # ============================================================
 
 sensor:
@@ -1294,6 +1298,21 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Reset cause"
+    id: ResetUrsache
+    address: 0x0900
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
     # NOTE: converter 'div10' unsupported at 4 bytes -> noconv + multiply filter (0.1)
   - platform: vitohome
     name: "Timer for heat-up phase A1M1"
@@ -1440,6 +1459,21 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Heat-up gradient experience-based M3"
+    id: Aufheizgradient_gelerntM3
+    address: 0x453B
+    length: 2
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
   - platform: vitohome
     name: "Mixer position maximum limit M3"
     id: HK_Mischerposition_max_M3
@@ -1490,6 +1524,21 @@ sensor:
     device_class: duration
     state_class: total_increasing
     accuracy_decimals: 1
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Delete tool binding"
+    id: K7C_KonfiResetLon
+    address: 0x777C
+    length: 1
+    converter: noconv
+    state_class: measurement
     disabled_by_default: true
     update_interval: 3600s
 
@@ -3717,19 +3766,6 @@ number:
     update_interval: 3600s
 
   - platform: vitohome
-    name: "Reset cause"
-    id: ResetUrsache
-    address: 0x0900
-    length: 1
-    converter: noconv
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  - platform: vitohome
     name: "Stop optimisation A1M1 - experience-based setback period"
     id: Absenkzeit_gelerntA1M1
     address: 0x253D
@@ -3829,19 +3865,6 @@ number:
     update_interval: 3600s
 
   - platform: vitohome
-    name: "Heat-up gradient experience-based M3"
-    id: Aufheizgradient_gelerntM3
-    address: 0x453B
-    length: 2
-    converter: noconv
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  - platform: vitohome
     name: "(E6) Maximum speed regulated pump M3"
     id: KE6_KonfiDPumpeMaxDrehzahlM3
     address: 0x47E6
@@ -3894,22 +3917,6 @@ number:
     device_class: temperature
     min_value: 10
     max_value: 95
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  - platform: vitohome
-    name: "Delete tool binding"
-    id: K7C_KonfiResetLon
-    address: 0x777C
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
     step: 1
     mode: box
     disabled_by_default: true

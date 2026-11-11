@@ -46,11 +46,15 @@
 # 'Pegel' per RF participant); each such name carries its id in parentheses,
 # since ESPHome requires a unique name per platform.
 #
+# WRITABLE WITHOUT A RANGE: 26 datapoint(s) are writable in Vitosoft, but
+# the export gives no usable borders for them. Each is emitted READ-ONLY
+# under a CAUTION comment. Making one a `number` means choosing its
+# range yourself, and nothing here checks it: confirm the range on the
+# unit (or its service manual) first, and take extra care writing it.
+#
 # VERIFY ON HARDWARE: not every address answers on every firmware.
 # Run `esphome config` then `esphome compile`/`run` before relying
-# on any value. number entities whose borders were absent in the
-# export get min/max/step = 0/0/1 placeholders: valid config, but
-# pinned to 0 until you fill in the real bounds.
+# on any value.
 # ============================================================
 
 sensor:
@@ -153,6 +157,24 @@ sensor:
     accuracy_decimals: 1
     disabled_by_default: true
     update_interval: 60s
+
+  # vito: circuit=boiler level=td overview trend
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Förderhöhe"
+    id: Neptun_ParamFoerderhoehe
+    address: 0x7688
+    length: 2
+    converter: noconv
+    unit_of_measurement: "mbar"
+    device_class: pressure
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
 
   # --- Information / Heizkreis A1 ---
   # vito: circuit=hk1 overview trend
@@ -423,6 +445,42 @@ sensor:
     update_interval: 60s
 
   # vito: circuit=boiler
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Differenztemperatur 1"
+    id: Neptun_Differenztemperatur1
+    address: 0x88F6
+    length: 1
+    converter: noconv
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=boiler
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Heizleistungsbegrenzung über Rücklaufregelung Differenztemperatur T2"
+    id: Neptun_Differenztemperatur2
+    address: 0x88F7
+    length: 1
+    converter: noconv
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=boiler
   - platform: vitohome
     name: "ALZ für Anlagenschema"
     id: Neptun_GWGF8
@@ -675,6 +733,22 @@ sensor:
 
   # --- Diagnose 1 / LANModul ---
   # vito: circuit=boiler
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "IP Adresse"
+    id: HO2B_IP_Adresse
+    address: 0xD006
+    length: 4
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=boiler
   - platform: vitohome
     name: "Ladezustand DHW"
     id: HO2B_Ladezustand_DHW
@@ -709,6 +783,105 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
+  # vito: circuit=boiler
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Datum 1"
+    id: HO2B_Datum_1
+    address: 0x5900
+    length: 4
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=boiler
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Datum 2"
+    id: HO2B_Datum_2
+    address: 0x590C
+    length: 4
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=boiler
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Gas-Zählerstand 1"
+    id: HO2B_Gaszaehlerstand_1
+    address: 0x5904
+    length: 4
+    converter: noconv
+    unit_of_measurement: "m³"
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=boiler
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Gas-Zählerstand 2"
+    id: HO2B_Gaszaehlerstand_2
+    address: 0x5910
+    length: 4
+    converter: noconv
+    unit_of_measurement: "m³"
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=boiler
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Gaszustandzahl"
+    id: HO2B_Gaszustandzahl
+    address: 0x5918
+    length: 4
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=boiler
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Gasbrennwert"
+    id: HO2B_Gasbrennwert
+    address: 0x591C
+    length: 4
+    converter: noconv
+    unit_of_measurement: "kWh/m³"
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
 
   # vito: circuit=boiler
   - platform: vitohome
@@ -1213,6 +1386,27 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
+  # --- Codierungen / SM1 ---
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(0F) Volumenstrom bei max. Drehzahl"
+    id: SM1_K0F_Volumenstrom_Max_Drehzahl
+    address: 0xCF0F
+    length: 1
+    converter: div10
+    signed: false  # Vitosoft ParameterType Int, lower border 1
+    unit_of_measurement: "L/min"
+    device_class: volume_flow_rate
+    state_class: measurement
+    accuracy_decimals: 1
+    disabled_by_default: true
+    update_interval: 3600s
 
   # --- Funktionskontrolle / Codierstecker1 ---
   # vito: level=td
@@ -2250,6 +2444,23 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(8B) EEPROM Status"
+    id: K8B_KonfiEEPROM_Status
+    entity_category: diagnostic
+    address: 0x778B
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
 
   # vito: level=td
   - platform: vitohome
@@ -3443,6 +3654,244 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+    # NOTE: writes are a read-modify-write of the whole 2-byte block
+  - platform: vitohome
+    name: "Drehzahl Interne Pumpe"
+    id: Neptun_Interne_Pumpe_Drehzahl
+    address: 0x7951
+    length: 2
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+    # NOTE: writes are a read-modify-write of the whole 2-byte block
+  - platform: vitohome
+    name: "Drehzahl Zirkulationspumpe"
+    id: Neptun_ZP_Drehzahl
+    address: 0x7953
+    length: 2
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+    # NOTE: writes are a read-modify-write of the whole 2-byte block
+  - platform: vitohome
+    name: "Drehzahl Speicherladepumpe"
+    id: Neptun_SLP_Drehzahl
+    address: 0x7955
+    length: 2
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+    # NOTE: writes are a read-modify-write of the whole 2-byte block
+  - platform: vitohome
+    name: "Drehzahl Ladepumpe"
+    id: Neptun_LP_Drehzahl
+    address: 0x7957
+    length: 2
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+    # NOTE: writes are a read-modify-write of the whole 2-byte block
+  - platform: vitohome
+    name: "Drehzahl Heizkreispumpe HK1"
+    id: Neptun_HKP1_Drehzahl
+    address: 0x795A
+    length: 2
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+    # NOTE: writes are a read-modify-write of the whole 2-byte block
+  - platform: vitohome
+    name: "Drehzahl Heizkreispumpe HK2"
+    id: Neptun_HKP2_Drehzahl
+    address: 0x795C
+    length: 2
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+    # NOTE: writes are a read-modify-write of the whole 2-byte block
+  - platform: vitohome
+    name: "Drehzahl Heizkreispumpe HK3"
+    id: Neptun_HKP3_Drehzahl
+    address: 0x795E
+    length: 2
+    byte_offset: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Volumenstromgrenzwert Reduktion Brennerleistung (10l⁄h)"
+    id: Neptun_VGrenzeRedBrLeistung
+    address: 0x88E9
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Volumenstromgrenzwert Brennerblockade (10l⁄h)"
+    id: Neptun_VGrenzeBrennerBlockade
+    address: 0x88EA
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Hysterese Volumenstromgrenzwert für Brennerblockade"
+    id: Neptun_ParamVGrenzeHystBrennerblockade
+    address: 0x88ED
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Hysterese Volumenstromgrenzwert Reduktion Brennerleistung"
+    id: Neptun_ParamVGrenzeHystRedBrLeistung
+    address: 0x88EE
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Volumenstromgrenzwert Freigabe SP-Betrieb (10l⁄h)"
+    id: Neptun_ParamVGrenzeFreigabeSP
+    address: 0x88EF
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Hysterese Volumenstromgrenzwert Freigabe SP-Betrieb"
+    id: Neptun_ParamVGrenzeHystFreigabeSP
+    address: 0x88F0
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: level=td
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "Kesseltemperaturgrenzwert Teillastbetrieb"
+    id: Neptun_ParamKTGwTL
+    address: 0x88F1
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
 
   # --- Funktionskontrolle / Funkzubehoer ---
   # vito: level=td
@@ -5164,187 +5613,6 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-  # vito: circuit=boiler level=td overview trend
-  - platform: vitohome
-    name: "Förderhöhe"
-    id: Neptun_ParamFoerderhoehe
-    address: 0x7688
-    length: 2
-    converter: noconv
-    unit_of_measurement: "mbar"
-    device_class: pressure
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # --- Diagnose 1 / Kessel ---
-  # vito: circuit=boiler
-  - platform: vitohome
-    name: "Differenztemperatur 1"
-    id: Neptun_Differenztemperatur1
-    address: 0x88F6
-    length: 1
-    converter: noconv
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=boiler
-  - platform: vitohome
-    name: "Heizleistungsbegrenzung über Rücklaufregelung Differenztemperatur T2"
-    id: Neptun_Differenztemperatur2
-    address: 0x88F7
-    length: 1
-    converter: noconv
-    unit_of_measurement: "°C"
-    device_class: temperature
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # --- Diagnose 1 / LANModul ---
-  # vito: circuit=boiler
-  - platform: vitohome
-    name: "IP Adresse"
-    id: HO2B_IP_Adresse
-    address: 0xD006
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=boiler
-  - platform: vitohome
-    name: "Datum 1"
-    id: HO2B_Datum_1
-    address: 0x5900
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=boiler
-  - platform: vitohome
-    name: "Datum 2"
-    id: HO2B_Datum_2
-    address: 0x590C
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=boiler
-  - platform: vitohome
-    name: "Gas-Zählerstand 1"
-    id: HO2B_Gaszaehlerstand_1
-    address: 0x5904
-    length: 4
-    converter: noconv
-    unit_of_measurement: "m³"
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=boiler
-  - platform: vitohome
-    name: "Gas-Zählerstand 2"
-    id: HO2B_Gaszaehlerstand_2
-    address: 0x5910
-    length: 4
-    converter: noconv
-    unit_of_measurement: "m³"
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=boiler
-  - platform: vitohome
-    name: "Gaszustandzahl"
-    id: HO2B_Gaszustandzahl
-    address: 0x5918
-    length: 4
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=boiler
-  - platform: vitohome
-    name: "Gasbrennwert"
-    id: HO2B_Gasbrennwert
-    address: 0x591C
-    length: 4
-    converter: noconv
-    unit_of_measurement: "kWh/m³"
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # --- Codierungen / Alle ---
   # vito: circuit=boiler quickcheck
   - platform: vitohome
@@ -6556,26 +6824,6 @@ number:
 
   # vito: quickcheck
   - platform: vitohome
-    name: "(0F) Volumenstrom bei max. Drehzahl"
-    id: SM1_K0F_Volumenstrom_Max_Drehzahl
-    address: 0xCF0F
-    length: 1
-    converter: div10
-    signed: false  # Vitosoft ParameterType Int, borders 1..70
-    unit_of_measurement: "L/min"
-    device_class: volume_flow_rate
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
     name: "(11) Speichersolltemperatur Solar"
     id: SM1_K11_Speichersolltemperatur
     address: 0xCF11
@@ -6703,20 +6951,6 @@ number:
   # --- Funktionskontrolle / Zusatzinfo ---
   # vito: level=td
   - platform: vitohome
-    name: "(8B) EEPROM Status"
-    id: K8B_KonfiEEPROM_Status
-    address: 0x778B
-    length: 1
-    converter: noconv
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-  - platform: vitohome
     name: "(8C) Version der Regelungssoftware - oberes Byte"
     id: K8C_KonfiSW_StandNR_msb
     address: 0x778C
@@ -6738,259 +6972,6 @@ number:
     converter: noconv
     min_value: 0
     max_value: 99
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # --- Funktionskontrolle / Hydraulischer Abgleich ---
-  # vito: level=td
-    # NOTE: writes are a read-modify-write of the whole 2-byte block
-  - platform: vitohome
-    name: "Drehzahl Interne Pumpe"
-    id: Neptun_Interne_Pumpe_Drehzahl
-    address: 0x7951
-    length: 2
-    byte_offset: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-    # NOTE: writes are a read-modify-write of the whole 2-byte block
-  - platform: vitohome
-    name: "Drehzahl Zirkulationspumpe"
-    id: Neptun_ZP_Drehzahl
-    address: 0x7953
-    length: 2
-    byte_offset: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-    # NOTE: writes are a read-modify-write of the whole 2-byte block
-  - platform: vitohome
-    name: "Drehzahl Speicherladepumpe"
-    id: Neptun_SLP_Drehzahl
-    address: 0x7955
-    length: 2
-    byte_offset: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-    # NOTE: writes are a read-modify-write of the whole 2-byte block
-  - platform: vitohome
-    name: "Drehzahl Ladepumpe"
-    id: Neptun_LP_Drehzahl
-    address: 0x7957
-    length: 2
-    byte_offset: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-    # NOTE: writes are a read-modify-write of the whole 2-byte block
-  - platform: vitohome
-    name: "Drehzahl Heizkreispumpe HK1"
-    id: Neptun_HKP1_Drehzahl
-    address: 0x795A
-    length: 2
-    byte_offset: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-    # NOTE: writes are a read-modify-write of the whole 2-byte block
-  - platform: vitohome
-    name: "Drehzahl Heizkreispumpe HK2"
-    id: Neptun_HKP2_Drehzahl
-    address: 0x795C
-    length: 2
-    byte_offset: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-    # NOTE: writes are a read-modify-write of the whole 2-byte block
-  - platform: vitohome
-    name: "Drehzahl Heizkreispumpe HK3"
-    id: Neptun_HKP3_Drehzahl
-    address: 0x795E
-    length: 2
-    byte_offset: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-  - platform: vitohome
-    name: "Volumenstromgrenzwert Reduktion Brennerleistung (10l⁄h)"
-    id: Neptun_VGrenzeRedBrLeistung
-    address: 0x88E9
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-  - platform: vitohome
-    name: "Volumenstromgrenzwert Brennerblockade (10l⁄h)"
-    id: Neptun_VGrenzeBrennerBlockade
-    address: 0x88EA
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-  - platform: vitohome
-    name: "Hysterese Volumenstromgrenzwert für Brennerblockade"
-    id: Neptun_ParamVGrenzeHystBrennerblockade
-    address: 0x88ED
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-  - platform: vitohome
-    name: "Hysterese Volumenstromgrenzwert Reduktion Brennerleistung"
-    id: Neptun_ParamVGrenzeHystRedBrLeistung
-    address: 0x88EE
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-  - platform: vitohome
-    name: "Volumenstromgrenzwert Freigabe SP-Betrieb (10l⁄h)"
-    id: Neptun_ParamVGrenzeFreigabeSP
-    address: 0x88EF
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-  - platform: vitohome
-    name: "Hysterese Volumenstromgrenzwert Freigabe SP-Betrieb"
-    id: Neptun_ParamVGrenzeHystFreigabeSP
-    address: 0x88F0
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: level=td
-  - platform: vitohome
-    name: "Kesseltemperaturgrenzwert Teillastbetrieb"
-    id: Neptun_ParamKTGwTL
-    address: 0x88F1
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
     step: 1
     mode: box
     disabled_by_default: true

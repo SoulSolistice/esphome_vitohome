@@ -41,11 +41,15 @@
 # 'Pegel' per RF participant); each such name carries its id in parentheses,
 # since ESPHome requires a unique name per platform.
 #
+# WRITABLE WITHOUT A RANGE: 24 datapoint(s) are writable in Vitosoft, but
+# the export gives no usable borders for them. Each is emitted READ-ONLY
+# under a CAUTION comment. Making one a `number` means choosing its
+# range yourself, and nothing here checks it: confirm the range on the
+# unit (or its service manual) first, and take extra care writing it.
+#
 # VERIFY ON HARDWARE: not every address answers on every firmware.
 # Run `esphome config` then `esphome compile`/`run` before relying
-# on any value. number entities whose borders were absent in the
-# export get min/max/step = 0/0/1 placeholders: valid config, but
-# pinned to 0 until you fill in the real bounds.
+# on any value.
 # ============================================================
 
 sensor:
@@ -851,6 +855,308 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # --- Codierungen / Allgemein ---
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(6E) Korrekturwert für Außentemperatur"
+    id: NRx_K6E_KonfiOffsetAussentemperatur
+    address: 0x776E
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Codierungen / SM1 ---
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(0F) Volumenstrom bei max. Drehzahl"
+    id: SM1_K0F_Volumenstrom_Max_Drehzahl
+    address: 0xCF0F
+    length: 1
+    converter: div10
+    signed: false  # Vitosoft ParameterType Int, lower border 1
+    unit_of_measurement: "L/min"
+    device_class: volume_flow_rate
+    state_class: measurement
+    accuracy_decimals: 1
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Codierungen / WE1 ---
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(45) Zeit Steuerungsbetrieb (SR13_K45_WE1_Zeit_Steuerungsbetrieb)"
+    id: SR13_K45_WE1_Zeit_Steuerungsbetrieb
+    address: 0x9045
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(48) Abschaltzeitschwelle (SR13_K48_WE1_Abschaltzeitschwelle)"
+    id: SR13_K48_WE1_Abschaltzeitschwelle
+    address: 0x9048
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Codierungen / WE2 ---
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(45) Zeit Steuerungsbetrieb (SR13_K45_WE2_Zeit_Steuerungsbetrieb)"
+    id: SR13_K45_WE2_Zeit_Steuerungsbetrieb
+    address: 0x9145
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(48) Abschaltzeitschwelle (SR13_K48_WE2_Abschaltzeitschwelle)"
+    id: SR13_K48_WE2_Abschaltzeitschwelle
+    address: 0x9148
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Codierungen / WE3 ---
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(45) Zeit Steuerungsbetrieb (SR13_K45_WE3_Zeit_Steuerungsbetrieb)"
+    id: SR13_K45_WE3_Zeit_Steuerungsbetrieb
+    address: 0x9245
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(48) Abschaltzeitschwelle (SR13_K48_WE3_Abschaltzeitschwelle)"
+    id: SR13_K48_WE3_Abschaltzeitschwelle
+    address: 0x9248
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Codierungen / WE4 ---
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(45) Zeit Steuerungsbetrieb (SR13_K45_WE4_Zeit_Steuerungsbetrieb)"
+    id: SR13_K45_WE4_Zeit_Steuerungsbetrieb
+    address: 0x9345
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(48) Abschaltzeitschwelle (SR13_K48_WE4_Abschaltzeitschwelle)"
+    id: SR13_K48_WE4_Abschaltzeitschwelle
+    address: 0x9348
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Codierungen / WE5 ---
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(45) Zeit Steuerungsbetrieb (SR13_K45_WE5_Zeit_Steuerungsbetrieb)"
+    id: SR13_K45_WE5_Zeit_Steuerungsbetrieb
+    address: 0x9445
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(48) Abschaltzeitschwelle (SR13_K48_WE5_Abschaltzeitschwelle)"
+    id: SR13_K48_WE5_Abschaltzeitschwelle
+    address: 0x9448
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Codierungen / WE6 ---
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(45) Zeit Steuerungsbetrieb (SR13_K45_WE6_Zeit_Steuerungsbetrieb)"
+    id: SR13_K45_WE6_Zeit_Steuerungsbetrieb
+    address: 0x9545
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(48) Abschaltzeitschwelle (SR13_K48_WE6_Abschaltzeitschwelle)"
+    id: SR13_K48_WE6_Abschaltzeitschwelle
+    address: 0x9548
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Codierungen / WE7 ---
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(45) Zeit Steuerungsbetrieb (SR13_K45_WE7_Zeit_Steuerungsbetrieb)"
+    id: SR13_K45_WE7_Zeit_Steuerungsbetrieb
+    address: 0x9645
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(48) Abschaltzeitschwelle (SR13_K48_WE7_Abschaltzeitschwelle)"
+    id: SR13_K48_WE7_Abschaltzeitschwelle
+    address: 0x9648
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Codierungen / WE8 ---
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(45) Zeit Steuerungsbetrieb (SR13_K45_WE8_Zeit_Steuerungsbetrieb)"
+    id: SR13_K45_WE8_Zeit_Steuerungsbetrieb
+    address: 0x9745
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(48) Abschaltzeitschwelle (SR13_K48_WE8_Abschaltzeitschwelle)"
+    id: SR13_K48_WE8_Abschaltzeitschwelle
+    address: 0x9748
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
   # --- LON Objekte / Node Objekt ---
   # vito: level=td
   - platform: vitohome
@@ -1381,6 +1687,56 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # --- Codierungen / Kaskade ---
+  # vito: circuit=cascade quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(30) Zuschaltschwelle Energieerzeuger am Puffer"
+    id: SR13_K30_Zuschaltschwelle_EE_Puffer
+    address: 0x5730
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=cascade quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(31) Notbetrieb Kaskade"
+    id: SR13_K31_Notbetrieb
+    address: 0x5731
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=cascade quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(57) Max. Temperaturaufschaltung Kaskade auf Kessel in% des Anlagensollwerts"
+    id: SR13_K57_KonfiMaxTemperaturaufschaltung
+    address: 0x5757
+    length: 1
+    converter: noconv
+    unit_of_measurement: "%"
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
   # --- Diagnose 2 / Ausgaenge ---
   # vito: trend
   - platform: vitohome
@@ -1780,6 +2136,58 @@ sensor:
     state_class: measurement
     disabled_by_default: true
     update_interval: 60s
+
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(20) Nachstellzeit Hydraulische Weiche"
+    id: NRx_KonfiHWPuReglernachstellzeit
+    address: 0x7720
+    length: 1
+    converter: noconv
+    unit_of_measurement: "s"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(22) Vorhaltezeit Hydraulische Weiche"
+    id: NRx_KonfiHWPuVorhaltezeit
+    address: 0x7722
+    length: 1
+    converter: noconv
+    unit_of_measurement: "s"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+  - platform: vitohome
+    name: "(8B) EEPROM Status"
+    id: K8B_KonfiEEPROM_Status
+    entity_category: diagnostic
+    address: 0x778B
+    length: 1
+    converter: noconv
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
 
 binary_sensor:
   # --- Information / Heizkreis A1 ---
@@ -3722,23 +4130,6 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(6E) Korrekturwert für Außentemperatur"
-    id: NRx_K6E_KonfiOffsetAussentemperatur
-    address: 0x776E
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # --- Codierungen / Warmwasser ---
   # vito: circuit=dhw quickcheck
   - platform: vitohome
@@ -3931,26 +4322,6 @@ number:
 
   # vito: quickcheck
   - platform: vitohome
-    name: "(0F) Volumenstrom bei max. Drehzahl"
-    id: SM1_K0F_Volumenstrom_Max_Drehzahl
-    address: 0xCF0F
-    length: 1
-    converter: div10
-    signed: false  # Vitosoft ParameterType Int, borders 1..70
-    unit_of_measurement: "L/min"
-    device_class: volume_flow_rate
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
     name: "(11) Speichersolltemperatur Solar"
     id: SM1_K11_Speichersolltemperatur
     address: 0xCF11
@@ -4094,23 +4465,6 @@ number:
     update_interval: 3600s
 
   # vito: quickcheck
-  - platform: vitohome
-    name: "(45) Zeit Steuerungsbetrieb (SR13_K45_WE1_Zeit_Steuerungsbetrieb)"
-    id: SR13_K45_WE1_Zeit_Steuerungsbetrieb
-    address: 0x9045
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
     # NOTE: conversion 'MultOffset' (factor 10) -> mult10
   - platform: vitohome
     name: "(46) Zuschaltintegral (SR13_K46_WE1_Zuschaltintegral)"
@@ -4140,23 +4494,6 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(48) Abschaltzeitschwelle (SR13_K48_WE1_Abschaltzeitschwelle)"
-    id: SR13_K48_WE1_Abschaltzeitschwelle
-    address: 0x9048
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # --- Codierungen / WE2 ---
   # vito: quickcheck
   - platform: vitohome
@@ -4170,23 +4507,6 @@ number:
     device_class: temperature
     min_value: -50
     max_value: 51
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(45) Zeit Steuerungsbetrieb (SR13_K45_WE2_Zeit_Steuerungsbetrieb)"
-    id: SR13_K45_WE2_Zeit_Steuerungsbetrieb
-    address: 0x9145
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
     step: 1
     mode: box
     disabled_by_default: true
@@ -4222,23 +4542,6 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(48) Abschaltzeitschwelle (SR13_K48_WE2_Abschaltzeitschwelle)"
-    id: SR13_K48_WE2_Abschaltzeitschwelle
-    address: 0x9148
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # --- Codierungen / WE3 ---
   # vito: quickcheck
   - platform: vitohome
@@ -4252,23 +4555,6 @@ number:
     device_class: temperature
     min_value: -50
     max_value: 51
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(45) Zeit Steuerungsbetrieb (SR13_K45_WE3_Zeit_Steuerungsbetrieb)"
-    id: SR13_K45_WE3_Zeit_Steuerungsbetrieb
-    address: 0x9245
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
     step: 1
     mode: box
     disabled_by_default: true
@@ -4304,23 +4590,6 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(48) Abschaltzeitschwelle (SR13_K48_WE3_Abschaltzeitschwelle)"
-    id: SR13_K48_WE3_Abschaltzeitschwelle
-    address: 0x9248
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # --- Codierungen / WE4 ---
   # vito: quickcheck
   - platform: vitohome
@@ -4334,23 +4603,6 @@ number:
     device_class: temperature
     min_value: -50
     max_value: 51
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(45) Zeit Steuerungsbetrieb (SR13_K45_WE4_Zeit_Steuerungsbetrieb)"
-    id: SR13_K45_WE4_Zeit_Steuerungsbetrieb
-    address: 0x9345
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
     step: 1
     mode: box
     disabled_by_default: true
@@ -4386,23 +4638,6 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(48) Abschaltzeitschwelle (SR13_K48_WE4_Abschaltzeitschwelle)"
-    id: SR13_K48_WE4_Abschaltzeitschwelle
-    address: 0x9348
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # --- Codierungen / WE5 ---
   # vito: quickcheck
   - platform: vitohome
@@ -4416,23 +4651,6 @@ number:
     device_class: temperature
     min_value: -50
     max_value: 51
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(45) Zeit Steuerungsbetrieb (SR13_K45_WE5_Zeit_Steuerungsbetrieb)"
-    id: SR13_K45_WE5_Zeit_Steuerungsbetrieb
-    address: 0x9445
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
     step: 1
     mode: box
     disabled_by_default: true
@@ -4468,23 +4686,6 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(48) Abschaltzeitschwelle (SR13_K48_WE5_Abschaltzeitschwelle)"
-    id: SR13_K48_WE5_Abschaltzeitschwelle
-    address: 0x9448
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # --- Codierungen / WE6 ---
   # vito: quickcheck
   - platform: vitohome
@@ -4498,23 +4699,6 @@ number:
     device_class: temperature
     min_value: -50
     max_value: 51
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(45) Zeit Steuerungsbetrieb (SR13_K45_WE6_Zeit_Steuerungsbetrieb)"
-    id: SR13_K45_WE6_Zeit_Steuerungsbetrieb
-    address: 0x9545
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
     step: 1
     mode: box
     disabled_by_default: true
@@ -4550,23 +4734,6 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(48) Abschaltzeitschwelle (SR13_K48_WE6_Abschaltzeitschwelle)"
-    id: SR13_K48_WE6_Abschaltzeitschwelle
-    address: 0x9548
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # --- Codierungen / WE7 ---
   # vito: quickcheck
   - platform: vitohome
@@ -4580,23 +4747,6 @@ number:
     device_class: temperature
     min_value: -50
     max_value: 51
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(45) Zeit Steuerungsbetrieb (SR13_K45_WE7_Zeit_Steuerungsbetrieb)"
-    id: SR13_K45_WE7_Zeit_Steuerungsbetrieb
-    address: 0x9645
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
     step: 1
     mode: box
     disabled_by_default: true
@@ -4632,23 +4782,6 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(48) Abschaltzeitschwelle (SR13_K48_WE7_Abschaltzeitschwelle)"
-    id: SR13_K48_WE7_Abschaltzeitschwelle
-    address: 0x9648
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # --- Codierungen / WE8 ---
   # vito: quickcheck
   - platform: vitohome
@@ -4662,23 +4795,6 @@ number:
     device_class: temperature
     min_value: -50
     max_value: 51
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(45) Zeit Steuerungsbetrieb (SR13_K45_WE8_Zeit_Steuerungsbetrieb)"
-    id: SR13_K45_WE8_Zeit_Steuerungsbetrieb
-    address: 0x9745
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
     step: 1
     mode: box
     disabled_by_default: true
@@ -4714,58 +4830,7 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(48) Abschaltzeitschwelle (SR13_K48_WE8_Abschaltzeitschwelle)"
-    id: SR13_K48_WE8_Abschaltzeitschwelle
-    address: 0x9748
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # --- Codierungen / Kaskade ---
-  # vito: circuit=cascade quickcheck
-  - platform: vitohome
-    name: "(30) Zuschaltschwelle Energieerzeuger am Puffer"
-    id: SR13_K30_Zuschaltschwelle_EE_Puffer
-    address: 0x5730
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=cascade quickcheck
-  - platform: vitohome
-    name: "(31) Notbetrieb Kaskade"
-    id: SR13_K31_Notbetrieb
-    address: 0x5731
-    length: 1
-    converter: noconv
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # vito: circuit=cascade quickcheck
   - platform: vitohome
     name: "(32) Pufferladesystem (Anzahl Sensoren)"
@@ -4821,24 +4886,6 @@ number:
     unit_of_measurement: "K"
     min_value: 0
     max_value: 255
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=cascade quickcheck
-  - platform: vitohome
-    name: "(57) Max. Temperaturaufschaltung Kaskade auf Kessel in% des Anlagensollwerts"
-    id: SR13_K57_KonfiMaxTemperaturaufschaltung
-    address: 0x5757
-    length: 1
-    converter: noconv
-    unit_of_measurement: "%"
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
     step: 1
     mode: box
     disabled_by_default: true
@@ -5180,57 +5227,6 @@ number:
     unit_of_measurement: "%/K"
     min_value: 0
     max_value: 255
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(20) Nachstellzeit Hydraulische Weiche"
-    id: NRx_KonfiHWPuReglernachstellzeit
-    address: 0x7720
-    length: 1
-    converter: noconv
-    unit_of_measurement: "s"
-    device_class: duration
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(22) Vorhaltezeit Hydraulische Weiche"
-    id: NRx_KonfiHWPuVorhaltezeit
-    address: 0x7722
-    length: 1
-    converter: noconv
-    unit_of_measurement: "s"
-    device_class: duration
-    # Borders absent, or out of range for this byte width, in
-    # the export. These placeholders pass `esphome config` but
-    # pin the value to 0 - set real min/max/step before use.
-    min_value: 0
-    max_value: 0
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  - platform: vitohome
-    name: "(8B) EEPROM Status"
-    id: K8B_KonfiEEPROM_Status
-    address: 0x778B
-    length: 1
-    converter: noconv
-    min_value: 0
-    max_value: 0
     step: 1
     mode: box
     disabled_by_default: true
