@@ -178,10 +178,14 @@ The two families share every `physical`, `xram`, `port` and most `eeprom` and
 - **All-`0xFF` warning.** Fires after 8 consecutive all-`0xFF` answers. In a
   full catalog the `be` reads are interleaved with real ones, so it does not
   fire there.
-- **Known issue: link status flaps.** Three timeouts in a row mark the link
-  offline. Consecutive silent datapoints (the fault history at `0xA0`, `0xAA`
-  and `0xB4` is `kmbus_eeprom`) did that about 14 times in 6.5 minutes on
-  #35, although the unit kept sending ENQs and answering other reads.
+- **Link status.** Three timeouts in a row mark the link offline, but only
+  timeouts of a request that never went out because no ENQ came
+  (`GWGEngine::lastTimeoutWasUnsynced()`). A request the unit took and did
+  not answer is a datapoint it does not serve and leaves the link state
+  alone. Before this, consecutive silent datapoints (the fault history at
+  `0xA0`, `0xAA` and `0xB4` is `kmbus_eeprom`) published the link offline
+  about 14 times in 6.5 minutes on #35, although the unit kept sending ENQs
+  and answering other reads. Not yet confirmed on hardware.
 
 ## Open questions
 

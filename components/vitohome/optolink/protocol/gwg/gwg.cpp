@@ -38,6 +38,7 @@ bool GWGEngine::read(uint16_t address, uint8_t length, GWGAccessMode access) {
     _eepromLength = eeprom ? length : 0;
     _eepromIndex = 0;
     _eepromUnserved = false;
+    _timeoutUnsynced = false;
     _retryUnburst = false;
     _busy = true;
     _requestTime = _currentMillis;
@@ -65,6 +66,7 @@ bool GWGEngine::write(uint16_t address, const uint8_t *data, uint8_t length, GWG
     _currentLength = length;
     _eepromPairs = false;  // EEPROM writes keep their single-frame layout
     _eepromUnserved = false;
+    _timeoutUnsynced = false;
     _retryUnburst = false;
     _busy = true;
     _requestTime = _currentMillis;
@@ -93,6 +95,7 @@ bool GWGEngine::telegram(uint8_t type, uint16_t address, uint8_t length, const u
     _currentLength = length;
     _eepromPairs = false;
     _eepromUnserved = false;
+    _timeoutUnsynced = false;
     _retryUnburst = false;
     _busy = true;
     _requestTime = _currentMillis;
@@ -134,6 +137,9 @@ void GWGEngine::loop() {
       break;
   }
   if (_busy && _currentMillis - _requestTime > _requestTimeoutMs()) {
+    // Still in INIT: no ENQ came for this request (or for its retry), so it
+    // never went out. See lastTimeoutWasUnsynced().
+    _timeoutUnsynced = _state == State::INIT;
     _setState(State::INIT);
     _tryOnError(OptolinkResult::TIMEOUT);
   }

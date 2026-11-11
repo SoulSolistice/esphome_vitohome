@@ -106,8 +106,10 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // the timeout streak; malformed traffic (ERROR/CRC/LENGTH) proves nothing
   // and is ignored. OFFLINE is published after LINK_OFFLINE_AFTER_ERRORS
   // consecutive timeout/lost-callback observations, or when start-up protocol
-  // verification fails. State is edge-published, so a healthy link does not
-  // publish on every response.
+  // verification fails. Under GWG a timeout counts only when the request never
+  // went out for want of an ENQ: a request the unit took and did not answer is
+  // an address it does not serve, not a link fault. State is edge-published,
+  // so a healthy link does not publish on every response.
 #ifdef USE_BINARY_SENSOR
   // Codegen collects every connectivity binary_sensor and emits ONE static
   // table (see __init__.py::_emit_hub_sensor_tables), so the hub stores a

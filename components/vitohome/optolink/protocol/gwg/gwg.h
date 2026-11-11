@@ -51,6 +51,8 @@ toward the fallback. Late-answer report: bytes arriving after a TIMEOUT are
 reported through onLateAnswer() instead of being dropped unseen. The response
 deadline is a runtime variable (optolink::gwgResponseTimeoutMs). See
 THIRD_PARTY.md #30.
+Timeout kind (2026-11-10): lastTimeoutWasUnsynced() tells a request that never
+went out (no ENQ) from one that went out unanswered. See THIRD_PARTY.md #31.
 */
 
 #pragma once
@@ -314,6 +316,7 @@ class GWGEngine {
         _eepromLength(0),
         _eepromIndex(0),
         _eepromUnserved(false),
+        _timeoutUnsynced(false),
         _busy(false),
         _currentRequest(),
         _responseBuffer{},
@@ -373,6 +376,17 @@ class GWGEngine {
   // read()/write(). THIRD_PARTY.md #25.
   bool lastReadHadUnservedEeprom() const { return _eepromUnserved; }
 
+  // True when the TIMEOUT just reported came from the request watchdog while
+  // the engine was still waiting for an ENQ: the request (or its fresh-ENQ
+  // retry) never went out, because the device is not sending ENQs. False for a
+  // request that went out and was not answered within the response deadline --
+  // the device took it on an ENQ, or within the validity window of one, and
+  // simply does not serve that address. The hub's link monitor counts only
+  // the first kind: three unanswered datapoints in a row are not a dead link
+  // (issue #35). Valid inside the onError callback; reset by the next
+  // read()/write()/telegram(). THIRD_PARTY.md #31.
+  bool lastTimeoutWasUnsynced() const { return _timeoutUnsynced; }
+
   bool begin();
   void loop();
   void end();
@@ -431,6 +445,9 @@ class GWGEngine {
   // Latched FF FF seen in the current EEPROM transaction (see
   // lastReadHadUnservedEeprom()).
   bool _eepromUnserved;
+  // The last TIMEOUT fired while waiting for an ENQ (see
+  // lastTimeoutWasUnsynced()).
+  bool _timeoutUnsynced;
   bool _busy;
   PacketGWG _currentRequest;
   std::array<uint8_t, kResponseBufferSize> _responseBuffer;

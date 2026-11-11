@@ -92,6 +92,11 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTO
   proof_gwg_burst.cpp "${SRCS[@]}" -o gwg_burst
 ./gwg_burst
 
+echo "== GWG timeout kind: no ENQ versus an unanswered datapoint (THIRD_PARTY.md #31) =="
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
+  proof_gwg_timeout_kind.cpp "${SRCS[@]}" -o gwg_timeout_kind
+./gwg_timeout_kind
+
 echo "== GWG write access modes (EEPROM/BE; KMBUS refused) =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
   proof_gwg_write_access.cpp "${SRCS[@]}" -o gwg_write_access

@@ -782,13 +782,24 @@ These are intentional divergences from upstream `edc059a7`:
     Proof: `proof_gwg_burst.cpp` sections (4), (5), (7), (9), (10) and
     (11).
 
+31. **GWG timeout kind made observable (additive accessor, no wire change,
+    issue #35).** A GWG `TIMEOUT` has two causes the callback did not tell
+    apart: no ENQ came, so the request (or its fresh-ENQ retry) never went
+    out; or the request went out and was not answered, which is how a GWG
+    unit treats an address it does not serve. The hub counted both toward
+    "link offline", so three silent datapoints in a row published the link
+    offline on a unit that was sending ENQs throughout.
+    `lastTimeoutWasUnsynced()` is true only for the first kind: the request
+    watchdog expired with the engine still in INIT. Valid inside `onError`;
+    reset by the next request. Proof: `proof_gwg_timeout_kind.cpp`.
+
 Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29 and 30 are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16 are structural (no behavior change from any call
 site that exists -- item 16 alters bytes only on a RESPONSE-construction path
 nothing exercises); item 17 changes only construction-failure handling
 (abort -> fail-soft), not protocol or normal-path behavior; item 20 is a
-read-only diagnostic that emits nothing, and item 25 an additive accessor that
-changes no delivered byte; item 23 is confined to the host test
+read-only diagnostic that emits nothing, and items 25 and 31 are additive
+accessors that change no delivered byte; item 23 is confined to the host test
 branch of `optolink_millis()` and cannot reach a device build. Everything else
 preserves upstream protocol behavior. Each of items 7-12, 18 and 19 is covered by a host proof
 that fails against the upstream code (item 18:
