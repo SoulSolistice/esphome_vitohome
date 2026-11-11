@@ -268,7 +268,7 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // it is for finding out how long a datapoint takes to answer, after which the
   // default goes back in.
   //
-  //   id(vito).set_gwg_response_timeout_ms(1500);   // a test
+  //   id(vito).set_gwg_response_timeout_ms(700);    // a test, under the idle-ENQ gap
   //   id(vito).set_gwg_response_timeout_ms(250);    // the default again
   //
   // Compiles and is accepted on every build; only the GWG engine reads it.

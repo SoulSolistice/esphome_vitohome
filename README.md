@@ -377,12 +377,14 @@ You normally will not write these by hand: `scripts/gen_catalog.py` reads the
 access mode out of Vitosoft's own `FCRead` field and emits `access:` on every
 entity when generating for a `GWG_*` device token.
 
-Only `physical` has been seen on this project's hardware. The other bytes come
-from the openv wiki's `Protokoll-GWG` table, and all but `kmbus_ram` (`0x33`)
-are corroborated twice over — by vcontrold's GWG macros and by Vitosoft, which
-between them poll `virtual`, `eeprom`, `port`, `xram`, `be` and `kmbus_eeprom`
-on real units. Details, the full TYPE-byte table and the per-mode evidence are
-in [`docs/design_notes.md`](docs/design_notes.md#gwg-access-modes-access).
+The TYPE bytes come from the openv wiki's `Protokoll-GWG` table, and all but
+`kmbus_ram` (`0x33`) are corroborated twice over — by vcontrold's GWG macros and
+by Vitosoft. On the units reported so far, `physical`, `virtual`, `eeprom`,
+`xram` and `port` answer; `be` answers `0xFF` everywhere and `kmbus_eeprom` not
+at all. What each mode did on which unit, and what is still open, is in
+[`docs/gwg_protocol.md`](docs/gwg_protocol.md). The full TYPE-byte table and
+the reasoning are in
+[`docs/design_notes.md`](docs/design_notes.md#gwg-access-modes-access).
 
 ### P300 only: `access: rpc`
 
