@@ -286,7 +286,7 @@ terminates the string, trailing spaces are trimmed, and any non-printable byte
 becomes `?`, so a bad read yields a safe string rather than control characters.
 Used for part and serial numbers.
 
-**UTF-16** (`type: utf16`): the payload is a UTF-16LE byte-string decoded to UTF-8 (Vitosoft `HexByte2UTF16Byte`). `length` is the field width in **bytes** and must be even; a `0x0000` unit terminates, `0xFFFF` fill is skipped, and trailing spaces are trimmed. Used for the editable heating-circuit labels (`Beschriftung_HK1..3`), emitted read-only (display); round-trip editing would need a `text:` platform with a UTF-16 encode path.
+**UTF-16** (`type: utf16`): the payload is a UTF-16LE byte-string decoded to UTF-8 (Vitosoft `HexByte2UTF16Byte`). `length` is the field width in **bytes** and must be even; a `0x0000` or `0xFFFF` unit terminates, and trailing spaces are trimmed. With `byte_offset: 2` the block's first two bytes are `0x00` and the label's length in characters, and that count bounds the decode: the fill after the label is not one pattern (a run of `0xFF`, or `FF 00 00 FF` repeated, which forms no `0xFFFF` unit). Used for the editable heating-circuit labels (`Beschriftung_HK1..3`), emitted read-only (display); round-trip editing would need a `text:` platform with a UTF-16 encode path.
 
 **Bit** (`binary_sensor`): `bit_mask` selects which bit of the addressed byte
 drives the state; `length` sizes the read.

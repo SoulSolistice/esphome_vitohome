@@ -709,7 +709,7 @@ inline int decode_ascii(const uint8_t *data, std::size_t data_len, uint8_t len, 
 // Decode `len` bytes of UTF-16LE (Vitosoft "HexByte2UTF16Byte") to UTF-8.
 // Used by the editable heating-circuit labels Beschriftung_HK1..3 (0x7360..,
 // 40 bytes = 20 code units). `len` must be even. Each code unit is data[2i] |
-// data[2i+1]<<8; 0x0000 terminates and 0xFFFF (empty-slot fill) is skipped.
+// data[2i+1]<<8; 0x0000 and 0xFFFF (fill) terminate; see utf16_label_bytes() for the count.
 // BMP only -- a surrogate (0xD800..0xDFFF) is emitted as '?'. Trailing spaces
 // are trimmed. out_cap must allow up to 3 UTF-8 bytes per unit + NUL. Returns
 // the byte count written (excluding the NUL), or -1 on bad args.
@@ -756,6 +756,28 @@ inline int decode_utf16(const uint8_t *data, std::size_t data_len, uint8_t len, 
     n--;  // trim trailing space padding
   out[n] = '\0';
   return static_cast<int>(n);
+}
+
+// How many bytes of a heating-circuit label to decode. The label block
+// (Beschriftung_HK1..3, 42 bytes) opens with 0x00 and the label's length in
+// CHARACTERS, then the UTF-16LE label at offset 2: "Heizkreis 1" is
+// 00:0B:48:00:65:00... on every read on record. What follows the label is
+// fill, and the fill is not one pattern: thirteen 0xFF then 0x00 (2026-07-10),
+// FF:00:00:FF repeated (2026-11-11, VScotHO1_72). The second never forms the
+// 0xFFFF unit decode_utf16() stops at, and published "Heizkreis 1ÿ＀ÿ＀ÿ＀ÿ". The
+// count is the one boundary both reads agree on.
+//
+// `block` is the whole response, `field_off` / `field_width` the label's slice
+// in it. Returns the byte count to decode: twice the count when the field sits
+// at offset 2 behind a 0x00 and a count that fits the field, else field_width
+// unchanged (the terminator rules of decode_utf16() then decide). 0 means an
+// empty label.
+inline uint8_t utf16_label_bytes(const uint8_t *block, std::size_t block_len, std::size_t field_off,
+                                 uint8_t field_width) {
+  if (block == nullptr || field_off != 2 || block_len < 2 || block[0] != 0x00)
+    return field_width;
+  const unsigned bytes = 2u * block[1];
+  return bytes <= field_width ? static_cast<uint8_t>(bytes) : field_width;
 }
 
 // ---------------------------------------------------------------------------
