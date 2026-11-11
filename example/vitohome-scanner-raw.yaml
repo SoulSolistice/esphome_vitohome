@@ -30,8 +30,8 @@
 #                  also need `unsafe_raw_writes: true`, deliberately not set.
 #
 # GWG units: set `protocol: GWG` and pass the access mode as the last argument,
-# e.g. queue_raw_read(0x05, 1, optolink::GWGAccessMode::EEPROM) or
-# queue_raw_write(0x05, bytes, optolink::GWGAccessMode::EEPROM). Modes:
+# e.g. queue_raw_read(0x05, 1, vitohome::optolink::GWGAccessMode::EEPROM) or
+# queue_raw_write(0x05, bytes, vitohome::optolink::GWGAccessMode::EEPROM). Modes:
 # PHYSICAL (default), VIRTUAL, EEPROM, XRAM, PORT, BE, KMBUS_RAM, KMBUS_EEPROM --
 # the catalog's `access:` value for that datapoint. RPC and GFA reads do not
 # exist there.
