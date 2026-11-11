@@ -324,8 +324,15 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   bool queue_raw_op(RawLayer layer, uint8_t code, uint16_t address, uint8_t length, const uint8_t *payload = nullptr);
 
  protected:
+  // What has the bus: the one operation in flight, and whose it is. One value
+  // answers both "is the bus free" and "who gets the callback"; it used to be
+  // spread over an entity pointer, an operation type and one bool each for
+  // identification and the raw console, which allowed combinations that mean
+  // nothing (an entity with no operation, two owners at once) and needed a
+  // branch to clean them up.
   enum class OpType : uint8_t {
-    NONE,
+    NONE,  // nothing in flight
+    // An entity operation: in_flight_ is the entity.
     READ,
     WRITE,
     // First half of a bit-field write: the read of the byte that the merged
@@ -333,6 +340,10 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
     // write_queue_ and write_in_flight_ is set), so every completion path
     // treats its failure as a failed write. See rmw_pending_.
     RMW_READ,
+    // The hub's own: an identification read, a raw-console operation. No
+    // entity.
+    IDENT,
+    RAW,
   };
 
   // One-shot device identification, run immediately after protocol start-up:
@@ -373,12 +384,15 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   void dispatch_next_();
 
   // Attempt to dispatch the current raw front item. The operation is removed
-  // atomically only after the protocol engine accepted it.
-  //
-  // RingBuffer::consume_front_if() keeps the observed front stable across the
-  // engine hand-off. The engine copies a write payload into its own packet
-  // synchronously, so no RawOp reference escapes that operation.
+  // only after the protocol engine accepted it: peek, hand over, remove. The
+  // engine copies a write payload into its own packet synchronously, so no
+  // RawOp reference escapes that operation.
   void dispatch_raw_front_();
+  // The same hand-off for the two entity lanes. dispatch_write_front_()
+  // returns whether the write lane held anything (dispatched, dropped, or
+  // still waiting for the engine): reads do not go ahead of a waiting write.
+  bool dispatch_write_front_();
+  void dispatch_read_front_();
 
   void schedule_due_entities_();
 
@@ -480,8 +494,6 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
                   uint8_t parameter_len = 0);
   bool send_write_(uint16_t address, const uint8_t *data, uint8_t length, AddressSpace space,
                    const uint8_t *parameter = nullptr, uint8_t parameter_len = 0);
-
-  bool ident_in_flight_{false};
 
  private:
   ESPHomeUARTInterface iface_;
@@ -592,13 +604,33 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   RingBuffer<VitoEntityBase *> read_queue_;
   RingBuffer<VitoEntityBase *> write_queue_;
 
-  VitoEntityBase *in_flight_{nullptr};
+  // The operation in flight (OpType) and, for an entity operation, its
+  // entity. Written only by set_in_flight_() and take_in_flight_(), so the two
+  // cannot disagree.
   OpType in_flight_op_{OpType::NONE};
+  VitoEntityBase *in_flight_{nullptr};
   uint32_t in_flight_started_ms_{0};
   // The watchdog budget of the operation in flight (in_flight_watchdog_ms()).
   uint32_t in_flight_watchdog_ms_{IN_FLIGHT_WATCHDOG_MS};
   // Start the watchdog for an operation of `telegrams` telegrams.
   void arm_watchdog_(uint8_t telegrams = 1);
+  // The engine has accepted a telegram: record whose it is and start its
+  // watchdog. `entity` is given for READ / WRITE / RMW_READ and for nothing
+  // else.
+  void set_in_flight_(OpType operation, VitoEntityBase *entity = nullptr, uint8_t telegrams = 1) {
+    this->in_flight_op_ = operation;
+    this->in_flight_ = entity;
+    this->arm_watchdog_(telegrams);
+  }
+  // The operation in flight has ended (answer, error, watchdog): free the bus
+  // and return what it was, with its entity in `entity`.
+  OpType take_in_flight_(VitoEntityBase *&entity) {
+    const OpType operation = this->in_flight_op_;
+    entity = this->in_flight_;
+    this->in_flight_op_ = OpType::NONE;
+    this->in_flight_ = nullptr;
+    return operation;
+  }
 
   // --- read-modify-write (bit fields and whole blocks) ------------------------
   //
@@ -751,7 +783,6 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   RingBuffer<RawOp> raw_queue_;
 
-  bool raw_in_flight_{false};
   bool raw_is_write_{false};
   AddressSpace raw_space_{AddressSpace::OWN};
   RawLayer raw_layer_{RawLayer::NONE};

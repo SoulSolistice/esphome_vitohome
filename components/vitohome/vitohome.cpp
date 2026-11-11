@@ -211,7 +211,7 @@ void VitoHomeComponent::setup() {
   // On P300 `address` is the one echoed in the device's own response frame (a
   // real wire-level datum); on KW/GWG the engine echoes the retained request
   // address. The engine is strictly single-in-flight and the hub tracks its own
-  // in-flight context (in_flight_ / ident_in_flight_ / raw_in_flight_), so the
+  // in-flight context (in_flight_op_ and, for an entity, in_flight_), so the
   // callback carries only that address as a wire-level cross-check.
   this->vito_->onResponse([this](const uint8_t *data, uint8_t length, uint16_t address) {
     // A complete valid response proves link liveness and validates the
@@ -421,77 +421,57 @@ void VitoHomeComponent::loop() {
   // the hub slot. The protocol engines have their own shorter timeout, so this
   // is a last-resort guard for a lost callback rather than the normal timeout
   // mechanism.
-  if (this->in_flight_ != nullptr || this->ident_in_flight_ || this->raw_in_flight_) {
+  if (this->in_flight_op_ != OpType::NONE) {
     const uint32_t now = App.get_loop_component_start_time();
 
     if (now - this->in_flight_started_ms_ > this->in_flight_watchdog_ms_) {
       // A lost engine callback is a link-health signal too.
       this->link_note_error_();
 
-      if (this->ident_in_flight_) {
-        ESP_LOGW(TAG, "Identification read exceeded watchdog (%" PRIu32 " ms)", this->in_flight_watchdog_ms_);
+      VitoEntityBase *entity = nullptr;
+      const OpType operation = this->take_in_flight_(entity);
 
-        this->ident_in_flight_ = false;
-        this->ident_handle_error_();
-      } else if (this->raw_in_flight_) {
-        ESP_LOGW(TAG, "Raw %s 0x%04X exceeded watchdog (%" PRIu32 " ms)", this->raw_is_write_ ? "write" : "read",
-                 this->raw_dp_.address(), this->in_flight_watchdog_ms_);
+      switch (operation) {
+        case OpType::IDENT:
+          ESP_LOGW(TAG, "Identification read exceeded watchdog (%" PRIu32 " ms)", this->in_flight_watchdog_ms_);
+          this->ident_handle_error_();
+          break;
 
-        this->raw_in_flight_ = false;
-        this->raw_handle_error_(optolink::OptolinkResult::TIMEOUT);
-      } else {
-        // in_flight_ is known non-null here because the identification and raw
-        // branches were excluded.
-        ESP_LOGW(TAG, "In-flight %s to %s exceeded watchdog (%" PRIu32 " ms). Clearing.",
-                 this->in_flight_op_ == OpType::WRITE      ? "write"
-                 : this->in_flight_op_ == OpType::RMW_READ ? "read-before-write"
-                                                           : "read",
-                 this->in_flight_->get_datapoint().name(), this->in_flight_watchdog_ms_);
+        case OpType::RAW:
+          ESP_LOGW(TAG, "Raw %s 0x%04X exceeded watchdog (%" PRIu32 " ms)", this->raw_is_write_ ? "write" : "read",
+                   this->raw_dp_.address(), this->in_flight_watchdog_ms_);
+          this->raw_handle_error_(optolink::OptolinkResult::TIMEOUT);
+          break;
 
-        VitoEntityBase *entity = this->in_flight_;
-        const OpType operation = this->in_flight_op_;
+        case OpType::READ:
+        case OpType::WRITE:
+        case OpType::RMW_READ:
+          // set_in_flight_() is the only writer of the pair, so an entity
+          // operation always carries its entity.
+          if (entity == nullptr)
+            break;
+          ESP_LOGW(TAG, "In-flight %s to %s exceeded watchdog (%" PRIu32 " ms). Clearing.",
+                   operation == OpType::WRITE      ? "write"
+                   : operation == OpType::RMW_READ ? "read-before-write"
+                                                   : "read",
+                   entity->get_datapoint().name(), this->in_flight_watchdog_ms_);
+          if (operation == OpType::READ) {
+            if (this->rmw_verify_entity_ == entity)
+              this->rmw_verify_entity_ = nullptr;  // the read-back is lost; never verify a later poll
+            entity->read_queued_ = false;
+            entity->handle_error(optolink::OptolinkResult::TIMEOUT);
+          } else if (operation == OpType::WRITE) {
+            if (this->rmw_verify_entity_ == entity)
+              this->rmw_verify_entity_ = nullptr;
+            entity->write_in_flight_ = false;
+            entity->handle_write_error(optolink::OptolinkResult::TIMEOUT);
+          } else {
+            this->rmw_abort_(entity, optolink::OptolinkResult::TIMEOUT, "read-before-write lost (watchdog)");
+          }
+          break;
 
-        this->in_flight_ = nullptr;
-        this->in_flight_op_ = OpType::NONE;
-
-        if (operation == OpType::READ) {
-          if (this->rmw_verify_entity_ == entity)
-            this->rmw_verify_entity_ = nullptr;  // the read-back is lost; never verify a later poll
-          entity->read_queued_ = false;
-          entity->handle_error(optolink::OptolinkResult::TIMEOUT);
-        } else if (operation == OpType::WRITE) {
-          if (this->rmw_verify_entity_ == entity)
-            this->rmw_verify_entity_ = nullptr;
-          entity->write_in_flight_ = false;
-          entity->handle_write_error(optolink::OptolinkResult::TIMEOUT);
-        } else if (operation == OpType::RMW_READ) {
-          this->rmw_abort_(entity, optolink::OptolinkResult::TIMEOUT, "read-before-write lost (watchdog)");
-        } else {
-          // Unreachable against this file as written: in_flight_ and
-          // in_flight_op_ are set together (dispatch_write_/dispatch_read_) and
-          // cleared together (here, on_response_, on_error_), so a non-null
-          // in_flight_ always carries a READ or a WRITE. Kept as defence in
-          // depth because the failure mode is silent and permanent, not noisy
-          // and transient: a dispatched entity has already been popped from its
-          // lane, and BOTH re-queue paths refuse to re-add it while its flag is
-          // set (schedule_due_entities_ counts it as skipped; queue_read_
-          // returns early as "already pending"). So a flag left set here would
-          // strand that entity until reboot, with this one ERROR line as the
-          // only trace.
-          //
-          // Clearing both flags is safe precisely because the state is
-          // contradictory: whichever lane the entity was really in, its flag is
-          // now false and the scheduler can re-queue it on the next due tick.
-          // The cost of guessing wrong is one skipped poll; the cost of not
-          // guessing is a dead entity. No handle_error() call, deliberately --
-          // this is not a protocol timeout to report to the entity, it is an
-          // internal bookkeeping fault, and the entity has no in-flight
-          // operation to fail.
-          ESP_LOGE(TAG, "watchdog found %s in flight with no operation type; clearing lane flags",
-                   entity->get_datapoint().name());
-          entity->read_queued_ = false;
-          entity->write_in_flight_ = false;
-        }
+        case OpType::NONE:
+          break;
       }
     }
   }
@@ -519,19 +499,21 @@ void VitoHomeComponent::set_gwg_response_timeout_ms(uint32_t ms) {
 }
 
 void VitoHomeComponent::dispatch_raw_front_() {
-  // Keep the front item stable across the engine hand-off and remove it only
-  // if read()/write() accepts it. The engine copies a write payload into its
-  // own fixed packet synchronously inside write().
+  // Peek, hand over to the engine, then remove: the operation stays at the head
+  // of the lane until read()/write() has accepted it. The engine copies a write
+  // payload into its own fixed packet synchronously inside write().
   //
-  // Nothing that can reach a callback runs inside the consumer: it holds the
-  // queue's lock (a non-recursive FreeRTOS mutex on ESP32), and publishing a
-  // result runs the scan_result sensors' automations synchronously -- which
-  // may queue the next raw operation and so take the same lock again, a
-  // deadlock (external review, 2026-10-28). A refusal is noted here and
-  // reported after the lock is released. tests/unit/test_queue_lock_discipline
-  // keeps every consume_front_if body free of such calls.
-  bool refused = false;
-  this->raw_queue_.consume_front_if([this, &refused](const RawOp &operation) {
+  // No lock is held across the hand-off -- each RingBuffer call locks only for
+  // its own duration -- so a refusal is reported straight from here, although
+  // publishing a result runs the scan_result sensors' automations, which may
+  // queue the next raw operation. (The lane's old consume_front_if() ran this
+  // body under the queue's non-recursive mutex, where that was a deadlock;
+  // external review, 2026-10-28.) The head cannot change in between: only this
+  // loop removes from the lane, and a producer on another task appends.
+  RawOp operation{};
+  if (!this->raw_queue_.try_front(operation))
+    return;
+  {
     this->raw_dp_ = optolink::Datapoint("scan", operation.address, operation.length, optolink::noconv);
 
     this->raw_is_write_ = operation.is_write;
@@ -569,15 +551,16 @@ void VitoHomeComponent::dispatch_raw_front_() {
       // nothing in flight for IN_FLIGHT_WATCHDOG_MS to catch. Distinguish the
       // two with isBusy() and drop a permanently-refused op so the lane moves.
       if (this->vito_->isBusy())
-        return false;  // transient: keep the item at the head and retry
+        return;  // transient: keep the item at the head and retry
       ESP_LOGE(TAG, "Engine refused raw %s 0x%04X len %u (permanent); dropping", label, operation.address,
                operation.length);
-      refused = true;
-      return true;  // permanent: drop so the read/write lanes are reached
+      this->raw_queue_.drop_front();  // permanent: drop so the read/write lanes are reached
+      this->raw_handle_error_(optolink::OptolinkResult::ERROR);
+      return;
     }
 
+    this->raw_queue_.drop_front();
     this->raw_write_len_ = operation.is_write ? operation.bytes_len : 0;
-    this->raw_in_flight_ = true;
     // A KW telegram over P300 rides the same detour as a GFA read, so it
     // counts as one for the address-space affinity.
     this->last_space_ = operation.layer == RawLayer::KW && space_has_switch_cost(AddressSpace::GFA) ? AddressSpace::GFA
@@ -586,21 +569,18 @@ void VitoHomeComponent::dispatch_raw_front_() {
     // takes one telegram per address.
     const bool gwg_eeprom_type = operation.layer == RawLayer::GWG &&
                                  operation.code == optolink::gwgReadTypeByte(optolink::GWGAccessMode::EEPROM);
-    this->arm_watchdog_(
+    this->set_in_flight_(
+        OpType::RAW, nullptr,
         operation.is_write
             ? 1
             : read_telegram_count(gwg_eeprom_type ? AddressSpace::GWG_EEPROM : operation.space, operation.length));
 
     ESP_LOGV(TAG, "Dispatched raw %s 0x%04X len %u", label, operation.address, operation.length);
-
-    return true;
-  });
-  if (refused)
-    this->raw_handle_error_(optolink::OptolinkResult::ERROR);
+  }
 }
 
 void VitoHomeComponent::dispatch_next_() {
-  if (this->in_flight_ != nullptr || this->ident_in_flight_ || this->raw_in_flight_)
+  if (this->in_flight_op_ != OpType::NONE)
     return;
 
   // A bit-field write whose byte has just been read goes out before anything
@@ -626,8 +606,7 @@ void VitoHomeComponent::dispatch_next_() {
     constexpr AddressSpace ident_space = IS_GWG ? AddressSpace::GWG_VIRTUAL : AddressSpace::OWN;
     const bool ident_dispatched = this->send_read_(this->ident_dp_.address(), this->ident_dp_.length(), ident_space);
     if (ident_dispatched) {
-      this->ident_in_flight_ = true;
-      this->arm_watchdog_();
+      this->set_in_flight_(OpType::IDENT);
 
       ESP_LOGV(TAG, "Dispatched identification read 0x%04X len %u", this->ident_dp_.address(),
                this->ident_dp_.length());
@@ -659,96 +638,8 @@ void VitoHomeComponent::dispatch_next_() {
     return;
   }
 
-  // Writes preempt reads. The ring keeps the entity stable at the front until
-  // the engine accepts it. As in dispatch_raw_front_(), an entity's error
-  // handler (which may publish, and so run automations that queue a write)
-  // runs only after the queue's lock is released.
-  VitoEntityBase *write_failed = nullptr;
-  const auto write_result = this->write_queue_.consume_front_if([this, &write_failed](VitoEntityBase *entity) {
-    if (entity == nullptr) {
-      // A null entry violates registration/enqueue invariants. Remove it so it
-      // cannot block all later writes.
-      ESP_LOGE(TAG, "null entity in write queue; dropping item");
-      return true;
-    }
-
-    if (entity->needs_rmw()) {
-      // Read first (RMW_READ): the WHOLE write datapoint -- one byte for a plain
-      // bit field, the block in block mode -- at the write address and in the
-      // entity's own access mode, i.e. exactly what the merged write replaces.
-      // Config validation makes the read and the write the same register (no
-      // state_address with a read-modify-write).
-      const optolink::Datapoint &wdp = entity->get_write_datapoint();
-      if (wdp.length() == 0 || wdp.length() > MAX_RMW_BLOCK) {
-        // Unreachable through validated config; fail closed rather than send a
-        // partial block.
-        ESP_LOGE(TAG, "%s: %u-byte read-modify-write exceeds %u bytes; dropping", entity->get_datapoint().name(),
-                 wdp.length(), MAX_RMW_BLOCK);
-        entity->write_queued_ = false;
-        write_failed = entity;
-        return true;
-      }
-      const bool read_ok = this->send_read_(wdp.address(), wdp.length(), entity->space());
-      if (!read_ok) {
-        // Same transient/permanent split as the plain write below.
-        if (this->vito_->isBusy())
-          return false;
-        ESP_LOGE(TAG, "Engine refused read-before-write for %s (permanent); dropping", entity->get_datapoint().name());
-        entity->write_queued_ = false;
-        return true;
-      }
-      this->in_flight_ = entity;
-      this->in_flight_op_ = OpType::RMW_READ;
-      this->arm_watchdog_(read_telegram_count(entity->space(), wdp.length()));
-      entity->write_queued_ = false;
-      entity->write_in_flight_ = true;
-      ESP_LOGV(TAG, "Dispatched read-before-write for %s (%u bytes, bit_mask 0x%02X)", entity->get_datapoint().name(),
-               wdp.length(), entity->field_mask());
-      return true;
-    }
-
-    // One space drives both directions (see VitoEntityBase::space()): a GWG
-    // entity writes in the mode it polls in, as Vitosoft pairs them
-    // (EEPROM_READ, EEPROM_WRITE) / (BE_READ, BE_WRITE). An action
-    // (VitoActionButton) is a procedure call, not a write: the same telegram an
-    // `access: rpc` read sends, here for its effect.
-    const optolink::Datapoint &wdp = entity->get_write_datapoint();
-    const bool write_ok = this->send_write_(wdp.address(), entity->write_data(), entity->write_length(),
-                                            entity->space(), entity->rpc_prefix(), entity->rpc_prefix_len());
-    if (!write_ok) {
-      // Transient (_busy) versus a permanent createPacket() rejection. Config-
-      // declared write addresses/payloads are schema-validated, so the
-      // permanent case is unreachable today; this mirrors the raw-lane guard so
-      // the write lane can never spin on a permanent refusal. Drop it, clear
-      // write_queued_ so a fresh value can enqueue, and log loudly. No
-      // handle_write_error() here: some entities (VitoClock) re-queue on write
-      // error, which would re-add a permanently-refused item and churn.
-      if (this->vito_->isBusy())
-        return false;  // transient: retain at the head
-      ESP_LOGE(TAG, "Engine refused write for %s (permanent); dropping", entity->get_datapoint().name());
-      entity->write_queued_ = false;
-      return true;  // permanent: drop so the read lane is reached
-    }
-
-    this->in_flight_ = entity;
-    this->in_flight_op_ = OpType::WRITE;
-    this->last_space_ = entity->space();
-    this->arm_watchdog_();
-
-    // The entity has left the queue and is now in flight. Clearing
-    // write_queued_ here lets a newer value enqueue while this request waits
-    // for its ACK.
-    entity->write_queued_ = false;
-    entity->write_in_flight_ = true;
-
-    ESP_LOGV(TAG, "Dispatched write for %s (%u bytes)", entity->get_datapoint().name(), entity->write_length());
-
-    return true;
-  });
-
-  if (write_failed != nullptr)
-    write_failed->handle_write_error(optolink::OptolinkResult::LENGTH);
-  if (write_result != RingBuffer<VitoEntityBase *>::ConsumeResult::EMPTY)
+  // Writes preempt reads.
+  if (this->dispatch_write_front_())
     return;
 
   // Poll/read-back lane. read_queued_ remains true after the item leaves the
@@ -765,40 +656,137 @@ void VitoHomeComponent::dispatch_next_() {
     (void) this->read_queue_.move_first_to_front_if(
         [space](VitoEntityBase *e) { return e != nullptr && e->space() == space; });
   }
-  this->read_queue_.consume_front_if([this](VitoEntityBase *entity) {
-    if (entity == nullptr) {
-      ESP_LOGE(TAG, "null entity in read queue; dropping item");
+  this->dispatch_read_front_();
+}
+
+// The two entity lanes hand over the same way as dispatch_raw_front_(): peek at
+// the head, give it to the engine, remove it once the engine has accepted the
+// telegram. An entity the engine is too busy for stays at the head. No lock is
+// held across the hand-off (each RingBuffer call locks only for its own
+// duration), so an entity's error handler -- which may publish, and so run
+// automations that queue a write -- is called straight from here. The head
+// cannot change in between: only the hub's own loop removes from a lane or
+// inserts at its head.
+
+bool VitoHomeComponent::dispatch_write_front_() {
+  VitoEntityBase *entity = nullptr;
+  if (!this->write_queue_.try_front(entity))
+    return false;
+
+  if (entity == nullptr) {
+    // A null entry violates registration/enqueue invariants. Remove it so it
+    // cannot block all later writes.
+    ESP_LOGE(TAG, "null entity in write queue; dropping item");
+    this->write_queue_.drop_front();
+    return true;
+  }
+
+  if (entity->needs_rmw()) {
+    // Read first (RMW_READ): the WHOLE write datapoint -- one byte for a plain
+    // bit field, the block in block mode -- at the write address and in the
+    // entity's own access mode, i.e. exactly what the merged write replaces.
+    // Config validation makes the read and the write the same register (no
+    // state_address with a read-modify-write).
+    const optolink::Datapoint &wdp = entity->get_write_datapoint();
+    if (wdp.length() == 0 || wdp.length() > MAX_RMW_BLOCK) {
+      // Unreachable through validated config; fail closed rather than send a
+      // partial block.
+      ESP_LOGE(TAG, "%s: %u-byte read-modify-write exceeds %u bytes; dropping", entity->get_datapoint().name(),
+               wdp.length(), MAX_RMW_BLOCK);
+      this->write_queue_.drop_front();
+      entity->write_queued_ = false;
+      entity->handle_write_error(optolink::OptolinkResult::LENGTH);
       return true;
     }
-
-    const optolink::Datapoint &datapoint = entity->get_datapoint();
-
-    // The entity's space picks the telegram (send_read_): a GWG access mode,
-    // an `access: rpc` call with its prefix, an `access: gfa` read -- the same
-    // lane and the same response path as a read.
-    const bool dispatched_ok = this->send_read_(datapoint.address(), datapoint.length(), entity->space(),
-                                                entity->rpc_prefix(), entity->rpc_prefix_len());
-    if (!dispatched_ok) {
-      // See the write lane above: transient _busy retains, a permanent
-      // createPacket() rejection (unreachable for schema-validated poll
-      // addresses) is dropped so the lane cannot spin. read_queued_ is cleared
-      // so the poll scheduler can re-schedule it when next due.
+    if (!this->send_read_(wdp.address(), wdp.length(), entity->space())) {
+      // Same transient/permanent split as the plain write below.
       if (this->vito_->isBusy())
-        return false;  // transient: retain at the head
-      ESP_LOGE(TAG, "Engine refused read for %s (permanent); dropping", entity->get_datapoint().name());
-      entity->read_queued_ = false;
-      return true;  // permanent: drop
+        return true;  // transient: stays at the head
+      ESP_LOGE(TAG, "Engine refused read-before-write for %s (permanent); dropping", entity->get_datapoint().name());
+      this->write_queue_.drop_front();
+      entity->write_queued_ = false;
+      return true;
     }
-
-    this->in_flight_ = entity;
-    this->in_flight_op_ = OpType::READ;
-    this->arm_watchdog_(read_telegram_count(entity->space(), datapoint.length()));
-    this->last_space_ = entity->space();
-
-    ESP_LOGV(TAG, "Dispatched read for %s", entity->get_datapoint().name());
-
+    this->write_queue_.drop_front();
+    this->set_in_flight_(OpType::RMW_READ, entity, read_telegram_count(entity->space(), wdp.length()));
+    entity->write_queued_ = false;
+    entity->write_in_flight_ = true;
+    ESP_LOGV(TAG, "Dispatched read-before-write for %s (%u bytes, bit_mask 0x%02X)", entity->get_datapoint().name(),
+             wdp.length(), entity->field_mask());
     return true;
-  });
+  }
+
+  // One space drives both directions (see VitoEntityBase::space()): a GWG
+  // entity writes in the mode it polls in, as Vitosoft pairs them
+  // (EEPROM_READ, EEPROM_WRITE) / (BE_READ, BE_WRITE). An action
+  // (VitoActionButton) is a procedure call, not a write: the same telegram an
+  // `access: rpc` read sends, here for its effect.
+  const optolink::Datapoint &wdp = entity->get_write_datapoint();
+  if (!this->send_write_(wdp.address(), entity->write_data(), entity->write_length(), entity->space(),
+                         entity->rpc_prefix(), entity->rpc_prefix_len())) {
+    // Transient (_busy) versus a permanent createPacket() rejection. Config-
+    // declared write addresses/payloads are schema-validated, so the
+    // permanent case is unreachable today; this mirrors the raw-lane guard so
+    // the write lane can never spin on a permanent refusal. Drop it, clear
+    // write_queued_ so a fresh value can enqueue, and log loudly. No
+    // handle_write_error() here: some entities (VitoClock) re-queue on write
+    // error, which would re-add a permanently-refused item and churn.
+    if (this->vito_->isBusy())
+      return true;  // transient: stays at the head
+    ESP_LOGE(TAG, "Engine refused write for %s (permanent); dropping", entity->get_datapoint().name());
+    this->write_queue_.drop_front();  // permanent: drop so the read lane is reached
+    entity->write_queued_ = false;
+    return true;
+  }
+
+  // The entity has left the queue and is now in flight. Clearing
+  // write_queued_ here lets a newer value enqueue while this request waits
+  // for its ACK.
+  this->write_queue_.drop_front();
+  this->set_in_flight_(OpType::WRITE, entity);
+  this->last_space_ = entity->space();
+  entity->write_queued_ = false;
+  entity->write_in_flight_ = true;
+
+  ESP_LOGV(TAG, "Dispatched write for %s (%u bytes)", entity->get_datapoint().name(), entity->write_length());
+  return true;
+}
+
+void VitoHomeComponent::dispatch_read_front_() {
+  VitoEntityBase *entity = nullptr;
+  if (!this->read_queue_.try_front(entity))
+    return;
+
+  if (entity == nullptr) {
+    ESP_LOGE(TAG, "null entity in read queue; dropping item");
+    this->read_queue_.drop_front();
+    return;
+  }
+
+  const optolink::Datapoint &datapoint = entity->get_datapoint();
+
+  // The entity's space picks the telegram (send_read_): a GWG access mode,
+  // an `access: rpc` call with its prefix, an `access: gfa` read -- the same
+  // lane and the same response path as a read.
+  if (!this->send_read_(datapoint.address(), datapoint.length(), entity->space(), entity->rpc_prefix(),
+                        entity->rpc_prefix_len())) {
+    // See the write lane above: transient _busy retains, a permanent
+    // createPacket() rejection (unreachable for schema-validated poll
+    // addresses) is dropped so the lane cannot spin. read_queued_ is cleared
+    // so the poll scheduler can re-schedule it when next due.
+    if (this->vito_->isBusy())
+      return;  // transient: stays at the head
+    ESP_LOGE(TAG, "Engine refused read for %s (permanent); dropping", entity->get_datapoint().name());
+    this->read_queue_.drop_front();
+    entity->read_queued_ = false;
+    return;
+  }
+
+  this->read_queue_.drop_front();
+  this->set_in_flight_(OpType::READ, entity, read_telegram_count(entity->space(), datapoint.length()));
+  this->last_space_ = entity->space();
+
+  ESP_LOGV(TAG, "Dispatched read for %s", entity->get_datapoint().name());
 }
 
 bool VitoHomeComponent::request_priority_read(VitoEntityBase *entity) {
@@ -1397,15 +1385,15 @@ void VitoHomeComponent::raw_publish_(const char *line) {
 // rider).
 
 void VitoHomeComponent::on_response_(const ResponseView &response, uint16_t request_address) {
-  if (this->ident_in_flight_) {
-    this->ident_in_flight_ = false;
+  VitoEntityBase *entity = nullptr;
+  const OpType operation = this->take_in_flight_(entity);
+
+  if (operation == OpType::IDENT) {
     this->ident_handle_response_(response);
     return;
   }
 
-  if (this->raw_in_flight_) {
-    this->raw_in_flight_ = false;
-
+  if (operation == OpType::RAW) {
     // P300 carries a real response address. KW/GWG echo the request address, so
     // the same check is harmless there. Reject a mismatched raw response rather
     // than publishing or feeding it into the clock state machine.
@@ -1419,12 +1407,6 @@ void VitoHomeComponent::on_response_(const ResponseView &response, uint16_t requ
     this->raw_handle_response_(response);
     return;
   }
-
-  VitoEntityBase *entity = this->in_flight_;
-  const OpType operation = this->in_flight_op_;
-
-  this->in_flight_ = nullptr;
-  this->in_flight_op_ = OpType::NONE;
 
   if (entity == nullptr) {
     ESP_LOGW(TAG, "Response received for 0x%04X but no in-flight request", request_address);
@@ -1610,9 +1592,7 @@ void VitoHomeComponent::rmw_dispatch_write_() {
     return;
   }
   this->rmw_pending_ = nullptr;
-  this->in_flight_ = entity;
-  this->in_flight_op_ = OpType::WRITE;
-  this->arm_watchdog_();
+  this->set_in_flight_(OpType::WRITE, entity);
   // From here the ordinary WRITE completion paths apply (ACK, read-back,
   // supersede, error, watchdog). Arm the read-back check.
   this->rmw_verify_entity_ = entity;
@@ -1916,26 +1896,20 @@ void VitoHomeComponent::note_poll_answer_(VitoEntityBase *entity) {
 }
 
 void VitoHomeComponent::on_error_(optolink::OptolinkResult error, uint16_t request_address) {
-  if (this->ident_in_flight_) {
-    this->ident_in_flight_ = false;
+  VitoEntityBase *entity = nullptr;
+  const OpType operation = this->take_in_flight_(entity);
 
+  if (operation == OpType::IDENT) {
     ESP_LOGD(TAG, "Identification read 0x%04X failed (%s)", request_address, optolink::errorToString(error));
 
     this->ident_handle_error_();
     return;
   }
 
-  if (this->raw_in_flight_) {
-    this->raw_in_flight_ = false;
+  if (operation == OpType::RAW) {
     this->raw_handle_error_(error);
     return;
   }
-
-  VitoEntityBase *entity = this->in_flight_;
-  const OpType operation = this->in_flight_op_;
-
-  this->in_flight_ = nullptr;
-  this->in_flight_op_ = OpType::NONE;
 
   // Name for the log line: the in-flight entity's datapoint when there is one,
   // else the echoed request address for a stray callback.

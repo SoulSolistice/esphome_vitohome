@@ -1184,12 +1184,29 @@ bookkeeping flags is not enough — the entity must hear about it.
 (a second call is rejected, `reserve(0)` permanently initializes an unused
 lane; a *failed* allocation leaves it uninitialized so `setup()` can
 `mark_failed()`), and a reference-returning `front()`/`pop_front()` pair is not
-exposed — a reference could escape the lock, and a separate peek-then-pop is a
-race under concurrency. Instead: `try_front()`/`try_pop_front()` copy under one
-lock, and **`consume_front_if(consumer)`** implements the dispatch hand-off —
-it holds the lock while the hub offers the front item to the protocol engine
-and removes it only if the engine accepted (`EMPTY`/`RETAINED`/`REMOVED`). The
-consumer must not call back into the same ring: the mutex is non-recursive.
+exposed — a reference could escape the lock. Instead `try_front()` and
+`try_pop_front()` copy under one lock.
+
+The dispatch hand-off is **`try_front()` then `drop_front()`**: the hub looks
+at the head of a lane, offers it to the protocol engine, and removes it once
+the engine has accepted it; an item the engine is too busy for stays at the
+head. No lock is held between the two calls, so whatever the hand-off triggers
+(an error handler, a publish, an automation queueing the next item) can use
+the same ring. Peek-then-drop is a race only with a second consumer, and there
+is none: one loop removes from a lane or changes its head (`push_front`,
+`move_to_front`, `remove`), and a producer on another task can only append,
+which never changes the head of a non-empty lane.
+
+This replaced `consume_front_if(consumer)`, which ran the hand-off under the
+lock. It guarded against a second consumer that does not exist, and cost a
+non-recursive mutex held across engine calls: a FAILED raw result published
+from inside it deadlocked when an automation queued the next raw operation
+(external review, 2026-10-28), after which a source-scanning test had to keep
+every consumer free of calls leading out of the hub. That test
+(`tests/unit/test_queue_lock_discipline.py`) now checks that the locked
+hand-off stays gone and that the one remaining locked predicate
+(`move_first_to_front_if`) stays clean.
+
 Every mutating call is `[[nodiscard]]`; a rejected push **must roll back its
 companion bookkeeping** (`read_queued_`/`write_queued_`) rather than leave an
 entity marked queued but absent — the scheduler, `request_write()` and the
@@ -1217,7 +1234,8 @@ entity-lane invariants (flag *and* queue updated together) multi-task-safe;
 entity control paths must stay on the ESPHome loop. Not ISR-safe by design.
 Semantics are pinned in `tests/native/proof_ring_buffer.cpp` under ASan/UBSan
 (one-shot reserve, FIFO, wraparound, `push_front`, full-rejection,
-`consume_front_if` outcomes, POD round-trip, the hub dispatch pattern,
+the `try_front`/`drop_front` hand-off and its outcomes, re-entry from inside
+it, `remove`, POD round-trip, the hub dispatch pattern,
 `move_to_front` including across the wrap and the read-back-behind-a-poll
 scenario, negative-controlled).
 
@@ -2567,11 +2585,16 @@ elsewhere in this file as obligations rather than as tested facts:
    by the structure of `handle_read_()` (drop to `IDLE` first, re-arm to
    `WRITING` only on the success path) and stated as an editing contract at the
    top of that function.
-2. **The hub's `in_flight_` / `in_flight_op_` pairing** — the two are set
-   together and cleared together on every path, so the watchdog's
-   "no operation type" branch is unreachable. That branch no longer *depends* on
-   the invariant holding: it clears both lane flags, so a violation costs one
-   skipped poll instead of stranding the entity until reboot.
+2. **The hub's in-flight state** — who has the bus is one value,
+   `in_flight_op_` (`OpType`: an entity's read, write or read-before-write,
+   an identification read, a raw-console operation, or nothing), plus the
+   entity for the first three. It used to be an entity pointer, an operation
+   type and one bool each for identification and the raw console, set and
+   cleared on every path by hand; the watchdog carried a branch for the
+   combinations that mean nothing. Now `set_in_flight_()` and
+   `take_in_flight_()` are the only writers, so the pair cannot disagree, and
+   that branch is gone. `tests/unit/test_queue_lock_discipline.py` fails if
+   the hub's source assigns either field directly.
 
 3. **Read-modify-write atomicity** (§5b, bit fields and whole blocks) --
    between an `RMW_READ` response and the dispatch of its merged write,

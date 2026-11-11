@@ -109,7 +109,7 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" \
 
 # Ring-buffer proof: the fixed-capacity, task-synchronized ring that replaced
 # the three std::deque run-loop queues (read/write/raw). One-shot reserve() +
-# FIFO + push_front + consume_front_if + wraparound + full-drop must hold, and
+# FIFO + push_front + the try_front/drop_front hand-off + wraparound + full-drop must hold, and
 # a bad modulo would be an out-of-bounds slot access under ASan.
 # -DVITOHOME_NATIVE_TEST selects the header's no-op host mutex stand-in
 # (device builds use the real esphome::Mutex; ESPHome headers are not on the

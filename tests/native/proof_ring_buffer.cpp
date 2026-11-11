@@ -16,9 +16,11 @@
 //   - the clock-sync chain rides the entity lanes without ever being droppable:
 //     push_front() puts the sync read ahead of pending polls, and a lane sized
 //     to entities_.size() always has the clock's own slot (vito_clock.h),
-//   - consume_front_if() returns EMPTY / RETAINED / REMOVED and removes the
-//     front item exactly when the consumer accepted it -- the hub's dispatch
-//     hand-off (engine busy = RETAINED and retried; accepted = REMOVED),
+//   - the hub's dispatch hand-off, try_front() + drop_front() (hand_off()
+//     below), removes the front item exactly when the engine accepted it
+//     (engine busy = RETAINED and retried; accepted = REMOVED), and holds no
+//     lock while the engine is asked, so the hand-off may queue onto the same
+//     ring,
 //   - the head/tail wraparound arithmetic is correct across the modulo
 //     boundary,
 //   - a POD struct element (like RawOp) round-trips by trivial copy,
@@ -60,6 +62,22 @@ static void check(bool ok, const char *what) {
     ++g_fail;
 }
 
+// The hub's dispatch hand-off (vitohome.cpp, dispatch_raw_front_() and
+// dispatch_*_front_()): look at the head, offer it to the engine, remove it
+// only if the engine took it. `accept` stands for the engine and runs with NO
+// queue lock held -- the point of the pattern, and the difference from the
+// consume_front_if() it replaced.
+enum class Handoff { EMPTY, RETAINED, REMOVED };
+template<typename T, typename Accept> static Handoff hand_off(RingBuffer<T> &q, Accept &&accept) {
+  T value{};
+  if (!q.try_front(value))
+    return Handoff::EMPTY;
+  if (!accept(value))
+    return Handoff::RETAINED;
+  q.drop_front();
+  return Handoff::REMOVED;
+}
+
 // A POD stand-in for RawOp: exercises trivial-copy of a struct element, not
 // just a pointer/scalar.
 struct Op {
@@ -76,8 +94,7 @@ static void test_unreserved() {
   check(q.empty() && q.full() && q.size() == 0 && q.capacity() == 0, "unreserved buffer is empty, full, capacity 0");
   check(!q.push_back(1) && !q.push_front(2), "every push is rejected before reserve()");
   check(!q.try_front(out) && !q.try_pop_front(out) && out == -1, "try_front/try_pop_front reject and leave out alone");
-  check(q.consume_front_if([](int) { return true; }) == RingBuffer<int>::ConsumeResult::EMPTY,
-        "consume_front_if reports EMPTY before reserve()");
+  check(hand_off(q, [](int) { return true; }) == Handoff::EMPTY, "the hand-off reports EMPTY before reserve()");
 }
 
 static void test_reserve_one_shot() {
@@ -146,17 +163,17 @@ static void test_push_front() {
   check(q.try_front(out) && out == 1 && q.size() == 4, "rejected push_front leaves the buffer unchanged");
 }
 
-static void test_consume_front_if() {
-  std::printf("== consume_front_if (the dispatch hand-off) ==\n");
-  using RB = RingBuffer<int>;
+static void test_hand_off() {
+  std::printf("== try_front + drop_front (the dispatch hand-off) ==\n");
   RingBuffer<int> q;
   check(q.reserve(3), "reserve(3) succeeds");
 
   int seen = -1;
-  check(q.consume_front_if([&](int v) {
-    seen = v;
-    return true;
-  }) == RB::ConsumeResult::EMPTY &&
+  check(hand_off(q,
+                 [&](int v) {
+                   seen = v;
+                   return true;
+                 }) == Handoff::EMPTY &&
             seen == -1,
         "EMPTY on an empty ring; consumer never invoked");
 
@@ -164,27 +181,29 @@ static void test_consume_front_if() {
 
   // Engine busy: consumer declines, the item must stay at the front.
   int calls = 0;
-  check(q.consume_front_if([&](int v) {
-    ++calls;
-    seen = v;
-    return false;
-  }) == RB::ConsumeResult::RETAINED,
+  check(hand_off(q,
+                 [&](int v) {
+                   ++calls;
+                   seen = v;
+                   return false;
+                 }) == Handoff::RETAINED,
         "RETAINED when the consumer declines");
   int out = -1;
   check(calls == 1 && seen == 11, "consumer saw the front exactly once");
   check(q.size() == 2 && q.try_front(out) && out == 11, "declined item stays at the front");
 
   // Engine accepted: the item is removed, order behind it intact.
-  check(q.consume_front_if([&](int v) {
-    seen = v;
-    return true;
-  }) == RB::ConsumeResult::REMOVED,
+  check(hand_off(q,
+                 [&](int v) {
+                   seen = v;
+                   return true;
+                 }) == Handoff::REMOVED,
         "REMOVED when the consumer accepts");
   check(seen == 11 && q.size() == 1, "the accepted item was the observed front");
   check(q.try_front(out) && out == 22, "the next element moved up");
 
-  check(q.consume_front_if([](int) { return true; }) == RB::ConsumeResult::REMOVED, "drains to empty");
-  check(q.consume_front_if([](int) { return true; }) == RB::ConsumeResult::EMPTY, "EMPTY once drained");
+  check(hand_off(q, [](int) { return true; }) == Handoff::REMOVED, "drains to empty");
+  check(hand_off(q, [](int) { return true; }) == Handoff::EMPTY, "EMPTY once drained");
 }
 
 static void test_clock_chain_on_entity_lanes() {
@@ -211,7 +230,6 @@ static void test_clock_chain_on_entity_lanes() {
   //
   // Entities are modelled as int ids (the real lanes are
   // RingBuffer<VitoEntityBase *>); id 0 is the clock, 1..N are polled entities.
-  using RB = RingBuffer<int>;
   constexpr int CLOCK = 0;
   constexpr int ENTITY_COUNT = 5;  // 4 polled entities + the clock
 
@@ -242,10 +260,11 @@ static void test_clock_chain_on_entity_lanes() {
   check(reads.size() == ENTITY_COUNT, "no entity was displaced to make room");
 
   int dispatched = -1;
-  check(reads.consume_front_if([&](int e) {
-    dispatched = e;
-    return true;
-  }) == RB::ConsumeResult::REMOVED,
+  check(hand_off(reads,
+                 [&](int e) {
+                   dispatched = e;
+                   return true;
+                 }) == Handoff::REMOVED,
         "engine accepts the clock read");
   check(dispatched == CLOCK, "the dispatched item was the clock");
   check(reads.size() == 4, "the pending polls are untouched behind it");
@@ -255,10 +274,11 @@ static void test_clock_chain_on_entity_lanes() {
   // push_back()s onto the write lane. Writes already preempt reads, so no
   // priority handling is needed here.
   check(writes.push_back(CLOCK), "drift correction queues the clock write");
-  check(writes.consume_front_if([&](int e) {
-    dispatched = e;
-    return true;
-  }) == RB::ConsumeResult::REMOVED,
+  check(hand_off(writes,
+                 [&](int e) {
+                   dispatched = e;
+                   return true;
+                 }) == Handoff::REMOVED,
         "engine accepts the clock write");
 
   // --- step 3: verify via the ordinary write-ACK read-back ----------------
@@ -266,7 +286,7 @@ static void test_clock_chain_on_entity_lanes() {
   // request_priority_read() for us -- the verify step is not bespoke code.
   check(reads.push_front(CLOCK), "write-ACK read-back pushes the clock to the head again");
   check(reads.try_front(front) && front == CLOCK, "verify read-back is ahead of the pending polls");
-  check(reads.consume_front_if([](int) { return true; }) == RB::ConsumeResult::REMOVED, "engine accepts the verify");
+  check(hand_off(reads, [](int) { return true; }) == Handoff::REMOVED, "engine accepts the verify");
   check(reads.size() == 4, "chain completed; the poll backlog is still intact");
 
   // --- the starvation mode that the raw lane had, and this one cannot ------
@@ -326,24 +346,23 @@ static void test_pod_element() {
 static void test_hub_pattern() {
   std::printf("== hub dispatch pattern (schedule -> dispatch -> read-back) ==\n");
   // Mirror how the hub drives read_queue_: entities are appended by the poll
-  // scheduler, handed to the engine via consume_front_if (a busy engine
+  // scheduler, handed to the engine via the hand-off (a busy engine
   // retains the front), and a write-ack read-back is prepended ahead of the
   // pending polls.
-  using RB = RingBuffer<int>;
   RingBuffer<int> reads;
   check(reads.reserve(8), "reserve(8) succeeds");
   for (int e = 1; e <= 5; e++)
     check(reads.push_back(e), "poll cycle queues an entity");
 
   // First dispatch attempt: engine busy -> the front must survive.
-  check(reads.consume_front_if([](int) { return false; }) == RB::ConsumeResult::RETAINED,
-        "busy engine retains the front entity");
+  check(hand_off(reads, [](int) { return false; }) == Handoff::RETAINED, "busy engine retains the front entity");
 
   int dispatched = -1;
-  check(reads.consume_front_if([&](int e) {
-    dispatched = e;
-    return true;
-  }) == RB::ConsumeResult::REMOVED &&
+  check(hand_off(reads,
+                 [&](int e) {
+                   dispatched = e;
+                   return true;
+                 }) == Handoff::REMOVED &&
             dispatched == 1,
         "dispatch consumes the oldest poll");
 
@@ -425,9 +444,36 @@ static void test_move_first_to_front_if() {
   check(q.size() == 2 && q.try_front(out) && out == 2, "no match: buffer unchanged");
 }
 
-// A consumer that queues onto its own ring takes the lock again: on ESP32 a
-// deadlock. The host stand-in aborts instead; run it in a child and
-// expect the abort.
+// The hand-off holds no lock, so what it triggers may use the same ring: a
+// FAILED raw result is published from inside it, and an automation on that
+// result queues the next raw operation. Under consume_front_if() that was a
+// deadlock on ESP32.
+static void test_hand_off_may_reenter() {
+  std::printf("== the hand-off may queue onto its own ring ==\n");
+  RingBuffer<int> rb;
+  check(rb.reserve(4) && rb.push_back(1), "one element queued");
+  int out = -1;
+  check(hand_off(rb, [&rb](int) { return rb.push_back(2); }) == Handoff::REMOVED,
+        "push_back from inside the hand-off succeeds");
+  check(rb.size() == 1 && rb.try_front(out) && out == 2, "the handed-off item is gone, the new one is queued");
+  check(hand_off(rb,
+                 [&rb](int) {
+                   (void) rb.push_back(3);
+                   return false;
+                 }) == Handoff::RETAINED,
+        "a refused hand-off may queue too");
+  check(rb.size() == 2 && rb.try_front(out) && out == 2, "the refused item is still the head");
+
+  // drop_front() on an empty ring is a no-op.
+  RingBuffer<int> empty;
+  check(empty.reserve(2), "reserve(2) succeeds");
+  empty.drop_front();
+  check(empty.empty() && empty.push_back(5) && empty.try_front(out) && out == 5, "drop_front on empty: no-op");
+}
+
+// A predicate still runs under the lock (move_first_to_front_if), so one that
+// queues onto its own ring takes the lock again: on ESP32 a deadlock. The host
+// stand-in aborts instead; run it in a child and expect the abort.
 static void test_reentry_is_caught() {
   std::fflush(stdout);
   const pid_t pid = fork();
@@ -435,7 +481,7 @@ static void test_reentry_is_caught() {
     RingBuffer<int> rb;
     if (!rb.reserve(4) || !rb.push_back(1))
       _exit(2);
-    rb.consume_front_if([&rb](int) {
+    (void) rb.move_first_to_front_if([&rb](int) {
       (void) rb.push_back(2);  // re-entry
       return true;
     });
@@ -443,7 +489,7 @@ static void test_reentry_is_caught() {
   }
   int status = 0;
   waitpid(pid, &status, 0);
-  check(WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT, "re-entering a ring from its consumer aborts");
+  check(WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT, "re-entering a ring from a locked predicate aborts");
 }
 
 static void test_remove() {
@@ -492,13 +538,14 @@ int main() {
   test_reserve_one_shot();
   test_fifo_and_full();
   test_push_front();
-  test_consume_front_if();
+  test_hand_off();
   test_clock_chain_on_entity_lanes();
   test_wraparound();
   test_pod_element();
   test_hub_pattern();
   test_move_to_front();
   test_move_first_to_front_if();
+  test_hand_off_may_reenter();
   test_reentry_is_caught();
   std::printf("ring_buffer proof: %d failure(s)\n", g_fail);
   return g_fail == 0 ? 0 : 1;
