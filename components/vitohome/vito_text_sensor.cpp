@@ -191,14 +191,23 @@ void VitoTextSensor::publish_ascii_(const uint8_t *data, uint8_t len) {
 void VitoTextSensor::publish_utf16_(const uint8_t *data, uint8_t len) {
   // HexByte2UTF16Byte: a UTF-16LE label (Beschriftung_HK1..3, 40 bytes = 20
   // code units). decode_utf16() emits UTF-8, NUL-terminates, trims trailing
-  // spaces and skips 0xFFFF fill. Cap at 40 bytes; worst case is 3 UTF-8 bytes
-  // per code unit (60) + NUL.
+  // spaces and stops at 0xFFFF fill. The block's character count (byte 1)
+  // bounds the decode first: the fill after the label varies between reads
+  // (utf16_label_bytes()). Cap at 40 bytes; worst case is 3 UTF-8 bytes per
+  // code unit (60) + NUL.
   const uint8_t *field;
   uint8_t width;
   if (!this->slice_(data, len, field, width))
     return;
-  const uint8_t use = width > 40 ? 40 : width;
+  uint8_t use = width > 40 ? 40 : width;
+  if (this->extract_byte_ >= 0)
+    use = utf16_label_bytes(data, len, static_cast<std::size_t>(this->extract_byte_), use);
   char buf[80];
+  if (use == 0) {
+    ESP_LOGD(TAG, "%s: \"\" (empty label)", this->datapoint_.name());
+    this->publish_state("");
+    return;
+  }
   if (decode_utf16(field, width, use, buf, sizeof(buf)) < 0) {
     ESP_LOGW(TAG, "%s: UTF-16 decode failed (len=%u)", this->datapoint_.name(), width);
     return;

@@ -167,6 +167,37 @@ int main() {
   ok = ok && decode_utf16(field, width, width, buf, sizeof(buf)) >= 0;
   check("full field decodes to \"Heizkreis 1\" (no trailing 0x00FF)", ok && std::strcmp(buf, "Heizkreis 1") == 0);
   check("byte 1 still equals the character count", wire42[1] == std::strlen(buf));
+  check("wire42: the count bounds the decode to 22 bytes", utf16_label_bytes(wire42, 42, 2, 40) == 22);
+
+  // 12. The FULL 42-byte block again, VScotHO1_72, 2026-11-11:
+  //       >>> 41:05:00:01:73:60:2A:03
+  //       <<< 06:41:2F:01:01:73:60:2A:00:0B:48:00:...:31:00:FF:00:00:FF:FF:00:00:FF:
+  //           FF:00:00:FF:FF:00:00:00:00:00:31
+  //     Same label, different fill: FF:00:00:FF repeated. No code unit is
+  //     0xFFFF -- they are 0x00FF and 0xFF00 -- so the terminator rules alone
+  //     published "Heizkreis 1ÿ＀ÿ＀ÿ＀ÿ". Byte 1 (0x0B) is still the count.
+  const uint8_t wire42b[42] = {0x00, 0x0B, 0x48, 0x00, 0x65, 0x00, 0x69, 0x00, 0x7A, 0x00, 0x6B, 0x00, 0x72, 0x00,
+                               0x65, 0x00, 0x69, 0x00, 0x73, 0x00, 0x20, 0x00, 0x31, 0x00, 0xFF, 0x00, 0x00, 0xFF,
+                               0xFF, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00};
+  ok = slice(wire42b, 42, 2, 40, field, width);
+  ok = ok && decode_utf16(field, width, width, buf, sizeof(buf)) >= 0;
+  check("wire42b: the terminator rules alone run into the fill", ok && std::strcmp(buf, "Heizkreis 1") != 0);
+  const uint8_t use = utf16_label_bytes(wire42b, 42, 2, width);
+  check("wire42b: the count bounds the decode to 22 bytes", use == 22);
+  ok = decode_utf16(field, width, use, buf, sizeof(buf)) >= 0;
+  check("wire42b decodes to \"Heizkreis 1\" with the count", ok && std::strcmp(buf, "Heizkreis 1") == 0);
+
+  // 13. Where the count does not apply, the field width stands.
+  const uint8_t empty[42] = {0x00, 0x00};
+  check("count 0 is an empty label", utf16_label_bytes(empty, 42, 2, 40) == 0);
+  uint8_t big[42] = {0x00, 0x15};  // 21 characters do not fit 40 bytes
+  check("a count wider than the field is ignored", utf16_label_bytes(big, 42, 2, 40) == 40);
+  big[0] = 0x01;
+  big[1] = 0x0B;
+  check("a block not opening with 0x00 is not counted", utf16_label_bytes(big, 42, 2, 40) == 40);
+  check("a field not at offset 2 is not counted", utf16_label_bytes(wire42b, 42, 0, 40) == 40);
+  check("a 32-byte read keeps the count", utf16_label_bytes(wire32, 32, 2, 30) == 22);
+  check("a 22-byte read clips to the field, not the count", utf16_label_bytes(wire32, 22, 2, 20) == 20);
 
   printf("%s\n", failures == 0 ? "proof_string_offset OK" : "proof_string_offset FAILED");
   return failures == 0 ? 0 : 1;
