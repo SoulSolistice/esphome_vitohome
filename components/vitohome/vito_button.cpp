@@ -30,8 +30,9 @@ void VitoActionButton::press_action() {
     return;
   }
   ESP_LOGI(TAG, "%s: calling procedure 0x%04X", this->datapoint_.name(), this->datapoint_.address());
-  if (!this->vh_parent_->request_write(this))
+  if (!this->vh_parent_->request_write(this)) {
     ESP_LOGW(TAG, "%s: procedure call not queued", this->datapoint_.name());
+  }
 }
 
 void VitoActionButton::handle_write_response(const ResponseView &response) {

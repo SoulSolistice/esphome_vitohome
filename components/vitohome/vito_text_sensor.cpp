@@ -13,7 +13,9 @@ namespace esphome::vitohome {
 
 static const char *const TAG = "vitohome.text_sensor";
 
-static const char *type_name(TextSensorType t) {
+// Only dump_config() names the type, and ESP_LOGCONFIG compiles to nothing
+// below log level CONFIG.
+[[maybe_unused]] static const char *type_name(TextSensorType t) {
   switch (t) {
     case TextSensorType::RAW_HEX:
       return "raw";

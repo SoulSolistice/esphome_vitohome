@@ -935,8 +935,9 @@ void VitoHomeComponent::dump_config() {
   if (this->ident_state_ == IdentState::DONE) {
     ESP_LOGCONFIG(TAG, "  Device: %s", this->ident_string_().c_str());
     char url[CATALOG_FINDER_URL_SIZE];
-    if (this->ident_finder_url_(url, sizeof(url)))
+    if (this->ident_finder_url_(url, sizeof(url))) {
       ESP_LOGCONFIG(TAG, "  Catalog finder: %s", url);
+    }
   }
 
 #ifdef USE_TEXT_SENSOR
@@ -945,8 +946,9 @@ void VitoHomeComponent::dump_config() {
   }
 #endif
 
-  if (ESPHomeUARTInterface::frame_logging_enabled())
+  if (ESPHomeUARTInterface::frame_logging_enabled()) {
     ESP_LOGCONFIG(TAG, "  Frame logging: ON (tag 'vitohome.frames')");
+  }
 
   // queue_raw_op()'s gates (raw_access / unsafe_raw_writes).
 #ifdef VITOHOME_RAW_UNRESTRICTED
@@ -956,8 +958,9 @@ void VitoHomeComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "  Unsafe raw writes: ON");
 #endif
 
-  if (this->is_failed())
+  if (this->is_failed()) {
     ESP_LOGE(TAG, "  Setup FAILED");
+  }
 
   // Deliberately NO loop over entities_ here: every entity is a registered
   // component, so ESPHome core already calls each one's dump_config() --
@@ -1660,9 +1663,10 @@ void VitoHomeComponent::refresh_siblings_(VitoEntityBase *writer) {
     if (this->request_priority_read(e))
       ++queued;
   }
-  if (queued > 0)
+  if (queued > 0) {
     ESP_LOGD(TAG, "%s: refreshing %u entit%s sharing 0x%04X", writer->get_datapoint().name(), queued,
              queued == 1 ? "y" : "ies", address);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1703,9 +1707,10 @@ void VitoHomeComponent::share_read_response_(VitoEntityBase *reader, const Respo
     e->handle_response(response);
     ++shared;
   }
-  if (shared > 0)
+  if (shared > 0) {
     ESP_LOGV(TAG, "%s: answer shared with %u more entit%s reading 0x%04X", reader->get_datapoint().name(), shared,
              shared == 1 ? "y" : "ies", reader->get_datapoint().address());
+  }
 }
 
 void VitoHomeComponent::share_read_error_(VitoEntityBase *reader, optolink::OptolinkResult error) {
@@ -1719,9 +1724,10 @@ void VitoHomeComponent::share_read_error_(VitoEntityBase *reader, optolink::Opto
     e->handle_error(error);
     ++shared;
   }
-  if (shared > 0)
+  if (shared > 0) {
     ESP_LOGD(TAG, "%s: %s also reported to %u more entit%s reading 0x%04X", reader->get_datapoint().name(),
              optolink::errorToString(error), shared, shared == 1 ? "y" : "ies", reader->get_datapoint().address());
+  }
 }
 
 bool VitoHomeComponent::refresh_all() {
@@ -2101,10 +2107,11 @@ void VitoHomeComponent::ident_handle_response_(const ResponseView &response) {
       // 0x00 and 0xFF are not chips: KW answers an address the unit does not
       // have with 0xFF fill, and 0x00 is an unprogrammed cell. P300 answers
       // with an error frame instead (ident_handle_error_).
-      if (length >= 1 && data[0] != 0x00 && data[0] != 0xFF)
+      if (length >= 1 && data[0] != 0x00 && data[0] != 0xFF) {
         this->ident_gfa_ = data[0];
-      else
+      } else {
         ESP_LOGD(TAG, "No burner-control chip at 0x7650");
+      }
       this->ident_dispatch_(IdentState::READ_F0);
       return;
 
@@ -2114,10 +2121,11 @@ void VitoHomeComponent::ident_handle_response_(const ResponseView &response) {
       // business. FF FF is KW's
       // answer for an address the unit does not have; 00 00 is a real value
       // (the generic variant of a family F0 subdivides).
-      if (length >= 2 && !(data[0] == 0xFF && data[1] == 0xFF))
+      if (length >= 2 && !(data[0] == 0xFF && data[1] == 0xFF)) {
         this->ident_f0_ = (data[0] << 8) | data[1];
-      else
+      } else {
         ESP_LOGD(TAG, "No extended identification (F0) at 0x00F0");
+      }
       this->ident_finish_();
       return;
 
@@ -2232,8 +2240,9 @@ void VitoHomeComponent::ident_finish_() {
   ESP_LOGI(TAG, "Device identification: %s", identification.c_str());
 
   char url[CATALOG_FINDER_URL_SIZE];
-  if (this->ident_finder_url_(url, sizeof(url)))
+  if (this->ident_finder_url_(url, sizeof(url))) {
     ESP_LOGI(TAG, "Find the matching datapoint catalog: %s", url);
+  }
 
   if (this->ident_sw_ < 0 && this->ident_group_ >= 0) {
     ESP_LOGI(TAG, "Software index (0xFB) unavailable - when picking datapoints from the "
