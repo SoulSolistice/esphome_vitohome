@@ -14,6 +14,8 @@ points rather than repeats:
 - **VitoWiFi shortcomings written up as upstream proposals** →
   [`optolink/THIRD_PARTY.md`](../components/vitohome/optolink/THIRD_PARTY.md), Part 2.
 - **Catalog generation tooling** → [`scripts/README.md`](../scripts/README.md).
+- **What GWG units actually did on the wire, per access mode, and the open
+  questions** → [`gwg_protocol.md`](gwg_protocol.md).
 - **The host test harnesses** → [`tests/native/README.md`](../tests/native/README.md).
 
 ---
@@ -265,7 +267,8 @@ report it.
 
 **A silent datapoint is not a burst failure** (issue #35, Vitodens 200 WB2,
 GWG_VBEM `0x2053` SW `0x1E`). That unit answered every physical, eeprom, xram,
-port and be read in 23–50 ms, burst-sent or not, but none of its 54
+port and be read in 23–50 ms, burst-sent or not (`be` with `0xFF` at every
+address, see [`gwg_protocol.md`](gwg_protocol.md#be)), but none of its 54
 `kmbus_eeprom` reads (the GFA behind the VR20 KM-Bus). Two of those in a row
 disabled bursting for good, although bursting was fine — the datapoint was
 silent. A burst-sent read that times out is now retried once on a fresh ENQ
@@ -292,15 +295,19 @@ settable at run time from a lambda, between 50 and 2000 ms:
 ```yaml
 button:
   - platform: template
-    name: "GWG deadline 1500 ms"
+    name: "GWG deadline 700 ms"
     on_press:
-      - lambda: id(vito).set_gwg_response_timeout_ms(1500);
+      - lambda: id(vito).set_gwg_response_timeout_ms(700);
 ```
 
 `id(vito).gwg_response_timeout_ms()` reads it back. The request watchdog grows
 by the same amount. This is a test aid, not a tuning knob: while a request
-waits, the device's idle ENQ (also `0x05`) can land inside the window and be
-read as the payload.
+waits, the device's idle ENQ (also `0x05`, every 749-2070 ms) can land inside
+the window and be read as the payload. Keep it under the shortest idle-ENQ gap
+(about 700 ms) for one-byte reads: above it, a silent datapoint reads as 5
+instead of timing out. Raising it is not needed to learn whether a datapoint
+answers late at all: the late-answer report already watches until the next
+ENQ at the default deadline.
 
 **Poll backoff.** An entity whose reads time out while the link answers others
 is polled less often: after `POLL_BACKOFF_AFTER` (3) timeouts in a row at 2x
@@ -384,6 +391,10 @@ software index — `0x00`, `0x03`, `0x21`, `0x35`, `0x36`.) `ident_family_name()
 takes the hardware index for this reason; reporting a bare `GWG_VBEM` for
 `0x2053`, as this component did and as vcontrold's enum comment still does, is
 wrong for three families out of four.
+
+In the field the hardware index has not separated them so far: every unit
+reported (issues #13, #21, #35) reads `0x01`, and at least two of them have a
+BES panel. See [`gwg_protocol.md`](gwg_protocol.md#identification).
 
 `scripts/gen_catalog.py --identify` needs no GWG special case — the hardware and
 software indices it already takes are exactly the discriminators, so
