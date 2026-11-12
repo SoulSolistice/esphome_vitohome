@@ -101,6 +101,18 @@ def test_writable_entity_with_access_is_accepted(domain):
     _validate("GWG", {domain: [_entity({CONF_ACCESS: "eeprom"})]})
 
 
+@pytest.mark.parametrize("domain", _FLAT_WRITE_DOMAINS)
+def test_eeprom_write_wider_than_one_cell_is_rejected(domain):
+    """An EEPROM write frame carries one cell's complement pair."""
+    with pytest.raises(cv.Invalid, match="one cell"):
+        _validate("GWG", {domain: [_entity({CONF_ACCESS: "eeprom", "length": 2})]})
+
+
+@pytest.mark.parametrize("access", ["be", "virtual"])
+def test_other_write_modes_keep_multi_byte_writes(access):
+    _validate("GWG", {"number": [_entity({CONF_ACCESS: access, "length": 2})]})
+
+
 def test_rejection_explains_why_physical_cannot_be_defaulted():
     """The message has to carry the reason, or it reads as bureaucracy."""
     with pytest.raises(cv.Invalid, match="PHYSICAL_WRITE"):

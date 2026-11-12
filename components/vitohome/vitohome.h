@@ -250,7 +250,8 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // production config to select a wire format.
   //
   // Meaningful only under `protocol: GWG`. Compiles and is accepted on every
-  // build (so lambdas need no #ifdef) but nothing reads it elsewhere.
+  // build (so lambdas need no #ifdef) but nothing reads it elsewhere. An
+  // EEPROM write has its own fixed layout and ignores it.
   void set_gwg_write_eot_before_payload(bool eot_first) { optolink::gwgWriteEotBeforePayload = eot_first; }
   bool gwg_write_eot_before_payload() const { return optolink::gwgWriteEotBeforePayload; }
 

@@ -24,8 +24,9 @@ that observed the ENQ, instead of deferring the write by one iteration.
 Access modes: read() and write() take an optional GWGAccessMode (default
 PHYSICAL, byte-identical to pre-existing behaviour); see constants.h for the
 mode tables and their evidence. Note nothing on a GWG unit is physical-WRITABLE
-per Vitosoft -- EEPROM (0xAD) and BE (0x9D) are the modes that matter there --
-and the write frame's payload/EOT ordering is still unsettled, see
+per Vitosoft -- EEPROM (0xAD) and BE (0x9D) are the modes that matter there.
+An EEPROM write carries the cell's complement pair (THIRD_PARTY.md #32); for
+the other write types the payload/EOT ordering is still unsettled, see
 gwgWriteEotBeforePayload.
 Timing instrument: an optional onTiming() callback reports, per completed read,
 the loop() gap that preceded the ENQ we answered and the send-to-response delta,

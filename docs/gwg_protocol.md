@@ -100,12 +100,18 @@ unrelated registers. The catalog's `access:` comes from Vitosoft's `FCRead`.
 
 ### Writes
 
-No GWG write has been confirmed anywhere. Vitosoft pairs every writable
-datapoint within one mode (`EEPROM_WRITE` 1082, `BE_WRITE` 280,
-`PHYSICAL_WRITE` 0). Where the `0x04` goes in a write frame is unknown; both
+Vitosoft pairs every writable datapoint within one mode (`EEPROM_WRITE` 1082,
+`BE_WRITE` 280, `PHYSICAL_WRITE` 0). Given the `be` results above, `eeprom`
+datapoints are the candidates left, and those are codings.
+
+EEPROM writes reach the unit (VR20, SW `0x2B`, coding (55) at `0x16`). It
+acked all four test writes with `00` and stores the two bytes after the
+address as the cell's complement pair. The generic layout put the length byte
+there, so the cell read back `01:29` or `01:04` and failed its check. An
+EEPROM write is now `01 AD ADDR ~V V 04`, one cell per frame
+(design_notes.md, "GWG EEPROM"); that frame is not yet confirmed by a
+read-back. For the other write types, where the `0x04` goes is unknown; both
 layouts are switchable at run time (`set_gwg_write_eot_before_payload()`).
-Given the `be` results above, an `eeprom` datapoint is the only candidate left
-for a first write test, and those are codings.
 
 The engine completes a write on any single answer byte. Which value means
 "taken" is unknown (KW uses `0x00`), so the byte is not checked but shown: the

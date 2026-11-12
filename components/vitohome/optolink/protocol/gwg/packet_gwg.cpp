@@ -73,10 +73,26 @@ bool PacketGWG::createTelegram(uint8_t type, uint16_t addr, uint8_t len, const u
   _buffer[step++] = internals::ProtocolBytes.ENQ_ACK;
   _buffer[step++] = type;
   _buffer[step++] = addr & 0xFF;
+  if (data && type == gwgWriteTypeByte(GWGAccessMode::EEPROM)) {
+    // An EEPROM cell is a complement pair, written as the read returns it:
+    // `01 AD ADDR ~V V 04`, one cell per frame, no length byte. A VR20 (#35)
+    // stores the two bytes after ADDR as the pair and acks 00, so a length
+    // byte there lands in the complement half.
+    if (len != 1) {
+      optolink_log_w("GWG EEPROM write: one cell per frame, got %u bytes", static_cast<unsigned>(len));
+      return false;
+    }
+    _buffer[step++] = static_cast<uint8_t>(~data[0]);
+    _buffer[step++] = data[0];
+    _buffer[step++] = internals::ProtocolBytes.EOT;
+    _length = static_cast<uint8_t>(step);
+    _hasPayload = true;
+    return true;
+  }
   _buffer[step++] = len;
   if (data) {
-    // Payload placement relative to the EOT terminator is the one part of the
-    // GWG write frame with no evidence behind it -- see
+    // Payload placement relative to the EOT terminator in the other write
+    // frames has no evidence behind it -- see
     // gwgWriteEotBeforePayload (constants.h) for the two candidate layouts,
     // the evidence for each, and why the default has not moved. Reads are
     // unaffected: both layouts produce the identical 01 TYPE ADDR LEN 04.

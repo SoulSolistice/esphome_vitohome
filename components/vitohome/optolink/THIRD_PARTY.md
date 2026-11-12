@@ -793,7 +793,18 @@ These are intentional divergences from upstream `edc059a7`:
     watchdog expired with the engine still in INIT. Valid inside `onError`;
     reset by the next request. Proof: `proof_gwg_timeout_kind.cpp`.
 
-Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29 and 30 are the only intentional changes to on-wire/runtime
+32. **GWG EEPROM write frame (behavioral divergence, issue #35).** An EEPROM
+    write (`0xAD`) went out in the generic write layout, `01 AD ADDR LEN V 04`.
+    On a VR20 the unit acked every such frame with `00` and stored the two
+    bytes after `ADDR` as the cell's complement pair: `LEN V` under one EOT
+    layout, `LEN 04` under the other, either way a pair that fails its check
+    on the next read. `PacketGWG::createTelegram()` now builds
+    `01 AD ADDR ~V V 04` for type `0xAD`: no length byte, the pair as the
+    read returns it, one cell per frame (a longer write is refused), and the
+    EOT last whatever `gwgWriteEotBeforePayload` says. The other write types
+    are unchanged. Proof: `proof_gwg_write_access.cpp` (6).
+
+Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30 and 32 are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16 are structural (no behavior change from any call
 site that exists -- item 16 alters bytes only on a RESPONSE-construction path
 nothing exercises); item 17 changes only construction-failure handling

@@ -19,7 +19,9 @@
 //   (5) a write completes on one ack byte and is subject to the same
 //       RESPONSE_TIMEOUT_MS deadline as a read, so an idle ENQ arriving ~1.2 s
 //       later cannot pose as the ack (which is what #467's capture most likely
-//       recorded).
+//       recorded);
+//   (6) an EEPROM write carries the cell's complement pair and no length
+//       byte, `01 AD ADDR ~V V 04`, under either layout, one cell per frame.
 //
 // Built with -DVITOHOME_PROTOCOL_GWG by build_and_run_protocols.sh.
 #include <cstdio>
@@ -153,9 +155,12 @@ int main() {
     uart.feed({0x05});
     adapter.loop();
     // (4) frame layout follows the switch; reads are identical under both.
-    const std::vector<uint8_t> want = optolink::gwgWriteEotBeforePayload
-                                          ? std::vector<uint8_t>{0x01, c.expected_type, 0x21, 0x01, 0x04, 0x2A}
-                                          : std::vector<uint8_t>{0x01, c.expected_type, 0x21, 0x01, 0x2A, 0x04};
+    // EEPROM has its own layout, (6).
+    std::vector<uint8_t> want = optolink::gwgWriteEotBeforePayload
+                                    ? std::vector<uint8_t>{0x01, c.expected_type, 0x21, 0x01, 0x04, 0x2A}
+                                    : std::vector<uint8_t>{0x01, c.expected_type, 0x21, 0x01, 0x2A, 0x04};
+    if (c.mode == optolink::GWGAccessMode::EEPROM)
+      want = {0x01, 0xAD, 0x21, 0xD5, 0x2A, 0x04};
     check(uart.written() == want, "  frame matches table + layout switch");
     uart.feed({0x00});
     pump(adapter);
@@ -180,6 +185,46 @@ int main() {
   uart.feed({0x11});
   pump(adapter);
   uart.clear_written();
+
+  // --- (6) EEPROM write: the complement pair, under either layout -----------
+  // A VR20 (#35) stored the two bytes after ADDR as the pair: `01 AD 16 01 29 04`
+  // read back 01:29, `01 AD 16 01 04 29` read back 01:04.
+  {
+    const bool saved = optolink::gwgWriteEotBeforePayload;
+    for (const bool eot_first : {false, true}) {
+      optolink::gwgWriteEotBeforePayload = eot_first;
+      const uint8_t value = 0x28;
+      check(adapter.write(0x0016, &value, 1, optolink::GWGAccessMode::EEPROM),
+            eot_first ? "EEPROM write accepted (layout=true)" : "EEPROM write accepted (layout=false)");
+      uart.feed({0x05});
+      adapter.loop();
+      check(uart.written() == std::vector<uint8_t>({0x01, 0xAD, 0x16, 0xD7, 0x28, 0x04}), "  01 AD 16 D7 28 04");
+      uart.feed({0x00});
+      pump(adapter);
+      uart.clear_written();
+    }
+    optolink::gwgWriteEotBeforePayload = saved;
+  }
+
+  // The raw lane's type byte takes the same path.
+  {
+    const uint8_t value = 0x00;
+    check(adapter.telegram(0xAD, 0x0016, 1, &value), "raw 0xAD telegram accepted");
+    uart.feed({0x05});
+    adapter.loop();
+    check(uart.written() == std::vector<uint8_t>({0x01, 0xAD, 0x16, 0xFF, 0x00, 0x04}), "  01 AD 16 FF 00 04");
+    uart.feed({0x00});
+    pump(adapter);
+    uart.clear_written();
+  }
+
+  // One cell per frame: a two-byte EEPROM write is refused, nothing goes out.
+  {
+    const uint8_t two[2] = {0x28, 0x29};
+    check(!adapter.write(0x0016, two, 2, optolink::GWGAccessMode::EEPROM), "two-byte EEPROM write refused");
+    check(!adapter.isBusy(), "  engine not busy after the refusal");
+    check(uart.written().empty(), "  nothing written to the wire");
+  }
 
   // --- (5) an unanswered write must TIMEOUT, not be acked by an idle ENQ -----
   // This is openv #467's capture read correctly: the unit was sent a physical

@@ -364,7 +364,19 @@ the value bytes. A pair that does not check out fails the read with `CRC`; `FF F
 ("address not in use") is delivered as `0xFF`. The evidence is in
 `GWGEngine::kEepromPairLength`. The decisive point: burner hours at `0x0017`
 stepped `E8 17` → `E7 18` between two days, so the second byte is the counter.
-EEPROM writes are unchanged; their frame is still unconfirmed.
+
+A write carries the pair the same way: `01 AD ADDR ~V V 04`, one cell per frame
+and no length byte. What a VR20 does with a write is hardware-observed (#35):
+in the generic layout (`01 AD 16 01 29 04`) the unit acked `00` and read back
+`01:29`; with the EOT before the payload (`01 AD 16 01 04 29`) it read back
+`01:04`. It stores the two bytes after the address as the pair, so a length
+byte lands in the complement half and the next read fails its check. The
+frame with the complement has not been sent to a unit yet. The EOT switch
+below does not apply to EEPROM writes.
+
+One VR20 serves 64 cells: `0x01`–`0x3F` answer, `0x00` and `0x40`–`0x7F` answer
+`FF FF`, and `0x80`–`0xFF` repeat the lower half (a dump of all 256 addresses,
+#35).
 
 ### Identification under GWG
 
@@ -463,7 +475,8 @@ capture shows genuine answers at ~50 ms against a ~1230 ms idle-ENQ cadence, so
 its "writes only ever return `0x05`" is almost certainly *no answer at all*,
 with the next idle ENQ misread as the ack.)
 
-**One thing is still unknown: where the `0x04` sits in a write frame.**
+**One thing is still unknown: where the `0x04` sits in a write frame** other
+than EEPROM's (§GWG EEPROM).
 
 ```
 this project   01 TYPE ADDR LEN <data...> 04      EOT last

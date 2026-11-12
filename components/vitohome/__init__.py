@@ -1307,6 +1307,17 @@ def _final_validate(config):
                         path=key.split("."),
                     )
 
+        # An EEPROM write carries one cell's complement pair per frame, and the
+        # engine refuses a wider one (PacketGWG::createTelegram()).
+        for domain, entity in _entities_for_hub(full, _WRITE_DOMAINS, hub_id):
+            if str(entity.get(CONF_ACCESS)) == "eeprom" and entity.get(CONF_LENGTH, 1) > 1:
+                raise cv.Invalid(
+                    f"{domain} '{_entity_name(entity)}' writes {entity[CONF_LENGTH]} bytes with "
+                    f"'access: eeprom', but a GWG EEPROM write sets one cell. Use length: 1, or one "
+                    f"entity per cell.",
+                    path=[CONF_LENGTH],
+                )
+
         # Read-only entities: WARN rather than reject. Unlike the write case
         # above, defaulting to physical here is defensible -- Vitosoft emits
         # rows with a blank FCRead, and gen_catalog.py deliberately maps blank

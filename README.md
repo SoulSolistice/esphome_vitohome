@@ -376,8 +376,8 @@ climate:
         - {name: "Standby", write: 0x00, read: [0x05], mode: "off"}
 ```
 
-Note GWG writes remain **unconfirmed on hardware**, and one detail of the write
-frame is still undecided; see
+Note GWG writes remain **unconfirmed on hardware**: EEPROM writes reach the
+unit, but no write has been read back intact yet. See
 [`docs/design_notes.md`](docs/design_notes.md#writes).
 
 You normally will not write these by hand: `scripts/gen_catalog.py` reads the

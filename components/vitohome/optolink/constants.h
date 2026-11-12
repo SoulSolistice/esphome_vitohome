@@ -224,6 +224,9 @@ constexpr uint8_t kNoGwgWriteType = 0x00;
 // Still not flipped by default: dannerph's layout is evidence, not proof, and
 // this project's rule is that a wire-format change waits for a reading from a
 // real unit.
+//
+// An EEPROM write (0xAD) ignores this: it carries the cell's complement pair
+// right after ADDR, `01 AD ADDR ~V V 04` (PacketGWG::createTelegram()).
 extern bool gwgWriteEotBeforePayload;
 
 // GWG BURST frame switch: is the leading 0x01 part of the request, or the
