@@ -895,16 +895,18 @@ void VitoHomeComponent::schedule_due_entities_() {
     if (!entity->wants_polling())
       continue;
 
-    if (entity->read_queued_) {
-      ++skipped;
-      continue;
-    }
-
     const PollDecision decision = poll_schedule_step(
         now, entity->next_due_ms_, poll_backoff_interval(entity->poll_interval(), entity->timeout_streak_), slack);
 
     if (!decision.due)
       continue;
+
+    // Due but not read yet since its last queueing: the backlog this counts.
+    // Its schedule stays put, so it is due again on the next cycle.
+    if (entity->read_queued_) {
+      ++skipped;
+      continue;
+    }
 
     // Set the companion state before publishing the queue item. If the bounded
     // lane rejects it, roll the state back immediately so the entity is not
@@ -926,7 +928,7 @@ void VitoHomeComponent::schedule_due_entities_() {
   }
 
   if (skipped != 0) {
-    ESP_LOGW(TAG, "Poll cycle: %zu entities still queued from the previous cycle", skipped);
+    ESP_LOGW(TAG, "Poll cycle: %zu due entities still queued from an earlier cycle", skipped);
   }
 
   if (rejected != 0) {
