@@ -10,6 +10,7 @@ from .constants import (
     _WEEKDAYS,
     ACCESS_PLATFORMS,
     ACTION_WARNING,
+    DESTRUCTIVE_ACTION_NOTE,
     GFA_PLATFORMS,
     NO_BORDERS_CAUTION,
     PROTO_GWG,
@@ -39,6 +40,7 @@ from .special import (
 from .transforms import (
     _access_for,
     _gfa_decode_key,
+    _is_destructive_action,
     _is_diagnostic,
     _is_lon_bound_rpc,
     _is_lon_input,
@@ -287,6 +289,7 @@ def generate(
     gfa_chips_seen: set[str] = set()  # chips named in their `gfa=` tags
     dropped_rpc_readings = 0  # left out by the profile (_profile_keep)
     rpc_actions = 0  # procedures emitted as `type: action` buttons (_is_rpc_action)
+    destructive_actions = 0  # of those, emitted commented out (_is_destructive_action)
     dropped_bare_actions = 0  # no parameter where siblings take one (_rpc_selector_addresses)
     hydro_programs = 0  # heat-pump weekly programs fanned out per day (_hydro_schedule_shape)
     seen_actions: set[tuple] = set()
@@ -305,11 +308,9 @@ def generate(
 
     # Within one address, a "Rohwert" row (Vitosoft's raw companion of a
     # converted datapoint at the same field, e.g. GWG_Timer13MinRohwert next to
-    # GWG_Timer13Min) sorts last. The field de-duplication below keeps the first
-    # event of a field, and in link order the raw twin came first for the GWG
-    # timers, so every GWG catalog shipped the raw counter instead of the minutes
-    # (issue #35: raw 58224 is 13.0 min). Python's sort is stable, so every other
-    # event keeps its order.
+    # GWG_Timer13Min) sorts last: the field de-duplication below keeps the first
+    # event of a field, and in link order the raw twin can come first. The sort
+    # is stable, so every other event keeps its order.
     def _raw_companion_last(ev: Event) -> tuple:
         raw = "Rohwert" in (ev.tech or "") or "Rohwert" in (ev.name or "")
         return (ev.address or 0, raw)
@@ -397,9 +398,9 @@ def generate(
             continue
 
         # A procedure (P300): one `type: action` button, disabled by default and
-        # under a warning, in every profile but minimal -- an action is not a
-        # value, and minimal keeps values. The parameter is PrefixWrite, else
-        # FunctionValue (_rpc_action_parameter).
+        # under a warning, in every profile but minimal (an action is not a
+        # value). The parameter is PrefixWrite, else FunctionValue
+        # (_rpc_action_parameter). A reset or deletion is emitted commented out.
         if _is_rpc_action(ev, protocol):
             target = ev.name or ""
             if profile == "minimal" or (inc and not inc.search(target)) or (exc and exc.search(target)):
@@ -428,6 +429,12 @@ def generate(
                 leading_comments=list(ACTION_WARNING),
             )
             action.id = _make_obj_id(ev.tech or ev.name, used_ids)
+            if _is_destructive_action(ev):
+                action.leading_comments = []
+                body = ["# " + ln if ln else "#" for ln in render_entity_lines(action)]
+                _add_chunk("button", ev, [*DESTRUCTIVE_ACTION_NOTE, *body])
+                destructive_actions += 1
+                continue
             _add_chunk("button", ev, render_entity_lines(action))
             kept += 1
             rpc_actions += 1
@@ -524,7 +531,6 @@ def generate(
         # FehlerHis* archives (slot not None) are real device datapoints and go
         # through the address guard below.
         if protocol == PROTO_GWG and _error_history_slot(ev) is None:
-            history_suppressed = True
             gwg_system_history_suppressed = True
             continue
         # Error-history slots are ordinary reads, so under GWG they carry their
@@ -656,9 +662,17 @@ def generate(
     if rpc_actions:
         noun = "procedure" if rpc_actions == 1 else "procedures"
         out.append(f"# Actions: {rpc_actions} {noun} (P300 function code 0x07) as `type: action`")
-        out.append("# buttons, all disabled by default. Pressing one RUNS it on the controller")
-        out.append("# -- some clear a history, some reset settings or codings to their")
-        out.append("# defaults. Read each one's name before you enable it.")
+        out.append("# buttons, all disabled by default. Pressing one RUNS it on the controller.")
+        out.append("# Read each one's name before you enable it.")
+        out.append("#")
+    if destructive_actions:
+        noun = "procedure" if destructive_actions == 1 else "procedures"
+        out.append(f"# Commented out: {destructive_actions} {noun} that reset settings or codings to their")
+        out.append("# factory state or delete stored data (lists, error history, trend")
+        out.append("# channels). Nothing undoes them. Uncomment one only to run it on purpose.")
+        if not rpc_actions:
+            out.append("# No other action is live here, so the `button:` line is commented out")
+            out.append("# too: uncomment it with the action.")
         out.append("#")
     if hydro_programs:
         out.append(f"# Heat-pump weekly programs: {hydro_programs}, each as seven read-only raw day")
@@ -713,7 +727,10 @@ def generate(
     code_anchors: dict = {}  # codes block -> its YAML anchor (_share_codes_blocks)
     for platform in ("sensor", "binary_sensor", "number", "select", "switch", "text", "text_sensor", "button"):
         if buckets[platform]:
-            out.append(f"{platform}:")
+            # A section of commented-out entities only is a comment too: an empty
+            # `button:` key is null, which ESPHome rejects.
+            live = any(ln.startswith("  - ") for _k, _l, chunk in buckets[platform] for ln in chunk)
+            out.append(f"{platform}:" if live else f"# {platform}:")
             last_label = None
             first = True
             for _key, label, chunk in sorted(buckets[platform], key=lambda c: c[0]):

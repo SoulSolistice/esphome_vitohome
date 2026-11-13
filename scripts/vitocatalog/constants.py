@@ -209,12 +209,20 @@ RPC_PLATFORMS = ("sensor", "binary_sensor", "text_sensor")
 # The same for `access: gfa` (the component's _GFA_DOMAINS): Vitosoft defines no
 # GFA write.
 GFA_PLATFORMS = RPC_PLATFORMS
-# Every action button carries this above it (_action_warning).
+# Every live action button carries this above it.
 ACTION_WARNING = [
     "# WARNING: pressing this RUNS a procedure on the controller (Vitosoft",
     "# Remote_Procedure_Call), at once and without asking. Nothing here undoes",
     "# it. It is disabled by default: enable it only once you know what it does.",
 ]
+# Above every action emitted commented out (transforms._is_destructive_action).
+DESTRUCTIVE_ACTION_NOTE = [
+    "# DESTRUCTIVE: this procedure resets settings or codings to their factory",
+    "# state, or deletes stored data. Nothing undoes it. It is commented out:",
+    "# uncomment it only to run it on purpose.",
+]
+# The platforms that write the controller; each carries entity_category: config.
+WRITE_PLATFORMS = ("number", "select", "switch", "text")
 # Above every datapoint Vitosoft marks writable but gives no usable range for
 # (build_entity_spec). The first line is also how the renderer counts them for
 # the catalog header.

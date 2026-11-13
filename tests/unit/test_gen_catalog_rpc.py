@@ -6,7 +6,8 @@ without one -- and PROCEDURES with an effect (a reset, clearing a history).
 Under P300, which has the telegram, readings become sensors with `access: rpc`
 (and `prefix:` when they take a parameter; since one address can hold a whole
 list, the prefix is part of the datapoint's identity), and procedures become
-`type: action` buttons, disabled by default under a warning. Readings that only
+`type: action` buttons, disabled by default under a warning; a reset or a
+deletion is emitted commented out. Readings that only
 a LON module fills are left to `--profile full`, like the LON inputs.
 
 Run under any Python (gen_catalog is stdlib-only)::
@@ -125,8 +126,9 @@ def test_lon_bound_readings_are_told_apart_from_the_units_own(ev, lon):
 def _catalog():
     """One P300 device, shaped like the export: three entries of the LON
     participant list, one reading without a parameter, a reset procedure with a
-    parameter, a parameterless procedure, a read-only delete with no answer, and
-    a setter that needs a value."""
+    parameter, a parameterless clear, a parameterless trigger that changes
+    nothing stored, a read-only delete with no answer, and a setter that needs a
+    value."""
     rows = {
         # eid: (token, access type, Prefix, BlockLength, Parameter, borders)
         "1": ("Teilnehmerliste_LON_00~0xA010", "1", "00", "6", "Array", ""),
@@ -137,6 +139,7 @@ def _catalog():
         "6": ("valmRPCClearErrorHistoryTable~0xA029", "3", "", "0", "Byte", ""),
         "7": ("mBusRPCDeleteReadTableEM2~0xA093", "1", "01", "0", "Byte", ""),
         "8": ("RPCLesenFehlertabelle~0xA0B0", "3", "", "1", "Byte", "74"),
+        "9": ("RPCWink~0xA00C", "3", "", "0", "Byte", ""),
     }
     raw_events, access = {}, {}
     for eid, (token, access_type, prefix, block, parameter, upper) in rows.items():
@@ -185,18 +188,23 @@ def test_full_emits_every_reading_and_every_action():
     # The reading without a parameter carries no prefix line.
     block = sensors[sensors.index("address: 0xA104") :].split("\n\n", 1)[0]
     assert "access: rpc" in block and "prefix:" not in block
-    # Both procedures are buttons, disabled, under the warning; the reset carries
-    # its parameter from PrefixWrite.
-    assert buttons.count("    type: action") == 2
-    assert buttons.count("# WARNING: pressing this RUNS a procedure") == 2
-    assert buttons.count("disabled_by_default: true") == 2
-    assert "prefix: [0x00]  # Vitosoft PrefixWrite 00" in buttons
-    assert "address: 0xA029" in buttons and "address: 0xA051" in buttons
+    # All three procedures are buttons, disabled. The trigger is live, under the
+    # warning; the reset and the clear are commented out, under the DESTRUCTIVE
+    # note, and the reset still carries its parameter from PrefixWrite.
+    assert buttons.count("\n    type: action") == 1
+    assert buttons.count("# WARNING: pressing this RUNS a procedure") == 1
+    assert buttons.count("  #   type: action") == 2
+    assert buttons.count("# DESTRUCTIVE: this procedure") == 2
+    assert buttons.count("disabled_by_default: true") == 3
+    assert "#   prefix: [0x00]  # Vitosoft PrefixWrite 00" in buttons
+    assert "#   address: 0xA029" in buttons and "#   address: 0xA051" in buttons
+    assert "\n    address: 0xA00C" in buttons
     # The read-only delete answers nothing and is neither; the setter needs a value.
     assert "0xA093" not in out
     assert "0xA0B0" not in out
     assert "Remote procedure readings: 4 " in out
-    assert "Actions: 2 procedures" in out
+    assert "Actions: 1 procedure " in out
+    assert "Commented out: 2 procedures" in out
 
 
 @pytest.mark.parametrize("profile", ["standard", "minimal"])
@@ -206,10 +214,11 @@ def test_standard_keeps_the_units_own_readings_and_every_action(profile):
     assert "Remote procedure readings omitted: 3 " in out
     if profile == "standard":
         assert "address: 0xA104" in out
-        assert out.count("    type: action") == 2
+        assert out.count("\n    type: action") == 1
+        assert out.count("  #   type: action") == 2
     else:
         # minimal keeps values; an action is not one.
-        assert "    type: action" not in out
+        assert "type: action" not in out
 
 
 @pytest.mark.parametrize(
@@ -307,7 +316,9 @@ def test_a050_procedures_call_with_their_functionvalue():
     cat = _a050_catalog({"1": "0x00", "2": "0x15", "3": "0x2E"})
     out = gc.generate(cat, "VRpcTest_01", "standard", None, None, emit_device_id=False, emit_error_history=False)
     buttons = out.split("\nbutton:\n", 1)[1]
-    assert buttons.count("    address: 0xA050") == 3
+    # The restart is live; the two resets are commented out.
+    assert buttons.count("address: 0xA050") == 3
+    assert buttons.count("\n    address: 0xA050") == 1
     assert "prefix: [0x00]  # Vitosoft FunctionValue 0x00" in buttons
     assert "prefix: [0x15]  # Vitosoft PrefixWrite 15" in buttons
     assert "prefix: [0x2E]  # Vitosoft FunctionValue 0x2E" in buttons
@@ -315,7 +326,7 @@ def test_a050_procedures_call_with_their_functionvalue():
     # The sibling that names none is left out, and the header says so.
     for block in buttons.split("\n\n"):
         if "address: 0xA050" in block:
-            assert "    prefix: [" in block
+            assert "prefix: [" in block
     assert "Konfi_ParameterFunktionReset" not in buttons
     assert "# Procedures omitted: 1 without a parameter" in out
     assert cat.rpc_selector_addresses() == {0xA050}

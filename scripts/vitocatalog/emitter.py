@@ -18,6 +18,7 @@ from .constants import (
     NON_NUMERIC_CONVERSIONS,
     PLAIN,
     PROTO_P300,
+    WRITE_PLATFORMS,
 )
 from .models import CommentSpec, EntitySpec, Event
 from .special import _yaml_str
@@ -45,9 +46,8 @@ def _accuracy_decimals(conv: str, filters: list[tuple[str, float]], conv_kind: s
     """Decimals a numeric sensor needs to show its own resolution.
 
     ESPHome defaults accuracy_decimals to 0, and Home Assistant displays the
-    state at that precision: a div2 temperature 35.5 showed as 36, the
-    Wasserdruck of GWG catalogs (raw * 0.0052 - 0.65 bar) in whole bar (issue
-    #35, `Accuracy Decimals: 0` on every scaled sensor in the log). Derived
+    state at that precision: a div2 temperature 35.5 shows as 36, a GWG
+    Wasserdruck (raw * 0.0052 - 0.65 bar) in whole bar. Derived
     from the decode itself -- the converter's scale times every multiply
     filter, plus the offset's own decimals -- capped at 3. None when 0 is
     right (unscaled and integer-scaled values), so the line is left out."""
@@ -163,8 +163,9 @@ def render_entity_lines(spec: EntitySpec) -> list[str]:
         lines.append(f"  device_class: {spec.device_class}")
     if spec.icon:
         lines.append(f"  icon: {_yaml_str(spec.icon)}")
-    if spec.entity_category and not spec.diagnostic_after_name:
-        lines.append(f"  entity_category: {spec.entity_category}")
+    category = spec.entity_category or ("config" if spec.platform in WRITE_PLATFORMS else None)
+    if category and not spec.diagnostic_after_name:
+        lines.append(f"  entity_category: {category}")
 
     # Switch values: shown only when they are not the 1/0 default. Bit fields
     # (option_hex_width None) use decimal field values, byte fields hex at the
@@ -756,12 +757,10 @@ def build_entity_spec(
                     + "?; the borders read as raw, noconv emitted"
                 )
             # An explicit MultOffset has no encode-side transform, so it is
-            # read-only even where Vitosoft lets it be written. Emitting it as a
-            # raw `noconv` number with the physical bounds, unit and step wrote
-            # the wrong register value: on GWG_VWMS_36 "(85) Offset SPR 30L
-            # bottom" (raw * 0.5 - 16, range -16..16 K) 0 K staged raw 00,
-            # which the device reads as -16 K (external review, 2026-10-28).
-            # The filters make the read correct and demote it below.
+            # read-only even where Vitosoft lets it be written: a raw number with
+            # the physical bounds would stage the value without its offset
+            # (raw * 0.5 - 16: 0 K is staged as 00 and reads back as -16 K). The
+            # filters make the read correct and demote it below.
             else:
                 if f_val != 1.0:
                     value_filters.append(("multiply", f_val))
@@ -1097,15 +1096,9 @@ def build_entity_spec(
                 update_interval=poll,
                 notes=notes,
             )
-        # No usable borders. A number needs a range, and the export gives none
-        # that fits (absent, empty, a zero step, or outside the byte width). The
-        # catalogs used to carry a 0/0/1 stand-in, which passes `esphome
-        # config` and leaves a live entity whose only possible write is 0, to a
-        # parameter whose real range nobody knows (1,972 of them over 172
-        # catalogs, 2026-11-10 audit). The datapoint is emitted read-only
-        # instead, through the sensor / text_sensor / binary_sensor path below,
-        # under a CAUTION that says it is writable and why it is not offered
-        # as such.
+        # No usable borders (absent, empty, a zero step, or outside the byte
+        # width). A number cannot exist without a range, so the datapoint takes
+        # the read-only path below, under a CAUTION that it is writable.
         caution = list(NO_BORDERS_CAUTION)
 
     # --- read-only: single-bit binary_sensor, enum text_sensor, or sensor ---

@@ -190,6 +190,7 @@ def _schaltzeiten_lines(entry: dict, oid: str, access: str = "") -> list[str]:
     if access:
         lines.append(f"  access: {access}")
     lines += [
+        "  entity_category: config",
         "  disabled_by_default: true",
         "  update_interval: 3600s",
     ]
