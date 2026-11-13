@@ -46,10 +46,6 @@
 # screen, quick check and trend recorder), and gfa=<chips> (the burner-
 # control chips a GFA datapoint is listed for). ESPHome ignores them.
 #
-# System error history omitted: this unit has NO Optolink-reachable
-# datapoints (KBUS/GFA/RPC-only device), so the generic 0x7507 fault
-# archive can never answer. Re-run with --no-reachable-only to force it.
-#
 # VERIFY ON HARDWARE: not every address answers on every firmware.
 # Run `esphome config` then `esphome compile`/`run` before relying
 # on any value.
@@ -1208,6 +1204,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 121
     step: 1
@@ -1226,6 +1223,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 50
     max_value: 125
     step: 1
@@ -1244,6 +1242,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 20
     max_value: 60
     step: 1
@@ -1261,6 +1260,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 60
     max_value: 90
     step: 1
@@ -1278,6 +1278,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 10
     max_value: 60
     step: 1
@@ -1295,6 +1296,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 50
     max_value: 95
     step: 1
@@ -1312,6 +1314,7 @@ select:
     address: 0x0015
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -1330,6 +1333,7 @@ select:
     address: 0x0016
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -1367,6 +1371,7 @@ select:
     address: 0x0012
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -1384,6 +1389,7 @@ select:
     address: 0x0014
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -1427,6 +1433,7 @@ select:
     address: 0x0017
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -1462,6 +1469,7 @@ switch:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x01  # Vitosoft BitPosition 7, BitLength 1 (MSB-first)
+    entity_category: config
     on_value: 0  # 0 Ja
     off_value: 1  # 1 Nein
     disabled_by_default: true
@@ -1475,6 +1483,7 @@ switch:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x01  # Vitosoft BitPosition 7, BitLength 1 (MSB-first)
+    entity_category: config
     # on 1 = 1 Ja; off 0 = 0 Nein (field values)
     disabled_by_default: true
     update_interval: 3600s

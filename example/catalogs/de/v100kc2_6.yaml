@@ -1414,6 +1414,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 20
     max_value: 127
     step: 1
@@ -1429,6 +1430,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "K·s"
+    entity_category: config
     min_value: 0
     max_value: 199
     step: 1
@@ -1444,6 +1446,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "K·s"
+    entity_category: config
     min_value: 0
     max_value: 199
     step: 1
@@ -1459,6 +1462,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "K·s"
+    entity_category: config
     min_value: 0
     max_value: 199
     step: 1
@@ -1474,6 +1478,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 0
     max_value: 20
     step: 1
@@ -1490,6 +1495,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 5
     max_value: 199
     step: 1
@@ -1506,6 +1512,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 199
     step: 1
@@ -1522,6 +1529,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0
     max_value: 95
     step: 1
@@ -1537,6 +1545,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 10
     max_value: 50
     step: 1
@@ -1553,6 +1562,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 15
     step: 1
@@ -1569,6 +1579,7 @@ number:
     converter: mult5
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 5
     max_value: 995
     step: 5
@@ -1585,6 +1596,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 20
     step: 1
@@ -1599,6 +1611,7 @@ number:
     address: 0x57F6
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 25
     step: 1
@@ -1613,6 +1626,7 @@ number:
     address: 0x57F7
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 25
     step: 1
@@ -1630,6 +1644,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0
     max_value: 127
     step: 1
@@ -1646,6 +1661,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 10
     max_value: 95
     step: 1
@@ -1660,6 +1676,7 @@ select:
     id: RelaistestV100KC2_NR1
     address: 0x7500
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -1677,6 +1694,7 @@ select:
     id: K00_KonfiAnlagenschemaV100KC2
     address: 0x7700
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -1689,6 +1707,7 @@ select:
     id: K01_KonfiDirekteBrennerschaltung
     address: 0x7701
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -1702,6 +1721,7 @@ select:
     id: K02_KonfiBrennertyp1
     address: 0x5702
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -1714,6 +1734,7 @@ select:
     id: K03_KonfiOelGasBetrieb
     address: 0x5703
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -1727,6 +1748,7 @@ select:
     id: K04_KonfiKesselSchalthysterese
     address: 0x5704
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -1740,6 +1762,7 @@ select:
     id: K55_KonfiWW_Algorithmus_NR1
     address: 0x6755
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -1753,6 +1776,7 @@ select:
     id: K56_KonfiWW_SolltemperaturBereich
     address: 0x6756
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -1765,6 +1789,7 @@ select:
     id: K61_KonfiLpumpeKTabhaengig_NR1
     address: 0x6761
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -1777,6 +1802,7 @@ select:
     id: K63_KonfiWWAL_Haeufigkeit
     address: 0x6763
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -1803,6 +1829,7 @@ select:
     id: K88_KonfiCelsiusFahrenheit
     address: 0x7788
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -1815,6 +1842,7 @@ select:
     id: KA2_KonfiSpeichervorrangA1M1
     address: 0x27A2
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -1852,6 +1880,7 @@ select:
     id: BedienBetriebsartA1M1
     address: 0x2301
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -1870,6 +1899,7 @@ switch:
     id: K28_KonfiIntervallzuendung
     address: 0x5728
     length: 1
+    entity_category: config
     # on 0x01 = 1 aktiv; off 0x00 = 0 inaktiv
     disabled_by_default: true
     update_interval: 3600s
@@ -1880,6 +1910,7 @@ switch:
     id: K92_KonfiModulM4
     address: 0x7792
     length: 1
+    entity_category: config
     # on 0x01 = 1 vorhanden; off 0x00 = 0 nicht vorhanden
     disabled_by_default: true
     update_interval: 3600s
@@ -1891,6 +1922,7 @@ switch:
     id: DigitalEingang_143_3_UT
     address: 0x0884
     length: 1
+    entity_category: config
     # on 0x01 = EIN; off 0x00 = AUS
     disabled_by_default: true
     update_interval: 3600s
@@ -1901,6 +1933,7 @@ switch:
     id: K8A_KonfiAnzeigebedingungenAktiv
     address: 0x778A
     length: 1
+    entity_category: config
     on_value: 0xAF  # aktiv
     off_value: 0xB0  # inaktiv
     disabled_by_default: true

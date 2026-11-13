@@ -98,6 +98,7 @@ number:
     address: 0x088A
     length: 4
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 1193045
     step: 1
@@ -113,6 +114,7 @@ select:
     id: K79_KonfiFehlerManagerV100_V050
     address: 0x7779
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:

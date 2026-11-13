@@ -112,6 +112,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 1
     max_value: 60
     step: 1
@@ -128,6 +129,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 1
     max_value: 199
     step: 1
@@ -144,6 +146,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 5
     max_value: 199
     step: 1
@@ -160,6 +163,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 60
     step: 1
@@ -174,6 +178,7 @@ number:
     address: 0x7777
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 99
     step: 1
@@ -190,6 +195,7 @@ number:
     converter: mult5
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 5
     max_value: 995
     step: 5
@@ -204,6 +210,7 @@ number:
     address: 0x7798
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 5
     step: 1
@@ -219,6 +226,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 0
     max_value: 40
     step: 1
@@ -235,6 +243,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "%"
+    entity_category: config
     min_value: 0
     max_value: 99
     step: 1
@@ -251,6 +260,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 20
     max_value: 127
     step: 1
@@ -265,6 +275,7 @@ number:
     address: 0x5707
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 4
     step: 1
@@ -279,6 +290,7 @@ number:
     address: 0x5708
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 199
     step: 1
@@ -293,6 +305,7 @@ number:
     address: 0x5709
     length: 1
     converter: mult100
+    entity_category: config
     min_value: 0
     max_value: 19900
     step: 100
@@ -308,6 +321,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "%"
+    entity_category: config
     min_value: 0
     max_value: 100
     step: 1
@@ -324,6 +338,7 @@ number:
     converter: noconv
     unit_of_measurement: "h"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 99
     step: 1
@@ -339,6 +354,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 0
     max_value: 20
     step: 1
@@ -355,6 +371,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 15
     step: 1
@@ -371,6 +388,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 5
     max_value: 199
     step: 1
@@ -386,6 +404,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 0
     max_value: 15
     step: 1
@@ -402,6 +421,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 60
     step: 1
@@ -418,6 +438,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 199
     step: 1
@@ -434,6 +455,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 199
     step: 1
@@ -450,6 +472,7 @@ number:
     converter: mult100
     unit_of_measurement: "h"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 10000
     step: 100
@@ -465,6 +488,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "months"
+    entity_category: config
     min_value: 0
     max_value: 24
     step: 1
@@ -481,6 +505,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 60
     step: 1
@@ -497,6 +522,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 60
     step: 1
@@ -513,6 +539,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0
     max_value: 50
     step: 1
@@ -529,6 +556,7 @@ number:
     converter: noconv
     unit_of_measurement: "kW"
     device_class: power
+    entity_category: config
     min_value: 0
     max_value: 99
     step: 1
@@ -545,6 +573,7 @@ number:
     converter: noconv
     unit_of_measurement: "kW"
     device_class: power
+    entity_category: config
     min_value: 0
     max_value: 255
     step: 1
@@ -561,6 +590,7 @@ number:
     converter: noconv
     unit_of_measurement: "kW"
     device_class: power
+    entity_category: config
     min_value: 0
     max_value: 99
     step: 1
@@ -577,6 +607,7 @@ number:
     converter: noconv
     unit_of_measurement: "kW"
     device_class: power
+    entity_category: config
     min_value: 0
     max_value: 255
     step: 1
@@ -591,6 +622,7 @@ number:
     address: 0x573D
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 3
     step: 1
@@ -605,6 +637,7 @@ number:
     address: 0x5771
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 127
     step: 1
@@ -621,6 +654,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 1
     max_value: 255
     step: 1
@@ -635,6 +669,7 @@ number:
     address: 0x5773
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 127
     step: 1
@@ -652,6 +687,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0
     max_value: 127
     step: 1
@@ -667,6 +703,7 @@ select:
     id: K01_KonfiAnlagentyp
     address: 0x7701
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -680,6 +717,7 @@ select:
     id: K4C_KonfiVerwendungAusgang20V300
     address: 0x774C
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -694,6 +732,7 @@ select:
     id: K4D_KonfiVerwendungAusgang29
     address: 0x774D
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -707,6 +746,7 @@ select:
     id: K4E_NRx_KonfiVerwendungAusgang52
     address: 0x774E
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -721,6 +761,7 @@ select:
     id: NRx_K53_KonfiHydrWeicheKKPumpe
     address: 0x7753
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -734,6 +775,7 @@ select:
     id: K76_KonfiKommunikationsmodul_mitHV
     address: 0x7776
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -747,6 +789,7 @@ select:
     id: K79_KonfiFehlerManagerV100_V050
     address: 0x7779
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -759,6 +802,7 @@ select:
     id: K97_Konfi_Aussentemperatur
     address: 0x7797
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -772,6 +816,7 @@ select:
     id: K9C_KonfiReceiveHeartBeat
     address: 0x779C
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -844,6 +889,7 @@ select:
     id: K02_KonfiBrennertyp_G
     address: 0x5702
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -857,6 +903,7 @@ select:
     id: K03_KonfiOelGasBetrieb
     address: 0x5703
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -870,6 +917,7 @@ select:
     id: K04_KonfiKesselSchalthysterese
     address: 0x5704
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -883,6 +931,7 @@ select:
     id: K0C_KonfiDKRLFunktionV100GC1
     address: 0x570C
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -899,6 +948,7 @@ select:
     id: K0D_KonfiTSA_FunktionV100GC1
     address: 0x570D
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -912,6 +962,7 @@ select:
     id: K24_KonfiStatusWartung
     address: 0x5724
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -924,6 +975,7 @@ select:
     id: K2D_KonfiBeimischpumpeFunktion
     address: 0x572D
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -936,6 +988,7 @@ select:
     id: SR13_EA2_ZieltempRegelung
     address: 0x5735
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -948,6 +1001,7 @@ select:
     id: SR13_EA2_EETyp_GC1
     address: 0x5741
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -965,6 +1019,7 @@ select:
     id: SR13_EA2_EEStellung
     address: 0x5742
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -978,6 +1033,7 @@ select:
     id: SR13_EA2_FktDrehzahlPumpe
     address: 0x5743
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -993,6 +1049,7 @@ select:
     id: K00_KonfiAnlagenschemaV100GC1
     address: 0x7700
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -1006,6 +1063,7 @@ select:
     id: K88_KonfiCelsiusFahrenheit
     address: 0x7788
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -1018,6 +1076,7 @@ select:
     id: K7C_KonfiResetAktiv
     address: 0x777C
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -1033,6 +1092,7 @@ switch:
     id: SR13_K4A_KonfiKennungSensoreingang1
     address: 0x774A
     length: 1
+    entity_category: config
     # on 0x01 = Yes; off 0x00 = No
     disabled_by_default: true
     update_interval: 3600s
@@ -1043,6 +1103,7 @@ switch:
     id: SR13_K4B_KonfiKennungSensoreingang2
     address: 0x774B
     length: 1
+    entity_category: config
     # on 0x01 = Yes; off 0x00 = No
     disabled_by_default: true
     update_interval: 3600s
@@ -1052,6 +1113,7 @@ switch:
     id: K78_KonfiNVKommunikationLONV100GC1
     address: 0x7778
     length: 1
+    entity_category: config
     # on 0x01 = 1 Enabled; off 0x00 = 0 Blocked
     disabled_by_default: true
     update_interval: 3600s
@@ -1062,6 +1124,7 @@ switch:
     id: K7B_KonfiFunktionUhrSenden
     address: 0x777B
     length: 1
+    entity_category: config
     # on 0x01 = 1 Send; off 0x00 = 0 Do not send
     disabled_by_default: true
     update_interval: 3600s
@@ -1072,6 +1135,7 @@ switch:
     id: K8B_KennungKMFeuerungsautomat
     address: 0x778B
     length: 1
+    entity_category: config
     # on 0x01 = 1: Available; off 0x00 = 0: Not available
     disabled_by_default: true
     update_interval: 3600s
@@ -1083,6 +1147,7 @@ switch:
     id: K1D_KonfiPumpenbeiBrennerein
     address: 0x571D
     length: 1
+    entity_category: config
     # on 0x01 = Active; off 0x00 = Disabled
     disabled_by_default: true
     update_interval: 3600s
@@ -1093,6 +1158,7 @@ switch:
     id: K28_KonfiIntervallzuendung
     address: 0x5728
     length: 1
+    entity_category: config
     # on 0x01 = 1 Enabled; off 0x00 = 0 Disabled
     disabled_by_default: true
     update_interval: 3600s
@@ -1103,6 +1169,7 @@ switch:
     id: SR13_EA2_VolumenstromAnpassung
     address: 0x5737
     length: 1
+    entity_category: config
     # on 0x01 = ON; off 0x00 = OFF
     disabled_by_default: true
     update_interval: 3600s
@@ -1113,6 +1180,7 @@ switch:
     id: SR13_EA2_BrennwertOptHydrWeiche
     address: 0x573C
     length: 1
+    entity_category: config
     # on 0x01 = ON; off 0x00 = OFF
     disabled_by_default: true
     update_interval: 3600s
@@ -1124,6 +1192,7 @@ switch:
     id: SR13_DA1
     address: 0x0850
     length: 1
+    entity_category: config
     # on 0x01 = ON; off 0x00 = OFF
     disabled_by_default: true
     update_interval: 3600s
@@ -1134,6 +1203,7 @@ switch:
     id: SR13_DA2
     address: 0x0851
     length: 1
+    entity_category: config
     # on 0x01 = ON; off 0x00 = OFF
     disabled_by_default: true
     update_interval: 3600s
