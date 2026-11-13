@@ -93,10 +93,15 @@ def test_bit_field_max(mask, top):
 
 def test_binary_sensor_uses_the_shared_key_and_keeps_any_mask():
     # binary_sensor's "any masked bit set" semantics are defined for any mask,
-    # so it keeps plain hex_uint8_t -- including a gapped one.
+    # so any non-zero mask is valid, a gapped one included.
     assert bs_mod.CONF_BIT_MASK == CONF_BIT_MASK
     cfg = bs_mod.CONFIG_SCHEMA({"name": _name(), "address": 0x0005, "bit_mask": 0x0A})
     assert cfg["bit_mask"] == 0x0A
+
+
+def test_binary_sensor_rejects_a_zero_mask():
+    with pytest.raises(cv.Invalid, match="bit_mask must select at least one bit"):
+        bs_mod.CONFIG_SCHEMA({"name": _name(), "address": 0x0005, "bit_mask": 0x00})
 
 
 # --- read-only platforms --------------------------------------------------------
