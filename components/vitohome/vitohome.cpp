@@ -135,7 +135,7 @@ void VitoHomeComponent::register_entity(VitoEntityBase *entity) {
 }
 
 void VitoHomeComponent::setup() {
-  // 4800 8E2 is enforced at config time (FINAL_VALIDATE_SCHEMA in __init__.py),
+  // 8E2 near 4800 baud is enforced at config time (FINAL_VALIDATE_SCHEMA in __init__.py),
   // not read back from the bus here: see the note there on usb_uart.
 
 #ifdef VITOHOME_TIME_SYNC

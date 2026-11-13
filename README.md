@@ -196,7 +196,9 @@ request; they are not stored by the finder itself.
   [JuergenLeber/home-assistant-optolink](https://github.com/JuergenLeber/home-assistant-optolink)
   for a nice example.
 - A UART configured for **4800 baud, 8 data bits, even parity, 2 stop bits
-  (8E2)**. This is mandatory — the hub refuses to start on any mismatch.
+  (8E2)**. `esphome config` rejects any other setting, except that the baud
+  rate may sit in 4320-5280 for an old controller whose clock runs
+  off-nominal: its ENQ (`0x05`) shows up in the frame log, but reads time out.
 
 ## Quick start
 
@@ -212,7 +214,7 @@ external_components:
       ref: main
     components: [vitohome]
 
-# 4800 8E2 is mandatory. Adjust the pins for your board.
+# 4800 8E2. Adjust the pins for your board.
 uart:
   - id: uart_optolink
     rx_pin: GPIO05

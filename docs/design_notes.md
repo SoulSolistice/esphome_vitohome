@@ -111,10 +111,16 @@ signedness rules.
 | KW / VS1 | `KW` | **Hardware-confirmed** on a VScotHO1. |
 | GWG | `GWG` | **Reads hardware-confirmed** on three `0x2053` units (issues #13, #21, #35; first capture 2026-08-23, which exposed the ENQ-misread defect fixed in THIRD_PARTY.md #18). `physical`, `virtual`, `eeprom`, `xram` and `port` answer; `be` and `kmbus_eeprom` did not return data on the units that tried them. **No write is confirmed.** Per-mode status and open questions: [gwg_protocol.md](gwg_protocol.md). |
 
-- **4800 8E2 is mandatory.** `esphome config` rejects any
-  baud/data-bit/stop-bit/parity mismatch on the referenced `uart:` (final
-  validation in `__init__.py`) rather than letting it surface as silent bus
-  errors. This is a config-time check, not a runtime read-back of the bus:
+- **8E2 at 4800 baud is mandatory, give or take a drifting clock.** `esphome
+  config` rejects any data-bit/stop-bit/parity mismatch on the referenced
+  `uart:` (final validation in `__init__.py`) rather than letting it surface as
+  silent bus errors. The baud rate may sit anywhere in 4320-5280 (4800 ±10 %),
+  with a config warning off 4800: some old WB2 controllers run their clock
+  off-nominal and are reported to answer only at 4600 or 5200 (#35). Their ENQ still
+  decodes at 4800, because after its first four single-bit pulses `0x05` holds
+  the line low for six bit times, so drifting sample points still land on the
+  right level; a request or answer with mixed bits does not survive the same
+  drift. This is a config-time check, not a runtime read-back of the bus:
   `usb_uart` channels did not report their parity through
   `UARTComponent::get_parity()` before esphome/esphome#20161, so a runtime
   check failed correctly wired `usb_uart` heads.

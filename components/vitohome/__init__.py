@@ -32,6 +32,7 @@ from esphome.components.const import CONF_STOP_BITS
 import esphome.config_validation as cv
 from esphome.const import (
     CONF_ADDRESS,
+    CONF_BAUD_RATE,
     CONF_ID,
     CONF_INTERVAL,
     CONF_LENGTH,
@@ -1371,27 +1372,61 @@ def _validate_stop_bits(value):
     return value
 
 
-# The Optolink line settings are fixed by the protocol (4800 8E2 for every
-# protocol this component speaks), so a mismatched `uart:` block is a config
-# error. This replaces both runtime checks -- UARTDevice::check_uart_settings()
-# in dump_config(), deprecated upstream and removed in ESPHome 2027.3.0, and the
-# hub's own validate_uart_() in setup(). The latter read the bus back through
-# UARTComponent::get_parity(), which on usb_uart channels returned NONE before
-# esphome/esphome#20161 and so mark_failed() a correctly wired 8E2 head
-# (SoulSolistice/esphome_vitohome#19). require_tx/require_rx apply to native
-# UARTs only; usb_uart has no pins to declare.
+# Every protocol here runs at a nominal 4800 baud. Some old controllers run
+# their clock off-nominal: their ENQ arrives at 4800, but their answers and our
+# requests are garbled. Such units are reported to answer at 4600 or 5200 (#35).
+# The band admits those and nothing a typo would produce, such as 9600.
+_NOMINAL_BAUD_RATE = 4800
+_BAUD_RATE_TOLERANCE = 0.10
+_MIN_BAUD_RATE = round(_NOMINAL_BAUD_RATE * (1 - _BAUD_RATE_TOLERANCE))
+_MAX_BAUD_RATE = round(_NOMINAL_BAUD_RATE * (1 + _BAUD_RATE_TOLERANCE))
+
+
+def _validate_baud_rate(value):
+    if not _MIN_BAUD_RATE <= value <= _MAX_BAUD_RATE:
+        raise cv.Invalid(
+            f"vitohome requires {_NOMINAL_BAUD_RATE} baud for the uart referenced by {CONF_UART_ID}, got {value}. "
+            f"A controller with a drifting clock may need a nearby rate, so {_MIN_BAUD_RATE}-{_MAX_BAUD_RATE} "
+            f"is accepted."
+        )
+    if value != _NOMINAL_BAUD_RATE:
+        _LOGGER.warning(
+            "vitohome: the Optolink uart runs at %s baud instead of %s. Use this only for a controller "
+            "whose clock is off-nominal: its ENQ (0x05) arrives at %s baud but its reads go unanswered.",
+            value,
+            _NOMINAL_BAUD_RATE,
+            _NOMINAL_BAUD_RATE,
+        )
+    return value
+
+
+# The Optolink line settings are fixed by the protocol (8E2, nominally 4800
+# baud, for every protocol this component speaks), so a mismatched `uart:`
+# block is a config error. This replaces both runtime checks --
+# UARTDevice::check_uart_settings() in dump_config(), deprecated upstream and
+# removed in ESPHome 2027.3.0, and the hub's own validate_uart_() in setup().
+# The latter read the bus back through UARTComponent::get_parity(), which on
+# usb_uart channels returned NONE before esphome/esphome#20161 and so
+# mark_failed() a correctly wired 8E2 head (SoulSolistice/esphome_vitohome#19).
+# require_tx/require_rx apply to native UARTs only; usb_uart has no pins to
+# declare. Stop bits and baud rate are checked by _uart_line_final_validate.
 _uart_final_validate = uart.final_validate_device_schema(
     "vitohome",
-    baud_rate=4800,
     require_tx=True,
     require_rx=True,
     data_bits=8,
     parity="EVEN",
 )
-_uart_stop_bits_final_validate = cv.Schema(
+_uart_line_final_validate = cv.Schema(
     {
         cv.Required(CONF_UART_ID): fv.id_declaration_match_schema(
-            cv.Schema({cv.Required(CONF_STOP_BITS): _validate_stop_bits}, extra=cv.ALLOW_EXTRA)
+            cv.Schema(
+                {
+                    cv.Required(CONF_STOP_BITS): _validate_stop_bits,
+                    cv.Required(CONF_BAUD_RATE): _validate_baud_rate,
+                },
+                extra=cv.ALLOW_EXTRA,
+            )
         )
     },
     extra=cv.ALLOW_EXTRA,
@@ -1408,7 +1443,7 @@ def _final_validate_with_uart(config):
     # values anyway. _final_validate stays callable on its own so the unit
     # tests can drive it without a uart bus.
     _uart_final_validate(config)
-    _uart_stop_bits_final_validate(config)
+    _uart_line_final_validate(config)
     _final_validate(config)
 
 
