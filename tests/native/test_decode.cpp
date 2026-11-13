@@ -888,6 +888,17 @@ static void test_schaltzeiten_interop() {
   CHECK(std::strcmp(out, "06:10-22:00") == 0);
 }
 
+// Climate setpoint byte: clamped to [min, max], rounded to the nearest degC.
+static void test_setpoint_byte() {
+  CHECK(setpoint_byte(21.0f, 3, 37) == 21);
+  CHECK(setpoint_byte(21.4f, 3, 37) == 21);
+  CHECK(setpoint_byte(21.5f, 3, 37) == 22);
+  CHECK(setpoint_byte(1.0f, 3, 37) == 3);
+  CHECK(setpoint_byte(-40.0f, 3, 37) == 3);
+  CHECK(setpoint_byte(99.0f, 3, 37) == 37);
+  CHECK(setpoint_byte(std::nanf(""), 3, 37) == 3);  // never a wrap; control() rejects NaN first
+}
+
 int main() {
   test_read_le();
   test_sign_extend();
@@ -908,6 +919,7 @@ int main() {
   test_rotate_bytes();
   test_utf16();
   test_schaltzeiten_interop();
+  test_setpoint_byte();
   test_format_raw_dump();
 
   std::printf("\n%d checks, %d failure(s)\n", g_checks, g_failures);

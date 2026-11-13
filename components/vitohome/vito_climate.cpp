@@ -5,6 +5,7 @@
 #include <cstring>
 #include <vector>
 
+#include "decode.h"
 #include "esphome/core/log.h"
 #include "vitohome.h"
 
@@ -77,29 +78,30 @@ void VitoClimate::setup() {
       names.push_back(this->presets_[i].name);
     this->set_supported_custom_presets(names);
   }
-  // Placeholder only: nothing is published until ready_() (both registers read
-  // once), so this value never reaches Home Assistant as a claim about the
-  // device. A setpoint-only climate has no mode register and is always HEAT.
-  this->mode = this->has_mode_ ? climate::CLIMATE_MODE_OFF : climate::CLIMATE_MODE_HEAT;
+  // The coarse mode until a read maps it, and what stays published when the
+  // first mode read matches no preset. A heating circuit in an unmapped
+  // Betriebsart (holiday program, external switching) is mostly still heating,
+  // so HEAT where the presets offer it; OFF only where no preset does.
+  this->mode = this->offers_heat_() ? climate::CLIMATE_MODE_HEAT : climate::CLIMATE_MODE_OFF;
+}
+
+bool VitoClimate::offers_heat_() const {
+  return !this->has_mode_ || this->first_preset_with_mode_(climate::CLIMATE_MODE_HEAT) != nullptr;
 }
 
 climate::ClimateTraits VitoClimate::traits() {
   climate::ClimateTraits t;
-  // No room sensor: the boiler controls weather-compensated, so the card is
-  // target-only. Current-temperature support is a feature flag that we simply
-  // do not add (feature_flags_ defaults to 0 = unsupported).
-  // OFF is in the mask by default; a heating proxy always offers HEAT, plus
-  // whatever modes the configured presets derive.
-  t.add_supported_mode(climate::CLIMATE_MODE_HEAT);
+  // No current temperature: the boiler controls weather-compensated, so the
+  // card is target-only. The modes are the ones a preset can write (OFF is in
+  // the mask by default); a setpoint-only climate is HEAT.
+  if (this->offers_heat_())
+    t.add_supported_mode(climate::CLIMATE_MODE_HEAT);
   if (this->has_mode_) {
     for (uint16_t i = 0; i < this->preset_count_; i++)
       t.add_supported_mode(this->presets_[i].mode);
   }
-  // Default the HA card's gauge to the device's reality: the same range
-  // control() clamps to, on the 1 degC grid the 1-byte setpoint register
-  // stores. Without this the card showed the framework defaults (and a 0.1
-  // deg step the device cannot represent). A user `visual:` block still wins
-  // -- ESPHome applies the visual_*_override_ members on top of traits().
+  // The gauge spans the range control() clamps to, on the 1 degC grid of the
+  // 1-byte setpoint register. A user `visual:` block overrides it.
   t.set_visual_min_temperature(static_cast<float>(this->setpoint_min_));
   t.set_visual_max_temperature(static_cast<float>(this->setpoint_max_));
   t.set_visual_target_temperature_step(1.0f);
@@ -124,22 +126,20 @@ const VitoClimatePreset *VitoClimate::first_preset_with_mode_(climate::ClimateMo
 
 // Publishes nothing: the request is only queued. The device's read-back (or,
 // with read_back off, its acknowledgement) publishes the new state, so Home
-// Assistant never shows a mode or setpoint the device has not accepted -- the
-// contract every other entity keeps (design_notes.md §5c). It used to publish
-// at queue time and keep that state after a failed write (external review,
-// 2026-10-28), and before ready_() at boot.
+// Assistant never shows a mode or setpoint the device has not accepted
+// (design_notes.md §5c).
 void VitoClimate::control(const climate::ClimateCall &call) {
-  // Target temperature -> room setpoint (1-byte integer degC). Clamp to the
-  // configured range, then write; the read-back publishes the device's view.
+  // Target temperature -> room setpoint (1-byte integer degC), clamped to the
+  // configured range.
   if (call.get_target_temperature().has_value()) {
-    float t = *call.get_target_temperature();
-    if (t < this->setpoint_min_)
-      t = this->setpoint_min_;
-    if (t > this->setpoint_max_)
-      t = this->setpoint_max_;
-    const uint8_t byte = static_cast<uint8_t>(lroundf(t));
-    if (!this->setpoint_.write_byte(byte)) {
-      ESP_LOGE(TAG, "%s: setpoint write could not be queued", this->get_name().c_str());
+    const float t = *call.get_target_temperature();
+    if (std::isnan(t)) {
+      ESP_LOGW(TAG, "%s: target temperature is not a number; nothing written", this->get_name().c_str());
+    } else {
+      const uint8_t byte = setpoint_byte(t, this->setpoint_min_, this->setpoint_max_);
+      if (!this->setpoint_.write_byte(byte)) {
+        ESP_LOGE(TAG, "%s: setpoint write could not be queued", this->get_name().c_str());
+      }
     }
   }
 
@@ -157,10 +157,8 @@ void VitoClimate::control(const climate::ClimateCall &call) {
         ESP_LOGE(TAG, "%s: mode write could not be queued", this->get_name().c_str());
       }
     } else if (call.has_custom_preset() || call.get_mode().has_value()) {
-      // The user asked for a mode/preset this YAML's preset table cannot
-      // express (e.g. an OFF tap with no OFF-mode preset configured). Ignoring
-      // it is correct -- there is no byte to write -- but doing so SILENTLY
-      // left the person tapping a dead button; say why nothing happened.
+      // A mode or preset the table cannot express (an OFF tap without an
+      // OFF preset): there is no byte to write, so say why nothing happens.
       ESP_LOGW(TAG, "%s: no preset matches the requested mode/preset; nothing written (add a preset row for it)",
                this->get_name().c_str());
     }
@@ -219,50 +217,30 @@ void VitoClimate::on_mode_read(const ResponseView &response) {
       }
     }
   }
-  // A state byte with no matching preset lands here. Most often the read
-  // enum is a superset of the write enum (a known-but-unbound device state);
-  // it can also mean someone changed Betriebsart from the physical Bedienteil
-  // or the weekly schedule into a mode this YAML's preset table doesn't
-  // cover. Either way the *previous* custom_preset name is no longer true, so
-  // leaving it published would tell Home Assistant the device is still in a
-  // preset it has actually left -- see design_notes.md for the desync this
-  // caused. clear_custom_preset_() (esphome/components/climate/climate.h) is
-  // the real API for this; `set_custom_preset_(std::nullopt)` does not exist
-  // -- set_custom_preset_() only takes a const char* / StringRef and interns
-  // it against supported_custom_presets_, it has no "none" overload.
+  // No preset reads this byte: a device state the write enum lacks, or a
+  // Betriebsart set at the panel or by the schedule that the preset table does
+  // not cover. The previous preset is no longer true, so it is cleared. The
+  // coarse mode keeps its last value (the setup() placeholder on the first
+  // read): an unmapped byte has no principled bucket.
   //
-  // `mode` (the coarse OFF/HEAT bucket) is deliberately left at its last
-  // confirmed value: there is no principled way to bucket an unmapped byte,
-  // and forcing it to CLIMATE_MODE_OFF would itself be a fabricated claim --
-  // an unmapped state is frequently still "heating" (e.g. Ferienprogramm).
-  //
-  // has_custom_preset() guards the publish so a device stuck in an unmapped
-  // mode doesn't get a state push -- and a wave of downstream HA/MQTT
-  // traffic -- on every single poll; the UI is already correctly showing "no
-  // preset" after the first one.
-  //
-  // The FIRST mode read counts as "mode known" even when unmapped: the device
-  // answered, and withholding the whole climate (setpoint included) because
-  // its Betriebsart is outside the preset table would hide a working entity.
-  // The coarse mode then stays at its setup() placeholder, which the warning
-  // below says is unconfirmed.
+  // The first read counts as "mode known" even when unmapped, so a working
+  // setpoint is not withheld. The publish runs only on a change, not on every
+  // poll of a device that stays unmapped.
   const bool first = !this->mode_known_;
   this->mode_known_ = true;
-  if (this->has_custom_preset() || (first && this->ready_())) {
+  const bool changed = this->has_custom_preset() || first;
+  if (changed) {
     this->clear_custom_preset_();
     if (this->ready_())
       this->publish_state();
+    ESP_LOGW(TAG, "%s: device mode 0x%02X is not in any preset's read set; preset cleared%s", this->get_name().c_str(),
+             byte, first ? ", climate mode unconfirmed" : "");
+  } else {
+    ESP_LOGD(TAG, "%s: device mode 0x%02X still unmapped", this->get_name().c_str(), byte);
   }
-  ESP_LOGW(TAG, "%s: device mode 0x%02X is not in any preset's read set; cleared custom_preset%s",
-           this->get_name().c_str(), byte, first ? " (climate mode unconfirmed)" : "");
 }
 
 void VitoClimate::dump_config() {
-  // The two UNCONDITIONAL lines are merged into one ESP_LOGCONFIG with a \n
-  // separator (ESPHome core's convention -- see wifi_component.cpp): one fewer
-  // TAG pointer and call sequence in flash. The conditional mode line stays its
-  // own call on purpose -- duplicating the header into both branches would
-  // store the shared format string twice and cost MORE flash than it saves.
   ESP_LOGCONFIG(TAG,
                 "Climate '%s'\n"
                 "  Setpoint address: 0x%04X  range: %d..%d degC",

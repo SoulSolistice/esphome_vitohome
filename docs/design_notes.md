@@ -1508,6 +1508,12 @@ been read once (`VitoClimate::ready_()`). A first mode read that matches no
 preset still counts as read, so a device in an unmapped Betriebsart does not
 hide the whole climate; the log says the coarse mode is unconfirmed.
 
+**The climate's placeholder mode** is HEAT where a preset derives HEAT (or the
+climate has no mode register), else OFF. It is what stays published when the
+first mode read matches no preset: a circuit in an unmapped Betriebsart
+(holiday program, external switching) is mostly still heating. HEAT is offered
+to Home Assistant only where a preset can write it.
+
 Commands follow the same rule (external review, 2026-10-28). `control()` used
 to set and publish the new setpoint, preset and mode as soon as the write was
 queued -- before `ready_()` at boot, and kept after a failed write until the
