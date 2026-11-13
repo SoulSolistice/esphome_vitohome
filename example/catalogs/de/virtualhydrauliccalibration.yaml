@@ -87,6 +87,7 @@ select:
     id: K00_KonfiAnlagenschemaV300_V333
     address: 0x7700
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:

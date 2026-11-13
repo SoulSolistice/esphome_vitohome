@@ -34,6 +34,7 @@ number:
     address: 0x7776
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 5
     step: 1
@@ -49,6 +50,7 @@ number:
     address: 0x7777
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 99
     step: 1

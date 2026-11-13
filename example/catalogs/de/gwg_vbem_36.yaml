@@ -46,10 +46,6 @@
 # screen, quick check and trend recorder), and gfa=<chips> (the burner-
 # control chips a GFA datapoint is listed for). ESPHome ignores them.
 #
-# System error history omitted: this unit has NO Optolink-reachable
-# datapoints (KBUS/GFA/RPC-only device), so the generic 0x7507 fault
-# archive can never answer. Re-run with --no-reachable-only to force it.
-#
 # 2 entity name(s) repeat within their platform in Vitosoft (e.g. one
 # 'Pegel' per RF participant); each such name carries its id in parentheses,
 # since ESPHome requires a unique name per platform.
@@ -1715,6 +1711,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 3
     max_value: 35
     step: 1
@@ -1731,6 +1728,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 3
     max_value: 35
     step: 1
@@ -1749,6 +1747,7 @@ number:
     signed: false  # Vitosoft ParameterType Byte, borders 10..90
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 10
     max_value: 90
     step: 0.5
@@ -1765,6 +1764,7 @@ number:
     converter: noconv
     signed: true
     unit_of_measurement: "K"
+    entity_category: config
     min_value: -13
     max_value: 40
     step: 1
@@ -1779,6 +1779,7 @@ number:
     access: be  # Vitosoft BE_READ / BE_WRITE
     length: 1
     converter: div10
+    entity_category: config
     min_value: 0.2
     max_value: 3.5
     step: 0.1
@@ -1795,6 +1796,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0
     max_value: 255
     step: 1
@@ -1810,6 +1812,7 @@ number:
     length: 1
     converter: div10
     signed: false  # Vitosoft ParameterType Byte, borders 0.2..3.5
+    entity_category: config
     min_value: 0.2
     max_value: 3.5
     step: 0.1
@@ -1826,6 +1829,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 3
     max_value: 35
     step: 1
@@ -1842,6 +1846,7 @@ number:
     converter: noconv
     signed: true
     unit_of_measurement: "K"
+    entity_category: config
     min_value: -13
     max_value: 40
     step: 1
@@ -1858,6 +1863,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0
     max_value: 255
     step: 1
@@ -1876,6 +1882,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "%"
+    entity_category: config
     min_value: 1
     max_value: 100
     step: 1
@@ -1894,6 +1901,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 20
     max_value: 127
     step: 1
@@ -1912,6 +1920,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0
     max_value: 127
     step: 1
@@ -1929,6 +1938,7 @@ number:
     length: 1
     bit_mask: 0x0F  # Vitosoft BitPosition 4, BitLength 4 (MSB-first)
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 15
     step: 1
@@ -1946,6 +1956,7 @@ number:
     length: 1
     bit_mask: 0x1E  # Vitosoft BitPosition 3, BitLength 4 (MSB-first)
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 15
     step: 1
@@ -1964,6 +1975,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 0
     max_value: 20
     step: 1
@@ -1981,6 +1993,7 @@ number:
     length: 1
     bit_mask: 0x0F  # Vitosoft BitPosition 4, BitLength 4 (MSB-first)
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 15
     step: 1
@@ -1999,6 +2012,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 60
     max_value: 90
     step: 1
@@ -2017,6 +2031,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 255
     step: 1
@@ -2034,6 +2049,7 @@ number:
     length: 1
     bit_mask: 0xF0  # Vitosoft BitPosition 0, BitLength 4 (MSB-first)
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 15
     step: 1
@@ -2050,6 +2066,7 @@ number:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 255
     step: 1
@@ -2066,6 +2083,7 @@ number:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 99
     step: 1
@@ -2083,6 +2101,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "%"
+    entity_category: config
     min_value: 1
     max_value: 100
     step: 1
@@ -2100,6 +2119,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "%"
+    entity_category: config
     min_value: 1
     max_value: 100
     step: 1
@@ -2117,6 +2137,7 @@ number:
     converter: noconv
     unit_of_measurement: "h"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 99
     step: 1
@@ -2133,6 +2154,7 @@ number:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 255
     step: 1
@@ -2150,6 +2172,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0
     max_value: 127
     step: 1
@@ -2166,6 +2189,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "%"
+    entity_category: config
     min_value: 1
     max_value: 100
     step: 1
@@ -2182,6 +2206,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0
     max_value: 255
     step: 1
@@ -2197,6 +2222,7 @@ number:
     length: 1
     bit_mask: 0xE0  # Vitosoft BitPosition 0, BitLength 3 (MSB-first)
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 5
     step: 1
@@ -2212,6 +2238,7 @@ number:
     length: 1
     bit_mask: 0x1F  # Vitosoft BitPosition 3, BitLength 5 (MSB-first)
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 23
     step: 1
@@ -2226,6 +2253,7 @@ number:
     access: be  # Vitosoft BE_READ / BE_WRITE
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 9
     step: 1
@@ -2243,6 +2271,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x10  # Vitosoft BitPosition 3, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2257,6 +2286,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0xF0  # Vitosoft BitPosition 0, BitLength 4 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2273,6 +2303,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x80  # Vitosoft BitPosition 0, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2287,6 +2318,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0xF0  # Vitosoft BitPosition 0, BitLength 4 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2307,6 +2339,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x20  # Vitosoft BitPosition 2, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2321,6 +2354,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x08  # Vitosoft BitPosition 4, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2335,6 +2369,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x0C  # Vitosoft BitPosition 4, BitLength 2 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2352,6 +2387,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x01  # Vitosoft BitPosition 7, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2366,6 +2402,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x04  # Vitosoft BitPosition 5, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2380,6 +2417,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x04  # Vitosoft BitPosition 5, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2394,6 +2432,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x40  # Vitosoft BitPosition 1, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2408,6 +2447,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x08  # Vitosoft BitPosition 4, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2422,6 +2462,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x04  # Vitosoft BitPosition 5, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2437,6 +2478,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x01  # Vitosoft BitPosition 7, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2451,6 +2493,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x10  # Vitosoft BitPosition 3, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2465,6 +2508,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x02  # Vitosoft BitPosition 6, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2479,6 +2523,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0xF0  # Vitosoft BitPosition 0, BitLength 4 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2506,6 +2551,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x08  # Vitosoft BitPosition 4, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2519,6 +2565,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x40  # Vitosoft BitPosition 1, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2532,6 +2579,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x10  # Vitosoft BitPosition 3, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2545,6 +2593,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x02  # Vitosoft BitPosition 6, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2558,6 +2607,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x04  # Vitosoft BitPosition 5, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2571,6 +2621,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x20  # Vitosoft BitPosition 2, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2584,6 +2635,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x02  # Vitosoft BitPosition 6, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2597,6 +2649,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x08  # Vitosoft BitPosition 4, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2610,6 +2663,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x01  # Vitosoft BitPosition 7, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2623,6 +2677,7 @@ select:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x0C  # Vitosoft BitPosition 4, BitLength 2 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2638,6 +2693,7 @@ select:
     access: be  # Vitosoft BE_READ / BE_WRITE
     length: 1
     bit_mask: 0xF0  # Vitosoft BitPosition 0, BitLength 4 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2654,6 +2710,7 @@ select:
     address: 0x00F4
     access: be  # Vitosoft BE_READ / BE_WRITE
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -2674,6 +2731,7 @@ switch:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x04  # Vitosoft BitPosition 5, BitLength 1 (MSB-first)
+    entity_category: config
     on_value: 0  # 0 vorhanden
     off_value: 1  # 1 nicht vorhanden
     disabled_by_default: true
@@ -2688,6 +2746,7 @@ switch:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x02  # Vitosoft BitPosition 6, BitLength 1 (MSB-first)
+    entity_category: config
     # on 1 = 1 freigegeben; off 0 = 0 gesperrt (field values)
     disabled_by_default: true
     update_interval: 3600s
@@ -2700,6 +2759,7 @@ switch:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x30  # Vitosoft BitPosition 2, BitLength 2 (MSB-first)
+    entity_category: config
     # on 1 = 1 vorhanden; off 0 = 0 nicht vorhanden (field values)
     disabled_by_default: true
     update_interval: 3600s
@@ -2712,6 +2772,7 @@ switch:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x01  # Vitosoft BitPosition 7, BitLength 1 (MSB-first)
+    entity_category: config
     on_value: 0  # 0 vorhanden
     off_value: 1  # 1 nicht vorhanden
     disabled_by_default: true
@@ -2725,6 +2786,7 @@ switch:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x08  # Vitosoft BitPosition 4, BitLength 1 (MSB-first)
+    entity_category: config
     # on 1 = 1 vorhanden; off 0 = 0 nicht vorhanden (field values)
     disabled_by_default: true
     update_interval: 3600s
@@ -2738,6 +2800,7 @@ switch:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x80  # Vitosoft BitPosition 0, BitLength 1 (MSB-first)
+    entity_category: config
     # on 1 = 1 Ja; off 0 = 0 Nein (field values)
     disabled_by_default: true
     update_interval: 3600s
@@ -2751,6 +2814,7 @@ switch:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x20  # Vitosoft BitPosition 2, BitLength 1 (MSB-first)
+    entity_category: config
     # on 1 = 1 vorhanden; off 0 = 0 nicht vorhanden (field values)
     disabled_by_default: true
     update_interval: 3600s
@@ -2763,6 +2827,7 @@ switch:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x01  # Vitosoft BitPosition 7, BitLength 1 (MSB-first)
+    entity_category: config
     # on 1 = 1 vorhanden; off 0 = 0 nicht vorhanden (field values)
     disabled_by_default: true
     update_interval: 3600s
@@ -2774,6 +2839,7 @@ switch:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x10  # Vitosoft BitPosition 3, BitLength 1 (MSB-first)
+    entity_category: config
     # on 1 = 1 Ja; off 0 = 0 Nein (field values)
     disabled_by_default: true
     update_interval: 3600s
@@ -2785,6 +2851,7 @@ switch:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x80  # Vitosoft BitPosition 0, BitLength 1 (MSB-first)
+    entity_category: config
     # on 1 = 1 vorhanden; off 0 = 0 nicht vorhanden (field values)
     disabled_by_default: true
     update_interval: 3600s
@@ -2796,6 +2863,7 @@ switch:
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
     bit_mask: 0x20  # Vitosoft BitPosition 2, BitLength 1 (MSB-first)
+    entity_category: config
     # on 1 = 1 freigegeben; off 0 = 0 gesperrt (field values)
     disabled_by_default: true
     update_interval: 3600s

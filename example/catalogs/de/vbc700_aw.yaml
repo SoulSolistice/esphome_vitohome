@@ -4886,6 +4886,7 @@ number:
     address: 0x7A05
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 60
     step: 1
@@ -4901,6 +4902,7 @@ number:
     converter: noconv
     unit_of_measurement: "m³/h"
     device_class: volume_flow_rate
+    entity_category: config
     min_value: 10
     max_value: 500
     step: 10
@@ -4915,6 +4917,7 @@ number:
     address: 0x7A06
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 60
     max_value: 3600
     step: 30
@@ -4929,6 +4932,7 @@ number:
     address: 0x7A04
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 20
     max_value: 200
     step: 1
@@ -4944,6 +4948,7 @@ number:
     address: 0x7777
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 99
     step: 1
@@ -4957,6 +4962,7 @@ number:
     address: 0x5707
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 4
     step: 1
@@ -4973,6 +4979,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 60
     step: 1
@@ -4990,6 +4997,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 10
     max_value: 30
     step: 1
@@ -5006,6 +5014,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 1
     max_value: 30
     step: 1
@@ -5020,6 +5029,7 @@ number:
     address: 0x7104
     length: 2
     converter: div10
+    entity_category: config
     min_value: 0
     max_value: 5
     step: 1
@@ -5035,6 +5045,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 0.5
     max_value: 10
     step: 1
@@ -5049,6 +5060,7 @@ number:
     address: 0x7108
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 5
     max_value: 1000
     step: 5
@@ -5063,6 +5075,7 @@ number:
     address: 0x7110
     length: 2
     converter: div10
+    entity_category: config
     min_value: -15
     max_value: 40
     step: 10
@@ -5077,6 +5090,7 @@ number:
     address: 0x7111
     length: 2
     converter: div10
+    entity_category: config
     min_value: 0
     max_value: 3.5
     step: 1
@@ -5093,6 +5107,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 5
     max_value: 255
     step: 1
@@ -5107,6 +5122,7 @@ number:
     address: 0x7113
     length: 2
     converter: div10
+    entity_category: config
     min_value: 2
     max_value: 40
     step: 5
@@ -5121,6 +5137,7 @@ number:
     address: 0x7114
     length: 2
     converter: div10
+    entity_category: config
     min_value: 0.5
     max_value: 3
     step: 1
@@ -5138,6 +5155,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 10
     max_value: 30
     step: 1
@@ -5154,6 +5172,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 10
     max_value: 30
     step: 1
@@ -5169,6 +5188,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: -15
     max_value: 40
     step: 1
@@ -5183,6 +5203,7 @@ number:
     address: 0x2007
     length: 2
     converter: div10
+    entity_category: config
     min_value: 0
     max_value: 35
     step: 1
@@ -5197,6 +5218,7 @@ number:
     address: 0x2009
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 5
     max_value: 1000
     step: 5
@@ -5212,6 +5234,7 @@ number:
     length: 1
     converter: div10
     signed: false  # Vitosoft ParameterType Int, borders 0..5
+    entity_category: config
     min_value: 0
     max_value: 5
     step: 1
@@ -5227,6 +5250,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 1
     max_value: 100
     step: 1
@@ -5243,6 +5267,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 10
     max_value: 70
     step: 1
@@ -5259,6 +5284,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0.5
     max_value: 20
     step: 1
@@ -5274,6 +5300,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: -15
     max_value: 40
     step: 1
@@ -5290,6 +5317,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 5
     max_value: 255
     step: 1
@@ -5305,6 +5333,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 2
     max_value: 40
     step: 0.5
@@ -5320,6 +5349,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 0.5
     max_value: 3
     step: 0.1
@@ -5337,6 +5367,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 10
     max_value: 30
     step: 1
@@ -5353,6 +5384,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 10
     max_value: 30
     step: 1
@@ -5368,6 +5400,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: -15
     max_value: 40
     step: 1
@@ -5382,6 +5415,7 @@ number:
     address: 0x3007
     length: 2
     converter: div10
+    entity_category: config
     min_value: 0
     max_value: 35
     step: 1
@@ -5396,6 +5430,7 @@ number:
     address: 0x3009
     length: 2
     converter: div10
+    entity_category: config
     min_value: 5
     max_value: 1000
     step: 5
@@ -5411,6 +5446,7 @@ number:
     length: 1
     converter: div10
     signed: false  # Vitosoft ParameterType Int, borders 0..5
+    entity_category: config
     min_value: 0
     max_value: 5
     step: 1
@@ -5426,6 +5462,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 1
     max_value: 100
     step: 1
@@ -5442,6 +5479,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 10
     max_value: 70
     step: 1
@@ -5458,6 +5496,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0.5
     max_value: 20
     step: 1
@@ -5473,6 +5512,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: -15
     max_value: 40
     step: 1
@@ -5489,6 +5529,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 5
     max_value: 255
     step: 1
@@ -5504,6 +5545,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 2
     max_value: 40
     step: 0.5
@@ -5519,6 +5561,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 0.5
     max_value: 3
     step: 0.1
@@ -5536,6 +5579,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 10
     max_value: 30
     step: 1
@@ -5552,6 +5596,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 10
     max_value: 30
     step: 1
@@ -5567,6 +5612,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: -15
     max_value: 40
     step: 1
@@ -5581,6 +5627,7 @@ number:
     address: 0x4007
     length: 2
     converter: div10
+    entity_category: config
     min_value: 0
     max_value: 35
     step: 1
@@ -5595,6 +5642,7 @@ number:
     address: 0x4009
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 5
     max_value: 1000
     step: 5
@@ -5610,6 +5658,7 @@ number:
     length: 1
     converter: div10
     signed: false  # Vitosoft ParameterType Int, borders 0..5
+    entity_category: config
     min_value: 0
     max_value: 5
     step: 1
@@ -5625,6 +5674,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 1
     max_value: 100
     step: 1
@@ -5641,6 +5691,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 10
     max_value: 70
     step: 1
@@ -5657,6 +5708,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0.5
     max_value: 20
     step: 1
@@ -5672,6 +5724,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: -15
     max_value: 40
     step: 1
@@ -5688,6 +5741,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 5
     max_value: 255
     step: 1
@@ -5703,6 +5757,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 2
     max_value: 40
     step: 0.5
@@ -5718,6 +5773,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 0.5
     max_value: 3
     step: 0.1
@@ -5734,6 +5790,7 @@ number:
     length: 2
     converter: noconv
     unit_of_measurement: "K·min"
+    entity_category: config
     min_value: 10
     max_value: 30000
     step: 10
@@ -5748,6 +5805,7 @@ number:
     address: 0x7908
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 1080
     step: 10
@@ -5764,6 +5822,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 5
     max_value: 75
     step: 1
@@ -5778,6 +5837,7 @@ number:
     address: 0x7905
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 300
     step: 10
@@ -5794,6 +5854,7 @@ number:
     length: 2
     converter: noconv
     unit_of_measurement: "K·min"
+    entity_category: config
     min_value: 10
     max_value: 30000
     step: 10
@@ -5808,6 +5869,7 @@ number:
     address: 0x7B07
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 1440
     step: 10
@@ -5824,6 +5886,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 5
     max_value: 255
     step: 1
@@ -5838,6 +5901,7 @@ number:
     address: 0x7B06
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 1440
     step: 10
@@ -5853,6 +5917,7 @@ number:
     length: 2
     converter: noconv
     signed: true
+    entity_category: config
     min_value: -200
     max_value: 200
     step: 10
@@ -5869,6 +5934,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: -50
     max_value: 50
     step: 1
@@ -5883,6 +5949,7 @@ number:
     address: 0x7B09
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 20
     max_value: 400
     step: 5
@@ -5899,6 +5966,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0
     max_value: 80
     step: 1
@@ -5913,6 +5981,7 @@ number:
     address: 0x7B0A
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 5
     max_value: 30
     step: 1
@@ -5929,6 +5998,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 300
     step: 10
@@ -5945,6 +6015,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 0.5
     max_value: 5
     step: 1
@@ -5959,6 +6030,7 @@ number:
     address: 0x7305
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 50
     step: 1
@@ -5973,6 +6045,7 @@ number:
     address: 0x7306
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 100
     step: 1
@@ -5988,6 +6061,7 @@ number:
     length: 2
     converter: noconv
     signed: true
+    entity_category: config
     min_value: -30000
     max_value: 30000
     step: 1
@@ -6004,6 +6078,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 600
     step: 1
@@ -6020,6 +6095,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 10
     max_value: 300
     step: 10
@@ -6037,6 +6113,7 @@ number:
     signed: false  # Vitosoft ParameterType Int, borders 0..70
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0
     max_value: 70
     step: 1
@@ -6054,6 +6131,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 1
     max_value: 70
     step: 1
@@ -6069,6 +6147,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 2
     max_value: 20
     step: 10
@@ -6086,6 +6165,7 @@ number:
     signed: false  # Vitosoft ParameterType Int, borders 1..70
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 1
     max_value: 70
     step: 1
@@ -6100,6 +6180,7 @@ number:
     address: 0x7C01
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 12
     step: 1
@@ -6113,6 +6194,7 @@ number:
     address: 0x7C03
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 7
     step: 1
@@ -6126,6 +6208,7 @@ number:
     address: 0x7C02
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 14
     step: 1
@@ -6139,6 +6222,7 @@ number:
     address: 0x7C04
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 12
     step: 1
@@ -6152,6 +6236,7 @@ number:
     address: 0x7C06
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 7
     step: 1
@@ -6165,6 +6250,7 @@ number:
     address: 0x7C05
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 14
     step: 1
@@ -6182,6 +6268,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 10
     max_value: 70
     step: 1
@@ -6198,6 +6285,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 5
     max_value: 60
     step: 1
@@ -6214,6 +6302,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 20
     max_value: 80
     step: 5
@@ -6229,6 +6318,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 1
     max_value: 10
     step: 0.5
@@ -6244,6 +6334,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 2
     max_value: 30
     step: 0.5
@@ -6260,6 +6351,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 10
     max_value: 70
     step: 1
@@ -6276,6 +6368,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 10
     max_value: 1000
     step: 10
@@ -6292,6 +6385,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 10
     max_value: 1000
     step: 10
@@ -6309,6 +6403,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 10
     max_value: 6000
     step: 10
@@ -6324,6 +6419,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 0
     max_value: 20
     step: 0.5
@@ -6339,6 +6435,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 0
     max_value: 20
     step: 0.5
@@ -6355,6 +6452,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: -40
     max_value: 60
     step: 10
@@ -6371,6 +6469,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: -15
     max_value: 15
     step: 0.1
@@ -6385,6 +6484,7 @@ number:
     address: 0x700B
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 255
     step: 1
@@ -6400,6 +6500,7 @@ number:
     address: 0x7013
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 12
     step: 1
@@ -6414,6 +6515,7 @@ number:
     address: 0x7018
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 1000
     step: 1
@@ -6431,6 +6533,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 25
     max_value: 65
     step: 1
@@ -6447,6 +6550,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 1
     max_value: 40
     step: 1
@@ -6463,6 +6567,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 1
     max_value: 20
     step: 1
@@ -6479,6 +6584,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 120
     max_value: 1800
     step: 10
@@ -6495,6 +6601,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 20
     max_value: 1800
     step: 10
@@ -6511,6 +6618,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 10
     max_value: 1000
     step: 10
@@ -6527,6 +6635,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 5
     max_value: 1080
     step: 10
@@ -6543,6 +6652,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 10
     max_value: 3590
     step: 10
@@ -6559,6 +6669,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 600
     step: 1
@@ -6575,6 +6686,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 240
     step: 1
@@ -6590,6 +6702,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 0.5
     max_value: 30
     step: 0.5
@@ -6607,6 +6720,7 @@ number:
     signed: true
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: -200
     max_value: 200
     step: 1
@@ -6623,6 +6737,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0
     max_value: 70
     step: 0.5
@@ -6639,6 +6754,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 1
     max_value: 100
     step: 1
@@ -6655,6 +6771,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0
     max_value: 50
     step: 1
@@ -6671,6 +6788,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: -20
     max_value: 20
     step: 1
@@ -6687,6 +6805,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 127
     step: 1
@@ -6703,6 +6822,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 3
     max_value: 25.5
     step: 1
@@ -6719,6 +6839,7 @@ number:
     converter: div10
     unit_of_measurement: "bar"
     device_class: pressure
+    entity_category: config
     min_value: 0.2
     max_value: 19
     step: 1
@@ -6735,6 +6856,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 10
     max_value: 20
     step: 1
@@ -6750,6 +6872,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "%"
+    entity_category: config
     min_value: 10
     max_value: 100
     step: 1
@@ -6766,6 +6889,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 1
     max_value: 30
     step: 1
@@ -6782,6 +6906,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 100
     max_value: 140
     step: 1
@@ -6798,6 +6923,7 @@ number:
     converter: div10
     unit_of_measurement: "bar"
     device_class: pressure
+    entity_category: config
     min_value: 10
     max_value: 50
     step: 1
@@ -6814,6 +6940,7 @@ number:
     converter: div10
     unit_of_measurement: "bar"
     device_class: pressure
+    entity_category: config
     min_value: 1
     max_value: 20
     step: 1
@@ -6830,6 +6957,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 6
     max_value: 50
     step: 10
@@ -6846,6 +6974,7 @@ number:
     converter: noconv
     unit_of_measurement: "bar"
     device_class: pressure
+    entity_category: config
     min_value: 0
     max_value: 100
     step: 1
@@ -6862,6 +6991,7 @@ number:
     converter: div10
     unit_of_measurement: "bar"
     device_class: pressure
+    entity_category: config
     min_value: 0
     max_value: 2
     step: 1
@@ -6876,6 +7006,7 @@ number:
     address: 0x5030
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 255
     step: 1
@@ -6893,6 +7024,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 25
     max_value: 65
     step: 1
@@ -6909,6 +7041,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 1
     max_value: 40
     step: 1
@@ -6924,6 +7057,7 @@ number:
     length: 2
     converter: div10
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 1
     max_value: 20
     step: 1
@@ -6940,6 +7074,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 120
     max_value: 1800
     step: 10
@@ -6956,6 +7091,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 20
     max_value: 1800
     step: 10
@@ -6972,6 +7108,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 10
     max_value: 1000
     step: 10
@@ -6988,6 +7125,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 1080
     step: 10
@@ -7002,6 +7140,7 @@ number:
     address: 0x510B
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 10
     max_value: 3590
     step: 10
@@ -7018,6 +7157,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 600
     step: 1
@@ -7034,6 +7174,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 240
     step: 1
@@ -7050,6 +7191,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: -200
     max_value: 200
     step: 1
@@ -7066,6 +7208,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0
     max_value: 700
     step: 5
@@ -7082,6 +7225,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 1
     max_value: 100
     step: 1
@@ -7098,6 +7242,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0
     max_value: 500
     step: 10
@@ -7114,6 +7259,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: -200
     max_value: 200
     step: 10
@@ -7128,6 +7274,7 @@ number:
     address: 0x5127
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 127
     step: 1
@@ -7145,6 +7292,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 30
     max_value: 255
     step: 1
@@ -7161,6 +7309,7 @@ number:
     converter: div10
     unit_of_measurement: "bar"
     device_class: pressure
+    entity_category: config
     min_value: 2
     max_value: 190
     step: 1
@@ -7177,6 +7326,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 10
     max_value: 20
     step: 1
@@ -7192,6 +7342,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "%"
+    entity_category: config
     min_value: 10
     max_value: 100
     step: 1
@@ -7208,6 +7359,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 1
     max_value: 30
     step: 1
@@ -7224,6 +7376,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 1000
     max_value: 1400
     step: 10
@@ -7240,6 +7393,7 @@ number:
     converter: div10
     unit_of_measurement: "bar"
     device_class: pressure
+    entity_category: config
     min_value: 100
     max_value: 500
     step: 1
@@ -7256,6 +7410,7 @@ number:
     converter: noconv
     unit_of_measurement: "bar"
     device_class: pressure
+    entity_category: config
     min_value: 10
     max_value: 200
     step: 1
@@ -7272,6 +7427,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 60
     max_value: 500
     step: 10
@@ -7288,6 +7444,7 @@ number:
     converter: div10
     unit_of_measurement: "bar"
     device_class: pressure
+    entity_category: config
     min_value: 0
     max_value: 100
     step: 1
@@ -7304,6 +7461,7 @@ number:
     converter: div10
     unit_of_measurement: "bar"
     device_class: pressure
+    entity_category: config
     min_value: 0
     max_value: 20
     step: 1
@@ -7318,6 +7476,7 @@ number:
     address: 0x5130
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 255
     step: 1
@@ -7335,6 +7494,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 1
     max_value: 30
     step: 1
@@ -7349,6 +7509,7 @@ number:
     address: 0x201D
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 35
     step: 1
@@ -7363,6 +7524,7 @@ number:
     address: 0x201F
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 20
     max_value: 400
     step: 5
@@ -7377,6 +7539,7 @@ number:
     address: 0x2020
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 5
     max_value: 30
     step: 1
@@ -7393,6 +7556,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 5
     max_value: 255
     step: 1
@@ -7408,6 +7572,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 250
     step: 10
@@ -7424,6 +7589,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 1
     max_value: 30
     step: 1
@@ -7438,6 +7604,7 @@ number:
     address: 0x301F
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 20
     max_value: 400
     step: 5
@@ -7452,6 +7619,7 @@ number:
     address: 0x3020
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 5
     max_value: 30
     step: 1
@@ -7468,6 +7636,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 5
     max_value: 255
     step: 1
@@ -7484,6 +7653,7 @@ number:
     converter: div10
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 1
     max_value: 30
     step: 1
@@ -7498,6 +7668,7 @@ number:
     address: 0x401F
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 20
     max_value: 400
     step: 5
@@ -7512,6 +7683,7 @@ number:
     address: 0x4020
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 5
     max_value: 30
     step: 1
@@ -7528,6 +7700,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 5
     max_value: 255
     step: 1
@@ -7541,6 +7714,7 @@ number:
     address: 0x5735
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 4
     step: 1
@@ -7557,6 +7731,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 10
     max_value: 1000
     step: 1
@@ -7571,6 +7746,7 @@ select:
     id: WPR_LONObjekte_AussenTemp
     address: 0x7797
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7583,6 +7759,7 @@ select:
     id: WPR_LONObjekte_Feldbus_Uhrzeit
     address: 0x77FF
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7597,6 +7774,7 @@ select:
     id: WPR_SepNCKreis_NatCooling_Kreis
     address: 0x7100
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7611,6 +7789,7 @@ select:
     id: WPR_SepNCKreis_NatCooling_Kuehlkreis
     address: 0x7101
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7625,6 +7804,7 @@ select:
     id: WPR_SepNCKreis_NatCooling_RaumTempSens_Rangierung
     address: 0x7106
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7640,6 +7820,7 @@ select:
     id: WPR_HK1_WTimer_HK
     address: 0x2002
     length: 2
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7664,6 +7845,7 @@ select:
     id: WPR_HK1_Betriebsart_Heizkreis
     address: 0x2004
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7681,6 +7863,7 @@ select:
     id: WPR_HK1_Raumtemperaturaufschaltung
     address: 0x200B
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7695,6 +7878,7 @@ select:
     id: WPR_HK1_heizkreis_reaktion_force
     address: 0x2011
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7709,6 +7893,7 @@ select:
     id: WPR_HK2_WTimer_HK
     address: 0x3002
     length: 2
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7733,6 +7918,7 @@ select:
     id: WPR_HK2_Betriebsart_Heizkreis
     address: 0x3004
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7750,6 +7936,7 @@ select:
     id: WPR_HK2_Raumtemperaturaufschaltung
     address: 0x300B
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7764,6 +7951,7 @@ select:
     id: WPR_HK2_heizkreis_reaktion_force
     address: 0x3011
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7778,6 +7966,7 @@ select:
     id: WPR_HK3_WTimer_HK
     address: 0x4002
     length: 2
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7802,6 +7991,7 @@ select:
     id: WPR_HK3_Betriebsart_Heizkreis
     address: 0x4004
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7819,6 +8009,7 @@ select:
     id: WPR_HK3_Raumtemperaturaufschaltung
     address: 0x400B
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7833,6 +8024,7 @@ select:
     id: WPR_HK3_heizkreis_reaktion_force
     address: 0x4011
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7847,6 +8039,7 @@ select:
     id: WPR_eHeizung_Eheizstufe_EVUSperre
     address: 0x790A
     length: 2
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7861,6 +8054,7 @@ select:
     id: WPR_eHeizung_Eheizstufe_sperreStromausfall
     address: 0x7909
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7874,6 +8068,7 @@ select:
     id: WPR_eHeizung_max_Stufe_Elektro
     address: 0x7907
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7888,6 +8083,7 @@ select:
     id: WPR_Hydraulik_Estrichprogramm
     address: 0x7303
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7913,6 +8109,7 @@ select:
     id: WPR_HeizSpeicher_Wtimer_Puffer
     address: 0x7201
     length: 2
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7927,6 +8124,7 @@ select:
     id: WPR_HeizSpeicher_reaktion_force
     address: 0x7206
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7941,6 +8139,7 @@ select:
     id: WPR_WW_WTimer
     address: 0x6001
     length: 2
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7965,6 +8164,7 @@ select:
     id: WPR_WW_Betriebsart
     address: 0x6004
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7979,6 +8179,7 @@ select:
     id: WPR_WW_speicher_reaktion_force
     address: 0x600F
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -7993,6 +8194,7 @@ select:
     id: WPR_Anlagenkonfig_Anlagenschema
     address: 0x7000
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -8015,6 +8217,7 @@ select:
     id: WPR_Anlagenkonfig_Sprache
     address: 0x7001
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -8034,6 +8237,7 @@ select:
     id: WPR_Anlagenkonfig_Kaskade
     address: 0x700A
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -8047,6 +8251,7 @@ select:
     id: WPR_Anlagenkonfig_Vitosolic100200
     address: 0x7016
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -8060,6 +8265,7 @@ select:
     id: WPR_Anlagenkonfig_PrioExtAnf
     address: 0x7019
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -8073,6 +8279,7 @@ select:
     id: WPR_Anlagenkonfig_BA_UmschaltungAufHK
     address: 0x7011
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -8095,6 +8302,7 @@ select:
     id: WPR_Anlagenkonfig_BA_Umschaltung_Wirkung
     address: 0x7012
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -8109,6 +8317,7 @@ select:
     id: WPR_Anlagenkonfig_ExternAnf_MiAuf
     address: 0x7014
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -8127,6 +8336,7 @@ select:
     id: WPR_Anlagenkonfig_ExternSperren_MiZu
     address: 0x7015
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -8147,6 +8357,7 @@ select:
     address: 0x701A
     length: 1
     bit_mask: 0x01  # Vitosoft BitPosition 7, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -8160,6 +8371,7 @@ select:
     address: 0x701A
     length: 1
     bit_mask: 0x02  # Vitosoft BitPosition 6, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -8173,6 +8385,7 @@ select:
     address: 0x701A
     length: 1
     bit_mask: 0x04  # Vitosoft BitPosition 5, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -8186,6 +8399,7 @@ select:
     address: 0x701A
     length: 1
     bit_mask: 0x20  # Vitosoft BitPosition 2, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -8199,6 +8413,7 @@ select:
     address: 0x701A
     length: 1
     bit_mask: 0x10  # Vitosoft BitPosition 3, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -8212,6 +8427,7 @@ select:
     address: 0x701A
     length: 1
     bit_mask: 0x08  # Vitosoft BitPosition 4, BitLength 1 (MSB-first)
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -8225,6 +8441,7 @@ select:
     id: WPR_Anlagenkonfig_Mischertyp
     address: 0x700F
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -8237,6 +8454,7 @@ select:
     id: WPR_Anlagenkonfig_TypNCMischer
     address: 0x701B
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -8251,6 +8469,7 @@ switch:
     id: WPR_Solaranlage_Solarertrag_Enable
     address: 0x7A08
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8260,6 +8479,7 @@ switch:
     id: WPR_Solaranlage_Rueckschlagklappenfehler
     address: 0x7A09
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8270,6 +8490,7 @@ switch:
     id: WPR_LONObjekte_Kommodul_LON_vorh
     address: 0x7710
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8281,6 +8502,7 @@ switch:
     id: WPR_SepNCKreis_NatCooling_Raumregelung
     address: 0x7105
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8292,6 +8514,7 @@ switch:
     id: WPR_HK1_Fernbedienung
     address: 0x2003
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8302,6 +8525,7 @@ switch:
     id: WPR_HK1_Raumregelung
     address: 0x2005
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8312,6 +8536,7 @@ switch:
     id: WPR_HK1_WWbeiParty
     address: 0x2010
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8323,6 +8548,7 @@ switch:
     id: WPR_HK2_Fernbedienung
     address: 0x3003
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8333,6 +8559,7 @@ switch:
     id: WPR_HK2_Raumregelung
     address: 0x3005
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8343,6 +8570,7 @@ switch:
     id: WPR_HK2_WWbeiParty
     address: 0x3010
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8354,6 +8582,7 @@ switch:
     id: WPR_HK3_Fernbedienung
     address: 0x4003
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8364,6 +8593,7 @@ switch:
     id: WPR_HK3_Raumregelung
     address: 0x4005
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8374,6 +8604,7 @@ switch:
     id: WPR_HK3_WWbeiParty
     address: 0x4010
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8385,6 +8616,7 @@ switch:
     id: WPR_eHeizung_Heizbetrieb_mit_Elektro
     address: 0x7902
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8395,6 +8627,7 @@ switch:
     id: WPR_eHeizung_vorhanden
     address: 0x7900
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8405,6 +8638,7 @@ switch:
     id: WPR_eHeizung_Warmwasser_mit_Elektro
     address: 0x7903
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8416,6 +8650,7 @@ switch:
     id: WPR_extWE_auf_WW
     address: 0x7B0D
     length: 2
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8426,6 +8661,7 @@ switch:
     id: WPR_extWE_Bivalentbetrieb
     address: 0x7B0E
     length: 2
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8436,6 +8672,7 @@ switch:
     id: WPR_extWE_ExtWaermeerzeuger
     address: 0x7B00
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8446,6 +8683,7 @@ switch:
     id: WPR_extWE_Vorrang
     address: 0x7B01
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8457,6 +8695,7 @@ switch:
     id: WPR_Hydraulik_Waermepumpe_fuer_Bautrocknung
     address: 0x7300
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8468,6 +8707,7 @@ switch:
     id: WPR_HeizSpeicher_Heizspeicher
     address: 0x7200
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8478,6 +8718,7 @@ switch:
     id: WPR_HeizSpeicher_Abschaltoptimierung_HS
     address: 0x7205
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8488,6 +8729,7 @@ switch:
     id: WPR_Uhrzeit_Zeitumstellung
     address: 0x7C00
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8499,6 +8741,7 @@ switch:
     id: WPR_WW_Einschaltoptimierung
     address: 0x6009
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8509,6 +8752,7 @@ switch:
     id: WPR_WW_Abschaltoptimierung
     address: 0x600A
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8519,6 +8763,7 @@ switch:
     id: WPR_WW_Legionellenautomat
     address: 0x600B
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8529,6 +8774,7 @@ switch:
     id: WPR_WW_ZweiterTempSensor
     address: 0x600E
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8539,6 +8785,7 @@ switch:
     id: WPR_WW_Warmwasservorrang
     address: 0x6010
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8549,6 +8796,7 @@ switch:
     id: WPR_WW_EHeizWWSpeicher
     address: 0x6014
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8560,6 +8808,7 @@ switch:
     id: WPR_Anlagenkonfig_Primearpumpe_NatCooling
     address: 0x7007
     length: 1
+    entity_category: config
     on_value: 0x00  # JA
     off_value: 0x01  # NEIN
     disabled_by_default: true
@@ -8571,6 +8820,7 @@ switch:
     id: WPR_Anlagenkonfig_Schwimmbad
     address: 0x7008
     length: 1
+    entity_category: config
     on_value: 0x00  # JA
     off_value: 0x01  # NEIN
     disabled_by_default: true
@@ -8582,6 +8832,7 @@ switch:
     id: WPR_Anlagenkonfig_Ext_WP_auf_Cool
     address: 0x700D
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8592,6 +8843,7 @@ switch:
     id: WPR_Anlagenkonfig_Ext_WP_auf_WW
     address: 0x700E
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8602,6 +8854,7 @@ switch:
     id: WPR_Anlagenkonfig_Ext_Anschlusserw_vorhanden
     address: 0x7010
     length: 1
+    entity_category: config
     on_value: 0x00  # JA
     off_value: 0x01  # NEIN
     disabled_by_default: true
@@ -8613,6 +8866,7 @@ switch:
     id: WPR_Anlagenkonfig_Vitocom100
     address: 0x7017
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8624,6 +8878,7 @@ switch:
     id: WPR_Verdichter1_VerdStufeFreigegeben
     address: 0x5000
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8634,6 +8889,7 @@ switch:
     id: WPR_Verdichter1_Verdichter_auf_WW
     address: 0x5012
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8646,6 +8902,7 @@ switch:
     address: 0x5018
     length: 1
     bit_mask: 0x80  # Vitosoft BitPosition 0, BitLength 1 (MSB-first)
+    entity_category: config
     # on 1 = JA; off 0 = NEIN (field values)
     disabled_by_default: true
     update_interval: 3600s
@@ -8657,6 +8914,7 @@ switch:
     id: WPR_Verdichter2_VerdStufeFreigegeben
     address: 0x5100
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8667,6 +8925,7 @@ switch:
     id: WPR_Verdichter2_Verdichter_auf_WW
     address: 0x5112
     length: 2
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8678,6 +8937,7 @@ switch:
     id: WPR_Verdichter2_Verdichter_DigitalScroll
     address: 0x5129
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8689,6 +8949,7 @@ switch:
     id: WPR_HK1_Raumtemperatursensor
     address: 0x2008
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8699,6 +8960,7 @@ switch:
     id: WPR_HK1_Einschaltoptimierung
     address: 0x200C
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8709,6 +8971,7 @@ switch:
     id: WPR_HK2_Raumtemperatursensor
     address: 0x3008
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8719,6 +8982,7 @@ switch:
     id: WPR_HK2_Einschaltoptimierung
     address: 0x300C
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8729,6 +8993,7 @@ switch:
     id: WPR_HK3_Raumtemperatursensor
     address: 0x4008
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s
@@ -8739,6 +9004,7 @@ switch:
     id: WPR_HK3_Einschaltoptimierung
     address: 0x400C
     length: 1
+    entity_category: config
     # on 0x01 = JA; off 0x00 = NEIN
     disabled_by_default: true
     update_interval: 3600s

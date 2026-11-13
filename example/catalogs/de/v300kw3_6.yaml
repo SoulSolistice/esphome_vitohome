@@ -2230,6 +2230,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 20
     max_value: 127
     step: 1
@@ -2245,6 +2246,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "K·s"
+    entity_category: config
     min_value: 0
     max_value: 199
     step: 1
@@ -2260,6 +2262,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "K·s"
+    entity_category: config
     min_value: 0
     max_value: 199
     step: 1
@@ -2275,6 +2278,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "K·s"
+    entity_category: config
     min_value: 0
     max_value: 199
     step: 1
@@ -2290,6 +2294,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 0
     max_value: 20
     step: 1
@@ -2306,6 +2311,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 5
     max_value: 199
     step: 1
@@ -2321,6 +2327,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 0
     max_value: 15
     step: 1
@@ -2336,6 +2343,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "%/K"
+    entity_category: config
     min_value: 0
     max_value: 255
     step: 1
@@ -2352,6 +2360,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 1
     max_value: 1000
     step: 1
@@ -2368,6 +2377,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 60
     step: 1
@@ -2384,6 +2394,7 @@ number:
     converter: noconv
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 199
     step: 1
@@ -2400,6 +2411,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0
     max_value: 500
     step: 1
@@ -2415,6 +2427,7 @@ number:
     length: 2
     converter: div10
     signed: false  # Vitosoft ParameterType Int, borders 0..999.9
+    entity_category: config
     min_value: 0
     max_value: 999.9
     step: 0.1
@@ -2430,6 +2443,7 @@ number:
     length: 2
     converter: div10
     signed: false  # Vitosoft ParameterType Int, borders 0..999.9
+    entity_category: config
     min_value: 0
     max_value: 999.9
     step: 0.1
@@ -2446,6 +2460,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0
     max_value: 127
     step: 1
@@ -2462,6 +2477,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0
     max_value: 95
     step: 1
@@ -2478,6 +2494,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 15
     step: 1
@@ -2492,6 +2509,7 @@ number:
     address: 0x6767
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 95
     step: 1
@@ -2508,6 +2526,7 @@ number:
     converter: noconv
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 15
     step: 1
@@ -2524,6 +2543,7 @@ number:
     converter: mult5
     unit_of_measurement: "s"
     device_class: duration
+    entity_category: config
     min_value: 5
     max_value: 995
     step: 5
@@ -2538,6 +2558,7 @@ number:
     address: 0x7782
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 12
     step: 1
@@ -2552,6 +2573,7 @@ number:
     address: 0x7783
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 5
     step: 1
@@ -2566,6 +2588,7 @@ number:
     address: 0x7784
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 7
     step: 1
@@ -2580,6 +2603,7 @@ number:
     address: 0x7785
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 12
     step: 1
@@ -2594,6 +2618,7 @@ number:
     address: 0x7786
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 5
     step: 1
@@ -2608,6 +2633,7 @@ number:
     address: 0x7787
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 7
     step: 1
@@ -2625,6 +2651,7 @@ number:
     converter: mult10
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 1990
     step: 10
@@ -2642,6 +2669,7 @@ number:
     signed: true
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: -9
     max_value: 15
     step: 1
@@ -2659,6 +2687,7 @@ number:
     signed: true
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: -9
     max_value: 15
     step: 1
@@ -2676,6 +2705,7 @@ number:
     signed: true
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: -9
     max_value: 15
     step: 1
@@ -2692,6 +2722,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 5
     max_value: 36
     step: 1
@@ -2708,6 +2739,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 5
     max_value: 36
     step: 1
@@ -2724,6 +2756,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 5
     max_value: 36
     step: 1
@@ -2738,6 +2771,7 @@ number:
     address: 0x27A9
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 15
     step: 1
@@ -2752,6 +2786,7 @@ number:
     address: 0x37A9
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 15
     step: 1
@@ -2766,6 +2801,7 @@ number:
     address: 0x47A9
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 15
     step: 1
@@ -2780,6 +2816,7 @@ number:
     address: 0x27B2
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 31
     step: 1
@@ -2794,6 +2831,7 @@ number:
     address: 0x37B2
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 31
     step: 1
@@ -2808,6 +2846,7 @@ number:
     address: 0x47B2
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 31
     step: 1
@@ -2822,6 +2861,7 @@ number:
     address: 0x27B5
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 8
     step: 1
@@ -2836,6 +2876,7 @@ number:
     address: 0x37B5
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 8
     step: 1
@@ -2850,6 +2891,7 @@ number:
     address: 0x47B5
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 8
     step: 1
@@ -2864,6 +2906,7 @@ number:
     address: 0x27B8
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 10
     max_value: 255
     step: 1
@@ -2878,6 +2921,7 @@ number:
     address: 0x37B8
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 10
     max_value: 255
     step: 1
@@ -2892,6 +2936,7 @@ number:
     address: 0x47B8
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 10
     max_value: 255
     step: 1
@@ -2908,6 +2953,7 @@ number:
     converter: mult10
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 12
     step: 1
@@ -2924,6 +2970,7 @@ number:
     converter: mult10
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 12
     step: 1
@@ -2940,6 +2987,7 @@ number:
     converter: mult10
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 12
     step: 1
@@ -2956,6 +3004,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 1
     max_value: 127
     step: 1
@@ -2972,6 +3021,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 1
     max_value: 127
     step: 1
@@ -2988,6 +3038,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 1
     max_value: 127
     step: 1
@@ -3002,6 +3053,7 @@ number:
     address: 0x27C8
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 31
     step: 1
@@ -3016,6 +3068,7 @@ number:
     address: 0x37C8
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 31
     step: 1
@@ -3030,6 +3083,7 @@ number:
     address: 0x47C8
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 1
     max_value: 31
     step: 1
@@ -3044,6 +3098,7 @@ number:
     address: 0x27E2
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 99
     step: 1
@@ -3058,6 +3113,7 @@ number:
     address: 0x37E2
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 99
     step: 1
@@ -3072,6 +3128,7 @@ number:
     address: 0x47E2
     length: 1
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 99
     step: 1
@@ -3087,6 +3144,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "%"
+    entity_category: config
     min_value: 0
     max_value: 100
     step: 1
@@ -3102,6 +3160,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "%"
+    entity_category: config
     min_value: 0
     max_value: 100
     step: 1
@@ -3117,6 +3176,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "%"
+    entity_category: config
     min_value: 0
     max_value: 100
     step: 1
@@ -3132,6 +3192,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "%"
+    entity_category: config
     min_value: 0
     max_value: 100
     step: 1
@@ -3147,6 +3208,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "%"
+    entity_category: config
     min_value: 0
     max_value: 100
     step: 1
@@ -3162,6 +3224,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "%"
+    entity_category: config
     min_value: 0
     max_value: 100
     step: 1
@@ -3177,6 +3240,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "%"
+    entity_category: config
     min_value: 0
     max_value: 100
     step: 1
@@ -3192,6 +3256,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "%"
+    entity_category: config
     min_value: 0
     max_value: 100
     step: 1
@@ -3207,6 +3272,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "%"
+    entity_category: config
     min_value: 0
     max_value: 100
     step: 1
@@ -3223,6 +3289,7 @@ number:
     converter: noconv
     unit_of_measurement: "h"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 12
     step: 1
@@ -3239,6 +3306,7 @@ number:
     converter: noconv
     unit_of_measurement: "h"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 12
     step: 1
@@ -3255,6 +3323,7 @@ number:
     converter: noconv
     unit_of_measurement: "h"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 12
     step: 1
@@ -3272,6 +3341,7 @@ number:
     signed: true
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: -61
     max_value: 10
     step: 1
@@ -3289,6 +3359,7 @@ number:
     signed: true
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: -61
     max_value: 10
     step: 1
@@ -3306,6 +3377,7 @@ number:
     signed: true
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: -61
     max_value: 10
     step: 1
@@ -3323,6 +3395,7 @@ number:
     signed: true
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: -60
     max_value: 10
     step: 1
@@ -3340,6 +3413,7 @@ number:
     signed: true
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: -60
     max_value: 10
     step: 1
@@ -3357,6 +3431,7 @@ number:
     signed: true
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: -60
     max_value: 10
     step: 1
@@ -3372,6 +3447,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "%"
+    entity_category: config
     min_value: 0
     max_value: 50
     step: 1
@@ -3387,6 +3463,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "%"
+    entity_category: config
     min_value: 0
     max_value: 50
     step: 1
@@ -3402,6 +3479,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "%"
+    entity_category: config
     min_value: 0
     max_value: 50
     step: 1
@@ -3418,6 +3496,7 @@ number:
     converter: mult2
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 300
     step: 1
@@ -3434,6 +3513,7 @@ number:
     converter: mult2
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 300
     step: 1
@@ -3450,6 +3530,7 @@ number:
     converter: mult2
     unit_of_measurement: "min"
     device_class: duration
+    entity_category: config
     min_value: 0
     max_value: 300
     step: 1
@@ -3467,6 +3548,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 1
     max_value: 127
     step: 1
@@ -3483,6 +3565,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0
     max_value: 31
     step: 1
@@ -3500,6 +3583,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 1
     max_value: 127
     step: 1
@@ -3516,6 +3600,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0
     max_value: 31
     step: 1
@@ -3532,6 +3617,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "%"
+    entity_category: config
     min_value: 0
     max_value: 40
     step: 1
@@ -3548,6 +3634,7 @@ number:
     length: 1
     converter: noconv
     unit_of_measurement: "K"
+    entity_category: config
     min_value: 10
     max_value: 50
     step: 1
@@ -3563,6 +3650,7 @@ number:
     length: 1
     converter: div10
     signed: false  # Vitosoft ParameterType Byte, borders 0.2..1
+    entity_category: config
     min_value: 0.2
     max_value: 1
     step: 0.1
@@ -3578,6 +3666,7 @@ number:
     length: 1
     converter: div10
     signed: false  # Vitosoft ParameterType Byte, borders 0.1..0.9
+    entity_category: config
     min_value: 0.1
     max_value: 0.9
     step: 0.1
@@ -3595,6 +3684,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 4
     max_value: 37
     step: 1
@@ -3613,6 +3703,7 @@ number:
     signed: false  # Vitosoft ParameterType Int, borders 0..500
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 0
     max_value: 500
     step: 1
@@ -3630,6 +3721,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 10
     max_value: 95
     step: 1
@@ -3646,6 +3738,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 3
     max_value: 37
     step: 1
@@ -3662,6 +3755,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 3
     max_value: 37
     step: 1
@@ -3677,6 +3771,7 @@ number:
     length: 1
     converter: div10
     signed: false  # Vitosoft ParameterType Byte, borders 0.2..3.5
+    entity_category: config
     min_value: 0.2
     max_value: 3.5
     step: 0.1
@@ -3693,6 +3788,7 @@ number:
     converter: noconv
     signed: true
     unit_of_measurement: "K"
+    entity_category: config
     min_value: -13
     max_value: 40
     step: 1
@@ -3710,6 +3806,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 3
     max_value: 37
     step: 1
@@ -3726,6 +3823,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 3
     max_value: 37
     step: 1
@@ -3741,6 +3839,7 @@ number:
     length: 1
     converter: div10
     signed: false  # Vitosoft ParameterType Byte, borders 0.2..3.5
+    entity_category: config
     min_value: 0.2
     max_value: 3.5
     step: 0.1
@@ -3757,6 +3856,7 @@ number:
     converter: noconv
     signed: true
     unit_of_measurement: "K"
+    entity_category: config
     min_value: -13
     max_value: 40
     step: 1
@@ -3773,6 +3873,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 4
     max_value: 37
     step: 1
@@ -3790,6 +3891,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 3
     max_value: 37
     step: 1
@@ -3806,6 +3908,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 3
     max_value: 37
     step: 1
@@ -3821,6 +3924,7 @@ number:
     length: 1
     converter: div10
     signed: false  # Vitosoft ParameterType Byte, borders 0.2..3.5
+    entity_category: config
     min_value: 0.2
     max_value: 3.5
     step: 0.1
@@ -3837,6 +3941,7 @@ number:
     converter: noconv
     signed: true
     unit_of_measurement: "K"
+    entity_category: config
     min_value: -13
     max_value: 40
     step: 1
@@ -3853,6 +3958,7 @@ number:
     converter: noconv
     unit_of_measurement: "°C"
     device_class: temperature
+    entity_category: config
     min_value: 4
     max_value: 37
     step: 1
@@ -3867,6 +3973,7 @@ select:
     id: RelaistestV300W3
     address: 0x7500
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -3895,6 +4002,7 @@ select:
     id: K02_KonfiBrennertyp
     address: 0x5702
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -3908,6 +4016,7 @@ select:
     id: K03_KonfiOelGasBetrieb
     address: 0x5703
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -3921,6 +4030,7 @@ select:
     id: K04_KonfiKesselSchalthysterese
     address: 0x5704
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -3934,6 +4044,7 @@ select:
     id: K33_KonfiBrenneranforderungExtern
     address: 0x5733
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -3946,6 +4057,7 @@ select:
     id: K54_Solar
     address: 0x7754
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -3959,6 +4071,7 @@ select:
     id: K55_KonfiWW_Algorithmus_NR1
     address: 0x6755
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -3972,6 +4085,7 @@ select:
     id: K56_KonfiWW_SolltemperaturBereich
     address: 0x6756
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -3984,6 +4098,7 @@ select:
     id: K59_KonfiWW_EinschaltOffset
     address: 0x6759
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4005,6 +4120,7 @@ select:
     id: K61_KonfiLpumpeKTabhaengig_NR1
     address: 0x6761
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4017,6 +4133,7 @@ select:
     id: K64_KonfiWW_BeiPartyDNormal
     address: 0x6764
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4030,6 +4147,7 @@ select:
     id: K66_KonfiZugriffWW_Solltemperatur
     address: 0x6766
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4048,6 +4166,7 @@ select:
     id: K70_KonfiZpumpeRelaisausgang
     address: 0x6770
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4060,6 +4179,7 @@ select:
     id: K71_KonfiZpumpeBeiWW_Soll1
     address: 0x6771
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4073,6 +4193,7 @@ select:
     id: K72_KonfiZpumpeBeiWW_Soll2
     address: 0x6772
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4086,6 +4207,7 @@ select:
     id: K73_KonfiZpumpeIntervallFreigabe
     address: 0x6773
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4104,6 +4226,7 @@ select:
     id: K75_KonfiZpumpeBeiSparbetrieb
     address: 0x6775
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4116,6 +4239,7 @@ select:
     id: K7F_KonfiEinfamilienhaus
     address: 0x777F
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4128,6 +4252,7 @@ select:
     id: K81_KonfiFunktionUhrNR1
     address: 0x7781
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4141,6 +4266,7 @@ select:
     id: K88_KonfiCelsiusFahrenheit
     address: 0x7788
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4153,6 +4279,7 @@ select:
     id: K89_KonfiTeilnehmerkennungKMBus
     address: 0x7789
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4165,6 +4292,7 @@ select:
     id: K8E_KonfiZugriffStoerungen
     address: 0x778E
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4180,6 +4308,7 @@ select:
     id: K93_KonfiSPBetriebWartungsanzeige
     address: 0x7793
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4192,6 +4321,7 @@ select:
     id: K94_KonfiKennungAnschlusserweiterung
     address: 0x7794
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4204,6 +4334,7 @@ select:
     id: KA0_KonfiKennungFernbedienungA1M1
     address: 0x27A0
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4217,6 +4348,7 @@ select:
     id: KA0_KonfiKennungFernbedienungM3
     address: 0x47A0
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4230,6 +4362,7 @@ select:
     id: KA2_KonfiSpeichervorrangA1M1
     address: 0x27A2
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4256,6 +4389,7 @@ select:
     id: KA2_KonfiSpeichervorrangM2
     address: 0x37A2
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4282,6 +4416,7 @@ select:
     id: KA2_KonfiSpeichervorrangM3
     address: 0x47A2
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4308,6 +4443,7 @@ select:
     id: KA4_KonfiKeineFrostschutzfunktionA1M1
     address: 0x27A4
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4320,6 +4456,7 @@ select:
     id: KA4_KonfiKeineFrostschutzfunktionM2
     address: 0x37A4
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4332,6 +4469,7 @@ select:
     id: KA4_KonfiKeineFrostschutzfunktionM3
     address: 0x47A4
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4344,6 +4482,7 @@ select:
     id: KA5_KonfSommersparSchaltschwelleA1M1
     address: 0x27A5
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4370,6 +4509,7 @@ select:
     id: KA5_KonfSommersparSchaltschwelleM2
     address: 0x37A5
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4396,6 +4536,7 @@ select:
     id: KA5_KonfSommersparSchaltschwelleM3
     address: 0x47A5
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4422,6 +4563,7 @@ select:
     id: KA7_KonfiMischersparfunktionM1
     address: 0x27A7
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4434,6 +4576,7 @@ select:
     id: KA7_KonfiMischersparfunktionM2
     address: 0x37A7
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4446,6 +4589,7 @@ select:
     id: KA7_KonfiMischersparfunktionM3
     address: 0x47A7
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4458,6 +4602,7 @@ select:
     id: KB0_KonfiRaumaufschaltungA1M1
     address: 0x27B0
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4472,6 +4617,7 @@ select:
     id: KB0_KonfiRaumaufschaltungM2
     address: 0x37B0
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4486,6 +4632,7 @@ select:
     id: KB0_KonfiRaumaufschaltungM3
     address: 0x47B0
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4500,6 +4647,7 @@ select:
     id: KB7_KonfiEinschaltoptimierungA1M1
     address: 0x27B7
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4513,6 +4661,7 @@ select:
     id: KB7_KonfiEinschaltoptimierungM2
     address: 0x37B7
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4526,6 +4675,7 @@ select:
     id: KB7_KonfiEinschaltoptimierungM3
     address: 0x47B7
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4539,6 +4689,7 @@ select:
     id: KC0_KonfiAusschaltoptimierungA1M1
     address: 0x27C0
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4552,6 +4703,7 @@ select:
     id: KC0_KonfiAusschaltoptimierungM2
     address: 0x37C0
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4565,6 +4717,7 @@ select:
     id: KC0_KonfiAusschaltoptimierungM3
     address: 0x47C0
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4578,6 +4731,7 @@ select:
     id: KC2_KonfiLernenAusschaltA1M1
     address: 0x27C2
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4590,6 +4744,7 @@ select:
     id: KC2_KonfiLernenAusschaltM2
     address: 0x37C2
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4602,6 +4757,7 @@ select:
     id: KC2_KonfiLernenAusschaltM3
     address: 0x47C2
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4614,6 +4770,7 @@ select:
     id: KD5_KonfiWirkungExtBA_UmschaltungA1M1
     address: 0x27D5
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4626,6 +4783,7 @@ select:
     id: KD5_KonfiWirkungExtBA_UmschaltungM2
     address: 0x37D5
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4638,6 +4796,7 @@ select:
     id: KD5_KonfiWirkungExtBA_UmschaltungM3
     address: 0x47D5
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4650,6 +4809,7 @@ select:
     id: KE1_KonfiOffsetRT_SolltemperaturA1M1
     address: 0x27E1
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4663,6 +4823,7 @@ select:
     id: KE1_KonfiOffsetRT_SolltemperaturM2
     address: 0x37E1
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4676,6 +4837,7 @@ select:
     id: KE1_KonfiOffsetRT_SolltemperaturM3
     address: 0x47E1
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4689,6 +4851,7 @@ select:
     id: KE5_KonfiKennung_D_PumpeA1M1
     address: 0x27E5
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4701,6 +4864,7 @@ select:
     id: KE5_KonfiKennung_D_PumpeM2
     address: 0x37E5
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4713,6 +4877,7 @@ select:
     id: KE5_KonfiKennung_D_PumpeM3
     address: 0x47E5
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4725,6 +4890,7 @@ select:
     id: KE8_KonfiDPumpeDrehzahlNebenbetriebA1M1
     address: 0x27E8
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4737,6 +4903,7 @@ select:
     id: KE8_KonfiDPumpeDrehzahlNebenbetriebM2
     address: 0x37E8
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4749,6 +4916,7 @@ select:
     id: KE8_KonfiDPumpeDrehzahlNebenbetriebM3
     address: 0x47E8
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4761,6 +4929,7 @@ select:
     id: KF1_KonfiTemperaturprogrammM2
     address: 0x37F1
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4787,6 +4956,7 @@ select:
     id: KF1_KonfiTemperaturprogrammM3
     address: 0x47F1
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4814,6 +4984,7 @@ select:
     id: K00_KonfiAnlagenschemaV300_NR1
     address: 0x7700
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4834,6 +5005,7 @@ select:
     id: K91_KonfiZuordnungExtBA_Umschaltung_NR1
     address: 0x7791
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4851,6 +5023,7 @@ select:
     id: K98_KonfiKommunikationsmodul_D
     address: 0x7798
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4864,6 +5037,7 @@ select:
     id: KC4_KonfiMischerAnlagendynamikM2
     address: 0x37C4
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4878,6 +5052,7 @@ select:
     id: KC9_KonfiOptMiRegMitAufheizphaseM2
     address: 0x37C9
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4891,6 +5066,7 @@ select:
     id: KC4_KonfiMischerAnlagendynamikM3
     address: 0x47C4
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4905,6 +5081,7 @@ select:
     id: KC9_KonfiOptMiRegMitAufheizphaseM3
     address: 0x47C9
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4918,6 +5095,7 @@ select:
     id: K24_KonfiStatusWartung
     address: 0x5724
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4930,6 +5108,7 @@ select:
     id: KA0_FernbedienungM2
     address: 0x37A0
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4954,6 +5133,7 @@ select:
     id: BedienBetriebsartA1M1
     address: 0x2301
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -4981,6 +5161,7 @@ select:
     id: BedienBetriebsartM2
     address: 0x3301
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -5008,6 +5189,7 @@ select:
     id: BedienBetriebsartM3
     address: 0x4301
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
@@ -5026,6 +5208,7 @@ switch:
     id: K28_KonfiIntervallzuendung
     address: 0x5728
     length: 1
+    entity_category: config
     # on 0x01 = 1 aktiv; off 0x00 = 0 inaktiv
     disabled_by_default: true
     update_interval: 3600s
@@ -5036,6 +5219,7 @@ switch:
     id: K92_KonfiModulM4
     address: 0x7792
     length: 1
+    entity_category: config
     # on 0x01 = 1 vorhanden; off 0x00 = 0 nicht vorhanden
     disabled_by_default: true
     update_interval: 3600s
@@ -5046,6 +5230,7 @@ switch:
     id: KB6_KonfiSchnellkorrekturA1M1
     address: 0x27B6
     length: 1
+    entity_category: config
     # on 0x01 = 1 aktiv; off 0x00 = 0 inaktiv
     disabled_by_default: true
     update_interval: 3600s
@@ -5056,6 +5241,7 @@ switch:
     id: KB6_KonfiSchnellkorrekturM2
     address: 0x37B6
     length: 1
+    entity_category: config
     # on 0x01 = 1 aktiv; off 0x00 = 0 inaktiv
     disabled_by_default: true
     update_interval: 3600s
@@ -5066,6 +5252,7 @@ switch:
     id: KB6_KonfiSchnellkorrekturM3
     address: 0x47B6
     length: 1
+    entity_category: config
     # on 0x01 = 1 aktiv; off 0x00 = 0 inaktiv
     disabled_by_default: true
     update_interval: 3600s
@@ -5076,6 +5263,7 @@ switch:
     id: KB9_KonfiLernenEinschaltA1M1
     address: 0x27B9
     length: 1
+    entity_category: config
     # on 0x01 = 1 aktiv; off 0x00 = 0 inaktiv
     disabled_by_default: true
     update_interval: 3600s
@@ -5086,6 +5274,7 @@ switch:
     id: KB9_KonfiLernenEinschaltM2
     address: 0x37B9
     length: 1
+    entity_category: config
     # on 0x01 = 1 aktiv; off 0x00 = 0 inaktiv
     disabled_by_default: true
     update_interval: 3600s
@@ -5096,6 +5285,7 @@ switch:
     id: KB9_KonfiLernenEinschaltM3
     address: 0x47B9
     length: 1
+    entity_category: config
     # on 0x01 = 1 aktiv; off 0x00 = 0 inaktiv
     disabled_by_default: true
     update_interval: 3600s
@@ -5107,6 +5297,7 @@ switch:
     id: K9D_KennungKAE0_10V
     address: 0x779D
     length: 1
+    entity_category: config
     # on 0x01 = vorhanden; off 0x00 = nicht vorhanden
     disabled_by_default: true
     update_interval: 3600s
@@ -5117,6 +5308,7 @@ switch:
     id: K95_KennungVitocom100
     address: 0x7795
     length: 1
+    entity_category: config
     # on 0x01 = vorhanden; off 0x00 = nicht vorhanden
     disabled_by_default: true
     update_interval: 3600s
@@ -5128,6 +5320,7 @@ switch:
     id: SolarNachlade
     address: 0x6551
     length: 1
+    entity_category: config
     # on 0x01 = aktiv; off 0x00 = inaktiv
     disabled_by_default: true
     update_interval: 3600s
@@ -5138,6 +5331,7 @@ switch:
     id: Nachheizunterdrueckung
     address: 0x55FE
     length: 1
+    entity_category: config
     # on 0x01 = aktiv; off 0x00 = inaktiv
     disabled_by_default: true
     update_interval: 3600s
@@ -5147,6 +5341,7 @@ switch:
     id: K8A_KonfiAnzeigebedingungenAktiv
     address: 0x778A
     length: 1
+    entity_category: config
     on_value: 0xAF  # aktiv
     off_value: 0xB0  # inaktiv
     disabled_by_default: true
@@ -5159,6 +5354,7 @@ text:
     name: "Schaltzeit A1M1 HK Montag"
     id: schaltzeit_a1m1_hk_mo
     address: 0x2000
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5167,6 +5363,7 @@ text:
     name: "Schaltzeit A1M1 HK Dienstag"
     id: schaltzeit_a1m1_hk_di
     address: 0x2008
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5175,6 +5372,7 @@ text:
     name: "Schaltzeit A1M1 HK Mittwoch"
     id: schaltzeit_a1m1_hk_mi
     address: 0x2010
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5183,6 +5381,7 @@ text:
     name: "Schaltzeit A1M1 HK Donnerstag"
     id: schaltzeit_a1m1_hk_do
     address: 0x2018
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5191,6 +5390,7 @@ text:
     name: "Schaltzeit A1M1 HK Freitag"
     id: schaltzeit_a1m1_hk_fr
     address: 0x2020
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5199,6 +5399,7 @@ text:
     name: "Schaltzeit A1M1 HK Samstag"
     id: schaltzeit_a1m1_hk_sa
     address: 0x2028
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5207,6 +5408,7 @@ text:
     name: "Schaltzeit A1M1 HK Sonntag"
     id: schaltzeit_a1m1_hk_so
     address: 0x2030
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5215,6 +5417,7 @@ text:
     name: "Schaltzeit A1M1 WW Montag"
     id: schaltzeit_a1m1_ww_mo
     address: 0x2100
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5223,6 +5426,7 @@ text:
     name: "Schaltzeit A1M1 WW Dienstag"
     id: schaltzeit_a1m1_ww_di
     address: 0x2108
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5231,6 +5435,7 @@ text:
     name: "Schaltzeit A1M1 WW Mittwoch"
     id: schaltzeit_a1m1_ww_mi
     address: 0x2110
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5239,6 +5444,7 @@ text:
     name: "Schaltzeit A1M1 WW Donnerstag"
     id: schaltzeit_a1m1_ww_do
     address: 0x2118
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5247,6 +5453,7 @@ text:
     name: "Schaltzeit A1M1 WW Freitag"
     id: schaltzeit_a1m1_ww_fr
     address: 0x2120
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5255,6 +5462,7 @@ text:
     name: "Schaltzeit A1M1 WW Samstag"
     id: schaltzeit_a1m1_ww_sa
     address: 0x2128
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5263,6 +5471,7 @@ text:
     name: "Schaltzeit A1M1 WW Sonntag"
     id: schaltzeit_a1m1_ww_so
     address: 0x2130
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5271,6 +5480,7 @@ text:
     name: "Schaltzeit A1M1 ZP Montag"
     id: schaltzeit_a1m1_zp_mo
     address: 0x2200
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5279,6 +5489,7 @@ text:
     name: "Schaltzeit A1M1 ZP Dienstag"
     id: schaltzeit_a1m1_zp_di
     address: 0x2208
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5287,6 +5498,7 @@ text:
     name: "Schaltzeit A1M1 ZP Mittwoch"
     id: schaltzeit_a1m1_zp_mi
     address: 0x2210
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5295,6 +5507,7 @@ text:
     name: "Schaltzeit A1M1 ZP Donnerstag"
     id: schaltzeit_a1m1_zp_do
     address: 0x2218
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5303,6 +5516,7 @@ text:
     name: "Schaltzeit A1M1 ZP Freitag"
     id: schaltzeit_a1m1_zp_fr
     address: 0x2220
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5311,6 +5525,7 @@ text:
     name: "Schaltzeit A1M1 ZP Samstag"
     id: schaltzeit_a1m1_zp_sa
     address: 0x2228
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5319,6 +5534,7 @@ text:
     name: "Schaltzeit A1M1 ZP Sonntag"
     id: schaltzeit_a1m1_zp_so
     address: 0x2230
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5328,6 +5544,7 @@ text:
     name: "Schaltzeit M2 HK Montag"
     id: schaltzeit_m2_hk_mo
     address: 0x3000
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5336,6 +5553,7 @@ text:
     name: "Schaltzeit M2 HK Dienstag"
     id: schaltzeit_m2_hk_di
     address: 0x3008
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5344,6 +5562,7 @@ text:
     name: "Schaltzeit M2 HK Mittwoch"
     id: schaltzeit_m2_hk_mi
     address: 0x3010
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5352,6 +5571,7 @@ text:
     name: "Schaltzeit M2 HK Donnerstag"
     id: schaltzeit_m2_hk_do
     address: 0x3018
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5360,6 +5580,7 @@ text:
     name: "Schaltzeit M2 HK Freitag"
     id: schaltzeit_m2_hk_fr
     address: 0x3020
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5368,6 +5589,7 @@ text:
     name: "Schaltzeit M2 HK Samstag"
     id: schaltzeit_m2_hk_sa
     address: 0x3028
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5376,6 +5598,7 @@ text:
     name: "Schaltzeit M2 HK Sonntag"
     id: schaltzeit_m2_hk_so
     address: 0x3030
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5384,6 +5607,7 @@ text:
     name: "Schaltzeit M2 WW Montag"
     id: schaltzeit_m2_ww_mo
     address: 0x3100
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5392,6 +5616,7 @@ text:
     name: "Schaltzeit M2 WW Dienstag"
     id: schaltzeit_m2_ww_di
     address: 0x3108
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5400,6 +5625,7 @@ text:
     name: "Schaltzeit M2 WW Mittwoch"
     id: schaltzeit_m2_ww_mi
     address: 0x3110
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5408,6 +5634,7 @@ text:
     name: "Schaltzeit M2 WW Donnerstag"
     id: schaltzeit_m2_ww_do
     address: 0x3118
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5416,6 +5643,7 @@ text:
     name: "Schaltzeit M2 WW Freitag"
     id: schaltzeit_m2_ww_fr
     address: 0x3120
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5424,6 +5652,7 @@ text:
     name: "Schaltzeit M2 WW Samstag"
     id: schaltzeit_m2_ww_sa
     address: 0x3128
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5432,6 +5661,7 @@ text:
     name: "Schaltzeit M2 WW Sonntag"
     id: schaltzeit_m2_ww_so
     address: 0x3130
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5440,6 +5670,7 @@ text:
     name: "Schaltzeit M2 ZP Montag"
     id: schaltzeit_m2_zp_mo
     address: 0x3200
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5448,6 +5679,7 @@ text:
     name: "Schaltzeit M2 ZP Dienstag"
     id: schaltzeit_m2_zp_di
     address: 0x3208
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5456,6 +5688,7 @@ text:
     name: "Schaltzeit M2 ZP Mittwoch"
     id: schaltzeit_m2_zp_mi
     address: 0x3210
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5464,6 +5697,7 @@ text:
     name: "Schaltzeit M2 ZP Donnerstag"
     id: schaltzeit_m2_zp_do
     address: 0x3218
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5472,6 +5706,7 @@ text:
     name: "Schaltzeit M2 ZP Freitag"
     id: schaltzeit_m2_zp_fr
     address: 0x3220
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5480,6 +5715,7 @@ text:
     name: "Schaltzeit M2 ZP Samstag"
     id: schaltzeit_m2_zp_sa
     address: 0x3228
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5488,6 +5724,7 @@ text:
     name: "Schaltzeit M2 ZP Sonntag"
     id: schaltzeit_m2_zp_so
     address: 0x3230
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5497,6 +5734,7 @@ text:
     name: "Schaltzeit M3 HK Montag"
     id: schaltzeit_m3_hk_mo
     address: 0x4000
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5505,6 +5743,7 @@ text:
     name: "Schaltzeit M3 HK Dienstag"
     id: schaltzeit_m3_hk_di
     address: 0x4008
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5513,6 +5752,7 @@ text:
     name: "Schaltzeit M3 HK Mittwoch"
     id: schaltzeit_m3_hk_mi
     address: 0x4010
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5521,6 +5761,7 @@ text:
     name: "Schaltzeit M3 HK Donnerstag"
     id: schaltzeit_m3_hk_do
     address: 0x4018
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5529,6 +5770,7 @@ text:
     name: "Schaltzeit M3 HK Freitag"
     id: schaltzeit_m3_hk_fr
     address: 0x4020
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5537,6 +5779,7 @@ text:
     name: "Schaltzeit M3 HK Samstag"
     id: schaltzeit_m3_hk_sa
     address: 0x4028
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5545,6 +5788,7 @@ text:
     name: "Schaltzeit M3 HK Sonntag"
     id: schaltzeit_m3_hk_so
     address: 0x4030
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5553,6 +5797,7 @@ text:
     name: "Schaltzeit M3 WW Montag"
     id: schaltzeit_m3_ww_mo
     address: 0x4100
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5561,6 +5806,7 @@ text:
     name: "Schaltzeit M3 WW Dienstag"
     id: schaltzeit_m3_ww_di
     address: 0x4108
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5569,6 +5815,7 @@ text:
     name: "Schaltzeit M3 WW Mittwoch"
     id: schaltzeit_m3_ww_mi
     address: 0x4110
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5577,6 +5824,7 @@ text:
     name: "Schaltzeit M3 WW Donnerstag"
     id: schaltzeit_m3_ww_do
     address: 0x4118
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5585,6 +5833,7 @@ text:
     name: "Schaltzeit M3 WW Freitag"
     id: schaltzeit_m3_ww_fr
     address: 0x4120
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5593,6 +5842,7 @@ text:
     name: "Schaltzeit M3 WW Samstag"
     id: schaltzeit_m3_ww_sa
     address: 0x4128
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5601,6 +5851,7 @@ text:
     name: "Schaltzeit M3 WW Sonntag"
     id: schaltzeit_m3_ww_so
     address: 0x4130
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5609,6 +5860,7 @@ text:
     name: "Schaltzeit M3 ZP Montag"
     id: schaltzeit_m3_zp_mo
     address: 0x4200
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5617,6 +5869,7 @@ text:
     name: "Schaltzeit M3 ZP Dienstag"
     id: schaltzeit_m3_zp_di
     address: 0x4208
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5625,6 +5878,7 @@ text:
     name: "Schaltzeit M3 ZP Mittwoch"
     id: schaltzeit_m3_zp_mi
     address: 0x4210
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5633,6 +5887,7 @@ text:
     name: "Schaltzeit M3 ZP Donnerstag"
     id: schaltzeit_m3_zp_do
     address: 0x4218
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5641,6 +5896,7 @@ text:
     name: "Schaltzeit M3 ZP Freitag"
     id: schaltzeit_m3_zp_fr
     address: 0x4220
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5649,6 +5905,7 @@ text:
     name: "Schaltzeit M3 ZP Samstag"
     id: schaltzeit_m3_zp_sa
     address: 0x4228
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 
@@ -5657,6 +5914,7 @@ text:
     name: "Schaltzeit M3 ZP Sonntag"
     id: schaltzeit_m3_zp_so
     address: 0x4230
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
 

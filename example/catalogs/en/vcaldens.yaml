@@ -79,6 +79,7 @@ number:
     address: 0x088A
     length: 4
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 1193045
     step: 1

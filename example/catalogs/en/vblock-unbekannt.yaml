@@ -956,6 +956,7 @@ number:
     address: 0xE008
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 60
     step: 1
@@ -969,6 +970,7 @@ number:
     address: 0xE00A
     length: 2
     converter: noconv
+    entity_category: config
     min_value: 0
     max_value: 60
     step: 1
@@ -983,6 +985,7 @@ select:
     id: nci_net_config
     address: 0xE007
     length: 1
+    entity_category: config
     disabled_by_default: true
     update_interval: 3600s
     options:
