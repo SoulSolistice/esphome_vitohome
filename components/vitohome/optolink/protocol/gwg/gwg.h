@@ -401,6 +401,10 @@ class GWGEngine {
   // whose value is then meaningless. Valid inside onResponse/onTiming/onError
   // for the transaction just finished; reset by the next telegram sent.
   uint32_t lastEnqToSendMs() const { return _enqToSendMillis; }
+  // Upper bound on how long the ENQ sat in the UART buffer before it was read:
+  // the loop gap of the pass that read it (the `enq age` of OnTimingCallback).
+  // Same validity as lastEnqToSendMs().
+  uint32_t lastEnqAgeMs() const { return _enqAgeMillis; }
   bool lastSendWasEnqPaced() const { return _lastSendEnqPaced; }
   // True while a request waits out gwgEnqSendDelayMs after an ENQ. The hub
   // keeps the main loop running continuously meanwhile, so the delay is not
@@ -427,9 +431,10 @@ class GWGEngine {
   // captures the loop gap at the iteration that consumed the device's ENQ;
   // _sendCompleteMillis is stamped in _send() when the full request frame has
   // been handed to the interface. Both are scratch state read only inside the
-  // completion branch of _receive() and are safe to leave stale between
-  // transactions -- they are never read except immediately after being freshly
-  // set for the in-flight request.
+  // completion branch of _receive() or, through lastEnqAgeMs(), from the
+  // transaction's own error callback, and are safe to leave stale between
+  // transactions -- they are never read except for the request they were set
+  // for.
   uint32_t _enqAgeMillis;
   uint32_t _sendCompleteMillis;
   // ENQ-to-send (see lastEnqToSendMs()). _enqSeenMillis is a fresh

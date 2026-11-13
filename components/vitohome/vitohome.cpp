@@ -258,10 +258,14 @@ void VitoHomeComponent::setup() {
         if (this->vito_->lastTimeoutWasUnsynced()) {
           this->link_note_error_();
         } else if (this->vito_->lastSendWasEnqPaced()) {
-          // The gap the device saw, for comparing against answered telegrams'
-          // `enq->send` (issue #35, see optolink::gwgEnqSendDelayMs).
-          ESP_LOGD(TAG, "GWG 0x%04X unanswered: enq->send %" PRIu32 " ms (delay setting %" PRIu32 " ms)",
-                   request_address, this->vito_->lastEnqToSendMs(), optolink::gwgEnqSendDelayMs);
+          // The same two numbers as an answered telegram's `GWG timing:` line,
+          // to tell a stale ENQ from a too-early answer to it (issue #35, see
+          // optolink::gwgEnqSendDelayMs).
+          ESP_LOGD(TAG,
+                   "GWG 0x%04X unanswered: enq age <=%" PRIu32 " ms, enq->send %" PRIu32 " ms (delay setting %" PRIu32
+                   " ms)",
+                   request_address, this->vito_->lastEnqAgeMs(), this->vito_->lastEnqToSendMs(),
+                   optolink::gwgEnqSendDelayMs);
         }
 #else
         this->link_note_error_();

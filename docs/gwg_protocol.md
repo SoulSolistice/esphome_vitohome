@@ -200,10 +200,10 @@ The two families share every `physical`, `xram`, `port` and most `eeprom` and
 - **ENQ-to-send delay (diagnostic, off by default).** A request goes out as
   soon as the ENQ is read. `id(vito).set_gwg_enq_send_delay_ms(30)` from a
   lambda (0 to 100 ms) holds an ENQ-paced request that long first; burst-sent
-  requests do not wait. The DEBUG `GWG timing:` line shows the measured
-  `enq->send` for each answered read, and `GWG 0x.. unanswered: enq->send ..`
-  for each unanswered one. #35's reporter waits 30-35 ms in their own
-  firmware. Not yet tested on hardware.
+  requests do not wait. The DEBUG `GWG timing:` line shows `enq age` and the
+  measured `enq->send` for each answered read, and `GWG 0x.. unanswered:`
+  shows the same two for each unanswered one. #35's reporter waits 30-35 ms in
+  their own firmware. Not yet tested on hardware.
 
 ## Open questions
 

@@ -108,6 +108,8 @@ int main() {
   pump(adapter);
   check(g_errors == 1, "(4) TIMEOUT reported");
   check(adapter.lastSendWasEnqPaced() && adapter.lastEnqToSendMs() == 30, "(4) enq->send readable after it");
+  check(adapter.lastEnqAgeMs() == optolink::GWGEngine::ENQ_VALIDITY_MS + 100,
+        "(4) enq age (loop gap that read the ENQ) readable after it");
 
   optolink::gwgEnqSendDelayMs = 0;
   std::printf("gwg enq send delay: %d failure(s)\n", failures);
