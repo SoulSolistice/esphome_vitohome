@@ -67,8 +67,8 @@ A `converter:` is one of several ways a value is read. The full set:
 | `binary_sensor` | any bit of `bit_mask` set | `bit_mask`, `length`, `byte_offset` |
 | `text_sensor` `type: ascii` | raw bytes as an ASCII string | `length` |
 | `text_sensor` `type: utf16` | raw bytes as a UTF-16LE string | `length` (even) |
-| `text_sensor` `type: error_history` | 9-byte slot: code byte + 8-byte BCD timestamp, mapped via `codes:` | `length`, `codes` |
-| `text_sensor` `type: enum` | raw value mapped to a label | `options`, `byte_offset`, `byte_length`, `bit_mask` |
+| `text_sensor` `type: error_history` | 9-byte slot: code byte + 8-byte BCD timestamp, mapped via `codes:` (an unmapped code shows as `0xNN`) | `length`, `codes` |
+| `text_sensor` `type: enum` | raw value mapped to a label (an unmapped value shows as `0xNN`) | `options`, `byte_offset`, `byte_length`, `bit_mask` |
 | `text_sensor` `type: device_id` | the device identification string | (none) |
 | `text` | 8-byte-per-day switching-time program, read/write as a canonical `"HH:MM-HH:MM ..."` string | `address`, `read_back` |
 | `select` | raw value mapped to a label, writable | `options`, `address`, `state_address`, `byte_offset`, `byte_length`, `bit_mask` |

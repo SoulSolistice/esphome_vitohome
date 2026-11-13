@@ -753,13 +753,9 @@ inline int decode_utf16(const uint8_t *data, std::size_t data_len, uint8_t len, 
     const uint16_t cu = static_cast<uint16_t>(data[i] | (data[i + 1] << 8));
     if (cu == 0x0000)
       break;  // NUL terminates
-    // 0xFFFF TERMINATES. U+FFFF is a Unicode noncharacter and can never appear
-    // in a label, so a fill slot means the string is over. Skipping it instead
-    // (the original behaviour) walked into the padding: the full 42-byte read of
-    // Beschriftung_HK1~0x7360 on 2026-07-10 returned an ODD run of thirteen 0xFF
-    // bytes followed by five 0x00, so code unit 17 is 0x00FF -- and "Heizkreis 1"
-    // published as "Heizkreis 1ÿ". The fill is byte-oriented, not code-unit
-    // aligned; do not assume it is.
+    // U+FFFF is a noncharacter, never part of a label: it is fill, and the
+    // label ends. The fill is byte-oriented and need not form whole 0xFFFF
+    // units; utf16_label_bytes() bounds a label by its count first.
     if (cu == 0xFFFF)
       break;
     uint32_t cp = cu;
@@ -790,12 +786,10 @@ inline int decode_utf16(const uint8_t *data, std::size_t data_len, uint8_t len, 
 
 // How many bytes of a heating-circuit label to decode. The label block
 // (Beschriftung_HK1..3, 42 bytes) opens with 0x00 and the label's length in
-// CHARACTERS, then the UTF-16LE label at offset 2: "Heizkreis 1" is
-// 00:0B:48:00:65:00... on every read on record. What follows the label is
-// fill, and the fill is not one pattern: thirteen 0xFF then 0x00 (2026-07-10),
-// FF:00:00:FF repeated (2026-11-11, VScotHO1_72). The second never forms the
-// 0xFFFF unit decode_utf16() stops at, and published "Heizkreis 1ÿ＀ÿ＀ÿ＀ÿ". The
-// count is the one boundary both reads agree on.
+// CHARACTERS, then the UTF-16LE label at offset 2 ("Heizkreis 1" is
+// 00:0B:48:00:65:00...). The fill after the label varies between units and
+// reads (a run of 0xFF, or FF:00:00:FF repeated, which forms no 0xFFFF unit),
+// so the count is the boundary.
 //
 // `block` is the whole response, `field_off` / `field_width` the label's slice
 // in it. Returns the byte count to decode: twice the count when the field sits
