@@ -107,8 +107,9 @@ void VitoTextSensor::publish_enum_(const uint8_t *data, uint8_t len) {
     this->publish_state(label);
     return;
   }
+  // The raw value, language-neutral: catalogs ship in German and English.
   char buf[24];
-  snprintf(buf, sizeof(buf), "Unbekannt (0x%02" PRIX32 ")", raw);
+  snprintf(buf, sizeof(buf), "0x%02" PRIX32, raw);
   ESP_LOGW(TAG, "%s: value 0x%02" PRIX32 " has no mapped option", this->datapoint_.name(), raw);
   this->publish_state(buf);
 }
@@ -135,10 +136,11 @@ void VitoTextSensor::publish_error_history_(const uint8_t *data, uint8_t len) {
   } else if (text != nullptr) {
     snprintf(buf, sizeof(buf), "%s (0x%02X)", text, code);
   } else if (has_dt) {
-    snprintf(buf, sizeof(buf), "Fehler 0x%02X @ %04u-%02u-%02u %02u:%02u:%02u", code, dt.year, dt.month, dt.day,
-             dt.hour, dt.minute, dt.second);
+    // A code without a `codes:` text: the code alone, as for an unmapped enum.
+    snprintf(buf, sizeof(buf), "0x%02X @ %04u-%02u-%02u %02u:%02u:%02u", code, dt.year, dt.month, dt.day, dt.hour,
+             dt.minute, dt.second);
   } else {
-    snprintf(buf, sizeof(buf), "Fehler 0x%02X", code);
+    snprintf(buf, sizeof(buf), "0x%02X", code);
   }
   ESP_LOGD(TAG, "%s: %s", this->datapoint_.name(), buf);
   this->publish_state(buf);
