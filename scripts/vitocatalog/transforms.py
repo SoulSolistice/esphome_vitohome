@@ -379,6 +379,23 @@ def _is_rpc_action(ev: Event, protocol: str = PROTO_P300) -> bool:
     )
 
 
+# Procedures that reset settings or codings to their factory state, or delete
+# stored data (participant and device lists, the error history, trend
+# channels, tables). Matched on the technical name and on the UI name (de/en).
+_DESTRUCTIVE_TECH_RE = re.compile(r"Reset|Clear|Del(?=[A-Z_]|$)|ALZ")
+_DESTRUCTIVE_NAME_RE = re.compile(
+    r"l(?:ö|oe)sch|grundeinstellung|anlieferzustand|r(?:ü|ue)cksetz|"
+    r"\breset\b|\bdelete|\bclear|factory|basic setting|default setting",
+    re.IGNORECASE,
+)
+
+
+def _is_destructive_action(ev: Event) -> bool:
+    """Whether an action (_is_rpc_action) cannot be undone: a reset to factory
+    settings or a deletion. The catalog emits it commented out."""
+    return bool(_DESTRUCTIVE_TECH_RE.search(ev.tech or "") or _DESTRUCTIVE_NAME_RE.search(ev.name or ""))
+
+
 def _access_for(ev: Event, protocol: str) -> str:
     """The `access:` value to emit for one event, or "" when none is emitted
     (KW/P300 other than an RPC reading or a GFA read, or GWG with a blank

@@ -591,7 +591,12 @@ The component side follows from that:
 
 **Actions in the catalogs.** The generator emits every procedure it can call as
 an action button, in `standard` and `full` (`minimal` keeps values, and an
-action is not one), `disabled_by_default` and under a warning comment. A call
+action is not one), `disabled_by_default` and under a warning comment. A
+procedure that resets settings or codings to their factory state, or deletes
+stored data, is emitted commented out under a DESTRUCTIVE note
+(`_is_destructive_action`, matched on the technical and the UI name); a
+`button:` section with no live action left is commented out with it, since an
+empty key is null and ESPHome rejects it. A call
 needs nothing but the parameter -- `PrefixWrite`, equal to `PrefixRead` wherever
 both are given, written `0E` or `0x0E` -- because `BlockLength` on these rows is
 the size of the answer, not a value. What a button cannot do is supply a value,

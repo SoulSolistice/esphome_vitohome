@@ -454,12 +454,18 @@ Confirmed on a VScotHO1_72: the unit answers remote procedure calls, and its
 participant list reads its own default number and empty slots.
 
 It also emits every **procedure** as an action button, in the default profile
-too: clear the fault history, reset a circuit's operating parameters,
-**reset all codings to the delivery state**, step a boiler sequence. Every one
-is `disabled_by_default` under a warning comment, because a press **runs** the
-procedure on the controller, at once and without asking, and nothing here undoes
-it. Read the name before you enable one. A procedure that needs a value (a
-setter) is not a button and is not emitted. From a lambda, `queue_raw_rpc(address,
+too. A press **runs** the procedure on the controller, at once and without
+asking, so every button is `disabled_by_default` under a warning comment. The
+ones that cannot be undone -- clear the fault history or a list, reset a
+circuit's operating parameters, **reset all codings to the delivery state** --
+are emitted **commented out**: to use one, uncomment it. The rest (a boiler
+sequence step, Wink, a restart) are live. A procedure that needs a value (a
+setter) is not a button and is not emitted.
+
+Every catalog entity that writes the controller (`number`, `select`, `switch`,
+`text`, and the action buttons) carries `entity_category: config`, so Home
+Assistant lists it under the device's configuration rather than as a primary
+control. From a lambda, `queue_raw_rpc(address,
 parameter)` calls any procedure directly.
 
 A heat pump's **fault history** is a remote procedure array: thirty records
