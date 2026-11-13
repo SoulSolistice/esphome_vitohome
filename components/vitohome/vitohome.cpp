@@ -741,6 +741,7 @@ bool VitoHomeComponent::dispatch_write_front_() {
       ESP_LOGE(TAG, "Engine refused read-before-write for %s (permanent); dropping", entity->get_datapoint().name());
       this->write_queue_.drop_front();
       entity->write_queued_ = false;
+      entity->handle_write_error(optolink::OptolinkResult::ERROR);
       return true;
     }
     this->write_queue_.drop_front();
@@ -760,18 +761,16 @@ bool VitoHomeComponent::dispatch_write_front_() {
   const optolink::Datapoint &wdp = entity->get_write_datapoint();
   if (!this->send_write_(wdp.address(), entity->write_data(), entity->write_length(), entity->space(),
                          entity->rpc_prefix(), entity->rpc_prefix_len())) {
-    // Transient (_busy) versus a permanent createPacket() rejection. Config-
-    // declared write addresses/payloads are schema-validated, so the
-    // permanent case is unreachable today; this mirrors the raw-lane guard so
-    // the write lane can never spin on a permanent refusal. Drop it, clear
-    // write_queued_ so a fresh value can enqueue, and log loudly. No
-    // handle_write_error() here: some entities (VitoClock) re-queue on write
-    // error, which would re-add a permanently-refused item and churn.
+    // Busy is transient; anything else is a permanent createPacket() refusal
+    // (not reachable with a validated config). A refused write is dropped so
+    // the lane cannot spin on it, and the entity is told: an entity waiting
+    // for the answer (VitoClock's sync chain) would otherwise wait forever.
     if (this->vito_->isBusy())
       return true;  // transient: stays at the head
     ESP_LOGE(TAG, "Engine refused write for %s (permanent); dropping", entity->get_datapoint().name());
-    this->write_queue_.drop_front();  // permanent: drop so the read lane is reached
+    this->write_queue_.drop_front();
     entity->write_queued_ = false;
+    entity->handle_write_error(optolink::OptolinkResult::ERROR);
     return true;
   }
 
