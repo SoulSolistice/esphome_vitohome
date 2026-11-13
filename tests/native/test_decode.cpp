@@ -563,6 +563,24 @@ static void test_schaltzeiten_day() {
   CHECK(decode_schaltzeiten_day(one, 7, out, sizeof(out)) == -1);
   CHECK(decode_schaltzeiten_day(nullptr, 8, out, sizeof(out)) == -1);
 
+  // A byte that is no time renders as "!XX" and is flagged; valid programs are
+  // not. 0xFF as OFF behind an active ON (hour 31), minute code 6 (0x46), and
+  // 24:00 with a minute (0xC1, hour 24 code 1).
+  bool malformed = true;
+  CHECK(decode_schaltzeiten_day(two, sizeof(two), out, sizeof(out), &malformed) > 0 && !malformed);
+  const uint8_t bad_off[] = {0x40, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+  decode_schaltzeiten_day(bad_off, sizeof(bad_off), out, sizeof(out), &malformed);
+  CHECK(malformed && std::strcmp(out, "08:00-!FF") == 0);
+  const uint8_t bad_min[] = {0x46, 0x60, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+  decode_schaltzeiten_day(bad_min, sizeof(bad_min), out, sizeof(out), &malformed);
+  CHECK(malformed && std::strcmp(out, "!46-12:00") == 0);
+  const uint8_t bad_eod[] = {0x40, 0xC1, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+  decode_schaltzeiten_day(bad_eod, sizeof(bad_eod), out, sizeof(out), &malformed);
+  CHECK(malformed && std::strcmp(out, "08:00-!C1") == 0);
+  // The rendering is rejected on write: it cannot be sent back unchanged.
+  uint8_t keep[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+  CHECK(!encode_schaltzeiten_day("08:00-!FF", keep) && keep[0] == 1);
+
   // Encode mirrors decode.
   uint8_t buf[8];
   CHECK(encode_schaltzeiten_day("06:00-22:00", buf));
@@ -582,9 +600,13 @@ static void test_schaltzeiten_day() {
   CHECK(encode_schaltzeiten_day(nullptr, buf));
   CHECK(std::memcmp(buf, none, 8) == 0);
 
-  // Minute truncation on the encode side.
-  CHECK(encode_schaltzeiten_day("06:07-22:55", buf));
+  // Minutes round down to the 10-minute step, and the encoder says so.
+  bool rounded = false;
+  CHECK(encode_schaltzeiten_day("06:07-22:55", buf, &rounded));
   CHECK(buf[0] == 0x30 && buf[1] == 0xB5);  // 06:00 and 22:50
+  CHECK(rounded);
+  CHECK(encode_schaltzeiten_day("06:00-22:50", buf, &rounded) && !rounded);
+  CHECK(encode_schaltzeiten_day("", buf, &rounded) && !rounded);
 
   // Single-digit hour accepted.
   CHECK(encode_schaltzeiten_day("6:00-9:30", buf));

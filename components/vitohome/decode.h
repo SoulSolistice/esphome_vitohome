@@ -474,11 +474,12 @@ inline bool encode_datetime_bcd(uint16_t year, uint8_t month, uint8_t day, uint8
 // An ON byte with hour >= 24 (0xC0..0xFF; the device fills 0xFF) marks the
 // pair disabled. An OFF byte of exactly 0xC0 is not a sentinel but the
 // end-of-day switch point 24:00 ("00:00-24:00" = on all day); a Vitotronic
-// 200 KO1B accepts it and reads it back unchanged (PR #25), so 24:00 is valid
-// as an OFF time and only there. The three-bit minute field is the reason the
-// device only stores 10-minute steps -- there is physically no room for a
-// finer value, so the encode path truncates to the next-lower 10 minutes
-// (06:07 -> 06:00).
+// 200 KO1B accepts it and reads it back unchanged, so 24:00 is valid as an OFF
+// time and only there. The three-bit minute field holds 10-minute steps only:
+// the encoder rounds down to the step (06:07 -> 06:00) and reports that it
+// did. In an active pair, minute codes 6 and 7 and an OFF hour of 24 or more
+// (other than 0xC0) are no time at all; the decoder renders such a byte as
+// "!XX" (its hex value), which the encoder rejects.
 //
 // Format cross-checked against two independent references: vcontrold
 // getCycleTime/setCycleTime (src/unit.c) and InsideViessmannVitosoft
@@ -503,6 +504,23 @@ inline constexpr uint8_t TIMEBYTE_END_OF_DAY = 0xC0;
 // it is the disabled sentinel (hour >= 24, which includes the 0xFF fill). Not
 // meaningful for OFF bytes, where TIMEBYTE_END_OF_DAY is a real time.
 inline bool timebyte_active(uint8_t b) { return static_cast<uint8_t>(b >> 3) < 24; }
+
+// True if a switch-point byte is a time: hour 0..23 with minute code 0..5, or
+// (as an OFF time only) TIMEBYTE_END_OF_DAY.
+inline bool timebyte_valid(uint8_t b, bool off) {
+  if (off && b == TIMEBYTE_END_OF_DAY)
+    return true;
+  return static_cast<uint8_t>(b >> 3) < 24 && (b & 0x07) <= 5;
+}
+
+// "HH:MM" for a valid switch-point byte, else "!XX". out must hold 6 bytes.
+inline void format_switch_point(uint8_t b, bool off, char *out) {
+  if (timebyte_valid(b, off)) {
+    std::snprintf(out, 6, "%02u:%02u", static_cast<unsigned>(b >> 3), static_cast<unsigned>((b & 0x07) * 10));
+  } else {
+    std::snprintf(out, 6, "!%02X", b);
+  }
+}
 
 // Decode one ON switch-point byte to hour/minute. Returns false for a
 // disabled byte (hour >= 24, including 24:00); *h/*m are left untouched in
@@ -534,8 +552,12 @@ inline bool hhmm_to_timebyte(uint8_t h, uint8_t m, uint8_t *b) {
 // Decode an 8-byte per-day program into the canonical string. Returns the
 // character count written (excluding the NUL), or -1 on bad args / a payload
 // shorter than 8 bytes. out_cap should be >= 48 (worst case
-// "HH:MM-HH:MM" x4 + 3 spaces = 47, + NUL).
-inline int decode_schaltzeiten_day(const uint8_t *data, std::size_t data_len, char *out, std::size_t out_cap) {
+// "HH:MM-HH:MM" x4 + 3 spaces = 47, + NUL). *malformed, when given, is set when
+// an active pair holds a byte that is no time (rendered "!XX").
+inline int decode_schaltzeiten_day(const uint8_t *data, std::size_t data_len, char *out, std::size_t out_cap,
+                                   bool *malformed = nullptr) {
+  if (malformed != nullptr)
+    *malformed = false;
   if (out != nullptr && out_cap > 0)
     out[0] = '\0';
   if (data == nullptr || out == nullptr || out_cap == 0 || data_len < 8)
@@ -555,14 +577,13 @@ inline int decode_schaltzeiten_day(const uint8_t *data, std::size_t data_len, ch
     if (!timebyte_active(on)) {
       w = std::snprintf(out + off, out_cap - off, "--");
     } else {
-      uint8_t oh = 0, om = 0;
-      timebyte_to_hhmm(on, &oh, &om);
-      // A malformed OFF (disabled while ON is active) still renders via the
-      // same formula so the raw state is visible rather than hidden.
       const uint8_t offb = data[2 * p + 1];
-      const uint8_t fh = static_cast<uint8_t>(offb >> 3);
-      const uint8_t fm = static_cast<uint8_t>((offb & 0x07) * 10);
-      w = std::snprintf(out + off, out_cap - off, "%02u:%02u-%02u:%02u", oh, om, fh, fm);
+      if (malformed != nullptr && (!timebyte_valid(on, false) || !timebyte_valid(offb, true)))
+        *malformed = true;
+      char on_s[6], off_s[6];
+      format_switch_point(on, false, on_s);
+      format_switch_point(offb, true, off_s);
+      w = std::snprintf(out + off, out_cap - off, "%s-%s", on_s, off_s);
     }
     if (w < 0)
       break;
@@ -577,9 +598,10 @@ inline int decode_schaltzeiten_day(const uint8_t *data, std::size_t data_len, ch
 }
 
 // Parse "HH:MM" (1-2 digit hour, 1-2 digit minute) in [*pp, end) into a
-// switch-point byte (truncating the minute). Advances *pp past the field.
+// switch-point byte (rounding the minute down to its 10-minute step, and
+// setting *rounded when that changed it). Advances *pp past the field.
 // Returns false on a malformed or out-of-range field.
-inline bool parse_hhmm_(const char **pp, const char *end, uint8_t *b) {
+inline bool parse_hhmm_(const char **pp, const char *end, uint8_t *b, bool *rounded) {
   const char *p = *pp;
   int field[2] = {0, 0};
   for (int f = 0; f < 2; f++) {
@@ -600,6 +622,8 @@ inline bool parse_hhmm_(const char **pp, const char *end, uint8_t *b) {
   }
   if (!hhmm_to_timebyte(static_cast<uint8_t>(field[0]), static_cast<uint8_t>(field[1]), b))
     return false;
+  if (field[1] % 10 != 0)
+    *rounded = true;
   *pp = p;
   return true;
 }
@@ -610,8 +634,12 @@ inline bool parse_hhmm_(const char **pp, const char *end, uint8_t *b) {
 // pair (OFF before ON, compared after truncation to the 10-minute grid). On
 // failure buf8 is left unchanged (the parse builds into a local and only
 // commits on success, so a rejected string never leaves a torn write) and the
-// caller must not transmit -- same contract as encode_scaled.
-inline bool encode_schaltzeiten_day(const char *str, uint8_t *buf8) {
+// caller must not transmit -- same contract as encode_scaled. *rounded, when
+// given, is set when a minute was rounded down to its 10-minute step.
+inline bool encode_schaltzeiten_day(const char *str, uint8_t *buf8, bool *rounded = nullptr) {
+  bool any_rounded = false;
+  if (rounded != nullptr)
+    *rounded = false;
   if (buf8 == nullptr)
     return false;
   uint8_t tmp[8];
@@ -645,12 +673,12 @@ inline bool encode_schaltzeiten_day(const char *str, uint8_t *buf8) {
       } else {  // "HH:MM-HH:MM"
         const char *cur = p;
         uint8_t onb = 0, offb = 0;
-        if (!parse_hhmm_(&cur, tok_end, &onb))
+        if (!parse_hhmm_(&cur, tok_end, &onb, &any_rounded))
           return false;
         if (cur >= tok_end || *cur != '-')
           return false;
         cur++;
-        if (!parse_hhmm_(&cur, tok_end, &offb))
+        if (!parse_hhmm_(&cur, tok_end, &offb, &any_rounded))
           return false;
         if (cur != tok_end)
           return false;  // trailing garbage in the token
@@ -671,6 +699,8 @@ inline bool encode_schaltzeiten_day(const char *str, uint8_t *buf8) {
     }
   }
   std::memcpy(buf8, tmp, 8);
+  if (rounded != nullptr)
+    *rounded = any_rounded;
   return true;
 }
 

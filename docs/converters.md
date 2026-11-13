@@ -324,8 +324,11 @@ whole day (all bytes `0xFF`). `24:00` is accepted as an OFF time only
 (`"00:00-24:00"` = on all day, `"06:00-24:00"` = on until midnight; wire byte
 `0xC0`), and equal ON/OFF times are kept (`"00:00-00:00"` = off all day). A
 malformed input string is rejected in full and logged -- partial writes never
-reach the device. Minutes are truncated to the device's 10-minute grid on
-write, not rounded to the nearest step. `read_back` (default `true`, optional
+reach the device. Minutes are rounded down to the device's 10-minute grid on
+write (`06:07` is stored as `06:00`), with a warning that names the program as
+written. A byte read from the device that is no time (minute code 6 or 7, an
+OFF time past 24:00) shows as `!XX`, its hex value, with a warning; such a program
+cannot be written back as shown, so enter it in full. `read_back` (default `true`, optional
 `update_interval`) re-reads immediately after the write ACK, so the Home
 Assistant state snaps to the accepted grid value instead of sitting on the raw
 input for one poll cycle. There is currently no
@@ -335,7 +338,7 @@ one configured `address`.
 **Validation scope.** The encoder validates what the wire format can
 represent -- hour 0..23 (plus exactly `24:00` as an OFF time), minute 0..59, at
 most four pairs, per-token grammar -- and one rule *within* a pair: OFF must
-not precede ON, compared after truncation to the 10-minute grid (so
+not precede ON, compared after rounding down to the 10-minute grid (so
 `"06:09-06:01"` is accepted as `06:00-06:00`). A reversed pair such as
 `"22:00-06:00"` rejects the whole string rather than being written; the
 controller's own UI clears such an interval (observed on a Vitotronic 200

@@ -2790,14 +2790,13 @@ because it bounds what this oracle proves — a *duplicated* write
 (`tmp[2*pair+1] = onb`) does **not** trip it, since that bug is idempotent over
 its own output. Round-trip oracles catch reordering and loss, not every error.
 Only the encode→decode→encode direction is asserted: device bytes → string →
-bytes is deliberately not a contract, because a malformed OFF byte (disabled
-while its ON is active) renders through the same formula so the raw state stays
-visible, and that rendering is intentionally not re-encodable. The same holds
-for a reversed pair read from a device: it decodes faithfully, but the encoder
-rejects it. The swap negative control above still fires under that rule: a
-swapped pair decodes as reversed, so it now also trips "canonical string failed
-to re-encode", and on the `00:00-24:00` seed the swap moves `0xC0` into the ON
-slot, where it reads as disabled and the byte compare fails.
+bytes is deliberately not a contract, because a byte that is no time renders
+as `!XX` so the raw state stays visible, and the encoder rejects that. The same
+holds for a reversed pair read from a device: it decodes faithfully, but the
+encoder rejects it. The swap negative control above still fires under that
+rule: a swapped pair decodes as reversed, so it also trips "canonical string
+failed to re-encode", and on the `00:00-24:00` seed the swap moves `0xC0` into
+the ON slot, where it reads as disabled and the byte compare fails.
 
 **A harness whose parameter range is narrower than the caller's is not testing
 the caller.** The output-capacity range was first capped at 96, chosen as
