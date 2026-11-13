@@ -781,6 +781,20 @@ inline uint8_t utf16_label_bytes(const uint8_t *block, std::size_t block_len, st
 }
 
 // ---------------------------------------------------------------------------
+// climate setpoint
+// ---------------------------------------------------------------------------
+
+// The 1-byte room setpoint (whole degC) for a target temperature: clamped to
+// [min_c, max_c], then rounded. A NaN gives min_c; callers reject it first.
+inline uint8_t setpoint_byte(float target, int min_c, int max_c) {
+  if (!(target >= static_cast<float>(min_c)))
+    target = static_cast<float>(min_c);
+  if (target > static_cast<float>(max_c))
+    target = static_cast<float>(max_c);
+  return static_cast<uint8_t>(std::lround(target));
+}
+
+// ---------------------------------------------------------------------------
 // scan-console raw response formatting (debug)
 // ---------------------------------------------------------------------------
 

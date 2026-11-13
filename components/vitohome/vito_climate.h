@@ -46,11 +46,8 @@ class VitoClimateChannel final : public VitoEntityBase {
 // VitoClimatePreset[]` table (.rodata). The binding between the command and
 // state spaces is positional: this row says "write_value (command space) and
 // any of read_values (state space) are the same operating mode, displayed as
-// `mode`." `name` is a free label. Deliberately a POD of pointers: the previous
-// shape held a std::string AND a std::vector<uint8_t> per preset, so every
-// preset cost two heap blocks (plus the presets_ vector's own growth) -- ~10
-// allocations for the 5-preset curated example. `name` and `read_values` point
-// at codegen literals with static storage; nothing here is owned.
+// `mode`." `name` is a free label. A POD of pointers to codegen literals with
+// static storage: no heap, nothing owned.
 struct VitoClimatePreset {
   const char *name;
   uint8_t write_value;
@@ -83,12 +80,9 @@ class VitoClimate final : public climate::Climate, public Component {
   void configure_mode(VitoHomeComponent *hub, const optolink::Datapoint &read_dp, bool read_back, uint32_t poll_ms);
   void set_mode_write_datapoint(const optolink::Datapoint &dp) { this->mode_.set_write_datapoint(dp); }
 
-  // GWG access mode, per channel (2026-08-26). The two channels address
-  // different registers -- the room setpoint and Betriebsart -- and nothing
-  // says they live in the same GWG access space, so they are set separately
-  // rather than one climate-wide mode. As everywhere else, one mode drives
-  // both directions of a channel (see VitoEntityBase::space()); the default is
-  // PHYSICAL, i.e. byte-identical to the behaviour before this existed.
+  // GWG access mode, per channel: the setpoint and Betriebsart registers need
+  // not share an access space. One mode drives both directions of a channel
+  // (VitoEntityBase::space()); the default is PHYSICAL.
   void set_setpoint_access(optolink::GWGAccessMode access) { this->setpoint_.set_access(access); }
   void set_mode_access(optolink::GWGAccessMode access) { this->mode_.set_access(access); }
   // The whole preset table at once, as a static array in .rodata.
@@ -112,12 +106,13 @@ class VitoClimate final : public climate::Climate, public Component {
 
  protected:
   // True once every configured channel has been read at least once. Until then
-  // nothing is published: the climate's state is the PAIR (setpoint, mode),
-  // and publishing after only the first read hands Home Assistant the boot
-  // default for the other -- hardware-observed as a "Mode: OFF" blip on every
-  // reboot (setpoint read, publish with the default mode, mode read 120 ms
-  // later, publish HEAT), which an automation on "climate turned off" sees.
+  // nothing is published: the state is the PAIR (setpoint, mode), and
+  // publishing after the first read would show the placeholder for the other,
+  // e.g. a "Mode: OFF" blip at boot that an automation sees.
   bool ready_() const { return this->setpoint_known_ && (!this->has_mode_ || this->mode_known_); }
+  // Whether HEAT is a mode this climate can write: always without a mode
+  // register, else when a preset derives it.
+  bool offers_heat_() const;
   const VitoClimatePreset *find_preset_by_name_(const char *name) const;
   const VitoClimatePreset *first_preset_with_mode_(climate::ClimateMode mode) const;
 
