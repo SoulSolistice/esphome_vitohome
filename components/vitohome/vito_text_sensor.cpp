@@ -249,7 +249,8 @@ void VitoTextSensor::handle_response(const ResponseView &response) {
 }
 
 void VitoTextSensor::handle_error(optolink::OptolinkResult /*error*/) {
-  // Keep the last value; the hub logs the specific error.
+  // Keeps the last value: ESPHome has no public way to report this entity type
+  // as unknown. The hub's connectivity sensor shows a lost link.
 }
 
 }  // namespace esphome::vitohome

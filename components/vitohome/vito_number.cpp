@@ -125,7 +125,7 @@ void VitoNumber::handle_response(const ResponseView &response) {
     return;
   }
   ESP_LOGD(TAG, "%s = %.3f", this->datapoint_.name(), out);
-  this->consecutive_read_errors_ = 0;
+  this->clear_read_failures_();
   this->publish_state(out);
 }
 
@@ -139,14 +139,9 @@ void VitoNumber::handle_write_response(const ResponseView & /*response*/) {
 }
 
 void VitoNumber::handle_error(optolink::OptolinkResult /*error*/) {
-  // Read errors only (writes go to handle_write_error, a keep-state no-op):
-  // blank the entity only after a streak, as in VitoSensor.
-  if (this->consecutive_read_errors_ < NAN_AFTER_CONSECUTIVE_READ_ERRORS) {
-    this->consecutive_read_errors_++;
-  }
-  if (this->consecutive_read_errors_ == NAN_AFTER_CONSECUTIVE_READ_ERRORS) {
+  // Reads only; a failed write goes to handle_write_error() and keeps the state.
+  if (this->count_read_failure_())
     this->publish_state(NAN);
-  }
 }
 
 }  // namespace esphome::vitohome

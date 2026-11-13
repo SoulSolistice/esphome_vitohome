@@ -25,7 +25,9 @@ class VitoClimateChannel final : public VitoEntityBase {
   void set_read_back(bool v) { this->read_back_ = v; }
 
   void handle_response(const ResponseView &response) override;
-  void handle_error(optolink::OptolinkResult /*error*/) override {}  // keep last state
+  // Keeps the last state: ESPHome has no public way to report a climate as
+  // unknown. The hub's connectivity sensor shows a lost link.
+  void handle_error(optolink::OptolinkResult /*error*/) override {}
   // The climate publishes only what the device confirmed: the read-back, or
   // with read_back off the acknowledged write. A failed write changes nothing.
   void handle_write_response(const ResponseView &response) override;
