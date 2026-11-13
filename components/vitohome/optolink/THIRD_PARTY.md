@@ -804,7 +804,21 @@ These are intentional divergences from upstream `edc059a7`:
     EOT last whatever `gwgWriteEotBeforePayload` says. The other write types
     are unchanged. Proof: `proof_gwg_write_access.cpp` (6).
 
-Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30 and 32 are the only intentional changes to on-wire/runtime
+33. **GWG ENQ-to-send delay (diagnostic, default off, issue #35).** The
+    request goes out in the `loop()` pass that read the device's ENQ (item
+    18, the same-loop send). `optolink::gwgEnqSendDelayMs`, set from a
+    lambda through `VitoHomeComponent::set_gwg_enq_send_delay_ms()` (0..100
+    ms), holds an ENQ-paced request in a new `HOLD` state until that many ms
+    after the ENQ was read; bytes arriving meanwhile are dropped. A
+    burst-sent request does not wait. At the default 0 the engine takes the
+    same path as before, byte for byte. `lastEnqToSendMs()` /
+    `lastSendWasEnqPaced()` report the measured gap; the hub logs it on the
+    DEBUG `GWG timing:` line and for each unanswered ENQ-paced request.
+    Motivation: #35's reporter waits 30-35 ms after the 0x05 in their own
+    firmware. Not yet tested on hardware. Proof:
+    `proof_gwg_enq_send_delay.cpp`.
+
+Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32 and 33 (when its delay is set) are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16 are structural (no behavior change from any call
 site that exists -- item 16 alters bytes only on a RESPONSE-construction path
 nothing exercises); item 17 changes only construction-failure handling

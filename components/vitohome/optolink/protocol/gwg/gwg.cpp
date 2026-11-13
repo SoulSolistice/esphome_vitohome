@@ -126,6 +126,9 @@ void GWGEngine::loop() {
     case State::INIT:
       _init();
       break;
+    case State::HOLD:
+      _hold();
+      break;
     case State::SEND:
       _send();
       break;
@@ -173,6 +176,16 @@ void GWGEngine::_init() {
       _lastSyncMillis = _currentMillis;  // burst window opens (see ENQ_VALIDITY_MS)
       _syncValid = true;
       _sentInBurst = false;
+      _enqSeenMillis = optolink_millis();
+      _lastSendEnqPaced = true;
+      _stampEnqToSend = true;
+      if (gwgEnqSendDelayMs > 0) {
+        // Diagnostic ENQ-to-send delay (issue #35, see gwgEnqSendDelayMs):
+        // wait in HOLD instead of answering in this pass.
+        _setState(State::HOLD);
+        _hold();  // a delay already elapsed (long host stall) sends at once
+        return;
+      }
       _setState(State::SEND);
       // Fall through into _send() rather than waiting for the next loop()
       // iteration (divergence from upstream). The KW-family master has to
@@ -215,6 +228,8 @@ void GWGEngine::_init() {
     _bytesTransferred = gwgBurstOmitsEnqAck ? 1 : 0;
     _enqAgeMillis = _currentMillis - _lastSyncMillis;  // age of the sync we are riding
     _sentInBurst = true;
+    _lastSendEnqPaced = false;
+    _stampEnqToSend = false;
     _setState(State::SEND);
     _send();
     return;
@@ -231,9 +246,27 @@ void GWGEngine::_init() {
   }
 }
 
+// Diagnostic ENQ-to-send delay (issue #35, see gwgEnqSendDelayMs). Fresh
+// optolink_millis(), not the per-loop snapshot: the delay is shorter than an
+// idle ESPHome loop interval. Nothing is expected from the device while we
+// hold its ENQ; anything that does arrive is not the answer to this request,
+// so it is dropped here rather than read as one in RECEIVE.
+void GWGEngine::_hold() {
+  while (_interface->available())
+    _interface->read();
+  if (optolink_millis() - _enqSeenMillis < gwgEnqSendDelayMs)
+    return;
+  _setState(State::SEND);
+  _send();
+}
+
 void GWGEngine::_send() {
   _bytesTransferred +=
       _interface->write(&_currentRequest[_bytesTransferred], _currentRequest.length() - _bytesTransferred);
+  if (_stampEnqToSend) {
+    _stampEnqToSend = false;
+    _enqToSendMillis = optolink_millis() - _enqSeenMillis;
+  }
   if (_bytesTransferred == _currentRequest.length()) {
     _bytesTransferred = 0;
     _lastMillis = _currentMillis;

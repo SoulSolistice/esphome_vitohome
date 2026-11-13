@@ -101,6 +101,11 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTO
   proof_gwg_timeout_kind.cpp "${SRCS[@]}" -o gwg_timeout_kind
 ./gwg_timeout_kind
 
+echo "== GWG ENQ-to-send delay: default 0, hold, burst unaffected (THIRD_PARTY.md #33) =="
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
+  proof_gwg_enq_send_delay.cpp "${SRCS[@]}" -o gwg_enq_send_delay
+./gwg_enq_send_delay
+
 echo "== GWG write access modes (EEPROM/BE; KMBUS refused) =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
   proof_gwg_write_access.cpp "${SRCS[@]}" -o gwg_write_access

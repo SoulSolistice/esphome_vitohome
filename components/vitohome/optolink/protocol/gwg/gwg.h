@@ -300,6 +300,10 @@ class GWGEngine {
         _loopGapMillis(0),
         _enqAgeMillis(0),
         _sendCompleteMillis(0),
+        _enqSeenMillis(0),
+        _enqToSendMillis(0),
+        _lastSendEnqPaced(false),
+        _stampEnqToSend(false),
         _lastSyncMillis(0),
         _syncValid(false),
         _sentInBurst(false),
@@ -388,6 +392,21 @@ class GWGEngine {
   // read()/write()/telegram(). THIRD_PARTY.md #31.
   bool lastTimeoutWasUnsynced() const { return _timeoutUnsynced; }
 
+  // ENQ-to-send measurement (issue #35, see gwgEnqSendDelayMs). For the last
+  // request sent on an ENQ: the ms from reading the ENQ out of the UART buffer
+  // to handing the frame's first byte to the interface. Taken with a fresh
+  // optolink_millis() after the write, so it includes whatever write() itself
+  // spends first (with frame logging on, the `<<< 05` log line). 0 means the
+  // same millisecond. lastSendWasEnqPaced() is false for a burst-sent request,
+  // whose value is then meaningless. Valid inside onResponse/onTiming/onError
+  // for the transaction just finished; reset by the next telegram sent.
+  uint32_t lastEnqToSendMs() const { return _enqToSendMillis; }
+  bool lastSendWasEnqPaced() const { return _lastSendEnqPaced; }
+  // True while a request waits out gwgEnqSendDelayMs after an ENQ. The hub
+  // keeps the main loop running continuously meanwhile, so the delay is not
+  // stretched by ESPHome's idle sleep.
+  bool isHoldingEnq() const { return _state == State::HOLD; }
+
   bool begin();
   void loop();
   void end();
@@ -395,7 +414,9 @@ class GWGEngine {
   bool isBusy() const;
 
  private:
-  enum class State { INIT, SEND, RECEIVE, UNDEFINED } _state;
+  // HOLD: an ENQ was read and the request waits out gwgEnqSendDelayMs before
+  // SEND. Appended last so the numbers _setState() logs for the others stay.
+  enum class State { INIT, SEND, RECEIVE, UNDEFINED, HOLD } _state;
   uint32_t _currentMillis;
   uint32_t _lastMillis;
   uint32_t _requestTime;
@@ -411,6 +432,13 @@ class GWGEngine {
   // set for the in-flight request.
   uint32_t _enqAgeMillis;
   uint32_t _sendCompleteMillis;
+  // ENQ-to-send (see lastEnqToSendMs()). _enqSeenMillis is a fresh
+  // optolink_millis() taken when the ENQ is read; _stampEnqToSend asks _send()
+  // to measure after its first write.
+  uint32_t _enqSeenMillis;
+  uint32_t _enqToSendMillis;
+  bool _lastSendEnqPaced;
+  bool _stampEnqToSend;
   // Burst bookkeeping (see ENQ_VALIDITY_MS). _lastSyncMillis is stamped only
   // where the device demonstrably let us talk: an ENQ we actually used to
   // send, and the completion of a transaction. It is invalidated on any error,
@@ -475,6 +503,7 @@ class GWGEngine {
   }
 
   void _init();
+  void _hold();
   void _send();
   void _receive();
 

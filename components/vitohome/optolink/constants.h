@@ -302,6 +302,25 @@ extern uint32_t gwgResponseTimeoutMs;
 inline constexpr uint32_t GWG_RESPONSE_TIMEOUT_MIN_MS = 50;
 inline constexpr uint32_t GWG_RESPONSE_TIMEOUT_MAX_MS = 2000;
 
+// GWG ENQ-to-send delay (ms), diagnostic. Default 0: the request goes out in
+// the same loop() pass that read the device's ENQ, as it always has (see
+// GWGEngine::_init()). A value above 0 holds the request until that many ms
+// after the ENQ was read, then sends it; this variable is what the engine
+// reads, set from a lambda (VitoHomeComponent::set_gwg_enq_send_delay_ms()).
+//
+// Why it exists (issue #35, GWG_VBEM 0x2053, 2026-11-13): with no catalog
+// loaded, 7 of 8 ENQ-paced EEPROM reads went unanswered, not one byte back.
+// The reporter's own firmware waits 30-35 ms after the 0x05 before its 0x01
+// and reports that this all but removed such timeouts. No capture in this
+// project has measured the gap yet, so this is a test knob, not a fix.
+//
+// Only an ENQ-paced request waits; a burst-sent one answers no ENQ. The ENQ's
+// arrival is known only as the time it was read out of the UART buffer, so the
+// delay counts from there. Clamped to GWG_ENQ_SEND_DELAY_MAX_MS by the hub
+// setter, well under the shortest idle-ENQ gap seen (749 ms).
+extern uint32_t gwgEnqSendDelayMs;
+inline constexpr uint32_t GWG_ENQ_SEND_DELAY_MAX_MS = 100;
+
 constexpr uint8_t gwgWriteTypeByte(GWGAccessMode mode) {
   switch (mode) {
     case GWGAccessMode::VIRTUAL:

@@ -197,6 +197,13 @@ The two families share every `physical`, `xram`, `port` and most `eeprom` and
   `0xA0`, `0xAA` and `0xB4` is `kmbus_eeprom`) published the link offline
   about 14 times in 6.5 minutes on #35, although the unit kept sending ENQs
   and answering other reads. Not yet confirmed on hardware.
+- **ENQ-to-send delay (diagnostic, off by default).** A request goes out as
+  soon as the ENQ is read. `id(vito).set_gwg_enq_send_delay_ms(30)` from a
+  lambda (0 to 100 ms) holds an ENQ-paced request that long first; burst-sent
+  requests do not wait. The DEBUG `GWG timing:` line shows the measured
+  `enq->send` for each answered read, and `GWG 0x.. unanswered: enq->send ..`
+  for each unanswered one. #35's reporter waits 30-35 ms in their own
+  firmware. Not yet tested on hardware.
 
 ## Open questions
 
@@ -206,4 +213,5 @@ The two families share every `physical`, `xram`, `port` and most `eeprom` and
 | Is `xram` `0x88` big-endian? | Second Wasserdruck reading at another pressure |
 | Does any GWG unit serve `be`? | A unit with a BEM panel |
 | Can `kmbus_eeprom` be reached at all? | Unknown; possibly an LGM29 setting |
+| Does #35's unit need a gap between ENQ and request? | Raw reads with frames logged at `set_gwg_enq_send_delay_ms(0)`, `15` and `30`; compare answered vs unanswered `enq->send` |
 | Where does the write frame's `0x04` go? | A first `eeprom` write on a unit whose owner accepts the risk |

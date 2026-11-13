@@ -278,6 +278,22 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   void set_gwg_response_timeout_ms(uint32_t ms);
   uint32_t gwg_response_timeout_ms() const { return optolink::gwgResponseTimeoutMs; }
 
+  // GWG ENQ-to-send delay (ms), diagnostic -- see optolink::gwgEnqSendDelayMs
+  // in constants.h. 0 (the default) sends on the ENQ as before. Clamped to
+  // 0..optolink::GWG_ENQ_SEND_DELAY_MAX_MS (100) and logged; takes effect on
+  // the next ENQ. Same not-a-YAML-key rule as the flags above: it is for
+  // finding out whether a unit needs one (issue #35).
+  //
+  //   esphome:
+  //     on_boot:
+  //       - lambda: id(vito).set_gwg_enq_send_delay_ms(30);
+  //
+  // The DEBUG `GWG timing:` line and the `GWG ... unanswered` line state the
+  // measured gap per telegram. Compiles and is accepted on every build; only
+  // the GWG engine reads it.
+  void set_gwg_enq_send_delay_ms(uint32_t ms);
+  uint32_t gwg_enq_send_delay_ms() const { return optolink::gwgEnqSendDelayMs; }
+
   // True once the GWG engine has given up on bursting for this session (see
   // GWGEngine::BURST_FAILURES_BEFORE_FALLBACK). Latched, never cleared: the
   // engine itself does not re-enable bursting short of a reboot. A test that
@@ -697,6 +713,12 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // absent (error frame on P300, FF FF on KW). Uninterpreted on the device.
   int ident_f0_{-1};
   bool gwg_burst_disabled_{false};  // see gwg_burst_disabled()
+#ifdef VITOHOME_PROTOCOL_GWG
+  // Keeps the main loop from idling while the GWG engine holds an ENQ for
+  // gwgEnqSendDelayMs (see GWGEngine::isHoldingEnq()); otherwise the delay
+  // would overrun by up to one loop interval.
+  HighFrequencyLoopRequester gwg_hold_loop_;
+#endif
 
   // --- raw scan console lane -------------------------------------------------
   //

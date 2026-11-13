@@ -25,6 +25,10 @@ bool gwgBurstOmitsEnqAck = true;
 // Default: GWGEngine::RESPONSE_TIMEOUT_MS.
 uint32_t gwgResponseTimeoutMs = 250;
 
+// GWG ENQ-to-send delay -- see the comment on the declaration in constants.h.
+// Default 0: send on the ENQ, unchanged behaviour.
+uint32_t gwgEnqSendDelayMs = 0;
+
 const char *errorToString(OptolinkResult error) {
   if (error == OptolinkResult::TIMEOUT) {
     return "timeout";

@@ -255,8 +255,14 @@ void VitoHomeComponent::setup() {
         // and is ignored here like malformed traffic. Issue #35: consecutive
         // silent `kmbus_eeprom` datapoints published the link offline about 14
         // times in 6.5 minutes on a unit that kept sending ENQs.
-        if (this->vito_->lastTimeoutWasUnsynced())
+        if (this->vito_->lastTimeoutWasUnsynced()) {
           this->link_note_error_();
+        } else if (this->vito_->lastSendWasEnqPaced()) {
+          // The gap the device saw, for comparing against answered telegrams'
+          // `enq->send` (issue #35, see optolink::gwgEnqSendDelayMs).
+          ESP_LOGD(TAG, "GWG 0x%04X unanswered: enq->send %" PRIu32 " ms (delay setting %" PRIu32 " ms)",
+                   request_address, this->vito_->lastEnqToSendMs(), optolink::gwgEnqSendDelayMs);
+        }
 #else
         this->link_note_error_();
 #endif
@@ -280,8 +286,14 @@ void VitoHomeComponent::setup() {
   // `logger: logs: {vitohome: DEBUG}` (as the diagnostic example does) sees
   // it for free, and it costs nothing when that tag is left at its default.
   this->vito_->onTiming([this](uint32_t enq_age_ms, uint32_t send_to_response_ms, uint16_t address) {
-    ESP_LOGD(TAG, "GWG timing: 0x%04X enq age <=%" PRIu32 " ms, send->response %" PRIu32 " ms", address, enq_age_ms,
-             send_to_response_ms);
+    if (this->vito_->lastSendWasEnqPaced()) {
+      ESP_LOGD(TAG,
+               "GWG timing: 0x%04X enq age <=%" PRIu32 " ms, enq->send %" PRIu32 " ms, send->response %" PRIu32 " ms",
+               address, enq_age_ms, this->vito_->lastEnqToSendMs(), send_to_response_ms);
+    } else {
+      ESP_LOGD(TAG, "GWG timing: 0x%04X enq age <=%" PRIu32 " ms (burst), send->response %" PRIu32 " ms", address,
+               enq_age_ms, send_to_response_ms);
+    }
   });
 
   // Burst fallback (2026-10-10). WARNING, not DEBUG: this permanently caps the
@@ -382,6 +394,16 @@ void VitoHomeComponent::loop() {
     return;
 
   this->vito_->loop();
+
+#ifdef VITOHOME_PROTOCOL_GWG
+  // Hold the main loop awake only while a request waits out the ENQ-to-send
+  // delay (default 0: never). start()/stop() are no-ops when already in state.
+  if (this->vito_->isHoldingEnq()) {
+    this->gwg_hold_loop_.start();
+  } else {
+    this->gwg_hold_loop_.stop();
+  }
+#endif
 
   // Frame logging (compile-time; see vito_uart_interface.h). TX frames are
   // emitted from write(); this closes an RX frame once the bus goes quiet.
@@ -495,6 +517,16 @@ void VitoHomeComponent::set_gwg_response_timeout_ms(uint32_t ms) {
     ESP_LOGW(TAG, "GWG response deadline %" PRIu32 " ms is out of range; using %" PRIu32 " ms", ms, clamped);
   } else {
     ESP_LOGI(TAG, "GWG response deadline set to %" PRIu32 " ms", clamped);
+  }
+}
+
+void VitoHomeComponent::set_gwg_enq_send_delay_ms(uint32_t ms) {
+  const uint32_t clamped = std::min(ms, optolink::GWG_ENQ_SEND_DELAY_MAX_MS);
+  optolink::gwgEnqSendDelayMs = clamped;
+  if (clamped != ms) {
+    ESP_LOGW(TAG, "GWG ENQ-to-send delay %" PRIu32 " ms is out of range; using %" PRIu32 " ms", ms, clamped);
+  } else {
+    ESP_LOGI(TAG, "GWG ENQ-to-send delay set to %" PRIu32 " ms", clamped);
   }
 }
 
@@ -949,6 +981,11 @@ void VitoHomeComponent::dump_config() {
   if (ESPHomeUARTInterface::frame_logging_enabled()) {
     ESP_LOGCONFIG(TAG, "  Frame logging: ON (tag 'vitohome.frames')");
   }
+#ifdef VITOHOME_PROTOCOL_GWG
+  if (optolink::gwgEnqSendDelayMs > 0) {
+    ESP_LOGCONFIG(TAG, "  GWG ENQ-to-send delay: %" PRIu32 " ms", optolink::gwgEnqSendDelayMs);
+  }
+#endif
 
   // queue_raw_op()'s gates (raw_access / unsafe_raw_writes).
 #ifdef VITOHOME_RAW_UNRESTRICTED
