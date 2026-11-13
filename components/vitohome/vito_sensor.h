@@ -35,19 +35,9 @@ class VitoSensor final : public sensor::Sensor, public Component, public VitoEnt
   const char *entity_kind() const override { return "sensor"; }
 
  protected:
-  // Advance the consecutive-read-error streak and blank the entity (publish
-  // NAN) once it crosses the threshold. Shared by handle_error (protocol error)
-  // and handle_response (a decode failure -- short or non-finite payload), so a
-  // persistently bad read eventually goes unavailable instead of pinning the
-  // last good value.
+  // A failed read (protocol error, short or non-finite answer): publishes NAN
+  // once UNKNOWN_AFTER_READ_FAILURES are reached (VitoEntityBase).
   void note_read_failure_();
-
-  // A single transient bus error (CRC glitch, one timeout) used to publish NAN
-  // immediately, blanking an hourly-polled entity in Home Assistant until its
-  // next poll. Go unavailable only after this many CONSECUTIVE read errors; a
-  // successful publish resets the streak. Write errors never blank state (the
-  // device value did not change) -- see VitoEntityBase::handle_write_error.
-  static constexpr uint8_t NAN_AFTER_CONSECUTIVE_READ_ERRORS = 3;
 
   double scale_{1.0};
   bool signed_{false};
@@ -57,7 +47,6 @@ class VitoSensor final : public sensor::Sensor, public Component, public VitoEnt
   // still represent the -1 "disabled" sentinel unambiguously.
   int16_t extract_byte_{-1};
   uint8_t extract_len_{1};  // field width to slice at extract_byte_ (1..4)
-  uint8_t consecutive_read_errors_{0};
 };
 
 }  // namespace esphome::vitohome

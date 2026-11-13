@@ -226,6 +226,19 @@ class VitoEntityBase {
     return true;
   }
 
+  // Failed reads (an error or an undecodable answer) in a row before an entity
+  // reports "unknown". Writes never count: a failed write leaves the device
+  // value as it was.
+  static constexpr uint8_t UNKNOWN_AFTER_READ_FAILURES = 3;
+  // Counts one failed read. True exactly once: on the failure that reaches the
+  // threshold, when the caller publishes "unknown".
+  bool count_read_failure_() {
+    if (this->read_failures_ >= UNKNOWN_AFTER_READ_FAILURES)
+      return false;
+    return ++this->read_failures_ == UNKNOWN_AFTER_READ_FAILURES;
+  }
+  void clear_read_failures_() { this->read_failures_ = 0; }
+
   // Default-constructed Datapoint until set_datapoint runs from codegen.
   // The optolink converter slot is always noconv: vitohome decodes and
   // encodes the raw payload itself (decode.h) and uses the raw-bytes write
@@ -249,6 +262,7 @@ class VitoEntityBase {
   AddressSpace space_{AddressSpace::OWN};
   uint8_t rpc_prefix_[RPC_PREFIX_MAX]{0, 0, 0, 0};
   uint8_t rpc_prefix_len_{0};
+  uint8_t read_failures_{0};
 
  private:
   // Hub-side bookkeeping. Private, not public: only VitoHomeComponent (the

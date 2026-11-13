@@ -23,17 +23,19 @@ void VitoBinarySensor::handle_response(const ResponseView &response) {
   if (!decode_masked_bit(response.data, response.data_length, this->byte_offset_, this->bit_mask_, &value)) {
     ESP_LOGW(TAG, "%s: response too short (have %u bytes, need offset %u)", this->datapoint_.name(),
              response.data_length, this->byte_offset_);
+    this->handle_error(optolink::OptolinkResult::LENGTH);
     return;
   }
   uint8_t raw = response.data[this->byte_offset_];
   ESP_LOGD(TAG, "%s: raw=0x%02X mask=0x%02X -> %s", this->datapoint_.name(), raw, this->bit_mask_,
            value ? "ON" : "OFF");
+  this->clear_read_failures_();
   this->publish_state(value);
 }
 
 void VitoBinarySensor::handle_error(optolink::OptolinkResult /*error*/) {
-  // ESPHome binary_sensor has no native "unavailable" state; we leave
-  // the last value in place and rely on the component to log the error.
+  if (this->count_read_failure_())
+    this->invalidate_state();
 }
 
 }  // namespace esphome::vitohome

@@ -34,15 +34,9 @@ class VitoNumber final : public number::Number, public Component, public VitoEnt
  protected:
   void control(float value) override;
 
-  // See VitoSensor: go unavailable only after a streak of failed READS. A
-  // failed WRITE never blanks the state (the device value did not change);
-  // the inherited handle_write_error() no-op covers that side.
-  static constexpr uint8_t NAN_AFTER_CONSECUTIVE_READ_ERRORS = 3;
-
   double scale_{1.0};
   bool signed_{false};
   float pending_value_{0.0f};
-  uint8_t consecutive_read_errors_{0};
   int16_t extract_byte_{-1};
   uint8_t extract_len_{1};  // field width to slice at extract_byte_ (1..4)
 };

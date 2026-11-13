@@ -1508,6 +1508,14 @@ been read once (`VitoClimate::ready_()`). A first mode read that matches no
 preset still counts as read, so a device in an unmapped Betriebsart does not
 hide the whole climate; the log says the coarse mode is unconfirmed.
 
+**Unknown after failed reads.** Three failed reads in a row
+(`VitoEntityBase::UNKNOWN_AFTER_READ_FAILURES`, an error or an undecodable
+answer) make an entity report "unknown": sensor and number publish NaN,
+binary_sensor calls `invalidate_state()`. A good read clears the count; a failed
+write never counts. select, switch, text, text_sensor and climate keep their
+last value, because ESPHome 2026.9 has no public way to report those types as
+unknown; the hub's connectivity sensor shows a lost link for all of them.
+
 **The climate's placeholder mode** is HEAT where a preset derives HEAT (or the
 climate has no mode register), else OFF. It is what stays published when the
 first mode read matches no preset: a circuit in an unmapped Betriebsart
