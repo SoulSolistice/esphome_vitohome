@@ -21,52 +21,60 @@ void VitoText::dump_config() {
 
 void VitoText::control(const std::string &value) {
   uint8_t buf[SCHALTZEITEN_LEN];
-  if (!encode_schaltzeiten_day(value.c_str(), buf)) {
-    // Unparseable program (bad time, too many pairs, ...). Refuse to transmit
-    // rather than write a partial/wrong schedule; the device keeps its value.
+  bool rounded = false;
+  if (!encode_schaltzeiten_day(value.c_str(), buf, &rounded)) {
+    // Nothing is sent: a partial program never reaches the device.
     ESP_LOGE(TAG, "%s: '%s' is not a valid switching-time program - not written", this->datapoint_.name(),
              value.c_str());
     return;
+  }
+  // What is written, in the canonical form the read-back will show.
+  char canon[48];
+  decode_schaltzeiten_day(buf, SCHALTZEITEN_LEN, canon, sizeof(canon));
+  if (rounded) {
+    ESP_LOGW(TAG, "%s: switch points are stored in 10-minute steps; '%s' is written as '%s'", this->datapoint_.name(),
+             value.c_str(), canon);
   }
   if (!this->set_write_payload_(buf, SCHALTZEITEN_LEN)) {
     ESP_LOGE(TAG, "%s: failed to stage write payload", this->datapoint_.name());
     return;
   }
-  this->pending_value_ = value;
+  this->pending_value_ = canon;
   if (this->vh_parent_ == nullptr || !this->vh_parent_->request_write(this)) {
     ESP_LOGE(TAG, "%s: write could not be queued", this->datapoint_.name());
     return;
   }
-  ESP_LOGD(TAG, "%s: queued write '%s'", this->datapoint_.name(), value.c_str());
+  ESP_LOGD(TAG, "%s: queued write '%s'", this->datapoint_.name(), canon);
 }
 
 void VitoText::handle_response(const ResponseView &response) {
   char out[64];
-  if (decode_schaltzeiten_day(response.data, response.data_length, out, sizeof(out)) < 0) {
+  bool malformed = false;
+  if (decode_schaltzeiten_day(response.data, response.data_length, out, sizeof(out), &malformed) < 0) {
     ESP_LOGW(TAG, "%s: response too short (have %u bytes, need %u)", this->datapoint_.name(), response.data_length,
              this->datapoint_.length());
     return;
   }
-  ESP_LOGD(TAG, "%s = '%s'", this->datapoint_.name(), out);
-  // publish_state(const char *) assigns into the text sensor's reused state
-  // string; wrapping `out` in std::string(out) would force a fresh per-response
-  // heap allocation instead.
-  this->publish_state(out);
+  if (malformed) {
+    ESP_LOGW(TAG,
+             "%s: '%s' holds a switch point that is no time (shown as !XX); enter the program in full to replace it",
+             this->datapoint_.name(), out);
+  } else {
+    ESP_LOGD(TAG, "%s = '%s'", this->datapoint_.name(), out);
+  }
+  this->publish_state(out);  // const char *: reuses the state string, no temporary
 }
 
 void VitoText::handle_write_response(const ResponseView & /*response*/) {
-  if (!this->read_back_) {
-    // No read-back requested: publish optimistically on the device ACK. With
-    // read_back (default) the hub immediately re-reads this address and
-    // handle_response() publishes the device's own canonical view (which may
-    // differ from the input after 10-minute truncation).
+  // With read_back (default) the hub re-reads the address and handle_response()
+  // publishes the device's view; without it, the acknowledged program.
+  if (!this->read_back_)
     this->publish_state(this->pending_value_);
-  }
 }
 
 void VitoText::handle_error(optolink::OptolinkResult /*error*/) {
-  // Keep the last published value; a transient read/write error should not
-  // blank the entity. The hub already logs the protocol-level error.
+  // Keeps the last value: ESPHome has no public way to report this entity type
+  // as unknown. The hub's connectivity sensor shows a lost link.
 }
 
 }  // namespace esphome::vitohome
