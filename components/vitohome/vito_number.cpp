@@ -15,7 +15,7 @@ void VitoNumber::dump_config() {
   LOG_NUMBER("  ", "Number", this);
   ESP_LOGCONFIG(TAG, "    Address: 0x%04X  Length: %u  scale: %g  signed: %s  read_back: %s",
                 this->datapoint_.address(), this->datapoint_.length(), this->scale_, this->signed_ ? "yes" : "no",
-                this->read_back_ ? "yes" : "no");
+                this->write_path_.read_back ? "yes" : "no");
   if (this->extract_byte_ >= 0) {
     ESP_LOGCONFIG(TAG, "    Extract: %u byte(s) at offset %d of a %u-byte block read", this->extract_len_,
                   this->extract_byte_, this->datapoint_.length());
@@ -23,9 +23,9 @@ void VitoNumber::dump_config() {
   if (this->field_mask_ != 0) {
     ESP_LOGCONFIG(TAG, "    Bit mask: 0x%02X (writes are read-modify-write)", this->field_mask_);
   }
-  if (this->block_field_width_ != 0) {
+  if (this->write_path_.block_width != 0) {
     ESP_LOGCONFIG(TAG, "    Write: whole %u-byte block, read-modify-write of %u byte(s) at offset %u",
-                  this->get_write_datapoint().length(), this->block_field_width_, this->block_field_offset_);
+                  this->get_write_datapoint().length(), this->write_path_.block_width, this->write_path_.block_offset);
   }
 }
 
@@ -118,7 +118,7 @@ void VitoNumber::handle_response(const ResponseView &response) {
 }
 
 void VitoNumber::handle_write_response(const ResponseView & /*response*/) {
-  if (!this->read_back_) {
+  if (!this->write_path_.read_back) {
     // No read-back requested: publish optimistically on the device ACK.
     this->publish_state(this->pending_value_);
   }

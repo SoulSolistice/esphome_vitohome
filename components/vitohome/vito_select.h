@@ -13,7 +13,7 @@ namespace esphome::vitohome {
 // wire values in the same order. Only the index-based control() is
 // overridden — that is the non-deprecated path in current ESPHome (the
 // string-based default forwards to it).
-class VitoSelect final : public select::Select, public Component, public VitoEntityBase {
+class VitoSelect final : public select::Select, public Component, public VitoWritableEntity {
  public:
   // Wire values in option-index order, as a codegen-emitted static array in
   // .rodata: pointer + count, no heap and no per-option statement in setup().
@@ -21,7 +21,6 @@ class VitoSelect final : public select::Select, public Component, public VitoEnt
     this->raw_values_ = values;
     this->raw_value_count_ = count;
   }
-  void set_read_back(bool v) { this->read_back_ = v; }
 
   void dump_config() override;
   void handle_response(const ResponseView &response) override;

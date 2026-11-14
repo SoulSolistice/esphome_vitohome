@@ -355,15 +355,15 @@ def test_clock_len_is_fixed_at_eight():
     """The address moves per device; the LENGTH must not.
 
     Both DateTimeBCD variants are 8 bytes, and 8 is exactly
-    VitoEntityBase::write_buf_ -- which is what lets the clock ride the ordinary
-    entity write path with no growth. If CLOCK_LEN ever exceeds write_buf_,
+    VitoWritePath::buf -- which is what lets the clock ride the ordinary
+    entity write path with no growth. If CLOCK_LEN ever exceeds that buffer,
     set_write_payload_() starts rejecting the clock payload at runtime.
     """
     vito_clock = (pathlib.Path(__file__).resolve().parents[2] / "components" / "vitohome" / "vito_clock.h").read_text()
     entity = (pathlib.Path(__file__).resolve().parents[2] / "components" / "vitohome" / "vito_entity.h").read_text()
 
     clock_len = re.search(r"constexpr\s+uint8_t\s+CLOCK_LEN\s*=\s*(\d+)\s*;", vito_clock)
-    write_buf = re.search(r"write_buf_\[(\d+)\]", entity)
+    write_buf = re.search(r"uint8_t buf\[(\d+)\]", entity)
     assert clock_len is not None and write_buf is not None
     assert int(clock_len.group(1)) == 8
     assert int(clock_len.group(1)) <= int(write_buf.group(1))

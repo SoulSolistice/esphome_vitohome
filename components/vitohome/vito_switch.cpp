@@ -22,9 +22,9 @@ void VitoSwitch::dump_config() {
   if (this->field_mask_ != 0) {
     ESP_LOGCONFIG(TAG, "    Bit mask: 0x%02X (writes are read-modify-write)", this->field_mask_);
   }
-  if (this->block_field_width_ != 0) {
+  if (this->write_path_.block_width != 0) {
     ESP_LOGCONFIG(TAG, "    Write: whole %u-byte block, read-modify-write of %u byte(s) at offset %u",
-                  this->get_write_datapoint().length(), this->block_field_width_, this->block_field_offset_);
+                  this->get_write_datapoint().length(), this->write_path_.block_width, this->write_path_.block_offset);
   }
 }
 
@@ -84,7 +84,7 @@ void VitoSwitch::handle_response(const ResponseView &response) {
 }
 
 void VitoSwitch::handle_write_response(const ResponseView & /*response*/) {
-  if (!this->read_back_) {
+  if (!this->write_path_.read_back) {
     this->publish_state(this->pending_state_);
   }
 }
