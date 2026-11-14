@@ -85,9 +85,8 @@ class VS1Engine {
   // over any answer.
   static constexpr uint32_t ANSWER_TIMEOUT_MS = 1000;
 
-  // Fixed response buffer: bounds the largest VS1 datapoint payload. 256 is a
-  // safe upper bound (datapoint length is a uint8_t).
-  static constexpr std::size_t kResponseBufferSize = 256;
+  // The longest answer: a read of MAX_PAYLOAD bytes.
+  static constexpr std::size_t kResponseBufferSize = MAX_PAYLOAD;
 
   template<class C>
   explicit VS1Engine(C *interface)

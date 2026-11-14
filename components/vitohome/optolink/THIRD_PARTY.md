@@ -65,10 +65,10 @@ These are intentional divergences from upstream `edc059a7`:
 
 4. **Packet buffers modernized.** `PacketVS2`, `PacketVS1` and `PacketGWG`
    replaced their `malloc`/`free`/`realloc` + `_allocatedLength` buffers with
-   fixed `std::array`s (VS2: `kMaxFrame=256`, the exact protocol-complete
-   bound; VS1/GWG: `kMaxFrame=260`). The engine-level `_responseBuffer`
+   fixed `std::array`s, sized since item 35 from `MAX_PAYLOAD`. The
+   engine-level `_responseBuffer`
    `malloc` + `_expandResponseBuffer()` + `_allocatedLength` in `VS1`/`GWG`
-   were likewise replaced by fixed `std::array<uint8_t, 256>`. Frames that
+   were likewise replaced by fixed `std::array`s. Frames that
    would exceed the fixed bound now fail soft (return `false`) instead of
    growing. With the raw buffer gone, the previously-deleted copy operations
    on the packet classes are restored.
@@ -829,7 +829,24 @@ These are intentional divergences from upstream `edc059a7`:
     and on change. Proofs: `proof_gwg_burst.cpp` (8) and (11),
     `proof_gwg_write_access.cpp` (5), `proof_gwg_enq_send_delay.cpp` (1).
 
-Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32 and 33 (when its delay is set) are the only intentional changes to on-wire/runtime
+35. **Buffers sized from one `MAX_PAYLOAD` (64).** The packets and response
+    buffers held the protocol-complete 255-byte payload although the hub
+    reads at most 48 bytes and writes at most 32. Every buffer is now sized
+    from `optolink::MAX_PAYLOAD` (`constants.h`): VS2 frame 6 + 64, VS1 frame
+    4 + 64, GWG frame 5 + 64, VS1 response 64, GWG response 65 (an EEPROM
+    read's last pair lands at the index of its last value), and
+    `VS2Engine::KW_MAX_LENGTH`. A request whose payload or read length exceeds
+    it is refused (`false`), a P300 frame whose length byte exceeds the
+    buffer fails the parse (`ParserVS2`, the formerly unreachable `setLength`
+    branch), and a VS1 receive no longer stores past its buffer. With every
+    frame under 256 bytes, the uint8_t wrap guards (the 249/250 request and
+    response caps) reduce to the one size check. On the ESP8266 the engines
+    shrink from 728 to 352 bytes (VS2), 580 to 196 (VS1) and 712 to 332
+    (GWG).
+    Proofs: `proof_vs2_rpc.cpp` (F), `proof_packet_vs2_response.cpp` (C, F),
+    `proof_raw_engines.cpp` (frame limits).
+
+Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set) and 35 are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16 are structural (no behavior change from any call
 site that exists -- item 16 alters bytes only on a RESPONSE-construction path
 nothing exercises); item 17 changes only construction-failure handling

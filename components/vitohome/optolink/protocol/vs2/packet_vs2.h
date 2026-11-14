@@ -7,12 +7,10 @@ For a copy, see <https://opensource.org/licenses/MIT> or the LICENSE file.
 Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 Buffer modernization: the upstream malloc/free/realloc + _allocatedLength
-is replaced by a fixed std::array<uint8_t, kMaxFrame>. The VS2 length byte
-is a uint8_t and the internal buffer stores the length byte plus the bytes
-it counts (the lead-in 0x41 and the transmitted checksum are NOT stored),
-so 1 + 255 = 256 is the exact, protocol-complete bound. With the raw
-buffer gone the class is trivially copyable again, so the deleted copy
-operations are restored.
+is replaced by a fixed std::array<uint8_t, kMaxFrame>. It stores the length
+byte and the bytes it counts (not the lead-in 0x41 or the checksum): a
+6-byte header and at most MAX_PAYLOAD payload bytes. The class is trivially
+copyable again, so the deleted copy operations are restored.
 */
 
 #pragma once
@@ -34,10 +32,11 @@ class PacketVS2 {
   friend class internals::ParserVS2;
 
  public:
-  static constexpr std::size_t kMaxFrame = 256;
-  // The largest payload a REQUEST can carry and still be sent: its frame
-  // (length byte .. last payload byte, 6 + payload) must fit length()'s uint8_t.
-  static constexpr uint8_t MAX_REQUEST_PAYLOAD = 249;
+  static constexpr std::size_t kMaxFrame = 6 + MAX_PAYLOAD;
+  // length() and the engine's byte count are uint8_t.
+  static_assert(kMaxFrame <= 0xFF, "a frame must fit a uint8_t length");
+  // The largest payload a frame carries, request or answer.
+  static constexpr uint8_t MAX_REQUEST_PAYLOAD = MAX_PAYLOAD;
 
   PacketVS2();
   ~PacketVS2() = default;

@@ -7,10 +7,9 @@ For a copy, see <https://opensource.org/licenses/MIT> or the LICENSE file.
 Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 Buffer modernization: malloc/free/realloc + _allocatedLength replaced by a
-fixed std::array<uint8_t, kMaxFrame>. A GWG write stores its payload after a
-4-byte header (ENQ_ACK, type, addr, len) and is terminated by an EOT byte,
-with a uint8_t length, so kMaxFrame = 260 covers every valid frame with
-margin. Deleted copy operations restored.
+fixed std::array<uint8_t, kMaxFrame>: a 4-byte header (ENQ_ACK, type,
+addr, len), at most MAX_PAYLOAD payload bytes and an EOT. Deleted copy
+operations restored.
 
 Access modes (2026-08-24, see GWGAccessMode in constants.h): createPacket()
 accepts any of the eight read-direction TYPE bytes rather than only the
@@ -33,7 +32,9 @@ namespace esphome::vitohome::optolink {
 
 class PacketGWG {
  public:
-  static constexpr std::size_t kMaxFrame = 260;
+  static constexpr std::size_t kMaxFrame = 5 + MAX_PAYLOAD;
+  // length() and the engine's byte count are uint8_t.
+  static_assert(kMaxFrame <= 0xFF, "a frame must fit a uint8_t length");
 
   PacketGWG();
   ~PacketGWG() = default;

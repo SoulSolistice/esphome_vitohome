@@ -14,6 +14,12 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 namespace esphome::vitohome::optolink {
 
+// The longest payload a telegram carries, sent or answered. The hub reads at
+// most 48 bytes and writes at most 32; error and procedure answers get the
+// rest. Every engine buffer is sized from it: a longer request is refused, a
+// longer answer fails.
+inline constexpr uint8_t MAX_PAYLOAD = 64;
+
 enum class FunctionCode : uint8_t {
   READ = 0x01,
   WRITE = 0x02,

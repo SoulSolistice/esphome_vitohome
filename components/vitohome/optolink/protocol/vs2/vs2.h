@@ -113,7 +113,7 @@ class VS2Engine {
   // address. At most KW_MAX_LENGTH answer bytes, KW_MAX_PAYLOAD payload bytes.
   // Hardware-confirmed for a GFA read (VScotHO1_72, 2026-10-27).
   bool kwTelegram(uint8_t type, uint16_t address, uint8_t length, const uint8_t *data = nullptr);
-  static constexpr uint8_t KW_MAX_LENGTH = 64;
+  static constexpr uint8_t KW_MAX_LENGTH = MAX_PAYLOAD;
   static constexpr uint8_t KW_MAX_PAYLOAD = 32;
   // A read in the burner control's address space: kwTelegram() with 0x6B
   // (PacketVS1Type.GFA_READ).

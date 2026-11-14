@@ -2770,12 +2770,10 @@ Two things that came out of building it are worth keeping:
   is not buying much beyond a short one. Two things account for the uncovered
   remainder, and neither is a gap in the corpus. `ParserVS2::reset()` is
   engine-driven rather than byte-driven and is covered by
-  `proof_vs2_guards.cpp` (#10). And the `!_packet.setLength(b)` failure branch
-  is **unreachable by construction**: `setLength` rejects only
-  `length + 1 > _buffer.size()`, `length` is a `uint8_t` and `kMaxFrame` is
-  256, so 255 + 1 == 256 never exceeds it. It is inherited defensive code, it
-  is harmless, and it is worth knowing it is dead before anyone reads it as a
-  guard that fires.
+  `proof_vs2_guards.cpp` (#10). The `!_packet.setLength(b)` branch was
+  unreachable while `kMaxFrame` was 256; since the buffers are sized from
+  `MAX_PAYLOAD` (THIRD_PARTY.md #35) it fires on every length byte above
+  `kMaxFrame - 1`, and a campaign should reach it.
 - **An oracle that never fires is indistinguishable from one that cannot**, so
   both classes were negative-controlled: reverting the zero-payload fix makes
   the corpus trap under ASan, and removing the CHECKSUM step's reset wedges the

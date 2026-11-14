@@ -570,6 +570,9 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // A read stores no payload, so its cap is separate: the widest text block in
   // the catalogs, and what format_raw_dump()'s result buffer holds.
   static constexpr uint8_t RAW_READ_MAX = 48;
+  static_assert(RAW_READ_MAX <= optolink::MAX_PAYLOAD && RAW_WRITE_MAX <= optolink::MAX_PAYLOAD &&
+                    MAX_RMW_BLOCK <= optolink::MAX_PAYLOAD,
+                "the hub's caps must fit the engine buffers");
 
   struct RawOp {
     uint16_t address;

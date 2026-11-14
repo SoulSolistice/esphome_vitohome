@@ -312,8 +312,7 @@ void gwg_cases() {
 }
 }  // namespace
 
-// The largest frame each builder makes is one its uint8_t length() can state
-// and the engine can send; one byte more is refused.
+// Each builder takes payloads up to MAX_PAYLOAD; one byte more is refused.
 void frame_limit_cases() {
   std::printf("-- frame limits --\n");
   uint8_t data[255];
@@ -324,18 +323,19 @@ void frame_limit_cases() {
   const uint8_t max_req = optolink::PacketVS2::MAX_REQUEST_PAYLOAD;
   check(p300.createPacket(optolink::PacketType::REQUEST, optolink::FunctionCode::WRITE, 0, 0x2000, max_req, data) &&
             p300.length() == 6 + max_req,
-        "P300: a 249-byte request payload, length 255");
+        "P300: a MAX_PAYLOAD request payload");
   check(!p300.createPacket(optolink::PacketType::REQUEST, optolink::FunctionCode::WRITE, 0, 0x2000, max_req + 1, data),
-        "P300: a 250-byte request payload refused");
+        "P300: one byte more refused");
 
+  const uint8_t max = optolink::MAX_PAYLOAD;
   optolink::PacketVS1 kw;
-  check(kw.createTelegram(0xF4, 0x2000, 251, data) && kw.length() == 255, "KW: 251 payload bytes, length 255");
-  check(!kw.createTelegram(0xF4, 0x2000, 252, data), "KW: 252 refused");
-  check(kw.createTelegram(0xF7, 0x2000, 255) && kw.length() == 4, "KW: a 255-byte read is a 4-byte frame");
+  check(kw.createTelegram(0xF4, 0x2000, max, data) && kw.length() == 4 + max, "KW: MAX_PAYLOAD payload bytes");
+  check(!kw.createTelegram(0xF4, 0x2000, max + 1, data), "KW: one byte more refused");
+  check(kw.createTelegram(0xF7, 0x2000, 255) && kw.length() == 4, "KW: a read is a 4-byte frame whatever its length");
 
   optolink::PacketGWG gwg;
-  check(gwg.createTelegram(0x99, 0x10, 250, data) && gwg.length() == 255, "GWG: 250 payload bytes, length 255");
-  check(!gwg.createTelegram(0x99, 0x10, 251, data), "GWG: 251 refused");
+  check(gwg.createTelegram(0x99, 0x10, max, data) && gwg.length() == 5 + max, "GWG: MAX_PAYLOAD payload bytes");
+  check(!gwg.createTelegram(0x99, 0x10, max + 1, data), "GWG: one byte more refused");
 }
 
 int main() {

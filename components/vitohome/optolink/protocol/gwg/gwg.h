@@ -263,9 +263,9 @@ class GWGEngine {
   // retried -- repeating a write is not free -- and still counts directly.
   static constexpr uint8_t BURST_FAILURES_BEFORE_FALLBACK = 2;
 
-  // Fixed response buffer: bounds the largest GWG datapoint payload. 256 is a
-  // safe upper bound (datapoint length is a uint8_t).
-  static constexpr std::size_t kResponseBufferSize = 256;
+  // The longest answer, a read of MAX_PAYLOAD bytes, plus one: an EEPROM read
+  // receives its last complement pair at the index of its last value.
+  static constexpr std::size_t kResponseBufferSize = MAX_PAYLOAD + 1;
 
   // EEPROM (0xAE) reads answer with a complement PAIR per address: byte 0 is
   // the one's complement of byte 1, byte 1 is the value, b0 + b1 == 0xFF.
