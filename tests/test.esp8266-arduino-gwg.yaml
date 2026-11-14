@@ -1,0 +1,23 @@
+# GWG on ESP8266. Uses common-gwg.yaml (single-byte GWG addresses); the uart:
+# key below swaps its ESP32 pins for ESP8266 ones, as in
+# test.esp8266-arduino.yaml. Compile gate: the GWG engine through the ESP8266
+# toolchain, whose millis() branch and heap budget no ESP32 build reaches.
+substitutions:
+  name: vitohome-test-esp8266-gwg
+  protocol: GWG
+  log_frames: "false"
+  identify_device: "true"
+
+esp8266:
+  board: d1_mini
+
+uart:
+  - id: uart_optolink
+    rx_pin: GPIO13
+    tx_pin: GPIO15
+    baud_rate: 4800
+    data_bits: 8
+    parity: EVEN
+    stop_bits: 2
+
+<<: !include common-gwg.yaml

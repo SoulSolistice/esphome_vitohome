@@ -542,6 +542,9 @@ the other chips' burner-control datapoints are hidden. Details in
 - Python unit tests live in [`tests/unit/`](tests/unit/) (run with `pytest`).
 - A host-side C++ harness covers the decode logic and VS2 transactions without
   hardware; see [`tests/native/README.md`](tests/native/README.md).
+- `bash scripts/clang_tidy.sh` runs clang-tidy over the engine and the hub
+  headers that build without ESPHome; the checks are in
+  [`.clang-tidy`](.clang-tidy).
 - A live `esphome compile` / `run` on the target board is the final check for
   any change.
 

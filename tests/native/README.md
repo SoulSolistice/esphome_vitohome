@@ -52,6 +52,8 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
 - `fake_optolink.h` — duck-typed Optolink stand-in: the test feeds device→ESP bytes,
   the fake captures ESP→device writes. Chunk boundaries across `feed()` calls model
   UART fragmentation.
+- `tidy_headers.cpp` — not a test: the translation unit through which
+  `scripts/clang_tidy.sh` analyses the hub headers that build without ESPHome.
 - `test_vs2_transaction.cpp` — data-driven runner: handshake into IDLE, then per
   vector replay request + chunked response and assert wire + payload.
 - `proof_packet_vs2_response.cpp` — ASan/UBSan regression for

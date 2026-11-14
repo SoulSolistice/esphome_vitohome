@@ -1,0 +1,21 @@
+# clang-tidy over the code that builds on a host: the optolink engine and the
+# hub headers the native proofs include (scripts/clang_tidy.sh). The entity
+# and hub .cpp files need ESPHome's headers and are not covered.
+#
+# Off, with the reason:
+#   bugprone-easily-swappable-parameters  (address, length) pairs are the
+#                                         protocol API's shape throughout
+#   bugprone-signed-bitwise               every byte expression promotes
+#                                         uint8_t to int; the noise hides the
+#                                         rest
+#   performance-enum-size                 RAM tuning, not a defect
+Checks: >
+  -*,
+  bugprone-*,
+  clang-analyzer-*,
+  performance-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-signed-bitwise,
+  -performance-enum-size
+WarningsAsErrors: "*"
+HeaderFilterRegex: "components/vitohome/.*"
