@@ -1,5 +1,5 @@
 """Unit tests for the switch platform: config validation (switch.py) and the
-catalog generator's boolean-pair heuristic (gen_catalog._boolean_pair).
+catalog generator's boolean-pair heuristic (vitocatalog.transforms._boolean_pair).
 
 The heuristic tests encode the design rule that two options alone do NOT make
 a boolean -- Celsius/Fahrenheit or Einkessel/Mehrkessel are choices, and a
@@ -18,7 +18,7 @@ for _p in (_REPO_ROOT, os.path.join(_REPO_ROOT, "scripts")):
 
 import esphome.config_validation as cv  # noqa: E402
 from esphome.core import CORE  # noqa: E402
-from gen_catalog import _boolean_pair  # noqa: E402
+from vitocatalog.transforms import _boolean_pair  # noqa: E402
 
 from components.vitohome.switch import CONFIG_SCHEMA  # noqa: E402
 
@@ -91,7 +91,7 @@ def test_inverted_blocked():
         CONFIG_SCHEMA(_cfg(inverted=True))
 
 
-# --- gen_catalog._boolean_pair ------------------------------------------------
+# --- _boolean_pair ------------------------------------------------------------
 
 
 def test_ein_aus_pair_detected():

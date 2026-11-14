@@ -17,13 +17,29 @@ for _p in (_SCRIPTS, _REPO_ROOT):
         sys.path.insert(0, _p)
 
 import gen_catalog as gc  # noqa: E402
+from vitocatalog.constants import ACCESS_PLATFORMS, POLL_CODING, POLL_SLOW  # noqa: E402
+from vitocatalog.emitter import emit_entity  # noqa: E402
+from vitocatalog.exporter import _export_stem, _identity_fields, export_all  # noqa: E402
+from vitocatalog.loader import Catalog, _friendly, load_catalog  # noqa: E402
+from vitocatalog.models import Event, EventValue  # noqa: E402
+from vitocatalog.renderer import generate  # noqa: E402
+from vitocatalog.special import (  # noqa: E402
+    _error_history_entries,
+    _hydro_schedule_entries,
+    _hydro_schedule_lines,
+    _hydro_schedule_shape,
+    _is_schaltzeiten,
+    _schaltzeiten_entries,
+    _schaltzeiten_lines,
+)
+from vitocatalog.transforms import _enum_options, _negative_option_count  # noqa: E402
 
 _FIXTURE_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
 
 
 @pytest.fixture(scope="module")
 def catalog():
-    return gc.load_catalog(_FIXTURE_DIR)
+    return load_catalog(_FIXTURE_DIR)
 
 
 # --- parsing ----------------------------------------------------------------
@@ -59,7 +75,7 @@ def test_access_types_and_conversions(catalog):
 
 def test_enum_values_attached(catalog):
     events = {e.id: e for e in catalog.events_for("VTestHO1_99")}
-    opts = gc._enum_options(events["5"])
+    opts = _enum_options(events["5"])
     assert (0, "Standby") in opts
     assert (2, "Heizen") in opts
 
@@ -69,7 +85,7 @@ def test_enum_values_attached(catalog):
 
 def _platform_of(catalog, event_id, profile="full"):
     ev = {e.id: e for e in catalog.events_for("VTestHO1_99")}[event_id]
-    result = gc.emit_entity(ev, profile)
+    result = emit_entity(ev, profile)
     return result[0] if result else None
 
 
@@ -86,16 +102,16 @@ def test_routing(catalog):
 
 def test_bit_mask_from_bit_position(catalog):
     ev = {e.id: e for e in catalog.events_for("VTestHO1_99")}["3"]
-    _platform, lines = gc.emit_entity(ev, "full")
+    _platform, lines = emit_entity(ev, "full")
     # Vitosoft numbers bits MSB-first inside the byte: BitPosition 2 -> 0x80>>2
     # = 0x20. Hardware-confirmed on 0x20CB via GWG_Flamme1~0x55DD (BitPosition
     # 2), which reads 0x20 exactly while the burner fires.
     assert any("bit_mask: 0x20" in ln for ln in lines)
 
 
-def _bit_event(address: int, block_length: int, bit_position: int, byte_position: int = 0) -> "gc.Event":
+def _bit_event(address: int, block_length: int, bit_position: int, byte_position: int = 0) -> "Event":
     """A minimal read-only single-bit Event, as the access layer yields one."""
-    return gc.Event(
+    return Event(
         id=f"bit_{address:04X}_{bit_position}",
         name=f"Bit_{bit_position}",
         address=address,
@@ -116,7 +132,7 @@ def _bit_event(address: int, block_length: int, bit_position: int, byte_position
     [(0, "0x80"), (1, "0x40"), (2, "0x20"), (5, "0x04"), (7, "0x01")],
 )
 def test_bit_mask_is_msb_first(bit_position, expected_mask):
-    platform, lines = gc.emit_entity(_bit_event(0x55DD, 1, bit_position), "full")
+    platform, lines = emit_entity(_bit_event(0x55DD, 1, bit_position), "full")
     assert platform == "binary_sensor"
     assert any(f"bit_mask: {expected_mask}" in ln for ln in lines)
 
@@ -126,7 +142,7 @@ def test_block_interior_bit_emits_aligned_block_read():
     # in-byte index 7 -> mask 0x01 (MSB-first). Previously rejected as
     # "exceeds binary_sensor length/offset limits"; binary_sensor now takes a
     # block read at the base plus byte_offset, exactly like sensor/text_sensor.
-    platform, lines = gc.emit_entity(_bit_event(0x2500, 22, 135, byte_position=16), "full")
+    platform, lines = emit_entity(_bit_event(0x2500, 22, 135, byte_position=16), "full")
     assert platform == "binary_sensor"
     text = "\n".join(lines)
     assert "address: 0x2500" in text
@@ -137,7 +153,7 @@ def test_block_interior_bit_emits_aligned_block_read():
 
 def _string_event(address: int, conversion: str, block_length: int, byte_position: int, byte_length: int):
     """A string Event as the access layer yields one (Beschriftung_HK1~0x7360)."""
-    return gc.Event(
+    return Event(
         id=f"str_{address:04X}",
         name="Beschriftung HK1",
         address=address,
@@ -182,7 +198,7 @@ def test_no_emitted_address_is_ever_block_base_plus_byte_position():
     ]
     base = 0x7360
     for block_len, byte_pos, byte_len, conv, access in shapes:
-        ev = gc.Event(
+        ev = Event(
             id=f"probe_{block_len}_{byte_pos}",
             name="Probe",
             address=base,
@@ -196,7 +212,7 @@ def test_no_emitted_address_is_ever_block_base_plus_byte_position():
             tech="Probe",
             token="Probe",
         )
-        _platform, lines = gc.emit_entity(ev, "full")
+        _platform, lines = emit_entity(ev, "full")
         body = "\n".join(lines)
         forbidden = f"0x{base + byte_pos:04X}"
         assert forbidden not in body, f"{shapes} emitted the fabricated address {forbidden}:\n{body}"
@@ -209,7 +225,7 @@ def test_string_field_at_offset_reads_the_block_base_not_an_interior_address():
     # Beschriftung_HK1~0x7360: BlockLength 42, BytePosition 2, ByteLength 40.
     # The generator used to emit `address: 0x7362` (base + offset) -- an address
     # that does not exist. P300 errors on it at any width; KW returns 0xFF fill.
-    platform, lines = gc.emit_entity(_string_event(0x7360, "HexByte2UTF16Byte", 42, 2, 40), "full")
+    platform, lines = emit_entity(_string_event(0x7360, "HexByte2UTF16Byte", 42, 2, 40), "full")
     assert platform == "text_sensor"
     body = "\n".join(lines)
     assert "address: 0x7360" in body
@@ -221,7 +237,7 @@ def test_string_field_at_offset_reads_the_block_base_not_an_interior_address():
 
 def test_string_field_at_offset_zero_keeps_the_plain_form():
     # Sachnummer~0x08E0: BytePosition 0 -- no block/offset machinery.
-    platform, lines = gc.emit_entity(_string_event(0x08E0, "HexByte2AsciiByte", 7, 0, 7), "full")
+    platform, lines = emit_entity(_string_event(0x08E0, "HexByte2AsciiByte", 7, 0, 7), "full")
     assert platform == "text_sensor"
     body = "\n".join(lines)
     assert "address: 0x08E0" in body
@@ -230,7 +246,7 @@ def test_string_field_at_offset_zero_keeps_the_plain_form():
 
 
 def test_string_block_over_the_cap_stays_a_comment():
-    platform, lines = gc.emit_entity(_string_event(0x7360, "HexByte2UTF16Byte", 60, 2, 40), "full")
+    platform, lines = emit_entity(_string_event(0x7360, "HexByte2UTF16Byte", 60, 2, 40), "full")
     assert platform == "comment"
     assert "block read exceeds" in "\n".join(lines)
 
@@ -238,40 +254,40 @@ def test_string_block_over_the_cap_stays_a_comment():
 def test_contradictory_byte_position_stays_a_comment():
     # BitPosition 24 -> byte 3, but the export declares BytePosition 2.
     # Real rows: nvoConsumerDmd_Attribute1_LFDM~0xA346, nviConsumerDmd_...~0xA385.
-    platform, lines = gc.emit_entity(_bit_event(0xA346, 10, 24, byte_position=2), "full")
+    platform, lines = emit_entity(_bit_event(0xA346, 10, 24, byte_position=2), "full")
     assert platform == "comment"
     assert "contradictory" in "\n".join(lines)
 
 
 def test_agreeing_byte_position_still_emits():
-    platform, _lines = gc.emit_entity(_bit_event(0x2500, 22, 135, byte_position=16), "full")
+    platform, _lines = emit_entity(_bit_event(0x2500, 22, 135, byte_position=16), "full")
     assert platform == "binary_sensor"
 
 
 def test_bit_beyond_single_telegram_stays_a_comment():
     # A block wider than one P300 read telegram still cannot be expressed.
-    platform, _lines = gc.emit_entity(_bit_event(0x1234, 64, 300), "full")
+    platform, _lines = emit_entity(_bit_event(0x1234, 64, 300), "full")
     assert platform == "comment"
 
 
 def test_counter_gets_total_increasing_and_slow_poll(catalog):
     ev = {e.id: e for e in catalog.events_for("VTestHO1_99")}["2"]
-    _platform, lines = gc.emit_entity(ev, "full")
+    _platform, lines = emit_entity(ev, "full")
     text = "\n".join(lines)
     assert "state_class: total_increasing" in text
-    assert f"update_interval: {gc.POLL_SLOW}s" in text
+    assert f"update_interval: {POLL_SLOW}s" in text
 
 
 def test_writable_gets_coding_poll(catalog):
     ev = {e.id: e for e in catalog.events_for("VTestHO1_99")}["6"]
-    _platform, lines = gc.emit_entity(ev, "full")
-    assert any(f"update_interval: {gc.POLL_CODING}s" in ln for ln in lines)
+    _platform, lines = emit_entity(ev, "full")
+    assert any(f"update_interval: {POLL_CODING}s" in ln for ln in lines)
 
 
 def test_sec2minute_emits_note(catalog):
     # No preset for Sec2Minute -> noconv + an explicit NOTE comment.
     ev = {e.id: e for e in catalog.events_for("VTestHO1_99")}["9"]
-    _platform, lines = gc.emit_entity(ev, "full")
+    _platform, lines = emit_entity(ev, "full")
     text = "\n".join(lines)
     assert "converter: noconv" in text
     assert "NOTE" in text and "Sec2Minute" in text
@@ -281,13 +297,13 @@ def test_sec2minute_emits_note(catalog):
 
 
 def test_full_profile_emits_more_than_minimal(catalog):
-    full = gc.generate(catalog, "VTestHO1_99", "full", None, None)
-    minimal = gc.generate(catalog, "VTestHO1_99", "minimal", None, None)
+    full = generate(catalog, "VTestHO1_99", "full", None, None)
+    minimal = generate(catalog, "VTestHO1_99", "minimal", None, None)
     assert full.count("- platform: vitohome") >= minimal.count("- platform: vitohome")
 
 
 def test_minimal_keeps_writables_and_measurements(catalog):
-    minimal = gc.generate(catalog, "VTestHO1_99", "minimal", None, None)
+    minimal = generate(catalog, "VTestHO1_99", "minimal", None, None)
     # div10 temp (measurement) and the writable select/number survive minimal.
     assert "0x0800" in minimal  # Outside_Temp
     assert "0x2301" in minimal  # Operating_Mode (writable)
@@ -295,13 +311,13 @@ def test_minimal_keeps_writables_and_measurements(catalog):
 
 
 def test_include_filter(catalog):
-    out = gc.generate(catalog, "VTestHO1_99", "full", r"Temp", None)
+    out = generate(catalog, "VTestHO1_99", "full", r"Temp", None)
     assert "0x0800" in out  # Outside_Temp matches
     assert "0x2301" not in out  # Operating_Mode filtered out
 
 
 def test_exclude_filter(catalog):
-    out = gc.generate(catalog, "VTestHO1_99", "full", None, r"Temp")
+    out = generate(catalog, "VTestHO1_99", "full", None, r"Temp")
     assert "0x0800" not in out
     assert "0x2301" in out
 
@@ -310,7 +326,7 @@ def test_exclude_filter(catalog):
 
 
 def test_generate_has_platform_sections(catalog):
-    out = gc.generate(catalog, "VTestHO1_99", "full", None, None)
+    out = generate(catalog, "VTestHO1_99", "full", None, None)
     for section in ("sensor:", "binary_sensor:", "number:", "select:", "text_sensor:"):
         assert section in out
     # Entities are opt-in.
@@ -328,7 +344,7 @@ def test_generate_has_platform_sections(catalog):
 def test_generated_yaml_parses(catalog):
     yaml = pytest.importorskip("yaml")
 
-    out = gc.generate(catalog, "VTestHO1_99", "full", None, None)
+    out = generate(catalog, "VTestHO1_99", "full", None, None)
     # No !secret/!include tags in a generated package, so safe_load is fine.
     doc = yaml.safe_load(out)
     assert "sensor" in doc and "select" in doc
@@ -340,13 +356,13 @@ def test_error_history_entity_and_toggle(catalog):
     # emitted as the "Letzter Fehler" error_history text_sensor carrying the
     # openv code map; with it off, the slot falls back to the DateTimeBCD
     # comment hint. The address survives either way.
-    on = gc.generate(catalog, "VTestHO1_99", "full", None, None)
+    on = generate(catalog, "VTestHO1_99", "full", None, None)
     assert "type: error_history" in on
     assert "Letzter Fehler" in on
     assert "# Error Time @ 0x7507" not in on
     assert "0x7507" in on
 
-    off = gc.generate(catalog, "VTestHO1_99", "full", None, None, emit_error_history=False)
+    off = generate(catalog, "VTestHO1_99", "full", None, None, emit_error_history=False)
     assert "type: error_history" not in off
     assert "# Error Time @ 0x7507" in off
     assert "0x7507" in off
@@ -355,14 +371,14 @@ def test_error_history_entity_and_toggle(catalog):
 def test_reachable_filter_drops_non_optolink(catalog):
     # Event 10 (Unreachable_Temp~0x9999) is a normal Div10 sensor whose only
     # problem is FCRead=PROZESS_READ -- no telegram this engine sends reaches it.
-    on = gc.generate(catalog, "VTestHO1_99", "full", None, None)  # reachable_only defaults True
+    on = generate(catalog, "VTestHO1_99", "full", None, None)  # reachable_only defaults True
     assert "0x9999" not in on
     assert "Unreachable" not in on
     assert "FCRead filter ON: 1 datapoint" in on  # header reports exactly one dropped
     # Datapoints with a blank/unknown FCRead (e.g. 0x0800) are kept (benefit of doubt).
     assert "0x0800" in on
     # Opting out includes everything again, and the header note disappears.
-    off = gc.generate(catalog, "VTestHO1_99", "full", None, None, reachable_only=False)
+    off = generate(catalog, "VTestHO1_99", "full", None, None, reachable_only=False)
     assert "0x9999" in off
     assert "FCRead filter ON" not in off
 
@@ -385,29 +401,29 @@ def test_reachable_filter_drops_non_optolink(catalog):
     ],
 )
 def test_friendly(raw, expected):
-    assert gc._friendly(raw) == expected
+    assert _friendly(raw) == expected
 
 
 def test_friendly_resolves_translation():
     # An @@-prefixed label resolves verbatim against the text map (incl. non-ASCII).
     textmap = {"v.eventtype.name.X": "Übersetzt"}
-    assert gc._friendly("@@v.eventtype.name.X", textmap) == "Übersetzt"
+    assert _friendly("@@v.eventtype.name.X", textmap) == "Übersetzt"
 
 
 def test_unknown_device_raises(catalog):
     with pytest.raises(SystemExit):
-        gc.generate(catalog, "DoesNotExist", "full", None, None)
+        generate(catalog, "DoesNotExist", "full", None, None)
 
 
 def test_signed_emitted_for_negative_bound_noconv_number(catalog):
     ev = {e.id: e for e in catalog.events_for("VTestHO1_99")}
     # Event 11 (Frost_Limit, noconv, lower border -9) must carry signed: true.
-    _, neg = gc.emit_entity(ev["11"], "full")
+    _, neg = emit_entity(ev["11"], "full")
     assert "  converter: noconv" in neg
     assert "  signed: true" in neg
     assert "  min_value: -9" in neg
     # Event 6 (DHW_Setpoint, noconv, lower border +10) must NOT be signed.
-    _, pos = gc.emit_entity(ev["6"], "full")
+    _, pos = emit_entity(ev["6"], "full")
     assert "  converter: noconv" in pos
     assert "  signed: true" not in pos
 
@@ -415,18 +431,18 @@ def test_signed_emitted_for_negative_bound_noconv_number(catalog):
 def test_non_virtual_write_demoted_to_readonly(catalog):
     ev = {e.id: e for e in catalog.events_for("VTestHO1_99")}
     # Event 12: Type 3 (writable) but FCWrite=undefined -> read-only enum text_sensor.
-    plat12, lines12 = gc.emit_entity(ev["12"], "full")
+    plat12, lines12 = emit_entity(ev["12"], "full")
     assert plat12 == "text_sensor"
     assert "type: enum" in "\n".join(lines12)
     # Event 5: genuinely writable enum (no FCWrite override) stays a select.
-    plat5, _ = gc.emit_entity(ev["5"], "full")
+    plat5, _ = emit_entity(ev["5"], "full")
     assert plat5 == "select"
 
 
 def test_hexbyte2ascii_emitted_as_ascii_text_sensor(catalog):
     ev = {e.id: e for e in catalog.events_for("VTestHO1_99")}
     # Event 13: HexByte2AsciiByte, 7 bytes -> ascii text_sensor (not a comment).
-    plat, lines = gc.emit_entity(ev["13"], "full")
+    plat, lines = emit_entity(ev["13"], "full")
     assert plat == "text_sensor"
     body = "\n".join(lines)
     assert "type: ascii" in body
@@ -438,7 +454,7 @@ def test_command_state_split_emits_state_address(catalog):
     # Event 14: party command at 0x2330. Its EIN/AUS pair makes it a *switch*
     # since the boolean-pair heuristic landed (a two-option select before);
     # the COMMAND_STATE_ADDR split must survive on the switch emission path.
-    plat, lines = gc.emit_entity(ev["14"], "full")
+    plat, lines = emit_entity(ev["14"], "full")
     assert plat == "switch"
     body = "\n".join(lines)
     assert "address: 0x2330" in body  # command (write) address
@@ -452,16 +468,16 @@ def test_command_state_split_emits_state_address(catalog):
 def test_export_stem_matches_viessmann_token():
     # The Viessmann token already is the unit_swIndex[_variant] key; we only
     # lower-case it. VScotHO1_72 -> vscotho1_72 (Tom's family), as specified.
-    assert gc._export_stem("VScotHO1_72") == "vscotho1_72"
-    assert gc._export_stem("GWG_VBES_00") == "gwg_vbes_00"
-    assert gc._export_stem("VScotHO1_200_10") == "vscotho1_200_10"
+    assert _export_stem("VScotHO1_72") == "vscotho1_72"
+    assert _export_stem("GWG_VBES_00") == "gwg_vbes_00"
+    assert _export_stem("VScotHO1_200_10") == "vscotho1_200_10"
 
 
 def test_export_stem_sanitises_unsafe_chars():
     # Anything outside [a-z0-9._-] collapses to '_'; leading/trailing junk trimmed.
-    assert gc._export_stem("Dev/One") == "dev_one"
-    assert gc._export_stem("  A B:C  ") == "a_b_c"
-    assert gc._export_stem("///") == "device"  # never empty
+    assert _export_stem("Dev/One") == "dev_one"
+    assert _export_stem("  A B:C  ") == "a_b_c"
+    assert _export_stem("///") == "device"  # never empty
 
 
 def test_identity_fields_boiler_2byte_extension():
@@ -475,7 +491,7 @@ def test_identity_fields_boiler_2byte_extension():
         "f0t": None,
         "IdentificationExtension": "0148",
     }
-    f = gc._identity_fields(row)
+    f = _identity_fields(row)
     assert f["ident"] == "0x20CB"
     assert f["hw_index"] == 1
     assert f["sw_lo"] == 72
@@ -494,7 +510,7 @@ def test_identity_fields_serial_extension_left_blank():
         "f0t": None,
         "IdentificationExtension": "343230343038",
     }
-    f = gc._identity_fields(row)
+    f = _identity_fields(row)
     assert f["ident"] == "0x0611"
     assert f["hw_index"] == "" and f["sw_lo"] == "" and f["sw_hi"] == ""
     assert f["ext_raw"] == "343230343038"
@@ -509,13 +525,13 @@ def test_identity_fields_f0_range():
         "f0t": 29,
         "IdentificationExtension": "01C8",
     }
-    f = gc._identity_fields(row)
+    f = _identity_fields(row)
     assert (f["sw_lo"], f["sw_hi"]) == (200, 255)
     assert (f["f0_lo"], f["f0_hi"]) == (20, 29)
 
 
 def test_identity_fields_empty_row_is_all_blank():
-    f = gc._identity_fields({})
+    f = _identity_fields({})
     assert f["ident"] == "" and f["hw_index"] == "" and f["ext_raw"] == ""
 
 
@@ -527,7 +543,7 @@ def _read_index(out_dir):
 
 
 def test_export_all_writes_per_device_and_skips_empty(catalog, tmp_path):
-    rc = gc.export_all(
+    rc = export_all(
         catalog,
         str(tmp_path),
         profile="standard",
@@ -558,7 +574,7 @@ def test_export_all_writes_per_device_and_skips_empty(catalog, tmp_path):
 
 
 def test_export_all_filter_selects_subset(catalog, tmp_path):
-    rc = gc.export_all(
+    rc = export_all(
         catalog,
         str(tmp_path),
         profile="standard",
@@ -579,7 +595,7 @@ def test_export_all_filter_selects_subset(catalog, tmp_path):
 
 
 def test_export_all_custom_suffix(catalog, tmp_path):
-    gc.export_all(
+    export_all(
         catalog,
         str(tmp_path),
         profile="standard",
@@ -618,7 +634,7 @@ def test_write_only_register_is_a_comment_not_a_number(catalog):
     # trigger with no read-back must be surfaced as a comment hint, never a
     # polled number/switch.
     ev = {e.id: e for e in catalog.events_for("VTestHO1_99")}["15"]
-    plat, lines = gc.emit_entity(ev, "full")
+    plat, lines = emit_entity(ev, "full")
     assert plat == "comment"
     body = "\n".join(lines)
     assert "WRITE-ONLY" in body
@@ -631,7 +647,7 @@ def test_unsupported_converter_width_falls_back_to_noconv_filter(catalog):
     # It must fall back to raw noconv + a multiply(0.1) filter carrying the
     # true scale, and keep div10's signed default via an explicit signed: true.
     ev = {e.id: e for e in catalog.events_for("VTestHO1_99")}["16"]
-    plat, lines = gc.emit_entity(ev, "full")
+    plat, lines = emit_entity(ev, "full")
     assert plat == "sensor"
     body = "\n".join(lines)
     assert "converter: noconv" in body
@@ -647,14 +663,14 @@ def test_negative_enum_option_dropped_with_note(catalog):
     # 0x-1 key. The -1 option is dropped, a NOTE names the drop, and the 0/1
     # options survive with valid keys.
     ev = {e.id: e for e in catalog.events_for("VTestHO1_99")}["17"]
-    plat, lines = gc.emit_entity(ev, "full")
+    plat, lines = emit_entity(ev, "full")
     assert plat == "text_sensor"
     body = "\n".join(lines)
     assert "0x-1" not in body
     assert "0x00:" in body and "0x01:" in body
     assert "NOTE" in body and "negative enum option" in body
     # And exactly one option was dropped.
-    assert gc._negative_option_count(ev) == 1
+    assert _negative_option_count(ev) == 1
 
 
 def test_multoffset_factor_maps_to_preset(catalog):
@@ -662,7 +678,7 @@ def test_multoffset_factor_maps_to_preset(catalog):
     # maps exactly onto the mult10 converter. Previously emitted as raw noconv
     # (a 10x under-read); must now be converter: mult10 with no filter.
     ev = {e.id: e for e in catalog.events_for("VTestHO1_99")}["18"]
-    plat, lines = gc.emit_entity(ev, "full")
+    plat, lines = emit_entity(ev, "full")
     assert plat == "sensor"
     body = "\n".join(lines)
     assert "converter: mult10" in body
@@ -675,7 +691,7 @@ def test_signed_inferred_for_readonly_noconv_negative_border(catalog):
     # default, so a value range crossing zero must force signed: true on the
     # sensor -- otherwise -1.0 would decode as +65535.
     ev = {e.id: e for e in catalog.events_for("VTestHO1_99")}["19"]
-    plat, lines = gc.emit_entity(ev, "full")
+    plat, lines = emit_entity(ev, "full")
     assert plat == "sensor"
     body = "\n".join(lines)
     assert "converter: noconv" in body
@@ -687,7 +703,7 @@ def test_block_factor_drives_error_history_slot_count():
     # BlockFactor 5 must expand into exactly 5 nine-byte slots at base + i*9,
     # not the legacy 10. (Direct Event construction: the fixture's own archive
     # exercises the >=90 fallback; this pins the BlockFactor path.)
-    ev = gc.Event(
+    ev = Event(
         id="900",
         name="ecnsysEventType~Error",
         address=0x7507,
@@ -702,7 +718,7 @@ def test_block_factor_drives_error_history_slot_count():
         tech="ecnsysEventType~Error",
         token="ecnsysEventType~Error",
     )
-    entries = gc._error_history_entries(ev)
+    entries = _error_history_entries(ev)
     assert len(entries) == 5
     assert entries[0]["address"] == 0x7507 and entries[0]["name"] == "Letzter Fehler"
     assert entries[4]["address"] == 0x7507 + 36
@@ -714,13 +730,13 @@ def test_order_group_inserts_section_comments(catalog):
     # a `# --- <label> ---` comment per group. The fixture links event 1
     # (Outside_Temp) and event 5 (Operating_Mode) under Bedienung, event 6
     # (DHW_Setpoint) under Warmwasser.
-    grouped = gc.generate(catalog, "VTestHO1_99", "full", None, None, order="group")
+    grouped = generate(catalog, "VTestHO1_99", "full", None, None, order="group")
     assert "# --- Bedienung" in grouped
     assert "# --- Warmwasser" in grouped
     assert "(ohne Gruppenzuordnung)" in grouped  # ungrouped datapoints land here
     # Address order (the default) emits no per-group section comments (the
     # trailing "custom decode" header is not a group marker).
-    by_addr = gc.generate(catalog, "VTestHO1_99", "full", None, None, order="address")
+    by_addr = generate(catalog, "VTestHO1_99", "full", None, None, order="address")
     assert "# --- Bedienung" not in by_addr
     assert "# --- Warmwasser" not in by_addr
 
@@ -729,7 +745,7 @@ def test_stats_out_param_reports_counts(catalog):
     # generate() still returns a str; the optional stats dict receives the
     # emitted-entity and comment counts so export_all can spot empty shells.
     stats: dict = {}
-    text = gc.generate(catalog, "VTestHO1_99", "full", None, None, stats=stats)
+    text = generate(catalog, "VTestHO1_99", "full", None, None, stats=stats)
     assert isinstance(text, str)
     assert stats["entities"] > 0
     assert stats["comments"] >= 1  # event 15 (write-only) and event 8 (BCD) are comments
@@ -743,7 +759,7 @@ def test_conversion_factor_zero_is_not_a_multiplier():
     # NoConversion rows), NOT a literal 0x multiplier. A read-only noconv row
     # carrying factor 0 must decode raw (no filter), never `multiply: 0` which
     # would zero every reading.
-    ev = gc.Event(
+    ev = Event(
         id="700",
         name="Zeroed",
         address=0x0A31,
@@ -759,7 +775,7 @@ def test_conversion_factor_zero_is_not_a_multiplier():
         tech="zeroed",
         token="Zeroed~0x0A31",
     )
-    plat, lines = gc.emit_entity(ev, "full")
+    plat, lines = emit_entity(ev, "full")
     assert plat == "sensor"
     body = "\n".join(lines)
     assert "converter: noconv" in body
@@ -771,7 +787,7 @@ def test_error_history_slot_stride_follows_block_factor():
     # A 120-byte / BlockFactor-10 system archive has 12-byte records, so slot
     # addresses must advance by 12 (BlockLength // BlockFactor), not a
     # hardcoded 9. (The component still reads the leading 9 bytes at each slot.)
-    ev = gc.Event(
+    ev = Event(
         id="710",
         name="ecnsysEventType~VitotwinErrorHistorySW02",
         address=0x7000,
@@ -786,7 +802,7 @@ def test_error_history_slot_stride_follows_block_factor():
         tech="ecnsysEventType",
         token="ecnsysEventType~VitotwinErrorHistorySW02",
     )
-    entries = gc._error_history_entries(ev)
+    entries = _error_history_entries(ev)
     assert len(entries) == 10
     assert entries[1]["address"] - entries[0]["address"] == 12
     assert entries[9]["address"] == 0x7000 + 9 * 12
@@ -797,7 +813,7 @@ def test_second_system_archive_names_do_not_collide():
     # ~Vitotwin... archive) must not emit two entities both named
     # "Letzter Fehler" -- ESPHome rejects duplicate names per platform. The
     # canonical archive stays plain; the secondary one gets a tag.
-    canonical = gc.Event(
+    canonical = Event(
         id="720",
         name="ecnsysEventType~Error",
         address=0x7507,
@@ -812,7 +828,7 @@ def test_second_system_archive_names_do_not_collide():
         tech="ecnsysEventType",
         token="ecnsysEventType~Error",
     )
-    secondary = gc.Event(
+    secondary = Event(
         id="721",
         name="ecnsysEventType~VitotwinErrorHistorySW02",
         address=0x7000,
@@ -827,8 +843,8 @@ def test_second_system_archive_names_do_not_collide():
         tech="ecnsysEventType",
         token="ecnsysEventType~VitotwinErrorHistorySW02",
     )
-    c_names = {e["name"] for e in gc._error_history_entries(canonical)}
-    s_names = {e["name"] for e in gc._error_history_entries(secondary)}
+    c_names = {e["name"] for e in _error_history_entries(canonical)}
+    s_names = {e["name"] for e in _error_history_entries(secondary)}
     assert "Letzter Fehler" in c_names  # canonical stays plain
     assert "Letzter Fehler" not in s_names  # secondary is tagged
     assert c_names.isdisjoint(s_names)  # no overlap at all
@@ -838,7 +854,7 @@ def test_duplicate_enum_value_is_deduplicated():
     # The export can map two options to the SAME value (LON/BACnet nodes);
     # duplicate values would become duplicate YAML option keys that fail
     # `esphome config`. _enum_options keeps the first, drops the rest.
-    ev = gc.Event(
+    ev = Event(
         id="730",
         name="Alarm_Type",
         address=0x082E,
@@ -853,7 +869,7 @@ def test_duplicate_enum_value_is_deduplicated():
         tech="alarm_type",
         token="Alarm_Type~0x082E",
         values=[
-            gc.EventValue(
+            EventValue(
                 name="a",
                 enum_address_value=3,
                 enum_replace_value="Service alarm 2",
@@ -863,7 +879,7 @@ def test_duplicate_enum_value_is_deduplicated():
                 upper="",
                 stepping="",
             ),
-            gc.EventValue(
+            EventValue(
                 name="b",
                 enum_address_value=3,
                 enum_replace_value="Service alarm 3",
@@ -873,7 +889,7 @@ def test_duplicate_enum_value_is_deduplicated():
                 upper="",
                 stepping="",
             ),
-            gc.EventValue(
+            EventValue(
                 name="c",
                 enum_address_value=4,
                 enum_replace_value="Other",
@@ -885,7 +901,7 @@ def test_duplicate_enum_value_is_deduplicated():
             ),
         ],
     )
-    opts = gc._enum_options(ev)
+    opts = _enum_options(ev)
     values = [v for v, _ in opts]
     assert values == [3, 4]  # the second value-3 row dropped, order preserved
     assert opts[0][1] == "Service alarm 2"  # first-wins
@@ -897,7 +913,7 @@ def test_multiple_gfa_style_archives_get_distinct_family_names():
     # regex and previously all named their slots "GFA Fehler NN" -> a duplicate
     # name that fails `esphome config`. Each family must now be distinct.
     def _fa(token, addr):
-        return gc.Event(
+        return Event(
             id=token,
             name=token,
             address=addr,
@@ -912,9 +928,9 @@ def test_multiple_gfa_style_archives_get_distinct_family_names():
             token=token,
         )
 
-    gfa = gc._error_history_entries(_fa("FehlerHisFA01~0x7590", 0x7590))[0]
-    fcu_a = gc._error_history_entries(_fa("Fehlerhistorie_FCU_1~0xD709", 0xD709))[0]
-    fcu_b = gc._error_history_entries(_fa("Fehlerhist_FCU_1~0xD763", 0xD763))[0]
+    gfa = _error_history_entries(_fa("FehlerHisFA01~0x7590", 0x7590))[0]
+    fcu_a = _error_history_entries(_fa("Fehlerhistorie_FCU_1~0xD709", 0xD709))[0]
+    fcu_b = _error_history_entries(_fa("Fehlerhist_FCU_1~0xD763", 0xD763))[0]
     assert gfa["name"] == "GFA Fehler 01"  # canonical family stays plain
     names = {gfa["name"], fcu_a["name"], fcu_b["name"]}
     assert len(names) == 3  # all three families distinct
@@ -926,7 +942,7 @@ def test_multiple_gfa_style_archives_get_distinct_family_names():
 
 
 def _schaltzeiten_event(token, addr, blen, bf):
-    return gc.Event(
+    return Event(
         id=token,
         name=token,
         address=addr,
@@ -948,8 +964,8 @@ def test_schaltzeiten_standard_shape_expands_to_seven_text_entities():
     # component's `text` platform decodes: expand to 7 per-day entities at
     # base + day*8, Monday first.
     ev = _schaltzeiten_event("Schaltzeiten_A1M1_HK", 0x2000, 56, 7)
-    assert gc._is_schaltzeiten(ev) is True
-    entries = gc._schaltzeiten_entries(ev)
+    assert _is_schaltzeiten(ev) is True
+    entries = _schaltzeiten_entries(ev)
     assert len(entries) == 7
     assert entries[0]["address"] == 0x2000
     assert entries[0]["name"] == "Schaltzeit A1M1 HK Montag"
@@ -973,7 +989,7 @@ def test_schaltzeiten_nonstandard_shapes_are_rejected(token, addr, blen, bf):
     # Schaltzeiten shape must fall through to the generic path so it is NOT
     # mis-emitted as a weekday text entity.
     ev = _schaltzeiten_event(token, addr, blen, bf)
-    assert gc._is_schaltzeiten(ev) is False
+    assert _is_schaltzeiten(ev) is False
 
 
 def test_phasect_mapping_takes_programs_not_named_schaltzeiten():
@@ -981,13 +997,13 @@ def test_phasect_mapping_takes_programs_not_named_schaltzeiten():
     # the boiler weekly program: the 56/7 shape is decoded although the token
     # does not say Schaltzeit. Without a MappingType the token rule still holds.
     ev = _schaltzeiten_event("Vitotwin_2100_Zeitprogramm_HK1", 0x2100, 56, 7)
-    assert gc._is_schaltzeiten(ev) is False
+    assert _is_schaltzeiten(ev) is False
     ev.mapping_type = 1
-    assert gc._is_schaltzeiten(ev) is True
+    assert _is_schaltzeiten(ev) is True
     # Another mapping is not the boiler format, whatever the token says.
     named = _schaltzeiten_event("Schaltzeiten_A1M1_HK", 0x2000, 56, 7)
     named.mapping_type = 5
-    assert gc._is_schaltzeiten(named) is False
+    assert _is_schaltzeiten(named) is False
 
 
 @pytest.mark.parametrize(
@@ -1007,7 +1023,7 @@ def test_phasect_mapping_takes_programs_not_named_schaltzeiten():
 def test_hydro_schedule_shape(mapping, addr, blen, bf, shape):
     ev = _schaltzeiten_event("NKU_Tagesprogramm_HK1", addr, blen, bf)
     ev.mapping_type = mapping
-    assert gc._hydro_schedule_shape(ev) == shape
+    assert _hydro_schedule_shape(ev) == shape
 
 
 def test_hydro_schedule_days_are_addressed_per_record():
@@ -1015,7 +1031,7 @@ def test_hydro_schedule_days_are_addressed_per_record():
     # 168 bytes are 56 addresses of 3 bytes and day n starts at base + n*8.
     ev = _schaltzeiten_event("NKU_Tagesprogramm_HK1", 0x9200, 168, 56)
     ev.mapping_type = 5
-    entries = gc._hydro_schedule_entries(ev)
+    entries = _hydro_schedule_entries(ev)
     assert [e["address"] for e in entries] == [0x9200 + n * 8 for n in range(7)]
     assert {e["length"] for e in entries} == {24}
     assert entries[2]["name"].endswith(" Mittwoch")
@@ -1023,8 +1039,8 @@ def test_hydro_schedule_days_are_addressed_per_record():
     # HydroCT: one 24-byte record per address, the next program 7 on.
     ev = _schaltzeiten_event("WPR_Tagesprogramm_HK2", 0x9007, 168, 7)
     ev.mapping_type = 2
-    assert [e["address"] for e in gc._hydro_schedule_entries(ev, "en")] == list(range(0x9007, 0x900E))
-    lines = gc._hydro_schedule_lines(gc._hydro_schedule_entries(ev, "en")[0], "wpr_tagesprogramm_hk2_mo")
+    assert [e["address"] for e in _hydro_schedule_entries(ev, "en")] == list(range(0x9007, 0x900E))
+    lines = _hydro_schedule_lines(_hydro_schedule_entries(ev, "en")[0], "wpr_tagesprogramm_hk2_mo")
     body = "\n".join(lines)
     assert "Vitosoft HydroCT weekly program: one 24-byte record per day" in body
     assert "type: raw" in body and "length: 24" in body and "address: 0x9007" in body
@@ -1047,8 +1063,8 @@ def test_generate_emits_hydro_programs_as_read_only_raw_days():
         }
     }
     raw_events = {"1": {"Address": token, "Name": "NKU_Tagesprogramm_HK1", "Type": "3"}}
-    cat = gc.Catalog({"VHeatPump_01": "dp1"}, {"dp1": "VHeatPump"}, {"dp1": ["1"]}, raw_events, {}, {}, access, [], {})
-    out = gc.generate(cat, "VHeatPump_01", "standard", None, None, emit_device_id=False, emit_error_history=False)
+    cat = Catalog({"VHeatPump_01": "dp1"}, {"dp1": "VHeatPump"}, {"dp1": ["1"]}, raw_events, {}, {}, access, [], {})
+    out = generate(cat, "VHeatPump_01", "standard", None, None, emit_device_id=False, emit_error_history=False)
     sensors = out.split("\ntext_sensor:\n", 1)[1]
     assert sensors.count("    type: raw") == 7
     assert sensors.count("    length: 24") == 7
@@ -1060,8 +1076,8 @@ def test_generate_emits_hydro_programs_as_read_only_raw_days():
 
 def test_schaltzeiten_text_entity_yaml_is_valid():
     ev = _schaltzeiten_event("Schaltzeiten_M2_WW", 0x3100, 56, 7)
-    entry = gc._schaltzeiten_entries(ev)[2]  # Wednesday
-    lines = gc._schaltzeiten_lines(entry, "schaltzeit_m2_ww_mi")
+    entry = _schaltzeiten_entries(ev)[2]  # Wednesday
+    lines = _schaltzeiten_lines(entry, "schaltzeit_m2_ww_mi")
     body = "\n".join(lines)
     assert "platform: vitohome" in body
     assert "address: 0x3110" in body  # 0x3100 + 2*8
@@ -1078,8 +1094,8 @@ def test_generate_emits_schaltzeiten_in_text_section():
     import os
 
     fixture_dir = os.path.join(os.path.dirname(__file__), "fixtures")
-    cat = gc.load_catalog(fixture_dir)
-    text = gc.generate(cat, "VTestHO1_99", "full", None, None)
+    cat = load_catalog(fixture_dir)
+    text = generate(cat, "VTestHO1_99", "full", None, None)
     assert "\ntext:\n" in text
     assert "Schaltzeit Test Montag" in text
     assert text.count("Schaltzeit Test ") == 7  # seven weekday entities
@@ -1090,7 +1106,7 @@ def test_generate_emits_schaltzeiten_in_text_section():
 
 
 def _fixture_catalog():
-    return gc.load_catalog(_FIXTURE_DIR)
+    return load_catalog(_FIXTURE_DIR)
 
 
 def test_entities_are_separated_by_a_blank_line():
@@ -1099,7 +1115,7 @@ def test_entities_are_separated_by_a_blank_line():
     # other. The blank line goes BETWEEN entities only -- never directly after
     # a `sensor:` section key, which would be the one place it looks like a
     # missing value.
-    text = gc.generate(_fixture_catalog(), "VTestHO1_99", "full", None, None)
+    text = generate(_fixture_catalog(), "VTestHO1_99", "full", None, None)
     lines = text.split("\n")
     starts = [i for i, ln in enumerate(lines) if ln.strip() == "- platform: vitohome"]
     assert starts, "fixture emitted no entities"
@@ -1112,14 +1128,14 @@ def test_entities_are_separated_by_a_blank_line():
             f"entity at line {i} follows {prev!r} with no separating blank line"
         )
     for i, ln in enumerate(lines):
-        if ln.endswith(":") and not ln.startswith(" ") and ln[:-1] in gc.ACCESS_PLATFORMS:
+        if ln.endswith(":") and not ln.startswith(" ") and ln[:-1] in ACCESS_PLATFORMS:
             assert lines[i + 1].strip() == "- platform: vitohome", "blank line directly after a section key"
 
 
 def test_blank_lines_do_not_change_the_entity_set():
     # The separator is cosmetic: strip the blank lines and the document is the
     # one the generator produced before this change.
-    text = gc.generate(_fixture_catalog(), "VTestHO1_99", "full", None, None)
+    text = generate(_fixture_catalog(), "VTestHO1_99", "full", None, None)
     assert text.count("- platform: vitohome") == len([ln for ln in text.split("\n") if ln.strip() == "- platform: vitohome"])
 
 

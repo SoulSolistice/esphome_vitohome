@@ -28,6 +28,11 @@ for _p in (_SCRIPTS, _REPO_ROOT):
         sys.path.insert(0, _p)
 
 import gen_catalog as gc  # noqa: E402
+from vitocatalog.constants import PROTO_GWG  # noqa: E402
+from vitocatalog.emitter import build_entity_spec, emit_entity, render_entity_lines  # noqa: E402
+from vitocatalog.loader import Catalog, load_catalog  # noqa: E402
+from vitocatalog.models import CommentSpec, EntitySpec, Event  # noqa: E402
+from vitocatalog.renderer import generate  # noqa: E402
 
 _FIXTURE_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -35,11 +40,11 @@ _FIXTURE_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
 # --- 1. Error-history 4-tuple deduplication in generate() -------------------
 
 
-def _make_minimal_catalog(events: list[gc.Event], ident_rows: list[dict] | None = None, textmap: dict | None = None):
+def _make_minimal_catalog(events: list[Event], ident_rows: list[dict] | None = None, textmap: dict | None = None):
     """Construct a minimal in-memory Catalog for targeted generate() tests."""
     raw_events = {}
     links = {"dp1": [e.id for e in events]}
-    cat = gc.Catalog(
+    cat = Catalog(
         types={"TestDev": "dp1"},
         dp_name={"dp1": "Test Device"},
         links=links,
@@ -61,7 +66,7 @@ def test_error_history_deduplicates_against_4_tuple_seen_addr():
     # Previously, _field_key(ev) inserted a 4-tuple (addr, byte_pos, bit_pos, access)
     # into seen_addr, while the deferred_history second pass checked a 3-tuple
     # (addr, 0, 0) -- which never matched a 4-tuple in seen_addr.
-    ordinary_sensor = gc.Event(
+    ordinary_sensor = Event(
         id="1",
         name="Outside Temp",
         address=0x0800,
@@ -76,7 +81,7 @@ def test_error_history_deduplicates_against_4_tuple_seen_addr():
         token="Outside_Temp~0x0800",
     )
     # Duplicate FehlerHisFA01 events pointing at the exact same address 0x7590
-    fa_a = gc.Event(
+    fa_a = Event(
         id="2",
         name="FehlerHisFA01",
         address=0x7590,
@@ -90,7 +95,7 @@ def test_error_history_deduplicates_against_4_tuple_seen_addr():
         tech="FehlerHisFA01",
         token="FehlerHisFA01~0x7590",
     )
-    fa_b = gc.Event(
+    fa_b = Event(
         id="3",
         name="FehlerHisFA01_dup",
         address=0x7590,
@@ -105,7 +110,7 @@ def test_error_history_deduplicates_against_4_tuple_seen_addr():
         token="FehlerHisFA01~0x7590",
     )
     # And an ordinary datapoint already claiming 0x7591 before deferred_history runs
-    ordinary_at_fa02 = gc.Event(
+    ordinary_at_fa02 = Event(
         id="4",
         name="Already Claimed",
         address=0x7591,
@@ -119,7 +124,7 @@ def test_error_history_deduplicates_against_4_tuple_seen_addr():
         tech="Already_Claimed",
         token="Already_Claimed~0x7591",
     )
-    fa_at_claimed = gc.Event(
+    fa_at_claimed = Event(
         id="5",
         name="FehlerHisFA02",
         address=0x7591,
@@ -135,7 +140,7 @@ def test_error_history_deduplicates_against_4_tuple_seen_addr():
     )
 
     cat = _make_minimal_catalog([ordinary_sensor, fa_a, fa_b, ordinary_at_fa02, fa_at_claimed])
-    out = gc.generate(cat, "TestDev", "full", None, None, error_codes=False)
+    out = generate(cat, "TestDev", "full", None, None, error_codes=False)
 
     # 0x7590 appears once (fa_b is deduplicated)
     assert out.count("address: 0x7590") == 1
@@ -147,7 +152,7 @@ def test_error_history_deduplicates_against_4_tuple_seen_addr():
 def test_gwg_error_history_slots_at_same_address_in_different_modes_do_not_collide():
     # Under GWG, address space is per access mode: two FehlerHis slots at 0x50
     # in different FCRead modes (EEPROM_READ vs Physical_READ) must both survive.
-    ordinary_gwg = gc.Event(
+    ordinary_gwg = Event(
         id="1",
         name="Kesseltemp",
         address=0x70,
@@ -162,7 +167,7 @@ def test_gwg_error_history_slots_at_same_address_in_different_modes_do_not_colli
         tech="Kesseltemp",
         token="Kesseltemp~0x0070",
     )
-    fa_eeprom = gc.Event(
+    fa_eeprom = Event(
         id="2",
         name="FehlerHisFA01",
         address=0x50,
@@ -177,7 +182,7 @@ def test_gwg_error_history_slots_at_same_address_in_different_modes_do_not_colli
         tech="FehlerHisFA01",
         token="FehlerHisFA01~0x0050",
     )
-    fa_phys = gc.Event(
+    fa_phys = Event(
         id="3",
         name="FehlerHisFA02",
         address=0x50,
@@ -193,7 +198,7 @@ def test_gwg_error_history_slots_at_same_address_in_different_modes_do_not_colli
         token="FehlerHisFA02~0x0050",
     )
     cat = _make_minimal_catalog([ordinary_gwg, fa_eeprom, fa_phys])
-    out = gc.generate(cat, "TestDev", "full", None, None, protocol=gc.PROTO_GWG, error_codes=False)
+    out = generate(cat, "TestDev", "full", None, None, protocol=PROTO_GWG, error_codes=False)
     assert out.count("address: 0x0050") == 2
     assert "access: eeprom" in out
     assert "access: physical" in out
@@ -214,7 +219,7 @@ def test_gwg_error_history_slots_at_same_address_in_different_modes_do_not_colli
 def test_main_identify_floor_warning_handles_bare_and_prefixed_hex(monkeypatch, capsys, tmp_path, sw_arg, expected_hex):
     # Fixture VTestHO1_99 has Identification 0x20CB and range 0x0100..0x0140,
     # so any SW > 0x40 triggers a "floor" resolution.
-    ev = gc.Event(
+    ev = Event(
         id="1",
         name="Outside Temp",
         address=0x0800,
@@ -272,7 +277,7 @@ def test_generate_defaults_to_auto_error_code_set():
     # When a catalog carries per-device Vitosoft fault texts, calling generate()
     # without specifying error_code_set must use "auto" (selecting the device's
     # Vitosoft texts), matching the CLI default rather than hardcoding "vd300".
-    ev_sensor = gc.Event(
+    ev_sensor = Event(
         id="1",
         name="Outside Temp",
         address=0x0800,
@@ -286,7 +291,7 @@ def test_generate_defaults_to_auto_error_code_set():
         tech="Outside_Temp",
         token="Outside_Temp~0x0800",
     )
-    ev_err = gc.Event(
+    ev_err = Event(
         id="2",
         name="ecnsysEventType~Error",
         address=0x7507,
@@ -304,7 +309,7 @@ def test_generate_defaults_to_auto_error_code_set():
         "viessmann.errorcode.TestDev.10": "Custom Vitosoft Device Fault 10",
     }
     cat = _make_minimal_catalog([ev_sensor, ev_err], textmap=texts)
-    out = gc.generate(cat, "TestDev", "full", None, None)
+    out = generate(cat, "TestDev", "full", None, None)
     assert "Custom Vitosoft Device Fault 10" in out
     assert "viessmann.errorcode.TestDev.*" in out
 
@@ -342,7 +347,7 @@ def test_simplenamespace_without_parameter_type_works_on_div2_div10(conv, access
         block_factor=None,
         values=[],
     )
-    platform, lines = gc.emit_entity(ev, "full")
+    platform, lines = emit_entity(ev, "full")
     assert platform == ("number" if access_type == 3 else "sensor")
     assert any(f"converter: {conv.lower()}" in ln for ln in lines)
 
@@ -353,7 +358,7 @@ def test_simplenamespace_without_parameter_type_works_on_div2_div10(conv, access
 def test_menu_cache_invalidates_when_glinks_gains_a_key():
     # The cache is keyed on (len(_groups), len(_glinks)): it notices a NEW key,
     # not an append to an existing key's list.
-    cat = gc.load_catalog(_FIXTURE_DIR)
+    cat = load_catalog(_FIXTURE_DIR)
     cat._groups["9100"] = {"path": "VOther_01~10_Bedienung", "dp": "102", "order": 1}
     cat._glinks["1"] = [("9100", 1)]
 
@@ -373,19 +378,19 @@ def test_menu_cache_invalidates_when_glinks_gains_a_key():
 
 
 def test_build_entity_spec_and_render_match_emit_entity():
-    cat = gc.load_catalog(_FIXTURE_DIR)
+    cat = load_catalog(_FIXTURE_DIR)
     for ev in cat.events_for("VTestHO1_99"):
-        legacy = gc.emit_entity(ev, "full")
-        spec = gc.build_entity_spec(ev, "full")
+        legacy = emit_entity(ev, "full")
+        spec = build_entity_spec(ev, "full")
         if legacy is None:
             assert spec is None
         elif legacy[0] == "comment":
-            assert isinstance(spec, gc.CommentSpec)
+            assert isinstance(spec, CommentSpec)
             assert spec.lines == legacy[1]
         else:
-            assert isinstance(spec, gc.EntitySpec)
+            assert isinstance(spec, EntitySpec)
             assert spec.platform == legacy[0]
-            assert gc.render_entity_lines(spec) == legacy[1]
+            assert render_entity_lines(spec) == legacy[1]
 
 
 # --- 7. Line order of a diagnostic entity matches the pre-refactor output ----
@@ -395,7 +400,7 @@ def test_diagnostic_entity_keeps_id_before_entity_category():
     # The pre-refactor generator injected entity_category after name, then
     # inserted id right after name, so id came first. The committed catalogs
     # carry that order; emitting it the other way round rewrites ~14k lines.
-    ev = gc.Event(
+    ev = Event(
         id="1",
         name="Sammelstoerung",
         address=0x0A10,
@@ -410,7 +415,7 @@ def test_diagnostic_entity_keeps_id_before_entity_category():
         token="WPR_Sammelstoerung~0x0A10",
     )
     cat = _make_minimal_catalog([ev])
-    lines = gc.generate(cat, "TestDev", "full", None, None, emit_device_id=False).splitlines()
+    lines = generate(cat, "TestDev", "full", None, None, emit_device_id=False).splitlines()
     i = lines.index('    name: "Sammelstoerung"')
     assert lines[i + 1 : i + 4] == [
         "    id: WPR_Sammelstoerung",

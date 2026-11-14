@@ -29,7 +29,10 @@ for _p in (_SCRIPTS, _REPO_ROOT):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-import gen_catalog as gc  # noqa: E402
+from vitocatalog.constants import PROTO_GWG, PROTO_P300  # noqa: E402
+from vitocatalog.emitter import emit_entity  # noqa: E402
+from vitocatalog.models import Event, EventValue  # noqa: E402
+from vitocatalog.transforms import _bit_field  # noqa: E402
 
 
 def _ev(values=None, **over):
@@ -56,9 +59,9 @@ def _ev(values=None, **over):
         "conv_offset": -16.0,
     }
     kw.update(over)
-    ev = gc.Event(**kw)
+    ev = Event(**kw)
     if values:
-        ev.values = [gc.EventValue(enum_address_value=v, description=label) for v, label in values]
+        ev.values = [EventValue(enum_address_value=v, description=label) for v, label in values]
     return ev
 
 
@@ -135,11 +138,11 @@ def _decode(lines, raw_byte):
     ],
 )
 def test_bit_field(bit_position, bit_length, expected):
-    assert gc._bit_field(_ev(bit_position=bit_position, bit_length=bit_length)) == expected
+    assert _bit_field(_ev(bit_position=bit_position, bit_length=bit_length)) == expected
 
 
 def test_mask_line_cites_the_vitosoft_numbering():
-    _, lines = gc.emit_entity(_ev(), "full", gc.PROTO_GWG)
+    _, lines = emit_entity(_ev(), "full", PROTO_GWG)
     line = next(ln for ln in lines if ln.strip().startswith("bit_mask:"))
     assert "bit_mask: 0xF0" in line
     assert "BitPosition 0, BitLength 4" in line
@@ -149,7 +152,7 @@ def test_mask_line_cites_the_vitosoft_numbering():
 
 
 def test_writable_flag_is_a_bit_mask_select_not_a_whole_byte_write():
-    platform, lines = gc.emit_entity(_flag(), "full", gc.PROTO_GWG)
+    platform, lines = emit_entity(_flag(), "full", PROTO_GWG)
     assert platform == "select"
     assert _mask(lines) == 0x08
     assert _key(lines, "address") == "0x0005"
@@ -164,10 +167,10 @@ def test_boolean_flag_becomes_a_bit_mask_switch():
     # GWG_K27Ruecklaufsensor-shaped: on/off labels -> native toggle.
     ev = _flag(name="GWG K27Ruecklaufsensor", tech="GWG_K27Ruecklaufsensor", address=0x0006, bit_position=0)
     ev.values = [
-        gc.EventValue(enum_address_value=0, description="Aus"),
-        gc.EventValue(enum_address_value=1, description="Ein"),
+        EventValue(enum_address_value=0, description="Aus"),
+        EventValue(enum_address_value=1, description="Ein"),
     ]
-    platform, lines = gc.emit_entity(ev, "full", gc.PROTO_GWG)
+    platform, lines = emit_entity(ev, "full", PROTO_GWG)
     assert platform == "switch"
     assert _mask(lines) == 0x80
 
@@ -181,8 +184,8 @@ def test_multi_bit_enum_select_options_in_field_units():
         bit_position=0,
         bit_length=4,
     )
-    ev.values = [gc.EventValue(enum_address_value=i, description=f"{0.2 + i / 10:.1f}") for i in range(16)]
-    platform, lines = gc.emit_entity(ev, "full", gc.PROTO_GWG)
+    ev.values = [EventValue(enum_address_value=i, description=f"{0.2 + i / 10:.1f}") for i in range(16)]
+    platform, lines = emit_entity(ev, "full", PROTO_GWG)
     assert platform == "select"
     assert _mask(lines) == 0xF0
     assert sum(1 for ln in lines if re.match(r"\s+\d+: ", ln)) == 16
@@ -213,15 +216,15 @@ def test_enum_whose_options_contradict_its_bit_length_is_a_comment():
     # (open circuit) for a sensor that does not exist. The 0x80 bit is
     # SM1_Sensor_7_Status_Verwendet ("1: nicht verwendet").
     ev = _sm1_status([(0, "Sensor ok"), (1, "Kurzschluss"), (2, "Unterbrechung"), (128, "Nicht verwendet")])
-    platform, lines = gc.emit_entity(ev, "full", gc.PROTO_P300)
+    platform, lines = emit_entity(ev, "full", PROTO_P300)
     assert platform == "comment"
     assert "128" in lines[0]
     assert "value list and BitLength disagree" in lines[0]
 
 
 def test_enum_whose_options_fit_is_still_emitted():
-    platform, lines = gc.emit_entity(
-        _sm1_status([(0, "Sensor ok"), (1, "Kurzschluss"), (2, "Unterbrechung")]), "full", gc.PROTO_P300
+    platform, lines = emit_entity(
+        _sm1_status([(0, "Sensor ok"), (1, "Kurzschluss"), (2, "Unterbrechung")]), "full", PROTO_P300
     )
     assert platform == "text_sensor"
     assert _mask(lines) == 0x7F
@@ -234,7 +237,7 @@ def test_enum_whose_options_fit_is_still_emitted():
 def test_noconversion_numeric_field_is_writable_with_stale_factor_ignored():
     # GWG_BEMKB6DAnteilRegelungDLH: 0..15 / 1 carrying a stale 5/35 pair.
     ev = _ev(address=0x0022, lower="0", upper="15", stepping="1", conv_factor=5.0, conv_offset=35.0)
-    platform, lines = gc.emit_entity(ev, "full", gc.PROTO_GWG)
+    platform, lines = emit_entity(ev, "full", PROTO_GWG)
     assert platform == "number"
     assert _mask(lines) == 0xF0
     assert _key(lines, "converter") == "noconv"
@@ -245,7 +248,7 @@ def test_noconversion_numeric_field_is_writable_with_stale_factor_ignored():
 
 def test_number_without_borders_gets_the_field_range():
     ev = _ev(address=0x0022, lower="", upper="", stepping="", conv_factor=None, conv_offset=None)
-    platform, lines = gc.emit_entity(ev, "full", gc.PROTO_GWG)
+    platform, lines = emit_entity(ev, "full", PROTO_GWG)
     assert platform == "number"
     assert (_key(lines, "min_value"), _key(lines, "max_value"), _key(lines, "step")) == ("0", "15", "1")
 
@@ -257,7 +260,7 @@ def test_number_without_borders_gets_the_field_range():
 def test_spr30_inferred_scale_stays_read_only(raw_byte, value):
     # 0..1 / 0.1 is an inferred encoding (patch 0001's rule): read-only and
     # UNVERIFIED even though bit-field writes are on. Factory 0x87 -> 0,8 (ALZ).
-    platform, lines = gc.emit_entity(_ev(), "full", gc.PROTO_GWG)
+    platform, lines = emit_entity(_ev(), "full", PROTO_GWG)
     assert platform == "sensor"
     assert _mask(lines) == 0xF0
     assert _decode(lines, raw_byte) == pytest.approx(value)
@@ -278,7 +281,7 @@ def test_multoffset_with_offset_is_read_only_and_decodes_issue_21(bit_position, 
         conv_factor=5.0,
         conv_offset=35.0,
     )
-    platform, lines = gc.emit_entity(ev, "full", gc.PROTO_GWG)
+    platform, lines = emit_entity(ev, "full", PROTO_GWG)
     assert platform == "sensor"
     assert _decode(lines, 0xA8) == pytest.approx(value)
     assert "no encode path" in "\n".join(lines)
@@ -286,7 +289,7 @@ def test_multoffset_with_offset_is_read_only_and_decodes_issue_21(bit_position, 
 
 def test_multoffset_preset_factor_is_writable_with_the_converter():
     ev = _ev(conversion="MultOffset", lower="0", upper="150", stepping="10", conv_factor=10.0, conv_offset=0.0)
-    platform, lines = gc.emit_entity(ev, "full", gc.PROTO_GWG)
+    platform, lines = emit_entity(ev, "full", PROTO_GWG)
     assert platform == "number"
     assert _key(lines, "converter") == "mult10"
     assert _filters(lines) == []
@@ -308,8 +311,8 @@ def _neptun():
         fc_write="Virtual_WRITE",
     )
     ev.values = [
-        gc.EventValue(enum_address_value=0, description="Aus"),
-        gc.EventValue(enum_address_value=1, description="Ein"),
+        EventValue(enum_address_value=0, description="Aus"),
+        EventValue(enum_address_value=1, description="Ein"),
     ]
     return ev
 
@@ -317,7 +320,7 @@ def _neptun():
 def test_bit_field_in_a_wider_block_is_a_block_write():
     # Block mode: the whole 2-byte block at the base, byte_offset 0 (which is
     # what selects block mode), the bit. Byte 1 (Drehzahl) is written back as read.
-    platform, lines = gc.emit_entity(_neptun(), "full", gc.PROTO_P300)
+    platform, lines = emit_entity(_neptun(), "full", PROTO_P300)
     assert platform == "switch"
     assert (_key(lines, "address"), _key(lines, "length"), _key(lines, "byte_offset")) == ("0x7951", "2", "0")
     assert _mask(lines) == 0x01
@@ -325,7 +328,7 @@ def test_bit_field_in_a_wider_block_is_a_block_write():
 
 
 def test_bit_field_in_a_block_with_a_read_only_sibling_stays_read_only():
-    platform, lines = gc.emit_entity(_neptun(), "full", gc.PROTO_P300, ro_blocks=frozenset({(0x7951, "")}))
+    platform, lines = emit_entity(_neptun(), "full", PROTO_P300, ro_blocks=frozenset({(0x7951, "")}))
     assert platform == "binary_sensor"
     assert _mask(lines) == 0x01
     assert "read-only (live) data" in "\n".join(lines)
@@ -346,23 +349,23 @@ def test_interior_field_reads_the_block_base():
         fc_read="Virtual_READ",
         fc_write="",
     )
-    platform, lines = gc.emit_entity(ev, "full", gc.PROTO_P300)
+    platform, lines = emit_entity(ev, "full", PROTO_P300)
     assert platform == "sensor"
     assert (_key(lines, "address"), _key(lines, "length"), _key(lines, "byte_offset")) == ("0xA132", "29", "14")
     assert _mask(lines) == 0x0F
 
 
 def test_no_partial_writes_keeps_everything_read_only():
-    platform, lines = gc.emit_entity(_flag(), "full", gc.PROTO_GWG, partial_writes=False)
+    platform, lines = emit_entity(_flag(), "full", PROTO_GWG, partial_writes=False)
     assert platform == "binary_sensor"
     assert "--no-partial-writes" in "\n".join(lines)
     ev = _ev(address=0x0022, lower="0", upper="15", stepping="1")
-    platform, _ = gc.emit_entity(ev, "full", gc.PROTO_GWG, partial_writes=False)
+    platform, _ = emit_entity(ev, "full", PROTO_GWG, partial_writes=False)
     assert platform == "sensor"
 
 
 def test_field_spanning_bytes_is_a_comment():
-    platform, lines = gc.emit_entity(_ev(bit_position=61, block_length=10), "full", gc.PROTO_GWG)
+    platform, lines = emit_entity(_ev(bit_position=61, block_length=10), "full", PROTO_GWG)
     assert platform == "comment"
     assert "does not fit in one byte" in lines[0]
 
@@ -370,14 +373,14 @@ def test_field_spanning_bytes_is_a_comment():
 def test_contradictory_byte_position_is_a_comment():
     # WW_Temperatur_Mitte_ab_Bit_4 (0x01CF): BitPosition 4 -> byte 0, BytePosition 2
     ev = _ev(bit_position=4, byte_position=2, block_length=3, access_type=1, fc_read="Virtual_READ", fc_write="")
-    platform, lines = gc.emit_entity(ev, "full", gc.PROTO_P300)
+    platform, lines = emit_entity(ev, "full", PROTO_P300)
     assert platform == "comment"
     assert "contradictory" in lines[0]
 
 
 def test_read_only_single_bit_stays_on_the_binary_sensor_path():
     ev = _ev(bit_length=1, bit_position=2, access_type=1, lower="", upper="", stepping="", fc_write="")
-    platform, lines = gc.emit_entity(ev, "full", gc.PROTO_GWG)
+    platform, lines = emit_entity(ev, "full", PROTO_GWG)
     assert platform == "binary_sensor"
     assert "  bit_mask: 0x20" in lines
 
@@ -385,6 +388,6 @@ def test_read_only_single_bit_stays_on_the_binary_sensor_path():
 def test_generated_bit_field_yaml_is_valid():
     yaml = pytest.importorskip("yaml")
     for ev in (_ev(), _flag(), _ev(address=0x0022, lower="0", upper="15", stepping="1")):
-        _, lines = gc.emit_entity(ev, "full", gc.PROTO_GWG)
+        _, lines = emit_entity(ev, "full", PROTO_GWG)
         doc = yaml.safe_load("\n".join(lines))
         assert doc[0]["bit_mask"] in (0xF0, 0x08)

@@ -20,7 +20,9 @@ for _p in (_SCRIPTS, _REPO_ROOT):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-import gen_catalog as gc  # noqa: E402
+from vitocatalog.exporter import build_resolve_index  # noqa: E402
+from vitocatalog.loader import Catalog  # noqa: E402
+from vitocatalog.renderer import generate  # noqa: E402
 
 # Menus of device dp1 ("VTagTest_01") and one of another device, dp2. Circuit
 # mappings sit one level below a section, as in the export.
@@ -75,7 +77,7 @@ def _catalog(products=True):
     if products:
         ext[("ecnDatapointType", "ShortName")] = {"dp1": "VT 200  (HO1C)"}
         ext[("ecnDatapointType", "ProductName")] = {"dp1": "Vitodens 3xx-W mit\nVitotronic 200 (Typ HO1C)"}
-    return gc.Catalog(
+    return Catalog(
         {"VTagTest_01": "dp1", "VOther_01": "dp2"},
         {"dp1": "VTagTest", "dp2": "VOther"},
         {"dp1": [e for e in _EVENTS if e != "7"], "dp2": ["7"]},
@@ -119,7 +121,7 @@ def test_tags_are_per_device():
 
 
 def test_the_tag_line_sits_right_above_its_entity():
-    out = gc.generate(_catalog(), "VTagTest_01", "full", None, None, emit_device_id=False, emit_error_history=False)
+    out = generate(_catalog(), "VTagTest_01", "full", None, None, emit_device_id=False, emit_error_history=False)
     lines = out.splitlines()
     tagged = [n for n, line in enumerate(lines) if line.startswith("  # vito: ")]
     assert len(tagged) == 4  # events 1, 2, 4 and 5; 3 and 6 carry none
@@ -135,10 +137,10 @@ def test_product_names_go_to_the_header_and_the_manifest():
     # Whitespace runs (line breaks in the export) collapse.
     assert cat.product_for("VTagTest_01") == ("VT 200 (HO1C)", "Vitodens 3xx-W mit Vitotronic 200 (Typ HO1C)")
     assert cat.product_for("VOther_01") == ("", "")
-    out = gc.generate(cat, "VTagTest_01", "full", None, None, emit_device_id=False, emit_error_history=False)
+    out = generate(cat, "VTagTest_01", "full", None, None, emit_device_id=False, emit_error_history=False)
     header = " ".join(line.lstrip("#").strip() for line in out.splitlines()[:6])  # wrapped at 70 columns
     assert "product (Vitosoft): Vitodens 3xx-W mit Vitotronic 200 (Typ HO1C) [VT 200 (HO1C)]" in header
-    assert "# product" not in gc.generate(_catalog(products=False), "VTagTest_01", "full", None, None)
+    assert "# product" not in generate(_catalog(products=False), "VTagTest_01", "full", None, None)
 
     manifest = [
         {
@@ -150,7 +152,7 @@ def test_product_names_go_to_the_header_and_the_manifest():
         },
         {"token": "VOther_01", "file": "vother_01.yaml", "status": "ok", "short_name": "", "product_name": ""},
     ]
-    tokens = gc.build_resolve_index(cat, manifest)["tokens"]
+    tokens = build_resolve_index(cat, manifest)["tokens"]
     assert tokens["VTagTest_01"] == {
         "file": "vtagtest_01.yaml",
         "status": "ok",

@@ -24,7 +24,9 @@ _SCRIPTS = os.path.join(_REPO_ROOT, "scripts")
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
 
-import gen_catalog as gc  # noqa: E402
+from vitocatalog.constants import PROTO_GWG  # noqa: E402
+from vitocatalog.emitter import emit_entity  # noqa: E402
+from vitocatalog.models import Event  # noqa: E402
 
 
 def _event(**over):
@@ -50,7 +52,7 @@ def _event(**over):
         "conv_offset": -16.0,
     }
     kw.update(over)
-    return gc.Event(**kw)
+    return Event(**kw)
 
 
 def _keys(lines):
@@ -58,7 +60,7 @@ def _keys(lines):
 
 
 def test_writable_multoffset_is_a_sensor_with_its_transform():
-    platform, lines = gc.emit_entity(_event(), "full", gc.PROTO_GWG)
+    platform, lines = emit_entity(_event(), "full", PROTO_GWG)
     assert platform == "sensor"
     text = _keys(lines)
     assert "- multiply: 0.5" in text
@@ -68,31 +70,31 @@ def test_writable_multoffset_is_a_sensor_with_its_transform():
 
 def test_its_raw_range_is_unsigned():
     # raw = (value + 16) / 0.5 = 0..64: not signed, whatever the display border.
-    _, lines = gc.emit_entity(_event(), "full", gc.PROTO_GWG)
+    _, lines = emit_entity(_event(), "full", PROTO_GWG)
     assert "signed: true" not in _keys(lines)
 
 
 def test_a_negative_raw_range_stays_signed():
     # value = raw * 0.25 + 4, -16..16: raw -80..48 -- signed. (A plain factor
     # such as 0.5 would map to a preset converter instead of filters.)
-    _, lines = gc.emit_entity(_event(conv_factor=0.25, conv_offset=4.0), "full", gc.PROTO_GWG)
+    _, lines = emit_entity(_event(conv_factor=0.25, conv_offset=4.0), "full", PROTO_GWG)
     assert "signed: true" in _keys(lines)
 
 
 def test_a_writable_unmapped_conversion_is_read_only():
-    platform, _ = gc.emit_entity(
+    platform, _ = emit_entity(
         _event(conversion="SomeUnknownConversion", conv_factor=None, conv_offset=None, lower="0", upper="100", stepping="1"),
         "full",
-        gc.PROTO_GWG,
+        PROTO_GWG,
     )
     assert platform != "number"
 
 
 def test_a_writable_identity_stays_a_number():
-    platform, _ = gc.emit_entity(
+    platform, _ = emit_entity(
         _event(conversion="NoConversion", conv_factor=None, conv_offset=None, lower="0", upper="100", stepping="1"),
         "full",
-        gc.PROTO_GWG,
+        PROTO_GWG,
     )
     assert platform == "number"
 

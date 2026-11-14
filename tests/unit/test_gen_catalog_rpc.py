@@ -26,7 +26,21 @@ for _p in (_SCRIPTS, _REPO_ROOT):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-import gen_catalog as gc  # noqa: E402
+from vitocatalog.constants import PROTO_GWG, PROTO_KW, PROTO_P300  # noqa: E402
+from vitocatalog.loader import Catalog, _decode_ext_value, load_catalog  # noqa: E402
+from vitocatalog.models import Event  # noqa: E402
+from vitocatalog.renderer import generate  # noqa: E402
+from vitocatalog.transforms import (  # noqa: E402
+    _access_for,
+    _is_lon_bound_rpc,
+    _is_reachable,
+    _is_rpc_action,
+    _is_rpc_reading,
+    _profile_keep,
+    _rpc_action_parameter,
+    _rpc_array_records,
+    _rpc_prefix,
+)
 
 
 def _ev(
@@ -38,7 +52,7 @@ def _ev(
     address=0xA010,
     token="Teilnehmerliste_LON_00~0xA010",
 ):
-    return gc.Event(
+    return Event(
         id="t",
         name="t",
         address=address,
@@ -62,19 +76,19 @@ def _ev(
 
 def test_a_prefixed_read_only_single_record_is_a_reading():
     ev = _ev()
-    assert gc._is_rpc_reading(ev, gc.PROTO_P300)
-    assert gc._is_reachable(ev, gc.PROTO_P300)
-    assert gc._access_for(ev, gc.PROTO_P300) == "rpc"
-    assert gc._rpc_prefix(_ev("00 01 02")) == [0x00, 0x01, 0x02]
+    assert _is_rpc_reading(ev, PROTO_P300)
+    assert _is_reachable(ev, PROTO_P300)
+    assert _access_for(ev, PROTO_P300) == "rpc"
+    assert _rpc_prefix(_ev("00 01 02")) == [0x00, 0x01, 0x02]
 
 
 def test_a_reading_may_take_no_parameter():
     # KesselfolgeIst and its siblings on a cascade controller: read-only, a 4-byte
     # answer, no PrefixRead.
     ev = _ev(prefix="", block_length=4, address=0xA104, token="KesselfolgeIst~0xA104")
-    assert gc._is_rpc_reading(ev, gc.PROTO_P300)
-    assert gc._rpc_prefix(ev) == []
-    assert gc._access_for(ev, gc.PROTO_P300) == "rpc"
+    assert _is_rpc_reading(ev, PROTO_P300)
+    assert _rpc_prefix(ev) == []
+    assert _access_for(ev, PROTO_P300) == "rpc"
 
 
 @pytest.mark.parametrize(
@@ -91,16 +105,16 @@ def test_a_reading_may_take_no_parameter():
     ],
 )
 def test_everything_else_is_not_a_reading(ev, why):
-    assert not gc._is_rpc_reading(ev, gc.PROTO_P300), why
-    assert gc._access_for(ev, gc.PROTO_P300) != "rpc", why
+    assert not _is_rpc_reading(ev, PROTO_P300), why
+    assert _access_for(ev, PROTO_P300) != "rpc", why
 
 
-@pytest.mark.parametrize("protocol", [gc.PROTO_KW, gc.PROTO_GWG])
+@pytest.mark.parametrize("protocol", [PROTO_KW, PROTO_GWG])
 def test_only_p300_has_the_telegram(protocol):
     ev = _ev()
-    assert not gc._is_rpc_reading(ev, protocol)
-    assert not gc._is_reachable(ev, protocol)
-    assert gc._access_for(ev, protocol) == ""
+    assert not _is_rpc_reading(ev, protocol)
+    assert not _is_reachable(ev, protocol)
+    assert _access_for(ev, protocol) == ""
 
 
 @pytest.mark.parametrize(
@@ -115,9 +129,9 @@ def test_only_p300_has_the_telegram(protocol):
     ],
 )
 def test_lon_bound_readings_are_told_apart_from_the_units_own(ev, lon):
-    assert gc._is_lon_bound_rpc(ev) is lon
-    assert gc._profile_keep(ev, "standard") is not lon
-    assert gc._profile_keep(ev, "full")
+    assert _is_lon_bound_rpc(ev) is lon
+    assert _profile_keep(ev, "standard") is not lon
+    assert _profile_keep(ev, "full")
 
 
 # --- end to end ---------------------------------------------------------------
@@ -158,7 +172,7 @@ def _catalog():
             "lower_border": "0" if upper else "",
             "upper_border": upper,
         }
-    return gc.Catalog(
+    return Catalog(
         {"VRpcTest_01": "dp1"},
         {"dp1": "VRpcTest"},
         {"dp1": list(rows)},
@@ -172,7 +186,7 @@ def _catalog():
 
 
 def _generate(profile, protocol="P300"):
-    return gc.generate(
+    return generate(
         _catalog(), "VRpcTest_01", profile, None, None, emit_device_id=False, emit_error_history=False, protocol=protocol
     )
 
@@ -237,24 +251,24 @@ def test_standard_keeps_the_units_own_readings_and_every_action(profile):
 def test_what_counts_as_an_action(ev, action):
     ev.parameter_type = "Array"
     ev.prefix_write = ev.prefix_read
-    assert gc._is_rpc_action(ev, gc.PROTO_P300) is action
-    assert not gc._is_rpc_action(ev, gc.PROTO_KW)
+    assert _is_rpc_action(ev, PROTO_P300) is action
+    assert not _is_rpc_action(ev, PROTO_KW)
 
 
 def test_a_setter_with_borders_or_a_unit_is_not_an_action():
     ev = _ev(prefix="", access_type=2, block_length=1)
     ev.parameter_type = "Array"
-    assert gc._is_rpc_action(ev)
+    assert _is_rpc_action(ev)
     ev.upper = "74"
-    assert not gc._is_rpc_action(ev)
+    assert not _is_rpc_action(ev)
     ev.upper, ev.unit_token = "", "ecnUnit.Sekunden"
-    assert not gc._is_rpc_action(ev)
+    assert not _is_rpc_action(ev)
 
 
 def test_prefixwrite_may_be_written_with_0x():
     ev = _ev(prefix="")
     ev.prefix_write = "0x0E"
-    assert gc._rpc_prefix(ev, "prefix_write") == [0x0E]
+    assert _rpc_prefix(ev, "prefix_write") == [0x0E]
 
 
 # --- FunctionValue: the parameter of a procedure without PrefixWrite ----------
@@ -277,9 +291,9 @@ def test_action_parameter_is_prefixwrite_else_functionvalue(prefix_write, functi
     ev = _ev(prefix="", access_type=2, block_length=1)
     ev.parameter_type = "Array"
     ev.prefix_write, ev.function_value = prefix_write, function_value
-    assert gc._rpc_action_parameter(ev) == expected
+    assert _rpc_action_parameter(ev) == expected
     # A parameter that does not parse is never sent as a call without one.
-    assert gc._is_rpc_action(ev) is (expected is not None)
+    assert _is_rpc_action(ev) is (expected is not None)
 
 
 def _a050_catalog(function_values):
@@ -307,14 +321,14 @@ def _a050_catalog(function_values):
             "parameter_type": "Array",
         }
     ext = {("ecnEventType", "FunctionValue"): function_values}
-    return gc.Catalog(
+    return Catalog(
         {"VRpcTest_01": "dp1"}, {"dp1": "VRpcTest"}, {"dp1": list(rows)}, raw_events, {}, {}, access, [], {}, ext=ext
     )
 
 
 def test_a050_procedures_call_with_their_functionvalue():
     cat = _a050_catalog({"1": "0x00", "2": "0x15", "3": "0x2E"})
-    out = gc.generate(cat, "VRpcTest_01", "standard", None, None, emit_device_id=False, emit_error_history=False)
+    out = generate(cat, "VRpcTest_01", "standard", None, None, emit_device_id=False, emit_error_history=False)
     buttons = out.split("\nbutton:\n", 1)[1]
     # The restart is live; the two resets are commented out.
     assert buttons.count("address: 0xA050") == 3
@@ -337,7 +351,7 @@ def test_without_functionvalue_no_procedure_calls_a_selector_blind():
     # function (PrefixWrite 15), and that alone makes 0xA050 a selector. The
     # three that name none are left out rather than called without one.
     cat = _a050_catalog({})
-    out = gc.generate(cat, "VRpcTest_01", "standard", None, None, emit_device_id=False, emit_error_history=False)
+    out = generate(cat, "VRpcTest_01", "standard", None, None, emit_device_id=False, emit_error_history=False)
     assert out.count("    address: 0xA050") == 1
     assert "prefix: [0x15]  # Vitosoft PrefixWrite 15" in out
     assert "# Procedures omitted: 3 without a parameter" in out
@@ -362,7 +376,7 @@ def test_without_functionvalue_no_procedure_calls_a_selector_blind():
     ],
 )
 def test_table_extension_values_decode(payload, value):
-    got = gc._decode_ext_value(payload)
+    got = _decode_ext_value(payload)
     assert got == value and type(got) is type(value)
 
 
@@ -386,7 +400,7 @@ _MINI_EXT_EXPORT = """<?xml version="1.0" encoding="utf-8"?>
 def test_functionvalue_is_loaded_from_the_table_extension(tmp_path):
     # As in the real export, the values come before the rows that name their field.
     (tmp_path / "DPDefinitions.xml").write_text(_MINI_EXT_EXPORT, encoding="utf-8")
-    cat = gc.load_catalog(str(tmp_path))
+    cat = load_catalog(str(tmp_path))
     assert cat._events["7"].function_value == "0x00"
     # Each value lands under the field its RefId names, not under the other's.
     assert cat._ext[("ecnEventType", "FunctionValue")] == {"7": "0x00"}
@@ -422,18 +436,18 @@ def _heat_pump_catalog(extra=()):
             "prefix_read": prefix,
             "parameter_type": "Array",
         }
-    return gc.Catalog({"VHeatPump_01": "dp1"}, {"dp1": "VHeatPump"}, {"dp1": ids}, raw_events, {}, {}, access, [], {})
+    return Catalog({"VHeatPump_01": "dp1"}, {"dp1": "VHeatPump"}, {"dp1": ids}, raw_events, {}, {}, access, [], {})
 
 
 def _heat_pump(protocol="P300", extra=()):
-    return gc.generate(
+    return generate(
         _heat_pump_catalog(extra), "VHeatPump_01", "standard", None, None, emit_device_id=False, protocol=protocol
     )
 
 
 def test_rpc_fault_history_fans_out_one_slot_per_record():
     ev = _ev(prefix="", block_length=240, block_factor=30, address=0xA801, token="ecnsysEventType~WPRError")
-    assert gc._rpc_array_records(ev) == (30, 8)
+    assert _rpc_array_records(ev) == (30, 8)
     out = _heat_pump()
     # Thirty slots, all at the procedure's address, the record index as the parameter.
     assert out.count("address: 0xA801") == 30
@@ -451,7 +465,7 @@ def test_rpc_fault_history_fans_out_one_slot_per_record():
 
 def test_a_9_byte_wpr3_buffer_fans_out_too():
     ev = _ev(prefix="", block_length=270, block_factor=30, address=0xA801, token="ecnsysEventType~WPR3Error")
-    assert gc._rpc_array_records(ev) == (30, 9)
+    assert _rpc_array_records(ev) == (30, 9)
 
 
 @pytest.mark.parametrize(
@@ -465,7 +479,7 @@ def test_a_9_byte_wpr3_buffer_fans_out_too():
     ],
 )
 def test_other_rpc_arrays_are_not_fanned_out(ev):
-    assert gc._rpc_array_records(ev) is None
+    assert _rpc_array_records(ev) is None
 
 
 @pytest.mark.parametrize("protocol", ["KW", "GWG"])

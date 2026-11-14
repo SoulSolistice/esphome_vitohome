@@ -22,8 +22,10 @@ for _p in (_SCRIPTS, _REPO_ROOT):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-import gen_catalog as gc  # noqa: E402
-from vitocatalog.loader import _gfa_menu_chips  # noqa: E402
+from vitocatalog.constants import PROTO_GWG, PROTO_KW, PROTO_P300  # noqa: E402
+from vitocatalog.loader import Catalog, _gfa_menu_chips  # noqa: E402
+from vitocatalog.renderer import generate  # noqa: E402
+from vitocatalog.transforms import _access_for, _is_gfa_read, _is_reachable, _is_writable  # noqa: E402
 
 _FK = "VGfaTest_01~60_Funktionskontrolle"
 _GROUPS = {
@@ -70,7 +72,7 @@ def _catalog():
         }
         glinks[eid] = [(gid, n) for n, gid in enumerate(menus)]
     groups = {gid: {"path": path, "dp": dp, "order": 0, "parent": "-1"} for gid, (path, dp) in _GROUPS.items()}
-    return gc.Catalog(
+    return Catalog(
         {"VGfaTest_01": "dp1"},
         {"dp1": "VGfaTest"},
         {"dp1": list(_EVENTS)},
@@ -86,7 +88,7 @@ def _catalog():
 
 
 def _generate(protocol="P300"):
-    return gc.generate(
+    return generate(
         _catalog(), "VGfaTest_01", "full", None, None, emit_device_id=False, emit_error_history=False, protocol=protocol
     )
 
@@ -125,15 +127,15 @@ def test_menu_suffix_names_the_chip(path, chips):
 
 def test_gfa_is_reachable_on_kw_and_p300_only():
     ev = _catalog()._events["1"]
-    for protocol in (gc.PROTO_P300, gc.PROTO_KW):
-        assert gc._is_gfa_read(ev, protocol)
-        assert gc._is_reachable(ev, protocol)
-        assert gc._access_for(ev, protocol) == "gfa"
-    assert not gc._is_gfa_read(ev, gc.PROTO_GWG)
-    assert not gc._is_reachable(ev, gc.PROTO_GWG)
-    assert gc._access_for(ev, gc.PROTO_GWG) == ""
+    for protocol in (PROTO_P300, PROTO_KW):
+        assert _is_gfa_read(ev, protocol)
+        assert _is_reachable(ev, protocol)
+        assert _access_for(ev, protocol) == "gfa"
+    assert not _is_gfa_read(ev, PROTO_GWG)
+    assert not _is_reachable(ev, PROTO_GWG)
+    assert _access_for(ev, PROTO_GWG) == ""
     # No GFA write exists: a GFA row never becomes writable.
-    assert not gc._is_writable(ev, gc.PROTO_P300)
+    assert not _is_writable(ev, PROTO_P300)
 
 
 def test_chips_are_the_union_over_rows_that_decode_alike():

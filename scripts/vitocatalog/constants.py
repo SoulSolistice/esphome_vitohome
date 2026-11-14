@@ -94,7 +94,7 @@ PROFILES = ("minimal", "standard", "full")
 # Textresource.xml carries ~350 UI strings per culture; the full
 # Textresource_<culture>.xml files (one culture each) carry every name, option
 # label and fault text -- see _load_text_layers.
-_CULTURES = {
+CULTURES = {
     "de": "1",
     "en": "2",
     "fr": "3",

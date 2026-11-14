@@ -15,11 +15,11 @@ import units
 
 from .constants import (
     _CONTAINER_PREFIXES,
-    _CULTURES,
     _FACTOR_PLACEHOLDERS,
     _WANTED_EXTENSIONS,
     _WANTED_ROWS,
     CIRCUIT_TAGS,
+    CULTURES,
     GFA_MENU_CHIPS,
     GFA_MENU_PREFIX,
     SYSTEM_MENU_TAGS,
@@ -199,7 +199,7 @@ def _load_textresources(path: str | None, culture: str = "de") -> dict[str, str]
         root = _xml_root_from_path(path)
     except ET.ParseError:
         return {}
-    want = _CULTURES.get(culture, "1")
+    want = CULTURES.get(culture, "1")
     primary: dict[str, str] = {}
     fallback: dict[str, str] = {}
     for e in root.iter():

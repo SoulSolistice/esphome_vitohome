@@ -5,20 +5,19 @@ Stdlib-only; locks the set sizes, the UNION construction rule, and the fact that
 the generator's CLI choices stay in sync with the module's registry.
 """
 
-import importlib.util
+import importlib
 import os
 import sys
 
 _SCRIPTS = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "scripts")
 
 
+# A plain import, so every test module shares one fault_codes: a second copy
+# would break the identity checks against the generator's sets.
 def _load(name):
-    sys.path.insert(0, _SCRIPTS)
-    spec = importlib.util.spec_from_file_location(name, os.path.join(_SCRIPTS, name + ".py"))
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules[name] = mod
-    spec.loader.exec_module(mod)
-    return mod
+    if _SCRIPTS not in sys.path:
+        sys.path.insert(0, _SCRIPTS)
+    return importlib.import_module(name)
 
 
 fc = _load("fault_codes")

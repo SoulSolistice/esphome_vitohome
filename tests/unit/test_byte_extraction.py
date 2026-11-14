@@ -14,7 +14,9 @@ for _p in (_REPO_ROOT, os.path.join(_REPO_ROOT, "scripts")):
 
 import esphome.config_validation as cv  # noqa: E402
 from esphome.core import CORE  # noqa: E402
-import gen_catalog as gc  # noqa: E402
+from vitocatalog.emitter import emit_entity  # noqa: E402
+from vitocatalog.models import Event  # noqa: E402
+from vitocatalog.transforms import _dedup_option_labels  # noqa: E402
 
 from components.vitohome import MAX_P300_READ_LENGTH  # noqa: E402
 from components.vitohome.number import CONFIG_SCHEMA as NUMBER_SCHEMA  # noqa: E402
@@ -101,8 +103,8 @@ def test_converter_checked_against_extracted_width_not_block():
 
 
 def _event(**kw):
-    ev = gc.Event.__new__(gc.Event)
-    for f in gc.Event.__dataclass_fields__:
+    ev = Event.__new__(Event)
+    for f in Event.__dataclass_fields__:
         setattr(ev, f, None)
     ev.values = []
     ev.address = 0x7660
@@ -117,7 +119,7 @@ def _event(**kw):
 
 
 def test_single_byte_interior_field_emits_aligned_block_read():
-    plat, lines = gc.emit_entity(_event(), "standard")
+    plat, lines = emit_entity(_event(), "standard")
     body = "\n".join(lines)
     assert plat == "sensor"
     # aligned: address is the block BASE, with byte_offset -- not addr+offset.
@@ -129,7 +131,7 @@ def test_single_byte_interior_field_emits_aligned_block_read():
 
 def test_multi_byte_interior_field_emits_byte_length():
     ev = _event(byte_length=2, block_length=22, byte_position=12, conversion="Div10")
-    plat, lines = gc.emit_entity(ev, "standard")
+    plat, lines = emit_entity(ev, "standard")
     body = "\n".join(lines)
     assert plat == "sensor"
     assert "address: 0x7660" in body  # block base
@@ -142,7 +144,7 @@ def test_field_in_block_over_cap_stays_interior_or_comment():
     # A block bigger than the P300 cap can't be an aligned extract; the field
     # must not silently claim to be aligned.
     ev = _event(byte_length=1, block_length=MAX_P300_READ_LENGTH + 5, byte_position=40)
-    plat, lines = gc.emit_entity(ev, "standard")
+    plat, lines = emit_entity(ev, "standard")
     body = "\n".join(lines)
     assert "byte_offset:" not in body
 
@@ -152,13 +154,13 @@ def test_field_in_block_over_cap_stays_interior_or_comment():
 
 def test_dedup_leaves_unique_labels_untouched():
     opts = [(0, "Off"), (1, "On"), (2, "Auto")]
-    assert gc._dedup_option_labels(opts) == opts
+    assert _dedup_option_labels(opts) == opts
 
 
 def test_dedup_disambiguates_repeated_labels_with_raw_value():
     # The KF1_KonfiTemperaturprogramm case: values 6..8 all "Default".
     opts = [(0, "Passiv"), (6, "Default"), (7, "Default"), (8, "Default")]
-    out = gc._dedup_option_labels(opts)
+    out = _dedup_option_labels(opts)
     labels = [lbl for _, lbl in out]
     assert len(labels) == len(set(labels))  # all unique now
     assert out[1] == (6, "Default")  # first occurrence kept clean
@@ -168,7 +170,7 @@ def test_dedup_disambiguates_repeated_labels_with_raw_value():
 
 def test_dedup_preserves_values_and_order():
     opts = [(3, "X"), (1, "X"), (2, "Y")]
-    out = gc._dedup_option_labels(opts)
+    out = _dedup_option_labels(opts)
     assert [v for v, _ in out] == [3, 1, 2]  # order/values intact
 
 
