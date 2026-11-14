@@ -27,7 +27,11 @@ for _p in (_SCRIPTS, _REPO_ROOT):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-import gen_catalog as gc  # noqa: E402
+from vitocatalog.constants import GFA_DIRNAME, RESOLVE_FILENAME, RESOLVE_SCHEMA  # noqa: E402
+from vitocatalog.exporter import build_resolve_index, export_all  # noqa: E402
+from vitocatalog.identify import _dump_resolve_index, f0_value  # noqa: E402
+from vitocatalog.loader import Catalog, load_catalog  # noqa: E402
+from vitocatalog.special import gfa_companion_name  # noqa: E402
 
 _FIXTURE_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
 _CATALOG_DIR = os.path.join(_REPO_ROOT, "example", "catalogs")
@@ -77,7 +81,7 @@ _IDENT_ROWS = [
 
 @pytest.fixture(scope="module")
 def catalog():
-    return gc.Catalog({}, {}, {}, {}, {}, {}, {}, _IDENT_ROWS, {})
+    return Catalog({}, {}, {}, {}, {}, {}, {}, _IDENT_ROWS, {})
 
 
 def _manifest():
@@ -154,7 +158,7 @@ def test_resolve(catalog, ident, hw, sw, f0, token, reason):
     ],
 )
 def test_f0_value_reads_the_raw_bytes_little_endian_and_text_as_decimal(value, expected):
-    assert gc.f0_value(value) == expected
+    assert f0_value(value) == expected
 
 
 def test_resolve_unknown_ident(catalog):
@@ -185,8 +189,8 @@ def test_resolve_pool_reports_how(catalog):
 
 
 def test_index_shape(catalog):
-    index = gc.build_resolve_index(catalog, _manifest())
-    assert index["schema"] == gc.RESOLVE_SCHEMA
+    index = build_resolve_index(catalog, _manifest())
+    assert index["schema"] == RESOLVE_SCHEMA
     assert sorted(index["idents"]) == ["2000", "2053", "208A", "20A3", "20CB"]
     assert index["idents"]["2000"] == {"family": ["Serial_1", "Serial_2"]}
     assert index["idents"]["20A3"] == {"family": ["Lone"]}
@@ -197,7 +201,7 @@ def test_index_shape(catalog):
 
 
 def test_index_runs_cover_every_software_index(catalog):
-    index = gc.build_resolve_index(catalog, _manifest())
+    index = build_resolve_index(catalog, _manifest())
     for entry in index["idents"].values():
         if "family" in entry:
             continue
@@ -208,7 +212,7 @@ def test_index_runs_cover_every_software_index(catalog):
 
 
 def test_index_candidates_keep_resolve_order(catalog):
-    index = gc.build_resolve_index(catalog, _manifest())
+    index = build_resolve_index(catalog, _manifest())
     top = index["idents"]["20CB"]["hw"]["01"][-1]
     assert top["sw"] == [0xC8, 0xFF]
     assert top["token"] == "Boiler_200"  # the generic (lowest F0) variant
@@ -218,11 +222,11 @@ def test_index_candidates_keep_resolve_order(catalog):
 
 
 def test_dump_is_stable_json(catalog):
-    index = gc.build_resolve_index(catalog, _manifest())
-    text = gc._dump_resolve_index(index)
+    index = build_resolve_index(catalog, _manifest())
+    text = _dump_resolve_index(index)
     assert json.loads(text) == index
     assert text.endswith("}\n") and "\r" not in text
-    assert text == gc._dump_resolve_index(gc.build_resolve_index(catalog, _manifest()))
+    assert text == _dump_resolve_index(build_resolve_index(catalog, _manifest()))
 
 
 # --- web/lookup.js against the same table -----------------------------------
@@ -264,7 +268,7 @@ _LOG_LINES = [
 
 @pytest.mark.skipif(_NODE is None, reason="node is not installed")
 def test_javascript_lookup_matches_resolve(catalog):
-    index = gc.build_resolve_index(catalog, _manifest())
+    index = build_resolve_index(catalog, _manifest())
     cases = [
         (ident, hw, sw, f0)
         for ident in (0x20CB, 0x2053, 0x208A, 0x2000, 0x20A3, 0x1234)
@@ -303,7 +307,7 @@ def test_javascript_lookup_matches_resolve(catalog):
 
 
 def _export(catalog, out_dir, **kwargs):
-    return gc.export_all(
+    return export_all(
         catalog,
         str(out_dir),
         profile="standard",
@@ -327,11 +331,11 @@ def _index_rows(out_dir):
 
 
 def test_export_all_manifest_uses_lf_and_writes_lookup(tmp_path):
-    catalog = gc.load_catalog(_FIXTURE_DIR)
+    catalog = load_catalog(_FIXTURE_DIR)
     assert _export(catalog, tmp_path) == 0
     raw, rows = _index_rows(tmp_path)
     assert "\r" not in raw
-    lookup = json.loads((tmp_path / gc.RESOLVE_FILENAME).read_text(encoding="utf-8"))
+    lookup = json.loads((tmp_path / RESOLVE_FILENAME).read_text(encoding="utf-8"))
     assert lookup["tokens"]["VTestHO1_99"] == {"file": rows["VTestHO1_99"]["file"], "status": "ok", "detail": "ok"}
 
 
@@ -342,9 +346,9 @@ def test_export_all_manifest_uses_lf_and_writes_lookup(tmp_path):
 def test_committed_catalogs_agree_with_manifest_and_lookup(lang):
     lang_dir = os.path.join(_CATALOG_DIR, lang)
     _raw, rows = _index_rows(lang_dir)
-    with open(os.path.join(_CATALOG_DIR, gc.RESOLVE_FILENAME), encoding="utf-8") as fh:
+    with open(os.path.join(_CATALOG_DIR, RESOLVE_FILENAME), encoding="utf-8") as fh:
         lookup = json.load(fh)
-    assert lookup["schema"] == gc.RESOLVE_SCHEMA
+    assert lookup["schema"] == RESOLVE_SCHEMA
 
     on_disk = {f for f in os.listdir(lang_dir) if f.endswith(".yaml")}
     listed = {r["file"] for r in rows.values() if r["status"] == "ok"}
@@ -369,9 +373,9 @@ def test_committed_catalogs_agree_with_manifest_and_lookup(lang):
         assert lookup["tokens"][token] == expected
 
     # Every chip the finder offers has its companion in this language.
-    gfa_dir = os.path.join(lang_dir, gc.GFA_DIRNAME)
+    gfa_dir = os.path.join(lang_dir, GFA_DIRNAME)
     on_disk_gfa = set(os.listdir(gfa_dir)) if os.path.isdir(gfa_dir) else set()
-    assert on_disk_gfa == {gc.gfa_companion_name(chip) for chip in lookup.get("gfa_chips", {})}
+    assert on_disk_gfa == {gfa_companion_name(chip) for chip in lookup.get("gfa_chips", {})}
 
     referenced = set()
     for entry in lookup["idents"].values():

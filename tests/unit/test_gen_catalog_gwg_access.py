@@ -22,11 +22,22 @@ for _p in (_SCRIPTS, _REPO_ROOT):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-import gen_catalog as gc  # noqa: E402
+from vitocatalog.constants import (  # noqa: E402
+    _SCHALTZEITEN_RECORD_LEN,
+    _WEEKDAYS,
+    FCREAD_TO_GWG_ACCESS,
+    FCWRITE_TO_GWG_ACCESS,
+    PROTO_GWG,
+    PROTO_KW,
+    PROTO_P300,
+)
+from vitocatalog.models import Event  # noqa: E402
+from vitocatalog.special import _schaltzeiten_entries, _schaltzeiten_lines  # noqa: E402
+from vitocatalog.transforms import _access_for, _is_reachable, _is_writable, _protocol_for_device  # noqa: E402
 
 
 def _ev(fc_read="", address=0x01, access_type=3, fc_write="Virtual_WRITE"):
-    return gc.Event(
+    return Event(
         id="t",
         name="t",
         address=address,
@@ -62,9 +73,9 @@ def _ev(fc_read="", address=0x01, access_type=3, fc_write="Virtual_WRITE"):
     ],
 )
 def test_fcread_maps_to_access_mode(fc_read, access):
-    assert gc._access_for(_ev(fc_read), gc.PROTO_GWG) == access
+    assert _access_for(_ev(fc_read), PROTO_GWG) == access
     # Case is not significant in the export.
-    assert gc._access_for(_ev(fc_read.lower()), gc.PROTO_GWG) == access
+    assert _access_for(_ev(fc_read.lower()), PROTO_GWG) == access
 
 
 def test_kmbus_ram_has_no_fcread():
@@ -74,47 +85,47 @@ def test_kmbus_ram_has_no_fcread():
     if a future export introduces a name for it, this test failing is the
     intended signal to go verify the byte rather than trust the transcription.
     """
-    assert "kmbus_ram" not in gc.FCREAD_TO_GWG_ACCESS.values()
+    assert "kmbus_ram" not in FCREAD_TO_GWG_ACCESS.values()
 
 
 def test_blank_fcread_emits_no_access_line():
     # Blank means "no access row"; the engine default is already physical, so
     # emitting nothing is both correct and less noise.
-    assert gc._access_for(_ev(""), gc.PROTO_GWG) == ""
+    assert _access_for(_ev(""), PROTO_GWG) == ""
 
 
 def test_access_never_emitted_for_non_gwg():
-    for proto in (gc.PROTO_P300, gc.PROTO_KW):
-        assert gc._access_for(_ev("Physical_READ"), proto) == ""
-        assert gc._access_for(_ev("Virtual_READ"), proto) == ""
+    for proto in (PROTO_P300, PROTO_KW):
+        assert _access_for(_ev("Physical_READ"), proto) == ""
+        assert _access_for(_ev("Virtual_READ"), proto) == ""
 
 
 # --- reachability inverts between protocols ---------------------------------
 
 
 def test_p300_reachability_unchanged():
-    assert gc._is_reachable(_ev("Virtual_READ"), gc.PROTO_P300)
-    assert gc._is_reachable(_ev(""), gc.PROTO_P300)
+    assert _is_reachable(_ev("Virtual_READ"), PROTO_P300)
+    assert _is_reachable(_ev(""), PROTO_P300)
     # The burner control is read with its own telegram (`access: gfa`).
-    assert gc._is_reachable(_ev("GFA_READ"), gc.PROTO_P300)
+    assert _is_reachable(_ev("GFA_READ"), PROTO_P300)
     # Everything else is unreachable through VS2's virtual read.
     for fc in ("Physical_READ", "EEPROM_READ", "PROZESS_READ", "Remote_Procedure_Call"):
-        assert not gc._is_reachable(_ev(fc), gc.PROTO_P300)
+        assert not _is_reachable(_ev(fc), PROTO_P300)
 
 
 def test_gwg_reachability_covers_every_access_mode():
     # The exact inversion: Physical_READ is unreachable on P300 and reachable
     # on GWG, where it is in fact the default mode.
-    for fc in gc.FCREAD_TO_GWG_ACCESS:
-        assert gc._is_reachable(_ev(fc), gc.PROTO_GWG)
-    assert gc._is_reachable(_ev(""), gc.PROTO_GWG)
+    for fc in FCREAD_TO_GWG_ACCESS:
+        assert _is_reachable(_ev(fc), PROTO_GWG)
+    assert _is_reachable(_ev(""), PROTO_GWG)
 
 
 def test_gwg_still_drops_non_access_mode_reads():
     # KBUS_VIRTUAL_READ is a genuine K-bus tunnel -- no GWG access mode reaches
     # it (0.8% of GWG events in the real export).
     for fc in ("KBUS_VIRTUAL_READ", "Remote_Procedure_Call", "GFA_READ", "Virtual_MBUS"):
-        assert not gc._is_reachable(_ev(fc), gc.PROTO_GWG)
+        assert not _is_reachable(_ev(fc), PROTO_GWG)
 
 
 # --- writes -----------------------------------------------------------------
@@ -130,7 +141,7 @@ def test_gwg_still_drops_non_access_mode_reads():
     ],
 )
 def test_gwg_writable_when_mode_pairs(fc_read, fc_write):
-    assert gc._is_writable(_ev(fc_read, fc_write=fc_write), gc.PROTO_GWG)
+    assert _is_writable(_ev(fc_read, fc_write=fc_write), PROTO_GWG)
 
 
 def test_gwg_write_requires_matching_read_mode():
@@ -138,33 +149,33 @@ def test_gwg_write_requires_matching_read_mode():
     # and write modes disagreed could not be expressed. Vitosoft never pairs
     # them across modes; this guards a future export that broke the rule.
     ev = _ev("EEPROM_READ", fc_write="BE_WRITE")
-    assert not gc._is_writable(ev, gc.PROTO_GWG)
+    assert not _is_writable(ev, PROTO_GWG)
 
 
 def test_gwg_write_requires_a_write_type_byte():
     # KMBUS has no write TYPE byte in the wiki table, and no FCWrite name maps
     # to it -- so a KMBUS datapoint is read-only however Vitosoft marks it.
-    assert not gc._is_writable(_ev("KMBUS_EEPROM_READ", fc_write="KMBUS_EEPROM_WRITE"), gc.PROTO_GWG)
-    assert "kmbus_eeprom" not in gc.FCWRITE_TO_GWG_ACCESS.values()
-    assert "kmbus_ram" not in gc.FCWRITE_TO_GWG_ACCESS.values()
+    assert not _is_writable(_ev("KMBUS_EEPROM_READ", fc_write="KMBUS_EEPROM_WRITE"), PROTO_GWG)
+    assert "kmbus_eeprom" not in FCWRITE_TO_GWG_ACCESS.values()
+    assert "kmbus_ram" not in FCWRITE_TO_GWG_ACCESS.values()
 
 
 def test_gwg_unwritable_fcwrite_values():
     for fc in ("undefined", "", "KBUS_VIRTUAL_WRITE", "Remote_Procedure_Call"):
-        assert not gc._is_writable(_ev("EEPROM_READ", fc_write=fc), gc.PROTO_GWG)
+        assert not _is_writable(_ev("EEPROM_READ", fc_write=fc), PROTO_GWG)
 
 
 def test_gwg_respects_vitosoft_access_type():
     for at in (0, 1):
-        assert not gc._is_writable(_ev("EEPROM_READ", access_type=at, fc_write="EEPROM_WRITE"), gc.PROTO_GWG)
+        assert not _is_writable(_ev("EEPROM_READ", access_type=at, fc_write="EEPROM_WRITE"), PROTO_GWG)
 
 
 def test_p300_write_rule_unchanged_by_gwg_table():
     ev = _ev("Virtual_READ", access_type=3, fc_write="Virtual_WRITE")
-    assert gc._is_writable(ev, gc.PROTO_P300)
+    assert _is_writable(ev, PROTO_P300)
     # An EEPROM pairing is writable on GWG but must stay unwritable on P300.
     eeprom = _ev("EEPROM_READ", access_type=3, fc_write="EEPROM_WRITE")
-    assert not gc._is_writable(eeprom, gc.PROTO_P300)
+    assert not _is_writable(eeprom, PROTO_P300)
 
 
 # --- protocol detection -----------------------------------------------------
@@ -173,26 +184,26 @@ def test_p300_write_rule_unchanged_by_gwg_table():
 @pytest.mark.parametrize(
     "token,expected",
     [
-        ("GWG_VBES_00", gc.PROTO_GWG),
-        ("GWG_BT2", gc.PROTO_GWG),
-        ("HV_GWG", gc.PROTO_GWG),
-        ("VScotHO1_72", gc.PROTO_P300),
-        ("VTestHO1_99", gc.PROTO_P300),
+        ("GWG_VBES_00", PROTO_GWG),
+        ("GWG_BT2", PROTO_GWG),
+        ("HV_GWG", PROTO_GWG),
+        ("VScotHO1_72", PROTO_P300),
+        ("VTestHO1_99", PROTO_P300),
     ],
 )
 def test_protocol_inferred_from_device_token(token, expected):
-    assert gc._protocol_for_device(token) == expected
+    assert _protocol_for_device(token) == expected
 
 
 def test_explicit_protocol_overrides_token():
-    assert gc._protocol_for_device("VScotHO1_72", gc.PROTO_GWG) == gc.PROTO_GWG
-    assert gc._protocol_for_device("GWG_VBES_00", gc.PROTO_P300) == gc.PROTO_P300
+    assert _protocol_for_device("VScotHO1_72", PROTO_GWG) == PROTO_GWG
+    assert _protocol_for_device("GWG_VBES_00", PROTO_P300) == PROTO_P300
 
 
 def test_substring_alone_does_not_trigger_gwg():
     # Matching on underscore-delimited parts, not a bare substring, so a token
     # that merely contains the letters is not misclassified.
-    assert gc._protocol_for_device("VGWGXX_01") == gc.PROTO_P300
+    assert _protocol_for_device("VGWGXX_01") == PROTO_P300
 
 
 # --- the fan-out paths ------------------------------------------------------
@@ -208,7 +219,7 @@ def test_substring_alone_does_not_trigger_gwg():
 
 
 def _schaltzeiten_ev(addr, fc_read="EEPROM_READ"):
-    return gc.Event(
+    return Event(
         id="sz",
         name="Schaltzeiten_A1M1_HK",
         address=addr,
@@ -232,8 +243,8 @@ def test_schaltzeiten_lines_carry_the_gwg_access_mode():
     # weekday fan-out must emit `access:` like any other entity. Without it the
     # engine reads (and writes) these on its PHYSICAL default.
     ev = _schaltzeiten_ev(0x20)
-    entry = gc._schaltzeiten_entries(ev)[0]
-    body = "\n".join(gc._schaltzeiten_lines(entry, "sz_mo", gc._access_for(ev, gc.PROTO_GWG)))
+    entry = _schaltzeiten_entries(ev)[0]
+    body = "\n".join(_schaltzeiten_lines(entry, "sz_mo", _access_for(ev, PROTO_GWG)))
     assert "access: eeprom" in body
 
 
@@ -241,8 +252,8 @@ def test_schaltzeiten_lines_omit_access_on_p300():
     # P300 has no access modes; emitting the key there would be rejected by the
     # hub's _final_validate.
     ev = _schaltzeiten_ev(0x2000)
-    entry = gc._schaltzeiten_entries(ev)[0]
-    body = "\n".join(gc._schaltzeiten_lines(entry, "sz_mo", gc._access_for(ev, gc.PROTO_P300)))
+    entry = _schaltzeiten_entries(ev)[0]
+    body = "\n".join(_schaltzeiten_lines(entry, "sz_mo", _access_for(ev, PROTO_P300)))
     assert "access:" not in body
 
 
@@ -250,8 +261,8 @@ def test_schaltzeiten_lines_default_has_no_access():
     # Back-compat: the 2-argument call used everywhere before GWG modes existed
     # must still produce the identical P300 entity.
     ev = _schaltzeiten_ev(0x2000)
-    entry = gc._schaltzeiten_entries(ev)[3]
-    assert gc._schaltzeiten_lines(entry, "sz_do") == gc._schaltzeiten_lines(entry, "sz_do", "")
+    entry = _schaltzeiten_entries(ev)[3]
+    assert _schaltzeiten_lines(entry, "sz_do") == _schaltzeiten_lines(entry, "sz_do", "")
 
 
 @pytest.mark.parametrize(
@@ -265,5 +276,5 @@ def test_schaltzeiten_lines_default_has_no_access():
 )
 def test_schaltzeiten_block_fits_the_8bit_space(base, fits):
     # The base can pass an address guard while the seventh weekday does not.
-    last = base + (len(gc._WEEKDAYS) - 1) * gc._SCHALTZEITEN_RECORD_LEN
+    last = base + (len(_WEEKDAYS) - 1) * _SCHALTZEITEN_RECORD_LEN
     assert (last <= 0xFF) is fits

@@ -22,7 +22,10 @@ for _p in (_SCRIPTS, _REPO_ROOT):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-import gen_catalog as gc  # noqa: E402
+from vitocatalog.constants import PROTO_GWG  # noqa: E402
+from vitocatalog.emitter import emit_entity  # noqa: E402
+from vitocatalog.loader import _load_access  # noqa: E402
+from vitocatalog.models import Event  # noqa: E402
 
 
 def _ev(**over):
@@ -48,7 +51,7 @@ def _ev(**over):
         "parameter_type": "Int",
     }
     kw.update(over)
-    return gc.Event(**kw)
+    return Event(**kw)
 
 
 def _signed_lines(lines):
@@ -56,7 +59,7 @@ def _signed_lines(lines):
 
 
 def test_unsigned_div2_temperature_gets_signed_false():
-    platform, lines = gc.emit_entity(_ev(), "full", gc.PROTO_GWG)
+    platform, lines = emit_entity(_ev(), "full", PROTO_GWG)
     assert platform == "sensor"
     assert "  converter: div2" in lines
     signed = _signed_lines(lines)
@@ -83,14 +86,14 @@ def test_unsigned_div2_temperature_gets_signed_false():
     ],
 )
 def test_default_kept(over):
-    _, lines = gc.emit_entity(_ev(**over), "full", gc.PROTO_GWG)
+    _, lines = emit_entity(_ev(**over), "full", PROTO_GWG)
     assert not any(s.startswith("signed: false") for s in _signed_lines(lines))
 
 
 def test_negative_border_still_emits_signed_true_on_an_unsigned_converter():
     # Div100 is unsigned by default; a negative border still makes it signed.
     ev = _ev(conversion="Div100", byte_length=2, block_length=2, lower="-30", upper="50")
-    _, lines = gc.emit_entity(ev, "full", gc.PROTO_GWG)
+    _, lines = emit_entity(ev, "full", PROTO_GWG)
     assert _signed_lines(lines) == ["signed: true"]
 
 
@@ -110,7 +113,7 @@ def test_writable_unsigned_div2_gets_its_real_bounds():
         upper="90",
         stepping="0.5",
     )
-    platform, lines = gc.emit_entity(ev, "full", gc.PROTO_GWG)
+    platform, lines = emit_entity(ev, "full", PROTO_GWG)
     assert platform == "number"
     assert any(s.startswith("signed: false") for s in _signed_lines(lines))
     assert "  min_value: 10" in lines and "  max_value: 90" in lines and "  step: 0.5" in lines
@@ -123,5 +126,5 @@ def test_loader_reads_parameter_type(tmp_path):
         "<Parameter>Int</Parameter></EventType></root>",
         encoding="utf-8",
     )
-    acc = gc._load_access(str(xml))
+    acc = _load_access(str(xml))
     assert acc["GWG_Kesseltemperatur~0x0070"]["parameter_type"] == "Int"

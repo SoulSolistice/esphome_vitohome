@@ -14,7 +14,7 @@ for _p in (_REPO_ROOT, os.path.join(_REPO_ROOT, "scripts")):
 
 import esphome.config_validation as cv  # noqa: E402
 from esphome.core import CORE  # noqa: E402
-from gen_catalog import _device_class_for, _unit_for  # noqa: E402
+from vitocatalog.transforms import _device_class_for, _unit_for  # noqa: E402
 
 from components.vitohome.binary_sensor import CONFIG_SCHEMA as BS_SCHEMA  # noqa: E402
 from components.vitohome.event import CONFIG_SCHEMA as EVENT_SCHEMA  # noqa: E402

@@ -24,8 +24,12 @@ for _p in (_SCRIPTS, _REPO_ROOT):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-import gen_catalog as gc  # noqa: E402
+from vitocatalog.emitter import emit_entity  # noqa: E402
+from vitocatalog.loader import Catalog  # noqa: E402
+from vitocatalog.models import Event  # noqa: E402
+from vitocatalog.renderer import generate  # noqa: E402
 from vitocatalog.special import _schaltzeiten_lines  # noqa: E402
+from vitocatalog.transforms import _is_destructive_action  # noqa: E402
 
 
 def _event(**overrides):
@@ -59,7 +63,7 @@ def _event(**overrides):
 
 
 def _emit(**overrides):
-    platform, lines = gc.emit_entity(_event(**overrides), "full")
+    platform, lines = emit_entity(_event(**overrides), "full")
     return platform, lines
 
 
@@ -120,7 +124,7 @@ def test_switching_times_are_config():
     ],
 )
 def test_resets_and_deletions_are_destructive(tech, name):
-    assert gc._is_destructive_action(SimpleNamespace(tech=tech, name=name))
+    assert _is_destructive_action(SimpleNamespace(tech=tech, name=name))
 
 
 @pytest.mark.parametrize(
@@ -135,7 +139,7 @@ def test_resets_and_deletions_are_destructive(tech, name):
     ],
 )
 def test_other_actions_are_not_destructive(tech, name):
-    assert not gc._is_destructive_action(SimpleNamespace(tech=tech, name=name))
+    assert not _is_destructive_action(SimpleNamespace(tech=tech, name=name))
 
 
 def _rpc_catalog(rows):
@@ -154,11 +158,11 @@ def _rpc_catalog(rows):
             "prefix_write": prefix,
             "parameter_type": "Array" if prefix else "Byte",
         }
-    return gc.Catalog({"VRpcTest_01": "dp1"}, {"dp1": "VRpcTest"}, {"dp1": list(rows)}, raw_events, {}, {}, access, [], {})
+    return Catalog({"VRpcTest_01": "dp1"}, {"dp1": "VRpcTest"}, {"dp1": list(rows)}, raw_events, {}, {}, access, [], {})
 
 
 def _generate(rows):
-    return gc.generate(_rpc_catalog(rows), "VRpcTest_01", "full", None, None, emit_device_id=False, emit_error_history=False)
+    return generate(_rpc_catalog(rows), "VRpcTest_01", "full", None, None, emit_device_id=False, emit_error_history=False)
 
 
 def test_a_destructive_action_is_commented_out_and_not_counted():
@@ -204,7 +208,7 @@ def test_a_section_of_destructive_actions_only_is_a_comment():
 
 
 def _gwg_catalog():
-    sensor = gc.Event(
+    sensor = Event(
         id="1",
         name="Kesseltemperatur",
         address=0x0A,
@@ -219,7 +223,7 @@ def _gwg_catalog():
         token="Kesseltemperatur~0x0A",
         fc_read="Virtual_READ",
     )
-    history = gc.Event(
+    history = Event(
         id="2",
         name="ecnsysEventType~Error",
         address=0x7507,
@@ -234,7 +238,7 @@ def _gwg_catalog():
         token="ecnsysEventType~Error",
         fc_read="Virtual_READ",
     )
-    cat = gc.Catalog(
+    cat = Catalog(
         types={"TestDev": "dp1"},
         dp_name={"dp1": "Test Device"},
         links={"dp1": ["1", "2"]},
@@ -252,7 +256,7 @@ def _gwg_catalog():
 
 
 def test_gwg_header_names_the_dropped_archive_only():
-    out = gc.generate(_gwg_catalog(), "TestDev", "full", None, None, protocol="GWG")
+    out = generate(_gwg_catalog(), "TestDev", "full", None, None, protocol="GWG")
     assert "address: 0x000A" in out
     assert "The generic system fault archive (0x7507..0x7558) is NOT emitted" in out
     assert "NO Optolink-reachable" not in out

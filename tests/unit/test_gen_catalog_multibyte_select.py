@@ -30,7 +30,9 @@ for _p in (_SCRIPTS, _REPO_ROOT):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-import gen_catalog as gc  # noqa: E402
+from vitocatalog.constants import COMMAND_STATE_ADDR, MAX_P300_READ_LENGTH  # noqa: E402
+from vitocatalog.emitter import emit_entity  # noqa: E402
+from vitocatalog.special import _error_history_entries, _error_history_lines  # noqa: E402
 
 
 def _enum_value(raw, label):
@@ -90,7 +92,7 @@ def test_two_byte_writable_enum_emits_select():
         byte_length=2,
         values=[_enum_value(0x0000, "Stufe 1"), _enum_value(0x0100, "Stufe 2")],
     )
-    platform, lines = gc.emit_entity(ev, "full")
+    platform, lines = emit_entity(ev, "full")
     body = "\n".join(lines)
     assert platform == "select"
     assert "  length: 2" in body
@@ -107,7 +109,7 @@ def test_two_byte_boolean_enum_emits_switch():
         byte_length=2,
         values=[_enum_value(0x0000, "AUS"), _enum_value(0x0100, "EIN")],
     )
-    platform, lines = gc.emit_entity(ev, "full")
+    platform, lines = emit_entity(ev, "full")
     body = "\n".join(lines)
     assert platform == "switch"
     assert "  length: 2" in body
@@ -120,7 +122,7 @@ def test_one_byte_writable_enum_unchanged_format():
         byte_length=1,
         values=[_enum_value(0x00, "Standby"), _enum_value(0x02, "Heizen")],
     )
-    platform, lines = gc.emit_entity(ev, "full")
+    platform, lines = emit_entity(ev, "full")
     body = "\n".join(lines)
     assert platform == "select"
     assert "  length: 1" in body
@@ -140,7 +142,7 @@ def test_two_byte_value_overflow_falls_through_to_number():
         upper="100",
         stepping="1",
     )
-    platform, _lines = gc.emit_entity(ev, "full")
+    platform, _lines = emit_entity(ev, "full")
     assert platform == "number"
 
 
@@ -151,7 +153,7 @@ def test_two_byte_value_overflow_without_borders_is_read_only():
         byte_length=2,
         values=[_enum_value(0x10000, "TooBig")],
     )
-    platform, _lines = gc.emit_entity(ev, "full")
+    platform, _lines = emit_entity(ev, "full")
     assert platform == "text_sensor"
 
 
@@ -163,7 +165,7 @@ def test_ecnsys_90_byte_block_expands_to_ten_system_slots():
     ev = _event(byte_length=90, values=[])
     ev.address = 0x7507
     ev.tech = ev.token = ev.name = "ecnsysEventType~Error"
-    entries = gc._error_history_entries(ev)
+    entries = _error_history_entries(ev)
     assert len(entries) == 10
     assert entries[0]["address"] == 0x7507 and entries[0]["name"] == "Letzter Fehler"
     assert entries[0]["disabled"] is False and entries[0]["system"] is True
@@ -178,11 +180,11 @@ def test_fehlerhis_fa_slots_are_gfa_without_codes():
     ev = _event(byte_length=9, values=[])
     ev.address = 0x7590
     ev.tech = ev.token = ev.name = "FehlerHisFA01"
-    entries = gc._error_history_entries(ev)
+    entries = _error_history_entries(ev)
     assert len(entries) == 1
     e = entries[0]
     assert e["name"] == "GFA Fehler 01" and e["disabled"] is True and e["system"] is False
-    lines = "\n".join(gc._error_history_lines(e, "gfa_fehler_01", {0x38: "Kesselsensor"}, "vd300"))
+    lines = "\n".join(_error_history_lines(e, "gfa_fehler_01", {0x38: "Kesselsensor"}, "vd300"))
     assert "codes:" not in lines
     assert "disabled_by_default: true" in lines
 
@@ -193,7 +195,7 @@ def test_single_system_slot_stays_letzter_fehler():
     ev = _event(byte_length=9, values=[])
     ev.address = 0x7507
     ev.tech = ev.token = ev.name = "Error_Time"
-    entries = gc._error_history_entries(ev)
+    entries = _error_history_entries(ev)
     assert len(entries) == 1
     assert entries[0]["name"] == "Letzter Fehler" and entries[0]["system"] is True
 
@@ -222,7 +224,7 @@ def test_interior_writable_enum_is_a_block_mode_select():
         byte_position=1,
         values=[_enum_value(0x00, "Aus"), _enum_value(0x02, "Heizen")],
     )
-    platform, lines = gc.emit_entity(ev, "full")
+    platform, lines = emit_entity(ev, "full")
     body = "\n".join(lines)
     assert platform == "select"
     assert "address: 0x7660" in body  # the block base
@@ -241,7 +243,7 @@ def test_interior_writable_enum_with_a_read_only_sibling_is_demoted():
         byte_position=1,
         values=[_enum_value(0x00, "Aus"), _enum_value(0x02, "Heizen")],
     )
-    platform, lines = gc.emit_entity(ev, "full", ro_blocks=frozenset({(0x7660, "")}))
+    platform, lines = emit_entity(ev, "full", ro_blocks=frozenset({(0x7660, "")}))
     body = "\n".join(lines)
     assert platform == "text_sensor"
     assert "0x7661" not in body
@@ -256,7 +258,7 @@ def test_interior_boolean_pair_is_a_block_mode_switch():
         byte_position=2,
         values=[_enum_value(0x00, "AUS"), _enum_value(0x01, "EIN")],
     )
-    platform, lines = gc.emit_entity(ev, "full")
+    platform, lines = emit_entity(ev, "full")
     body = "\n".join(lines)
     assert platform == "switch"
     assert "address: 0x7660" in body
@@ -274,7 +276,7 @@ def test_interior_multibyte_enum_field_emits_byte_length():
         byte_position=4,
         values=[_enum_value(0x0000, "Stufe 1"), _enum_value(0x0100, "Stufe 2")],
     )
-    platform, lines = gc.emit_entity(ev, "full")
+    platform, lines = emit_entity(ev, "full")
     body = "\n".join(lines)
     assert platform == "select"  # block mode
     assert "address: 0x7660" in body
@@ -290,7 +292,7 @@ def test_command_state_mapping_at_offset_zero_keeps_the_split():
     # COMMAND_STATE_ADDR gives a real, declared state address for a writable
     # command register. That split is legitimate and survives -- but only at
     # BytePosition 0. (No datapoint in the export combines the two; verified.)
-    addr = next(iter(gc.COMMAND_STATE_ADDR))
+    addr = next(iter(COMMAND_STATE_ADDR))
     ev = _event(
         address=addr,
         block_length=1,
@@ -298,16 +300,16 @@ def test_command_state_mapping_at_offset_zero_keeps_the_split():
         byte_position=0,
         values=[_enum_value(0x00, "Aus"), _enum_value(0x02, "Heizen")],
     )
-    platform, lines = gc.emit_entity(ev, "full")
+    platform, lines = emit_entity(ev, "full")
     body = "\n".join(lines)
     assert platform == "select"
     assert f"address: 0x{addr:04X}" in body
-    assert f"state_address: 0x{gc.COMMAND_STATE_ADDR[addr]:04X}" in body
+    assert f"state_address: 0x{COMMAND_STATE_ADDR[addr]:04X}" in body
     assert "P300 may NAK" not in body
 
 
 def test_command_state_mapping_at_nonzero_offset_is_still_demoted():
-    addr = next(iter(gc.COMMAND_STATE_ADDR))
+    addr = next(iter(COMMAND_STATE_ADDR))
     ev = _event(
         address=addr,
         block_length=2,
@@ -315,7 +317,7 @@ def test_command_state_mapping_at_nonzero_offset_is_still_demoted():
         byte_position=1,
         values=[_enum_value(0x00, "Aus"), _enum_value(0x02, "Heizen")],
     )
-    platform, lines = gc.emit_entity(ev, "full")
+    platform, lines = emit_entity(ev, "full")
     body = "\n".join(lines)
     assert platform == "text_sensor"
     assert f"address: 0x{addr:04X}" in body
@@ -337,7 +339,7 @@ def test_interior_writable_number_is_a_block_mode_number():
         upper="100",
         stepping="1",
     )
-    platform, lines = gc.emit_entity(ev, "full")
+    platform, lines = emit_entity(ev, "full")
     body = "\n".join(lines)
     assert platform == "number"
     assert "address: 0x7951" in body
@@ -360,7 +362,7 @@ def test_interior_multibyte_number_field_emits_byte_length():
         upper="100",
         stepping="1",
     )
-    platform, lines = gc.emit_entity(ev, "full")
+    platform, lines = emit_entity(ev, "full")
     body = "\n".join(lines)
     assert platform == "number"  # block mode
     assert "address: 0x1189" in body
@@ -373,13 +375,13 @@ def test_interior_multibyte_number_field_emits_byte_length():
 def test_interior_field_in_oversize_block_is_a_comment_not_an_invented_address():
     ev = _event(
         address=0x7660,
-        block_length=gc.MAX_P300_READ_LENGTH + 5,
+        block_length=MAX_P300_READ_LENGTH + 5,
         byte_length=1,
         byte_position=40,
         values=[],
         enum_type=False,
     )
-    platform, lines = gc.emit_entity(ev, "full")
+    platform, lines = emit_entity(ev, "full")
     body = "\n".join(lines)
     assert platform == "comment"
     assert "cannot be expressed as an aligned block read" in body
@@ -398,7 +400,7 @@ def test_interior_readonly_enum_emits_block_extraction():
         byte_position=1,
         values=[_enum_value(0x00, "Aus"), _enum_value(0x02, "Heizen")],
     )
-    platform, lines = gc.emit_entity(ev, "full")
+    platform, lines = emit_entity(ev, "full")
     body = "\n".join(lines)
     assert platform == "text_sensor"
     assert "type: enum" in body
@@ -414,12 +416,12 @@ def test_interior_readonly_enum_in_oversize_block_is_a_comment():
     ev = _event(
         address=0x7660,
         access_type=1,
-        block_length=gc.MAX_P300_READ_LENGTH + 5,
+        block_length=MAX_P300_READ_LENGTH + 5,
         byte_length=1,
         byte_position=40,
         values=[_enum_value(0x00, "Aus"), _enum_value(0x02, "Heizen")],
     )
-    platform, lines = gc.emit_entity(ev, "full")
+    platform, lines = emit_entity(ev, "full")
     body = "\n".join(lines)
     assert platform == "comment"
     assert "cannot be expressed as an aligned block read" in body

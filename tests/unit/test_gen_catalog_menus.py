@@ -21,14 +21,16 @@ for _p in (_SCRIPTS, _REPO_ROOT):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-import gen_catalog as gc  # noqa: E402
+from vitocatalog.loader import load_catalog  # noqa: E402
+from vitocatalog.models import Event  # noqa: E402
+from vitocatalog.transforms import _is_lon_input, _profile_keep  # noqa: E402
 
 _FIXTURE_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
 
 
 @pytest.fixture
 def catalog():
-    cat = gc.load_catalog(_FIXTURE_DIR)
+    cat = load_catalog(_FIXTURE_DIR)
     # VOther_01 (dp 102) has no direct datapoint; give it a menu that carries
     # VTestHO1_99's event 6 (0x6300) and event 1 twice over two groups.
     cat._groups["9100"] = {"path": "VOther_01~10_Bedienung", "dp": "102", "order": 1}
@@ -86,7 +88,7 @@ def test_another_devices_menu_does_not_leak(catalog):
 
 
 def _lon(token):
-    return gc.Event(
+    return Event(
         id="l",
         name=token,
         address=0xA300,
@@ -114,12 +116,12 @@ def _lon(token):
     ],
 )
 def test_lon_input_detection(token, is_input):
-    assert gc._is_lon_input(_lon(token)) is is_input
+    assert _is_lon_input(_lon(token)) is is_input
 
 
 def test_lon_inputs_only_in_full():
     ev = _lon("nviBoilerCmd_BLR_value")
-    assert gc._profile_keep(ev, "full")
-    assert not gc._profile_keep(ev, "standard")
-    assert not gc._profile_keep(ev, "minimal")
-    assert gc._profile_keep(_lon("nvoAlarm_Fehlercode"), "standard")
+    assert _profile_keep(ev, "full")
+    assert not _profile_keep(ev, "standard")
+    assert not _profile_keep(ev, "minimal")
+    assert _profile_keep(_lon("nvoAlarm_Fehlercode"), "standard")

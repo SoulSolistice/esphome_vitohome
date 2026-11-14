@@ -22,8 +22,11 @@ for _p in (_SCRIPTS, _REPO_ROOT):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-import gen_catalog as gc  # noqa: E402
-from vitocatalog.emitter import _accuracy_decimals  # noqa: E402
+from vitocatalog.constants import COUNTER, PLAIN, PROTO_GWG, PROTO_P300  # noqa: E402
+from vitocatalog.emitter import _accuracy_decimals, emit_entity  # noqa: E402
+from vitocatalog.loader import Catalog  # noqa: E402
+from vitocatalog.models import Event  # noqa: E402
+from vitocatalog.renderer import generate  # noqa: E402
 
 
 def _ev(**over):
@@ -49,11 +52,11 @@ def _ev(**over):
         "parameter_type": "Int",
     }
     kw.update(over)
-    return gc.Event(**kw)
+    return Event(**kw)
 
 
 def _catalog(events):
-    cat = gc.Catalog(
+    cat = Catalog(
         types={"GWG_TEST": "dp1"},
         dp_name={"dp1": "GWG Test"},
         links={"dp1": [e.id for e in events]},
@@ -94,7 +97,7 @@ def test_converted_timer_wins_over_its_rohwert_twin():
         stepping="0.1",
         unit="min",
     )
-    out = gc.generate(_catalog([raw, minutes]), "GWG_TEST", "full", None, None, emit_device_id=False)
+    out = generate(_catalog([raw, minutes]), "GWG_TEST", "full", None, None, emit_device_id=False)
     block = _entity_block(out, 0x0039)
     assert '"Timer 13 min"' in block
     assert "Rohwert" not in block
@@ -104,7 +107,7 @@ def test_converted_timer_wins_over_its_rohwert_twin():
 def test_order_is_unchanged_without_a_rohwert_row():
     a = _ev(id="1", name="First", tech="GWG_A", token="GWG_A~0x0039")
     b = _ev(id="2", name="Second", tech="GWG_B", token="GWG_B~0x0039")
-    out = gc.generate(_catalog([a, b]), "GWG_TEST", "full", None, None, emit_device_id=False)
+    out = generate(_catalog([a, b]), "GWG_TEST", "full", None, None, emit_device_id=False)
     assert '"First"' in _entity_block(out, 0x0039)
 
 
@@ -125,7 +128,7 @@ def _loaded(conversion: str):
             "BytePosition": "0",
         }
     }
-    cat = gc.Catalog({"GWG_TEST": "dp1"}, {"dp1": "GWG Test"}, {"dp1": ["1"]}, raw_events, {}, {}, {}, [], {})
+    cat = Catalog({"GWG_TEST": "dp1"}, {"dp1": "GWG Test"}, {"dp1": ["1"]}, raw_events, {}, {}, {}, [], {})
     return cat.events_for("GWG_TEST")[0]
 
 
@@ -163,21 +166,21 @@ def test_the_placeholder_is_still_dropped_on_other_conversions():
     ],
 )
 def test_accuracy_decimals(conv, filters, expected):
-    assert _accuracy_decimals(conv, filters, gc.PLAIN) == expected
+    assert _accuracy_decimals(conv, filters, PLAIN) == expected
 
 
 def test_counter_keeps_one_decimal():
-    assert _accuracy_decimals("sec2hour", [], gc.COUNTER) == 1
+    assert _accuracy_decimals("sec2hour", [], COUNTER) == 1
 
 
 def test_div2_sensor_emits_accuracy_decimals():
     ev = _ev(conversion="Div2", block_length=1, byte_length=1, upper="127.5", stepping="0.5", unit="°C")
-    _platform, lines = gc.emit_entity(ev, "full", gc.PROTO_GWG)
+    _platform, lines = emit_entity(ev, "full", PROTO_GWG)
     assert "accuracy_decimals: 1" in "\n".join(lines)
 
 
 def test_raw_sensor_has_no_accuracy_decimals_line():
-    _platform, lines = gc.emit_entity(_ev(), "full", gc.PROTO_GWG)
+    _platform, lines = emit_entity(_ev(), "full", PROTO_GWG)
     assert "accuracy_decimals" not in "\n".join(lines)
 
 
@@ -202,7 +205,7 @@ def _hbf(**over):
 
 
 def test_unsigned_high_byte_first_word_is_rotatebytes_read_only():
-    platform, lines = gc.emit_entity(_hbf(), "full", gc.PROTO_P300)
+    platform, lines = emit_entity(_hbf(), "full", PROTO_P300)
     text = "\n".join(lines)
     assert platform == "sensor"
     assert "converter: rotatebytes" in text
@@ -220,12 +223,12 @@ def test_unsigned_high_byte_first_word_is_rotatebytes_read_only():
     ],
 )
 def test_other_high_byte_first_rows_are_a_hint(over):
-    platform, lines = gc.emit_entity(_hbf(**over), "full", gc.PROTO_P300)
+    platform, lines = emit_entity(_hbf(**over), "full", PROTO_P300)
     assert platform == "comment"
     assert "big-endian" in "\n".join(lines)
 
 
 def test_one_byte_high_byte_first_is_untouched():
-    platform, lines = gc.emit_entity(_hbf(block_length=1, byte_length=1, access_type=1, fc_write=""), "full", gc.PROTO_P300)
+    platform, lines = emit_entity(_hbf(block_length=1, byte_length=1, access_type=1, fc_write=""), "full", PROTO_P300)
     assert platform == "sensor"
     assert "converter: noconv" in "\n".join(lines)

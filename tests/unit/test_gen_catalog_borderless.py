@@ -20,7 +20,10 @@ for _p in (_SCRIPTS, _REPO_ROOT):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-import gen_catalog as gc  # noqa: E402
+from vitocatalog.constants import NO_BORDERS_CAUTION  # noqa: E402
+from vitocatalog.emitter import emit_entity  # noqa: E402
+from vitocatalog.loader import load_catalog  # noqa: E402
+from vitocatalog.renderer import generate  # noqa: E402
 
 
 def _event(**overrides):
@@ -55,7 +58,7 @@ def _event(**overrides):
 
 
 def _emit(**overrides):
-    platform, lines = gc.emit_entity(_event(**overrides), "full")
+    platform, lines = emit_entity(_event(**overrides), "full")
     return platform, "\n".join(lines)
 
 
@@ -113,10 +116,10 @@ def test_interior_field_without_borders_reads_the_block():
 def test_the_catalog_header_counts_them():
     # The mini export has exactly one writable datapoint without borders
     # (event 7); the header names the count and each entry carries the CAUTION.
-    catalog = gc.load_catalog(os.path.join(os.path.dirname(__file__), "fixtures"))
-    out = gc.generate(catalog, "VTestHO1_99", "full", None, None)
+    catalog = load_catalog(os.path.join(os.path.dirname(__file__), "fixtures"))
+    out = generate(catalog, "VTestHO1_99", "full", None, None)
     assert "# WRITABLE WITHOUT A RANGE: 1 datapoint(s)" in out
-    assert out.count(gc.NO_BORDERS_CAUTION[0]) == 1
+    assert out.count(NO_BORDERS_CAUTION[0]) == 1
     assert "max_value: 0\n" not in out
 
 
