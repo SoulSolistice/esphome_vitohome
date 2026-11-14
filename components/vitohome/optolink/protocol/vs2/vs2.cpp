@@ -9,14 +9,16 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 #include "vs2.h"
 
+#include <utility>
+
 #include <cstring>
 
 namespace esphome::vitohome::optolink {
 
 VS2Engine::~VS2Engine() { delete _interface; }
 
-void VS2Engine::onResponse(OnResponseCallback callback) { _onResponseCallback = callback; }
-void VS2Engine::onError(OnErrorCallback callback) { _onErrorCallback = callback; }
+void VS2Engine::onResponse(OnResponseCallback callback) { _onResponseCallback = std::move(callback); }
+void VS2Engine::onError(OnErrorCallback callback) { _onErrorCallback = std::move(callback); }
 
 bool VS2Engine::read(uint16_t address, uint8_t length) {
   return request(static_cast<uint8_t>(FunctionCode::READ), address, length);

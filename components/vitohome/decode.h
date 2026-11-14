@@ -565,19 +565,20 @@ inline int decode_schaltzeiten_day(const uint8_t *data, std::size_t data_len, ch
   // Trailing disabled pairs are trimmed, so find the last active ON byte.
   int last_active = -1;
   for (int p = 0; p < 4; p++) {
-    if (timebyte_active(data[2 * p]))
+    if (timebyte_active(data[2 * static_cast<std::size_t>(p)]))
       last_active = p;
   }
   std::size_t off = 0;
   for (int p = 0; p <= last_active; p++) {
     if (off != 0 && off < out_cap - 1)
       out[off++] = ' ';
-    const uint8_t on = data[2 * p];
+    const std::size_t i = 2 * static_cast<std::size_t>(p);
+    const uint8_t on = data[i];
     int w;
     if (!timebyte_active(on)) {
       w = std::snprintf(out + off, out_cap - off, "--");
     } else {
-      const uint8_t offb = data[2 * p + 1];
+      const uint8_t offb = data[i + 1];
       if (malformed != nullptr && (!timebyte_valid(on, false) || !timebyte_valid(offb, true)))
         *malformed = true;
       char on_s[6], off_s[6];
@@ -691,8 +692,9 @@ inline bool encode_schaltzeiten_day(const char *str, uint8_t *buf8, bool *rounde
         if (offb < onb)
           return false;
 
-        tmp[2 * pair] = onb;
-        tmp[2 * pair + 1] = offb;
+        const std::size_t i = 2 * static_cast<std::size_t>(pair);
+        tmp[i] = onb;
+        tmp[i + 1] = offb;
       }
       p = tok_end;
       pair++;

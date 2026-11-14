@@ -78,9 +78,11 @@ ParserResult ParserVS2::parse(const uint8_t b) {
 
     case ParserStep::PAYLOADLENGTH:
       _packet[5] = b;
+      // NOLINTBEGIN(bugprone-branch-clone): the first and the zero-length
+      // branch share a body for different reasons and stay apart.
       if ((_packet.functionCode() == FunctionCode::READ && _packet.packetType() == PacketType::REQUEST) ||
           (_packet.functionCode() == FunctionCode::WRITE && _packet.packetType() == PacketType::RESPONSE)) {
-        // read requests and write responses don't have a data payload
+        // Read requests and write responses have no payload.
         _step = ParserStep::CHECKSUM;
       } else if ((_packet.functionCode() == FunctionCode::RPC && _packet.packetType() == PacketType::RESPONSE) ||
                  _packet.packetType() == PacketType::ERROR || !isNamedFunction(_packet.functionCode())) {
@@ -119,6 +121,7 @@ ParserResult ParserVS2::parse(const uint8_t b) {
         _payloadLength = b;
         _step = ParserStep::PAYLOAD;
       }
+      // NOLINTEND(bugprone-branch-clone)
       break;
 
     case ParserStep::PAYLOAD:
