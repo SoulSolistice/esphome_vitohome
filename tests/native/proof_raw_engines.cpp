@@ -19,6 +19,8 @@
 //     H) an unnamed TYPE byte: 01 TYPE ADDR LEN 04, <len> bytes back; with
 //        payload, the write layout and one ack byte;
 //     I) a TYPE byte of the access-mode table keeps its mode (EEPROM pairs).
+//   Frame limits: every builder takes MAX_PAYLOAD payload bytes, and every
+//   engine refuses a read whose answer would be longer.
 //
 // Built by build_and_run_protocols.sh.
 
@@ -336,6 +338,15 @@ void frame_limit_cases() {
   optolink::PacketGWG gwg;
   check(gwg.createTelegram(0x99, 0x10, max, data) && gwg.length() == 5 + max, "GWG: MAX_PAYLOAD payload bytes");
   check(!gwg.createTelegram(0x99, 0x10, max + 1, data), "GWG: one byte more refused");
+
+  FakeOptolink io;
+  optolink::VS2Engine vs2(&io);
+  check(!vs2.read(0x2000, max + 1) && !vs2.request(0x05, 0x2000, max + 1), "P300: a read of MAX_PAYLOAD + 1 refused");
+  check(vs2.read(0x2000, max), "P300: a read of MAX_PAYLOAD accepted");
+  optolink::VS1Engine vs1(&io);
+  check(!vs1.read(0x2000, max + 1) && vs1.read(0x2000, max), "KW: the same limit");
+  optolink::GWGEngine gwg_engine(&io);
+  check(!gwg_engine.read(0x10, max + 1) && gwg_engine.read(0x10, max), "GWG: the same limit");
 }
 
 int main() {

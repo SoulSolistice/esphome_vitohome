@@ -46,6 +46,12 @@ bool VS2Engine::request(uint8_t function, uint16_t address, uint8_t length, cons
     optolink_log_i("function code 0x%02x not possible (1..0x1f)", function);
     return false;
   }
+  // Without a payload, `length` is the DataLength the answer echoes, and the
+  // answer must fit the parser's frame.
+  if (data == nullptr && length > MAX_PAYLOAD) {
+    optolink_log_w("function 0x%02x: %u bytes exceed %u", function, length, MAX_PAYLOAD);
+    return false;
+  }
   if (_currentPacket.createPacket(PacketType::REQUEST, static_cast<FunctionCode>(function), 0, address, length, data)) {
     _currentAddress = address;
     _currentLength = length;
