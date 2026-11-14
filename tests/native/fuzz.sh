@@ -27,6 +27,8 @@
 #               encode_schaltzeiten_day, the one input a PERSON types.
 #   gwg_session GWG sessions -- burst, EEPROM runs, ENQ delay, deadline and the
 #               late-answer report against a fuzzed device.
+#   kw_session  KW sessions on a KW link and over the P300 detour -- chain
+#               window, GFA pause, protocol switches against a fuzzed controller.
 #   field       the value half of decode.h -- field extraction, scaling and
 #               the encode inverses, with round-trip oracles.
 #
@@ -93,6 +95,12 @@ case "$TARGET" in
     HEADER="fuzz_corpus_gwg_session.h"
     EXTRA=("$OPTO/constants.cpp" "$OPTO/protocol/gwg/gwg.cpp" "$OPTO/protocol/gwg/packet_gwg.cpp")
     ;;
+  kw_session)
+    SRC="fuzz_kw_session.cpp"
+    HEADER="fuzz_corpus_kw_session.h"
+    EXTRA=("$OPTO/constants.cpp" "$OPTO/protocol/vs2/vs2.cpp" "$OPTO/protocol/vs2/parser_vs2.cpp"
+      "$OPTO/protocol/vs2/packet_vs2.cpp" "$OPTO/protocol/vs1/vs1.cpp" "$OPTO/protocol/vs1/packet_vs1.cpp")
+    ;;
   *)
     echo "usage: bash fuzz.sh <target> [seconds] [workers]" >&2
     echo "targets:" >&2
@@ -102,6 +110,7 @@ case "$TARGET" in
     echo "  raw_spec     raw_op.h spec parser -- a typed line to an operation" >&2
     echo "  raw_engines  generic telegrams -- one operation against a fuzzed controller" >&2
     echo "  gwg_session  GWG sessions -- up to six operations against a fuzzed device" >&2
+    echo "  kw_session   KW and P300-detour sessions -- up to six operations against a fuzzed controller" >&2
     exit 2
     ;;
 esac

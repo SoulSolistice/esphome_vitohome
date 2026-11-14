@@ -96,6 +96,9 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
 - `fuzz_gwg_session.cpp` — the same two builds over whole GWG sessions: up
   to six reads and writes in any access mode against a scripted device. Its
   seeds are in `fuzz_corpus_gwg_session.h`; see "The session targets" below.
+- `fuzz_kw_session.cpp` — the same over KW sessions, on a KW link
+  (`VS1Engine`) and over the P300 engine's KW detour. Seeds in
+  `fuzz_corpus_kw_session.h`.
 - `fuzz.sh` — campaign driver (clang/libFuzzer), one target per run. Not a
   gate, not run by CI.
 - `build_and_run_wsl.sh` — Windows-only convenience wrapper. Mirrors the two
@@ -255,6 +258,15 @@ that a request sent on an ENQ waited at least the delay, and that a late-answer
 report names an address of the session, states the configured deadline and
 never covers a telegram that got exactly its answer. An idle engine must not
 write to the line.
+
+`fuzz_kw_session.cpp` covers KW, on a KW link and over the P300 engine's
+detour: reads, writes, GFA reads, generic telegrams and, on P300, RPCs mixed
+with KW telegrams, so the chain window and the P300 -> KW -> P300 switches are
+crossed in every order. Besides completion and the documented limits it checks
+the GFA pause: a GFA read chained onto an answer goes out no earlier than
+`GFA_GAP_MS` after it, unless a byte arrived in between that the engine takes
+as its sync. Its first finding was a real defect: the P300 engine accepted a
+read longer than `MAX_PAYLOAD`, whose answer the parser cannot hold.
 
 **Running a campaign.**
 
