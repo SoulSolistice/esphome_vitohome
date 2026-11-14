@@ -46,9 +46,8 @@ void VitoHomeComponent::queue_raw_read(uint16_t address, uint8_t length, optolin
 
 void VitoHomeComponent::queue_raw_write(uint16_t address, const uint8_t *data, std::size_t len,
                                         optolink::GWGAccessMode access) {
-  // The 32-byte cap also keeps packet-length arithmetic safe: the VS2 length
-  // byte is 0x05 + len and the VS1 frame length is payload + 4. See the packet
-  // implementations before raising this cap.
+  // The cap also keeps the packets' length arithmetic in range (VS2 length byte
+  // 0x05 + len, VS1 frame payload + 4); check the packets before raising it.
   if (data == nullptr || len == 0 || len > RAW_WRITE_MAX) {
     ESP_LOGW(TAG, "queue_raw_write: %zu bytes out of range (1..%u)", len, RAW_WRITE_MAX);
     return;
@@ -59,9 +58,6 @@ void VitoHomeComponent::queue_raw_write(uint16_t address, const uint8_t *data, s
 
 void VitoHomeComponent::queue_raw_write(uint16_t address, const std::vector<uint8_t> &bytes,
                                         optolink::GWGAccessMode access) {
-  // Ergonomic overload for callers that already hold a vector (e.g. a lambda's
-  // braced-init-list). Forwards to the pointer/length form so both share one
-  // validation-and-enqueue path.
   this->queue_raw_write(address, bytes.data(), bytes.size(), access);
 }
 
@@ -70,8 +66,8 @@ void VitoHomeComponent::queue_raw_rpc(uint16_t address, const uint8_t *parameter
     ESP_LOGW(TAG, "queue_raw_rpc: 0x%04X not sent -- %s has no remote procedure call telegram", address, PROTOCOL_NAME);
     return;
   }
-  // Same cap as a raw write: the parameter rides in RawOp::bytes. Zero is
-  // allowed -- a procedure without a parameter -- and then runs the procedure.
+  // The parameter is kept in RawOp::bytes, so a write's cap. Zero bytes is a
+  // procedure without a parameter.
   if (len > RAW_WRITE_MAX || (len != 0 && parameter == nullptr)) {
     ESP_LOGW(TAG, "queue_raw_rpc: %zu parameter bytes out of range (0..%u)", len, RAW_WRITE_MAX);
     return;
@@ -202,11 +198,9 @@ bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
   if ((is_write || is_rpc) && bytes_len != 0)
     std::memcpy(operation.bytes, bytes, bytes_len);
 
-  // push_back() is authoritative. A preceding full() check would be a
-  // check/use race when multiple producers are possible.
-  // capacity 0 is the default: the scan console is opt-in, so an unallocated
-  // lane is the normal state, not an error. Name the option in the message --
-  // this is the only feedback a user gets for "my scan button does nothing".
+  // push_back() decides; a full() check first would race another producer. An
+  // unallocated lane is the default, and the warning is the only sign of it,
+  // so it names the option.
   if (!this->raw_queue_.push_back(operation)) {
     if (this->raw_queue_.capacity() == 0) {
       ESP_LOGW(TAG,
@@ -227,8 +221,7 @@ bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
 
 void VitoHomeComponent::raw_handle_response_(const ResponseView &response) {
   // "0xXXXX:" (7) + RAW_READ_MAX * 3 hex chars + the integer views for widths
-  // 1..8 + NUL. 208 covers a 48-byte dump with room to spare; the label and
-  // the time ride in front.
+  // 1..8 + NUL fit in 208; the label and the time go in front.
   char buffer[240];
   int offset = 0;
   const uint32_t elapsed = millis() - this->in_flight_started_ms_;
@@ -243,11 +236,9 @@ void VitoHomeComponent::raw_handle_response_(const ResponseView &response) {
   if (this->raw_is_write_ && this->raw_layer_ == RawLayer::NONE) {
     const int written = snprintf(buffer, sizeof(buffer), "0x%04X: write ACK (%u byte%s)", this->raw_dp_.address(),
                                  this->raw_write_len_, this->raw_write_len_ == 1 ? "" : "s");
-    // KW and GWG acknowledge a write with one byte. KW's is 0x00, checked by
-    // the engine. GWG's value is not known -- no GWG write has been confirmed
-    // -- and its engine completes on any byte, so the byte is shown: it is
-    // what a first write test has to report. A P300 acknowledgement frame
-    // carries no data.
+    // KW and GWG acknowledge a write with one byte; P300's acknowledgement
+    // has none. KW's is 0x00, checked by the engine. GWG's is unconfirmed and
+    // the engine takes any byte, so it is shown.
     if (response.data != nullptr && response.data_length >= 1 && written > 0 &&
         written < static_cast<int>(sizeof(buffer)))
       snprintf(buffer + written, sizeof(buffer) - written, ", answered %02X", response.data[0]);
@@ -290,9 +281,8 @@ void VitoHomeComponent::raw_handle_error_(optolink::OptolinkResult error) {
 
 void VitoHomeComponent::raw_publish_(const char *line) {
 #ifdef USE_TEXT_SENSOR
-  // The callers all pass a fixed char buffer; publish_state(const char *)
-  // assigns into each sensor's reused state string, whereas a const std::string
-  // & parameter would construct (and heap-allocate) a std::string per call.
+  // publish_state(const char *) reuses each sensor's state string; a
+  // std::string argument would allocate per call.
   for (uint16_t i = 0; i < this->raw_result_sensor_count_; i++) {
     if (this->raw_result_sensors_[i] != nullptr)
       this->raw_result_sensors_[i]->publish_state(line);
@@ -303,84 +293,67 @@ void VitoHomeComponent::raw_publish_(const char *line) {
 }
 
 void VitoHomeComponent::dispatch_raw_front_() {
-  // Peek, hand over to the engine, then remove: the operation stays at the head
-  // of the lane until read()/write() has accepted it. The engine copies a write
-  // payload into its own fixed packet synchronously inside write().
-  //
-  // No lock is held across the hand-off -- each RingBuffer call locks only for
-  // its own duration -- so a refusal is reported straight from here, although
-  // publishing a result runs the scan_result sensors' automations, which may
-  // queue the next raw operation. (The lane's old consume_front_if() ran this
-  // body under the queue's non-recursive mutex, where that was a deadlock;
-  // external review, 2026-10-28.) The head cannot change in between: only this
-  // loop removes from the lane, and a producer on another task appends.
+  // Peek, hand over, remove: the operation stays at the head until the engine
+  // accepts it, and the engine copies a write payload into its packet at once.
+  // No lock is held across the hand-off, so a refusal is published from here
+  // although a scan_result automation may queue the next operation. The head
+  // cannot change in between: only this loop removes from the lane, and other
+  // producers append.
   RawOp operation{};
   if (!this->raw_queue_.try_front(operation))
     return;
-  {
-    this->raw_dp_ = optolink::Datapoint("scan", operation.address, operation.length, optolink::noconv);
 
-    this->raw_is_write_ = operation.is_write;
-    this->raw_space_ = operation.space;
-    this->raw_layer_ = operation.layer;
-    this->raw_code_ = operation.code;
+  this->raw_dp_ = optolink::Datapoint("scan", operation.address, operation.length, optolink::noconv);
 
-    // The space picks the telegram (send_read_ / send_write_): a GWG access
-    // mode on GWG -- the scan console can pick EEPROM (0xAD) / BE (0x9D), the
-    // modes Vitosoft marks writable --, a remote procedure call with its
-    // parameter, a GFA read. OWN, the protocol's own read or write, unless
-    // the caller asked for another.
-    // A queue_raw_op() operation names its layer and code itself.
-    const bool dispatched =
-        operation.layer != RawLayer::NONE
-            ? this->send_raw_op_(operation.address, operation.length, operation.layer, operation.code,
-                                 operation.is_write ? operation.bytes : nullptr, operation.bytes_len)
-        : operation.is_write
-            ? this->send_write_(operation.address, operation.bytes, operation.bytes_len, operation.space)
-            : this->send_read_(operation.address, operation.length, operation.space, operation.bytes,
-                               operation.bytes_len);
-    char label[24];
-    raw_label_(label, sizeof(label), operation.is_write, operation.space, operation.layer, operation.code);
+  this->raw_is_write_ = operation.is_write;
+  this->raw_space_ = operation.space;
+  this->raw_layer_ = operation.layer;
+  this->raw_code_ = operation.code;
 
-    if (!dispatched) {
-      // read()/write() returning false is overloaded: transient backpressure
-      // (the engine is _busy with an in-flight transaction -- retry next loop)
-      // versus a permanent createPacket() rejection for this (address, length,
-      // type). The live permanent case is a raw op with a 16-bit address on a
-      // GWG device (PacketGWG rejects addr > 0xFF); every other createPacket
-      // failure mode is blocked by the schema and the RAW_*_MAX caps. Retaining
-      // the head on a permanent refusal stalls this lane forever, and because
-      // dispatch_next_() services the raw queue before the read/write lanes and
-      // returns, it silently freezes ALL bus traffic until reboot -- with
-      // nothing in flight for IN_FLIGHT_WATCHDOG_MS to catch. Distinguish the
-      // two with isBusy() and drop a permanently-refused op so the lane moves.
-      if (this->vito_->isBusy())
-        return;  // transient: keep the item at the head and retry
-      ESP_LOGE(TAG, "Engine refused raw %s 0x%04X len %u (permanent); dropping", label, operation.address,
-               operation.length);
-      this->raw_queue_.drop_front();  // permanent: drop so the read/write lanes are reached
-      this->raw_handle_error_(optolink::OptolinkResult::ERROR);
+  // A queue_raw_op() operation names its layer and code. Otherwise the space
+  // picks the telegram (send_read_ / send_write_): a GWG access mode, a
+  // procedure call with its parameter, a GFA read, or the protocol's own.
+  const bool dispatched =
+      operation.layer != RawLayer::NONE
+          ? this->send_raw_op_(operation.address, operation.length, operation.layer, operation.code,
+                               operation.is_write ? operation.bytes : nullptr, operation.bytes_len)
+      : operation.is_write ? this->send_write_(operation.address, operation.bytes, operation.bytes_len, operation.space)
+                           : this->send_read_(operation.address, operation.length, operation.space, operation.bytes,
+                                              operation.bytes_len);
+  char label[24];
+  raw_label_(label, sizeof(label), operation.is_write, operation.space, operation.layer, operation.code);
+
+  if (!dispatched) {
+    // Busy is transient. A permanent refusal, such as a 16-bit address on GWG
+    // (PacketGWG takes 0x00..0xFF), is dropped: kept at the head, it would stop
+    // all bus traffic, since this lane goes first, with nothing in flight for
+    // the watchdog.
+    if (this->vito_->isBusy())
       return;
-    }
-
+    ESP_LOGE(TAG, "Engine refused raw %s 0x%04X len %u (permanent); dropping", label, operation.address,
+             operation.length);
     this->raw_queue_.drop_front();
-    this->raw_write_len_ = operation.is_write ? operation.bytes_len : 0;
-    // A KW telegram over P300 rides the same detour as a GFA read, so it
-    // counts as one for the address-space affinity.
-    this->last_space_ = operation.layer == RawLayer::KW && space_has_switch_cost(AddressSpace::GFA) ? AddressSpace::GFA
-                                                                                                    : operation.space;
-    // A GWG EEPROM read, through its access mode or the generic route's 0xAE,
-    // takes one telegram per address.
-    const bool gwg_eeprom_type = operation.layer == RawLayer::GWG &&
-                                 operation.code == optolink::gwgReadTypeByte(optolink::GWGAccessMode::EEPROM);
-    this->set_in_flight_(
-        OpType::RAW, nullptr,
-        operation.is_write
-            ? 1
-            : read_telegram_count(gwg_eeprom_type ? AddressSpace::GWG_EEPROM : operation.space, operation.length));
-
-    ESP_LOGV(TAG, "Dispatched raw %s 0x%04X len %u", label, operation.address, operation.length);
+    this->raw_handle_error_(optolink::OptolinkResult::ERROR);
+    return;
   }
+
+  this->raw_queue_.drop_front();
+  this->raw_write_len_ = operation.is_write ? operation.bytes_len : 0;
+  // A KW telegram over P300 takes the GFA read's detour, so it counts as one
+  // for the address-space affinity.
+  this->last_space_ =
+      operation.layer == RawLayer::KW && space_has_switch_cost(AddressSpace::GFA) ? AddressSpace::GFA : operation.space;
+  // A GWG EEPROM read, through its access mode or the generic route's 0xAE,
+  // takes one telegram per address.
+  const bool gwg_eeprom_type =
+      operation.layer == RawLayer::GWG && operation.code == optolink::gwgReadTypeByte(optolink::GWGAccessMode::EEPROM);
+  this->set_in_flight_(
+      OpType::RAW, nullptr,
+      operation.is_write
+          ? 1
+          : read_telegram_count(gwg_eeprom_type ? AddressSpace::GWG_EEPROM : operation.space, operation.length));
+
+  ESP_LOGV(TAG, "Dispatched raw %s 0x%04X len %u", label, operation.address, operation.length);
 }
 
 }  // namespace esphome::vitohome
