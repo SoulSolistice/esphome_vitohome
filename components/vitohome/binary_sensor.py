@@ -48,12 +48,8 @@ def _validate_length(config):
     return config
 
 
-def _nonzero_bit_mask(value):
-    # Any set bit under the mask is ON, so a zero mask is a sensor that is never ON.
-    value = cv.hex_uint8_t(value)
-    if value == 0:
-        raise cv.Invalid("bit_mask must select at least one bit (0x00 is always OFF)")
-    return value
+# Any set bit under the mask is ON, so a zero mask is a sensor that is never ON.
+NONZERO_BIT_MASK = cv.All(cv.hex_uint8_t, cv.Range(min=1, msg="bit_mask must select at least one bit (0x00 is always OFF)"))
 
 
 def _validate_offset_within_length(config):
@@ -88,7 +84,7 @@ _DATAPOINT_SCHEMA = cv.All(
             cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
             cv.Optional(CONF_LENGTH, default=1): cv.positive_int,
             cv.Optional(CONF_BYTE_OFFSET, default=0): cv.int_range(min=0, max=MAX_P300_READ_LENGTH - 1),
-            cv.Optional(CONF_BIT_MASK, default=0xFF): _nonzero_bit_mask,
+            cv.Optional(CONF_BIT_MASK, default=0xFF): NONZERO_BIT_MASK,
             cv.Optional(CONF_UPDATE_INTERVAL): poll_update_interval,
             # A GWG access mode (GWG only), `rpc` (P300 only) or `gfa` (KW and
             # P300); checked in _final_validate (__init__.py). See CONF_ACCESS,
