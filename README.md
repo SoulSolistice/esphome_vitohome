@@ -190,6 +190,8 @@ request; they are not stored by the finder itself.
 
 ## What you need
 
+- ESPHome 2026.9.0 or newer. An older release stops at the import with a
+  message that says so.
 - An ESP32-class board.
 - An Optolink read/write head, placed over the optical interface on the
   Viessmann unit and wired to the board's UART. See
