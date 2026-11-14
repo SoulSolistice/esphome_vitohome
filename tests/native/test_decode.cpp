@@ -910,6 +910,28 @@ static void test_schaltzeiten_interop() {
   CHECK(std::strcmp(out, "06:10-22:00") == 0);
 }
 
+// field_slice / extract_field: the shared read-side extraction of every entity.
+static void test_extract_field() {
+  const uint8_t block[] = {0x11, 0x22, 0x33, 0x44, 0x55, 0xA6};
+  const uint8_t *f = nullptr;
+  CHECK(field_slice(block, sizeof(block), -1, 2, &f) && f == block);     // no offset: from the start
+  CHECK(field_slice(block, sizeof(block), 4, 2, &f) && f == block + 4);  // last two bytes
+  CHECK(!field_slice(block, sizeof(block), 5, 2, &f));                   // one byte short
+  CHECK(!field_slice(block, sizeof(block), -1, 7, &f));                  // whole datapoint longer than the answer
+  CHECK(!field_slice(nullptr, 6, 0, 1, &f));
+  CHECK(!field_slice(block, sizeof(block), 0, 0, &f));
+
+  uint32_t v = 0;
+  CHECK(extract_field(block, sizeof(block), 1, 2, 0, &v) && v == 0x3322);  // little-endian
+  CHECK(extract_field(block, sizeof(block), -1, 1, 0, &v) && v == 0x11);
+  CHECK(extract_field(block, sizeof(block), 0, 6, 0, &v) && v == 0x44332211);  // first four bytes only
+  CHECK(extract_field(block, sizeof(block), 5, 1, 0xF0, &v) && v == 0x0A);     // high nibble of 0xA6
+  CHECK(extract_field(block, sizeof(block), 5, 1, 0x06, &v) && v == 0x03);     // bits 1..2 of 0xA6
+  v = 0x77;
+  CHECK(!extract_field(block, sizeof(block), 5, 1, 0x05, &v) && v == 0x77);  // gapped mask: refused, untouched
+  CHECK(!extract_field(block, sizeof(block), 6, 1, 0, &v));                  // past the end
+}
+
 // Climate setpoint byte: clamped to [min, max], rounded to the nearest degC.
 static void test_setpoint_byte() {
   CHECK(setpoint_byte(21.0f, 3, 37) == 21);
@@ -942,6 +964,7 @@ int main() {
   test_utf16();
   test_schaltzeiten_interop();
   test_setpoint_byte();
+  test_extract_field();
   test_format_raw_dump();
 
   std::printf("\n%d checks, %d failure(s)\n", g_checks, g_failures);

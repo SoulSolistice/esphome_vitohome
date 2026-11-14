@@ -64,38 +64,11 @@ void VitoSelect::control(size_t index) {
 }
 
 void VitoSelect::handle_response(const ResponseView &response) {
-  // With extraction the response is the whole block read at the state
-  // address; the enum field is extract_len_ bytes at extract_byte_. The
-  // bound check is against the bytes actually received, so a short response
-  // fail-softs instead of reading past the end.
-  if (response.data == nullptr) {
-    ESP_LOGW(TAG, "%s: null response payload", this->datapoint_.name());
-    return;
-  }
-  const uint8_t *p = response.data;
-  uint8_t len = this->datapoint_.length();
-  if (this->extract_byte_ >= 0) {
-    const uint16_t off = static_cast<uint16_t>(this->extract_byte_);
-    if (off + this->extract_len_ > response.data_length) {
-      ESP_LOGW(TAG, "%s: response too short (have %u bytes, need %u)", this->datapoint_.name(), response.data_length,
-               static_cast<unsigned>(off + this->extract_len_));
-      return;
-    }
-    p += off;
-    len = this->extract_len_;
-  } else if (response.data_length < len) {
+  uint32_t raw = 0;
+  if (!this->field_value_(response, &raw)) {
     ESP_LOGW(TAG, "%s: response too short (have %u bytes, need %u)", this->datapoint_.name(), response.data_length,
-             len);
+             this->field_end_());
     return;
-  }
-  uint32_t raw = static_cast<uint32_t>(read_le(p, len > 4 ? 4 : len));
-  if (this->field_mask_ != 0) {
-    // Bit field: options are FIELD values, so compare the masked bits only --
-    // the rest of the byte belongs to other datapoints and may hold anything.
-    uint8_t field = 0;
-    if (!extract_bit_field(p[0], this->field_mask_, &field))
-      return;
-    raw = field;
   }
   for (uint16_t i = 0; i < this->raw_value_count_; i++) {
     if (this->raw_values_[i] == raw) {

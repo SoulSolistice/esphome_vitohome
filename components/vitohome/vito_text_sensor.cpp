@@ -80,27 +80,10 @@ void VitoTextSensor::publish_raw_hex_(const uint8_t *data, uint8_t len) {
 }
 
 void VitoTextSensor::publish_enum_(const uint8_t *data, uint8_t len) {
-  // With extraction the response is the whole block read at the block base;
-  // the enum field is extract_len_ bytes at extract_byte_ (bound-checked
-  // against the bytes actually received, like the other extracting entities).
-  if (this->extract_byte_ >= 0) {
-    const uint16_t off = static_cast<uint16_t>(this->extract_byte_);
-    if (off + this->extract_len_ > len) {
-      ESP_LOGW(TAG, "%s: response too short (have %u bytes, need %u)", this->datapoint_.name(), len,
-               static_cast<unsigned>(off + this->extract_len_));
-      return;
-    }
-    data += off;
-    len = this->extract_len_;
-  }
-  const uint8_t use = len > 4 ? 4 : len;
-  uint32_t raw = static_cast<uint32_t>(read_le(data, use));
-  if (this->field_mask_ != 0) {
-    // Bit field: the options are FIELD values (decode.h, "bit fields").
-    uint8_t field = 0;
-    if (!extract_bit_field(data[0], this->field_mask_, &field))
-      return;
-    raw = field;
+  uint32_t raw = 0;
+  if (!extract_field(data, len, this->extract_byte_, this->field_width_(), this->field_mask_, &raw)) {
+    ESP_LOGW(TAG, "%s: response too short (have %u bytes, need %u)", this->datapoint_.name(), len, this->field_end_());
+    return;
   }
   const char *label = this->lookup_(raw);
   if (label != nullptr) {
@@ -147,26 +130,17 @@ void VitoTextSensor::publish_error_history_(const uint8_t *data, uint8_t len) {
 }
 
 bool VitoTextSensor::slice_(const uint8_t *data, uint8_t len, const uint8_t *&field, uint8_t &width) const {
-  // Without byte_offset the whole response IS the field (the historical shape).
-  // With byte_offset, `length` was a block read at the block base and the field
-  // is extract_len_ bytes at extract_byte_ inside it -- the same aligned-read
-  // discipline sensor/binary_sensor/enum already use, and the reason the string
-  // types now need it: Beschriftung_HK1~0x7360 is BlockLength 42, BytePosition
-  // 2, ByteLength 40. Reading it at 0x7360+2 is an INTERIOR read; P300 answers
-  // that with an error telegram regardless of the byte count, and KW answers it
-  // with 0xFF fill. Hardware-confirmed 2026-07-10 (a 2-byte read at 0x7362 and
-  // a 40-byte read at 0x7362 fail identically).
+  // Without byte_offset the field is the whole response, however long; the
+  // string types read up to their datapoint length.
   field = data;
   width = len;
   if (this->extract_byte_ < 0)
     return true;
-  const uint16_t off = static_cast<uint16_t>(this->extract_byte_);
-  if (off + this->extract_len_ > len) {
-    ESP_LOGW(TAG, "%s: byte_offset %u + byte_length %u exceeds response (%u bytes)", this->datapoint_.name(),
-             static_cast<unsigned>(off), static_cast<unsigned>(this->extract_len_), static_cast<unsigned>(len));
+  if (!field_slice(data, len, this->extract_byte_, this->extract_len_, &field)) {
+    ESP_LOGW(TAG, "%s: byte_offset %d + byte_length %u exceeds response (%u bytes)", this->datapoint_.name(),
+             this->extract_byte_, static_cast<unsigned>(this->extract_len_), static_cast<unsigned>(len));
     return false;
   }
-  field = data + off;
   width = this->extract_len_;
   return true;
 }

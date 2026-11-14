@@ -24,53 +24,32 @@ void VitoSensor::dump_config() {
 }
 
 void VitoSensor::handle_response(const ResponseView &response) {
-  // Component decode path: vitohome decodes the raw payload itself in decode.h
-  // (uint64_t read, double math, float32 only at publish). Upstream's converter
-  // layer — float math and the tagless VariantValue union — is fully removed
-  // from the vendored engine (THIRD_PARTY.md items 13/15); see
-  // docs/design_notes.md SS1 for why this path exists.
-  // A null payload with a NON-ZERO length is a documented engine state, not a
-  // hypothetical: PacketVS2::data() returns nullptr for a WRITE frame while
-  // dataLength() stays non-zero, and vs2.cpp::_tryOnResponse states the
-  // obligation outright ("the caller must guard on data() before reading").
-  // The else-branch below is safe without this (decode_scaled null-checks), but
-  // the extraction branch forms `data + off` before any check.
+  // vitohome decodes the raw payload itself (decode.h; design_notes.md SS1).
+  // A WRITE frame can arrive with data == nullptr and a non-zero length
+  // (PacketVS2::data()).
   if (response.data == nullptr) {
     ESP_LOGW(TAG, "%s: null response payload", this->datapoint_.name());
     return;
   }
-  const uint8_t *data = response.data;
-  const uint8_t have = response.data_length;
+  const uint8_t width = this->field_width_();
   double value = NAN;
   bool ok;
   if (this->field_mask_ != 0) {
-    // Bit field: one byte -- at byte_offset inside the block read, or the whole
-    // 1-byte read -- masked and shifted down to the field, THEN scaled.
-    // Unsigned: sensor.py rejects `signed` with bit_mask (no signed bit field
-    // exists in the Vitosoft export to test one against).
-    const uint16_t off = this->extract_byte_ >= 0 ? static_cast<uint16_t>(this->extract_byte_) : 0;
-    uint8_t field = 0;
-    ok = off < have && extract_bit_field(data[off], this->field_mask_, &field) &&
-         decode_scaled(&field, 1, 1, false, this->scale_, &value);
-  } else if (this->extract_byte_ >= 0) {
-    // Fetch the whole block (datapoint length), then scale/sign the field of
-    // extract_len_ bytes at the offset. The bound check is against the bytes
-    // actually received, so a short response fail-softs instead of reading
-    // past the end. Little-endian only: every extracted field in the Vitosoft
-    // data is LE, and sensor.py rejects a big-endian converter combined with
-    // byte_offset, so a big-endian extracted field cannot reach this path.
-    const uint16_t off = static_cast<uint16_t>(this->extract_byte_);
-    ok = off + this->extract_len_ <= have &&
-         decode_scaled(data + off, this->extract_len_, this->extract_len_, this->signed_, this->scale_, &value);
+    // Unsigned: sensor.py rejects `signed` with bit_mask.
+    uint32_t field = 0;
+    ok = this->field_value_(response, &field);
+    const uint8_t bits = static_cast<uint8_t>(field);
+    ok = ok && decode_scaled(&bits, 1, 1, false, this->scale_, &value);
   } else {
-    ok = this->big_endian_
-             ? decode_scaled_be(data, have, this->datapoint_.length(), this->signed_, this->scale_, &value)
-             : decode_scaled(data, have, this->datapoint_.length(), this->signed_, this->scale_, &value);
+    // Big-endian only without extraction: sensor.py rejects it with byte_offset.
+    const uint8_t *field = nullptr;
+    ok = this->field_bytes_(response, &field) &&
+         (this->big_endian_ ? decode_scaled_be(field, width, width, this->signed_, this->scale_, &value)
+                            : decode_scaled(field, width, width, this->signed_, this->scale_, &value));
   }
   if (!ok) {
-    ESP_LOGW(TAG, "%s: response too short (have %u bytes, need %u)", this->datapoint_.name(), have,
-             this->extract_byte_ >= 0 ? static_cast<unsigned>(this->extract_byte_ + this->extract_len_)
-                                      : this->datapoint_.length());
+    ESP_LOGW(TAG, "%s: response too short (have %u bytes, need %u)", this->datapoint_.name(), response.data_length,
+             this->field_end_());
     this->note_read_failure_();
     return;
   }
