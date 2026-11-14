@@ -99,8 +99,8 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
 - `fuzz_kw_session.cpp` — the same over KW sessions, on a KW link
   (`VS1Engine`) and over the P300 engine's KW detour. Seeds in
   `fuzz_corpus_kw_session.h`.
-- `fuzz.sh` — campaign driver (clang/libFuzzer), one target per run. Not a
-  gate, not run by CI.
+- `fuzz.sh` — campaign driver (clang/libFuzzer), one target or all of them
+  in turn. Not a gate, not run by CI.
 - `build_and_run_wsl.sh` — Windows-only convenience wrapper. Mirrors the two
   directories the suite reads onto ext4 inside WSL and then calls
   `build_and_run.sh` there, because building straight off `/mnt/<drive>` pays a
@@ -271,17 +271,30 @@ read longer than `MAX_PAYLOAD`, whose answer the parser cannot hold.
 **Running a campaign.**
 
 ```
-bash fuzz.sh                  # list the targets
-bash fuzz.sh parser_vs2       # 5 minutes, one worker per core
-bash fuzz.sh decode 3600 6    # an hour, 6 workers
+bash fuzz.sh                         # list the targets
+bash fuzz.sh parser_vs2              # 5 minutes, one worker per core
+bash fuzz.sh decode 3600 6           # an hour, 6 workers
+bash fuzz.sh all 3600                # every target for an hour each
+KEEP_GOING=1 bash fuzz.sh all 14400  # overnight: findings do not stop it
 ```
+
+By default each worker stops at its first finding. `KEEP_GOING=1` switches to
+libFuzzer's fork mode, which writes crashes, timeouts and out-of-memory reports
+to the findings and keeps searching, so a long run is not spent by one shallow
+defect. An input that runs longer than 10 s counts as a finding: every script
+is bounded, so it is a loop that does not end.
+
+Corpus, findings and one log per run live in `$FUZZ_DIR/<target>/`, by default
+`~/.cache/vitohome-fuzz`, so the next campaign starts from the corpus the last
+one reached; WSL clears `/tmp` on restart.
 
 A finding is written to `$FUZZ_DIR/<target>/findings/`. Replay it against the
 CI build first to confirm it is not an artefact of the fuzzer's own
 instrumentation (`./fuzz_decode <crash-file>` — the replay binaries take files
 as arguments), minimise it (`-minimize_crash=1`), then add the reduced bytes to
-the target's corpus header with a note on what it broke. A crash file left in
-`/tmp` is a finding that will be rediscovered from scratch next year.
+the target's corpus header with a note on what it broke, and delete the file.
+A crash file left behind is a finding that will be rediscovered from scratch
+next year.
 
 ## Sanitizers are not per-target
 
