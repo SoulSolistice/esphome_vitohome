@@ -32,7 +32,12 @@ bool VS1Engine::telegram(uint8_t type, uint16_t address, uint8_t length, const u
   if (_busy) {
     return false;
   }
-  // Any answer fits _responseBuffer: at most 255 bytes.
+  // A read's answer must fit _responseBuffer; a write is answered with one
+  // byte.
+  if (data == nullptr && length > kResponseBufferSize) {
+    optolink_log_w("telegram 0x%02x: %u bytes exceed %u", type, length, static_cast<unsigned>(kResponseBufferSize));
+    return false;
+  }
   if (_currentRequest.createTelegram(type, address, length, data)) {
     _currentAddress = address;
     _currentLength = length;
@@ -186,8 +191,12 @@ void VS1Engine::_receive() {
     return;
   }
   while (_interface->available()) {
-    _responseBuffer[_bytesTransferred] = _interface->read();
-    ++_bytesTransferred;
+    const uint8_t byte = _interface->read();
+    // A device that sends more than asked fails the count below and times out.
+    if (_bytesTransferred < kResponseBufferSize)
+      _responseBuffer[_bytesTransferred] = byte;
+    if (_bytesTransferred < 0xFF)
+      ++_bytesTransferred;
     _lastMillis = _currentMillis;
   }
   // Write-completion fix vs. upstream (THIRD_PARTY.md #11): upstream waited

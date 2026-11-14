@@ -7,12 +7,9 @@ For a copy, see <https://opensource.org/licenses/MIT> or the LICENSE file.
 Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 Buffer modernization: the upstream malloc/free/realloc + _allocatedLength
-is replaced by a fixed std::array<uint8_t, kMaxFrame>. A VS1 write stores
-its payload after a 4-byte header (type, addr-hi, addr-lo, len), and the
-length byte is a uint8_t, so 4 + 255 = 259 bounds the buffer; 256 is the
-datapoint length cap used elsewhere, so kMaxFrame = 260 covers every valid
-frame with margin. With the raw buffer gone the deleted copy operations
-are restored.
+is replaced by a fixed std::array<uint8_t, kMaxFrame>: a 4-byte header
+(type, addr-hi, addr-lo, len) and at most MAX_PAYLOAD payload bytes. With
+the raw buffer gone the deleted copy operations are restored.
 */
 
 #pragma once
@@ -28,7 +25,9 @@ namespace esphome::vitohome::optolink {
 
 class PacketVS1 {
  public:
-  static constexpr std::size_t kMaxFrame = 260;
+  static constexpr std::size_t kMaxFrame = 4 + MAX_PAYLOAD;
+  // length() and the engine's byte count are uint8_t.
+  static_assert(kMaxFrame <= 0xFF, "a frame must fit a uint8_t length");
 
   PacketVS1();
   ~PacketVS1() = default;

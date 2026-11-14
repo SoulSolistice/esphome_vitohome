@@ -34,7 +34,7 @@ ParserResult ParserVS2::parse(const uint8_t b) {
         return ParserResult::ERROR;
       }
       if (!_packet.setLength(b)) {
-        optolink_log_e("Could not parse packet");
+        optolink_log_w("Frame longer than %u bytes: length byte %u", static_cast<unsigned>(PacketVS2::kMaxFrame), b);
         _step = ParserStep::STARTBYTE;
         return ParserResult::ERROR;
       }
@@ -128,10 +128,8 @@ ParserResult ParserVS2::parse(const uint8_t b) {
       // Indexed from the frame's payload size rather than from DataLength:
       // the two agree on every frame that reaches here except an RPC
       // response, where only the frame length is trusted (see PAYLOADLENGTH).
-      // payloadLength() (_buffer[0] - 5, at most 250) is used and not
-      // length() - 6: length() is uint8_t arithmetic and wraps to 0 at a length
-      // byte of 255, which an RPC response may carry, and an index computed
-      // from it would land before the buffer. The first byte lands at index 6.
+      // setLength() has bounded payloadLength() to MAX_PAYLOAD. The first byte
+      // lands at index 6.
       _packet[6 + _packet.payloadLength() - _payloadLength--] = b;
       if (_payloadLength == 0) {
         _step = ParserStep::CHECKSUM;

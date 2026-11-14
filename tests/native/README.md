@@ -163,9 +163,9 @@ difference between that oracle working and merely appearing to.
 `parser_vs2.cpp`'s 42 branches (95.2% taken at least once) and 90.4% of lines;
 libFuzzer's edge count plateaus at 80, so the search saturates this parser
 quickly. The uncovered remainder is `ParserVS2::reset()`, which is
-engine-driven and covered by `proof_vs2_guards.cpp`, and the
-`!_packet.setLength(b)` branch, which is unreachable by construction — a
-`uint8_t` length plus one can never exceed the 256-byte `kMaxFrame`.
+engine-driven and covered by `proof_vs2_guards.cpp`. (These figures predate
+the `MAX_PAYLOAD` buffers; the `!_packet.setLength(b)` branch they list as
+unreachable now fires on a length byte above `kMaxFrame - 1`.)
 
 ### The `decode` target
 

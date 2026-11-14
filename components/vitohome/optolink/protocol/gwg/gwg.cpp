@@ -25,10 +25,13 @@ bool GWGEngine::read(uint16_t address, uint8_t length, GWGAccessMode access) {
   if (_busy) {
     return false;
   }
+  if (length > MAX_PAYLOAD) {
+    optolink_log_w("reading not possible, %u bytes exceed %u", length, MAX_PAYLOAD);
+    return false;
+  }
   const bool eeprom = access == GWGAccessMode::EEPROM;
   // An EEPROM datapoint is read one address at a time (see kEepromPairLength),
-  // so the whole run must stay inside GWG's 1-byte address space; that also
-  // keeps length + 1 within the response buffer.
+  // so the whole run must stay inside GWG's 1-byte address space.
   if (eeprom && (length == 0 || address + length - 1 > 0xFF)) {
     optolink_log_i("reading not possible, EEPROM length out of range");
     return false;
@@ -91,6 +94,12 @@ bool GWGEngine::telegram(uint8_t type, uint16_t address, uint8_t length, const u
       return read(address, length, mode);
     if (data != nullptr && gwgModeIsWritable(mode) && type == gwgWriteTypeByte(mode))
       return write(address, data, length, mode);
+  }
+  // A read's answer must fit _responseBuffer; a write is answered with one
+  // byte.
+  if (data == nullptr && length > MAX_PAYLOAD) {
+    optolink_log_w("telegram 0x%02x: %u bytes exceed %u", type, length, MAX_PAYLOAD);
+    return false;
   }
   if (_currentRequest.createTelegram(type, address, length, data)) {
     _currentAddress = address;

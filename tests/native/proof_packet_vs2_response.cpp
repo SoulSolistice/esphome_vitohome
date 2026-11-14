@@ -2,14 +2,14 @@
 //
 // The payload copy loop runs for `fc == WRITE || pt == RESPONSE` (a read
 // response echoes the data back), but every guard ahead of it -- the
-// null-data check, the len > 250 cap, and the `needed` size computation --
+// null-data check, the payload cap, and the `needed` size computation --
 // used to key on `fc == WRITE` alone (the upstream shape). A RESPONSE
 // therefore sailed past guards sized for a 6-byte header and then copied
 // `len` bytes:
 //
-//   * RESPONSE with len 251..255: `needed` computed as 6, size check passes,
-//     copy writes up to _buffer[260] in a 256-byte std::array -- an
-//     out-of-bounds write (stack-buffer-overflow under -fsanitize=address).
+//   * RESPONSE with a len past the buffer: `needed` computed as 6, size check
+//     passes, the copy writes past the std::array -- an out-of-bounds write
+//     (stack-buffer-overflow under -fsanitize=address).
 //   * RESPONSE with data == nullptr: the WRITE-only mismatch check passes,
 //     the copy dereferences null (SEGV under ASan).
 //
@@ -68,9 +68,9 @@ int main() {
   }
 
   // C) RESPONSE with len 255 and a valid 255-byte source. Pre-fix: needed
-  //    computed as 6, size check passes, the copy writes _buffer[6..260] --
-  //    OOB past the 256-byte array (ASan stack-buffer-overflow). Post-fix:
-  //    rejected by the len > 250 payload cap before any byte moves.
+  //    computed as 6, size check passes, the copy runs past the array (ASan
+  //    stack-buffer-overflow). Post-fix: rejected by the payload cap before
+  //    any byte moves.
   {
     PacketVS2 p;
     uint8_t big[255];
@@ -78,8 +78,8 @@ int main() {
       big[i] = static_cast<uint8_t>(i);
     check(!p.createPacket(PacketType::RESPONSE, FunctionCode::READ, 0, 0x00F8, 255, big),
           "C: RESPONSE len 255 rejected (was OOB write)");
-    check(!p.createPacket(PacketType::RESPONSE, FunctionCode::READ, 0, 0x00F8, 251, big),
-          "C: RESPONSE len 251 rejected (first bad length)");
+    check(!p.createPacket(PacketType::RESPONSE, FunctionCode::READ, 0, 0x00F8, optolink::MAX_PAYLOAD + 1, big),
+          "C: RESPONSE len MAX_PAYLOAD + 1 rejected (first bad length)");
   }
 
   // D) RESPONSE with a null data pointer. Pre-fix: the mismatch check only
@@ -101,16 +101,19 @@ int main() {
     check(p.dataLength() == 4 && p.data() != nullptr && p.data()[0] == 0x01, "E: accessors see the payload");
   }
 
-  // F) Boundary: len 250 is the largest payload; needed == 256 fills the
-  //    array exactly, with the last payload byte at _buffer[255].
+  // F) Boundary: MAX_PAYLOAD is the largest payload and fills the array
+  //    exactly, with the last payload byte in the last slot.
   {
     PacketVS2 p;
-    uint8_t big[250];
+    const uint8_t max = optolink::MAX_PAYLOAD;
+    uint8_t big[optolink::MAX_PAYLOAD];
     for (unsigned i = 0; i < sizeof(big); ++i)
       big[i] = static_cast<uint8_t>(i);
-    check(p.createPacket(PacketType::RESPONSE, FunctionCode::READ, 0, 0x00F8, 250, big),
-          "F: RESPONSE len 250 fills the buffer exactly");
-    check(p[0] == 0xFF && p[255] == 249, "F: length byte 0xFF, last byte in the last slot");
+    check(PacketVS2::kMaxFrame == 6u + max, "F: the buffer is the header plus MAX_PAYLOAD");
+    check(p.createPacket(PacketType::RESPONSE, FunctionCode::READ, 0, 0x00F8, max, big),
+          "F: RESPONSE len MAX_PAYLOAD fills the buffer exactly");
+    check(p[0] == 5 + max && p[PacketVS2::kMaxFrame - 1] == max - 1,
+          "F: length byte 5 + len, last byte in the last slot");
   }
 
   if (g_fail == 0) {
