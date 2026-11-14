@@ -22,8 +22,7 @@ void VitoHomeComponent::rmw_abort_(VitoEntityBase *entity, optolink::OptolinkRes
 }
 
 void VitoHomeComponent::rmw_handle_read_(VitoEntityBase *entity, const ResponseView &response) {
-  // Guard on data() before reading the payload (docs/design_notes.md SS10a,
-  // finding 3: a null data() can carry a non-zero length).
+  // A view can carry a length without data; checked before any read.
   const uint8_t block_len = entity->get_write_datapoint().length();
   const bool block_mode = entity->block_field_width() != 0;
   const uint8_t offset = block_mode ? entity->block_field_offset() : 0;
@@ -34,11 +33,10 @@ void VitoHomeComponent::rmw_handle_read_(VitoEntityBase *entity, const ResponseV
     return;
   }
 #ifdef VITOHOME_PROTOCOL_GWG
-  // An EEPROM FF FF pair means "address not in use" and is delivered as 0xFF,
-  // which is indistinguishable from a byte with every flag set. Merging into it
-  // and writing it back would turn an unserved address into a served one, so
-  // the engine flags the pair (GWGEngine::lastReadHadUnservedEeprom) and the
-  // write stops here. Ordinary reads are unaffected.
+  // An EEPROM FF FF pair means "address not in use" and arrives as 0xFF, like a
+  // byte with every flag set. Merging into it and writing it back would put
+  // data at an unused address, so the engine flags it
+  // (GWGEngine::lastReadHadUnservedEeprom) and the write stops here.
   if (this->vito_->lastReadHadUnservedEeprom()) {
     this->rmw_abort_(entity, optolink::OptolinkResult::ERROR,
                      "GWG EEPROM answered FF FF (address not in use) - refusing to merge into it");
@@ -47,8 +45,8 @@ void VitoHomeComponent::rmw_handle_read_(VitoEntityBase *entity, const ResponseV
 #endif
   if (!merge_block_field(response.data, block_len, offset, width, entity->field_mask(), entity->write_data(),
                          this->rmw_buf_)) {
-    // Unreachable through validated config (geometry and value are checked in
-    // Python and again by the entity); kept fail-closed.
+    // Unreachable with a validated config: codegen and the entity check the
+    // geometry and the value.
     this->rmw_abort_(entity, optolink::OptolinkResult::ERROR, "field does not fit its block or bit_mask");
     return;
   }
@@ -67,8 +65,8 @@ void VitoHomeComponent::rmw_dispatch_write_() {
   const optolink::Datapoint &wdp = entity->get_write_datapoint();
   const bool write_ok = this->send_write_(wdp.address(), this->rmw_buf_, this->rmw_len_, entity->space());
   if (!write_ok) {
-    // Transient: stay armed. dispatch_next_() keeps returning here, so nothing
-    // else reaches the bus until the merged write is out.
+    // Busy: stay armed. dispatch_next_() comes back here first, so nothing
+    // else reaches the bus before the merged write.
     if (this->vito_->isBusy())
       return;
     this->rmw_pending_ = nullptr;
@@ -77,8 +75,8 @@ void VitoHomeComponent::rmw_dispatch_write_() {
   }
   this->rmw_pending_ = nullptr;
   this->set_in_flight_(OpType::WRITE, entity);
-  // From here the ordinary WRITE completion paths apply (ACK, read-back,
-  // supersede, error, watchdog). Arm the read-back check.
+  // An ordinary WRITE from here on; its read-back is checked against these
+  // bytes.
   this->rmw_verify_entity_ = entity;
   std::memcpy(this->rmw_verify_buf_, this->rmw_buf_, this->rmw_len_);
   this->rmw_verify_len_ = this->rmw_len_;
@@ -128,17 +126,15 @@ void VitoHomeComponent::refresh_siblings_(VitoEntityBase *writer) {
   const uint16_t address = writer->get_write_datapoint().address();
   unsigned queued = 0;
   for (auto *e : this->entities_) {
-    // Not the writer (its own read-back is queued separately), and not an
-    // entity that opts out of polling: VitoClock drives its own state machine
-    // and must not receive an unsolicited response.
+    // Not the writer, which reads back on its own, and not VitoClock, whose
+    // state machine takes no unasked answer.
     if (e == nullptr || e == writer || !e->wants_polling() || e->get_datapoint().address() != address)
       continue;
-    // Addresses are per access space: 0x01/eeprom and 0x01/port on GWG, 0x4050
-    // in the Vitotronic and in the burner control, are different registers.
+    // Addresses are per space: GWG 0x01 in eeprom and in port, 0x4050 in the
+    // Vitotronic and in the burner control, are different registers.
     if (e->space() != writer->space())
       continue;
-    // An RPC answer is computed by the controller, not read from the memory a
-    // write changed, so sharing the address says nothing about it.
+    // A procedure's answer is computed, not read from the written memory.
     if (e->is_rpc())
       continue;
     if (this->request_priority_read(e))

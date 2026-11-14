@@ -154,6 +154,12 @@ signedness rules.
   ESP to recover. The first answer clears the error, and identification is
   repeated on that link-up if it had ended as "unknown". While the link is
   offline, per-datapoint timeouts are logged at VERBOSE, not ERROR.
+- **Under GWG a timeout says little about the link.** GWG has no error telegram,
+  so an address the unit does not serve in the requested mode goes unanswered
+  (or answers `0xFF`). Only a request that never went out for want of an ENQ
+  counts towards OFFLINE (`GWGEngine::lastTimeoutWasUnsynced()`). Before that
+  rule, the silent `kmbus_eeprom` datapoints of issue #35 published the link
+  offline about 14 times in 6.5 minutes on a unit that kept sending ENQs.
 
 ### GWG access modes (`access:`)
 
@@ -1101,6 +1107,13 @@ That depth **cannot be derived from the config**: the lane is driven through
 count is a Home Assistant action parameter chosen at runtime, so no
 `FINAL_VALIDATE_SCHEMA` inspection could infer it. Hence an explicit knob rather
 than an auto-size.
+
+**`RawOp` has no default member initializers.** `RingBuffer<T>` static_asserts
+`is_trivially_default_constructible`, and one initializer makes the implicit
+default constructor non-trivial. An initializer on the access-space field broke
+the ESP32-C3 / ESP-IDF build (2026-08-24) while the native proofs stayed green:
+they never instantiate `RingBuffer<RawOp>`. Every construction site writes
+`RawOp operation{};`, which value-initializes the enums to their 0 members.
 
 **Device-clock synchronization does not use this lane.** It used to, tagged with
 a `RawPurpose`, which coupled two unrelated tenants in one queue and forced a

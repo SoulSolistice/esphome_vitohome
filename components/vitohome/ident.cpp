@@ -11,12 +11,9 @@ namespace esphome::vitohome {
 
 static const char *const TAG = "vitohome";
 
-// Known device families (Identification at 0xF8/0xF9). Deliberately small:
-// it covers the units this project has seen on the wire; everything else is
-// reported as raw hex, and the catalogue tooling (scripts/gen_catalog.py)
-// does the authoritative matching against the Vitosoft data.
-// `hw` is the hardware index (0xFA), or a negative value when it has not been
-// read yet. It only matters for GWG: see below.
+// Names for the identification at 0xF8/0xF9, for the log: only units seen on
+// the wire; the catalog finder does the matching. `hw` is the hardware index
+// (0xFA), negative when unread; only GWG needs it.
 static const char *ident_family_name(uint16_t ident, int hw = -1) {
   switch (ident) {
     case 0x20CB:
@@ -26,15 +23,10 @@ static const char *ident_family_name(uint16_t ident, int hw = -1) {
     case 0x2094:
       return "V200KW1";
     case 0x2053:
-      // GWG identification is NOT one family per ident. 0x2053 covers four
-      // distinct GWG unit families, discriminated by the hardware index --
-      // source-confirmed against the Vitosoft ecnDataPointType identification
-      // rows, where Identification is 0x2053 for all of them and
-      // IdentificationExtension's high byte separates them (0x01xx VBEM,
-      // 0x02xx VBES, 0x08xx VWMS, 0x10xx VBT2; the low byte is the software
-      // index). Reporting a bare "GWG_VBEM" here -- as this did, and as
-      // vcontrold's enum comment still does -- is wrong for three families out
-      // of four.
+      // Four GWG families share 0x2053. Vitosoft's ecnDataPointType rows tell
+      // them apart by IdentificationExtension's high byte, the hardware index:
+      // 0x01 VBEM, 0x02 VBES, 0x08 VWMS, 0x10 VBT2 (the low byte is the
+      // software index).
       switch (hw) {
         case 0x01:
           return "GWG_VBEM";
@@ -54,11 +46,10 @@ static const char *ident_family_name(uint16_t ident, int hw = -1) {
   }
 }
 
-// Burner-control chip names, as Vitosoft's own chip table gives them
-// (eventvaluetype Kennung_FA_Chip~<n>: "24h - NEC"). The byte read at 0x7650
+// Burner-control chip names from Vitosoft's table (eventvaluetype
+// Kennung_FA_Chip~<n>: "24h - NEC"), for the log. The byte at 0x7650
 // (GFA_Kennung) selects the GFA fault texts
-// (example/catalogs/<lang>/gfa/chip_<XX>.yaml); the name is only for the log.
-// Hardware: VScotHO1_72 reads 0x24.
+// (example/catalogs/<lang>/gfa/chip_<XX>.yaml). VScotHO1_72 reads 0x24.
 static const char *gfa_chip_name(int chip) {
   switch (chip) {
     case 0x20:
@@ -86,10 +77,9 @@ static const char *gfa_chip_name(int chip) {
   }
 }
 
-// Catalog finder (web/ in this repository, published with GitHub Pages). The
-// hub appends the identification bytes as a query string so the page opens on
-// the matching catalog. The page does the matching from the generated
-// example/catalogs/resolve.json; the device itself never fetches it.
+// Catalog finder (web/, on GitHub Pages). The identification bytes go in the
+// query string; the page matches them against example/catalogs/resolve.json.
+// The device never fetches it.
 static const char *const CATALOG_FINDER_URL = "https://soulsolistice.github.io/esphome_vitohome/";
 
 // ---------------------------------------------------------------------------
@@ -137,12 +127,11 @@ void VitoHomeComponent::ident_dispatch_(IdentState state) {
       break;
   }
 
-  // The actual bus dispatch happens from dispatch_next_() when idle.
+  // dispatch_next_() sends it when the bus is free.
 }
 
 void VitoHomeComponent::ident_handle_response_(const ResponseView &response) {
-  // P300 carries the actual response address. KW/GWG echo the request address,
-  // so this check is harmless for those protocols.
+  // A live check on P300 only; KW and GWG echo the request address.
   if (response.address != this->ident_dp_.address()) {
     ESP_LOGW(TAG, "Identification response address 0x%04X does not match in-flight 0x%04X", response.address,
              this->ident_dp_.address());
@@ -153,8 +142,6 @@ void VitoHomeComponent::ident_handle_response_(const ResponseView &response) {
   const uint8_t *data = response.data;
   const uint8_t length = response.data_length;
 
-  // A non-zero payload length must have usable storage. Treat a malformed view
-  // as a failed identification step rather than dereferencing nullptr.
   if (length != 0 && data == nullptr) {
     ESP_LOGW(TAG, "Identification response has length %u but no payload", length);
     this->ident_handle_error_();
@@ -163,8 +150,8 @@ void VitoHomeComponent::ident_handle_response_(const ResponseView &response) {
 
   switch (this->ident_state_) {
     case IdentState::READ4:
-      // 0xF8..0xFB in one transaction. Wire order is register order:
-      // F8 = group, F9 = controller, FA = HW index, FB = SW index.
+      // Register order: F8 group, F9 controller, FA hardware index, FB
+      // software index.
       if (length >= 4) {
         this->ident_group_ = data[0];
         this->ident_controller_ = data[1];
@@ -219,11 +206,10 @@ void VitoHomeComponent::ident_handle_response_(const ResponseView &response) {
       return;
 
     case IdentState::READ_F0:
-      // Raw and uninterpreted: reading F0 from the two bytes (Vitosoft: one
-      // little-endian Int) and what it selects is the catalog finder's
-      // business. FF FF is KW's
-      // answer for an address the unit does not have; 00 00 is a real value
-      // (the generic variant of a family F0 subdivides).
+      // Kept raw, in register order; the catalog finder decodes it (Vitosoft:
+      // one little-endian Int) and decides what it selects. FF FF is KW's
+      // answer for an address the unit lacks; 00 00 is a value (the generic
+      // variant of a family F0 subdivides).
       if (length >= 2 && !(data[0] == 0xFF && data[1] == 0xFF)) {
         this->ident_f0_ = (data[0] << 8) | data[1];
       } else {
@@ -238,9 +224,8 @@ void VitoHomeComponent::ident_handle_response_(const ResponseView &response) {
 }
 
 void VitoHomeComponent::ident_handle_error_() {
-  // Fail-soft per step: the multi-byte read degrades to single-byte reads
-  // (length-1 reads at F8/F9 are wire-confirmed on the reference unit), and
-  // each single-byte failure just leaves that field unknown.
+  // Each step fails soft: the 4-byte read falls back to single-byte reads, and
+  // a failed single-byte read leaves its field unknown.
   switch (this->ident_state_) {
     case IdentState::READ4:
       this->ident_dispatch_(IdentState::READ_F8);
@@ -297,8 +282,7 @@ std::string VitoHomeComponent::ident_string_() const {
     int offset = snprintf(buffer, sizeof(buffer), "0x%04X%s%s%s", ident, family != nullptr ? " (" : "",
                           family != nullptr ? family : "", family != nullptr ? ")" : "");
 
-    // HW and SW are printed independently, matching ident_finder_url_(): a
-    // unit that answers 0xFA but not 0xFB still shows its hardware index.
+    // Each field on its own, as in ident_finder_url_().
     if (this->ident_hw_ >= 0 && offset > 0 && offset < static_cast<int>(sizeof(buffer)))
       offset += snprintf(buffer + offset, sizeof(buffer) - offset, " HW=0x%02X", this->ident_hw_);
     if (this->ident_sw_ >= 0 && offset > 0 && offset < static_cast<int>(sizeof(buffer)))

@@ -29,10 +29,9 @@
 
 namespace esphome {
 
-// Forward declaration only: the hub holds a pointer to a time source for the
-// optional system-time sync. The real header is pulled into vitohome.cpp under
-// VITOHOME_TIME_SYNC, so a build without a time: component (the common case)
-// never needs the time component's sources on the include path.
+// The clock sync's time source. Only declared here; vitohome.cpp includes the
+// header under VITOHOME_TIME_SYNC, so a build without a time: component needs
+// none of its sources.
 namespace time {
 class RealTimeClock;
 }  // namespace time
@@ -41,10 +40,8 @@ namespace vitohome {
 
 class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice {
  public:
-  // ESPHomeUARTInterface stores `this` as a UARTDevice*. Base subobjects have
-  // already been constructed when member initialization begins, so passing
-  // this pointer to iface_ here is valid. iface_ must not invoke virtual hub
-  // behavior from its constructor.
+  // iface_ keeps `this` as a UARTDevice*, a base constructed before the
+  // members. Its constructor must not call into the hub.
   VitoHomeComponent() : iface_(this) {}
 
   void setup() override;
@@ -54,76 +51,47 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   float get_setup_priority() const override { return setup_priority::AFTER_WIFI; }
 
-  // Register one hub-owned entity pointer. Registration occurs during
-  // code-generation setup, and for the hub-owned clock inside setup() itself --
-  // in both cases before setup() sizes the queues.
-  //
-  // Duplicate pointer registration is ignored defensively: the exact queue
-  // sizing relies on the registered entity count being an upper bound for the
-  // number of distinct entities that can be pending in a lane.
-  //
-  // That upper bound is the whole basis for the lanes being unable to fill, so
-  // a registration arriving after setup() sized them would silently reintroduce
-  // exactly the shortfall this guard exists to catch. Reject it loudly instead:
-  // an entity absent from entities_ is never scheduled, which is a visibly dead
-  // entity rather than a lane that rejects an arbitrary victim once per cycle.
-  //
-  // Out-of-line: it runs once per entity at boot, so nothing here is worth
-  // inlining, and the diagnostic needs the TAG that lives in vitohome.cpp.
-  // Size the entity registry once, before any register_entity() call. The
-  // capacity is a codegen-computed upper bound on the runtime registration count
-  // (see __init__.py: _entity_capacity_upper_bound). Emitted from the hub's
-  // to_code(), so it runs ahead of every platform's register_entity() statement.
+  // Size the entity registry once, before the first register_entity(), to
+  // codegen's upper bound on the registrations (__init__.py,
+  // _entity_capacity_upper_bound). The hub's to_code() emits it ahead of every
+  // platform's register_entity().
   void reserve_entities(std::size_t capacity);
+  // Codegen registers each platform entity, setup() the hub's clock, both
+  // before setup() sizes the lanes from the count. A duplicate is ignored. A
+  // registration after that is refused with an error: the entity is never
+  // scheduled, instead of a lane one slot short refusing some other entity
+  // every cycle.
   void register_entity(VitoEntityBase *entity);
 
-  // Force-refresh: mark every registered entity due on the next scheduler
-  // tick by resetting its next_due_ms_ to the boot sentinel (0 = "never
-  // polled -> due now"). The existing scheduler then does all the hard work:
-  // read_queued_ dedup, queue backpressure, writes still preempt, read-backs
-  // still jump the queue -- so a refresh is a self-throttling drain, the same
-  // burst boot produces.
-  //
-  // Reads only; in-flight writes are untouched. If an entity already has a
-  // read pending or in flight, the scheduler leaves it alone until that read
-  // completes. Because next_due_ms_ remains at the sentinel, one additional
-  // refresh read is scheduled afterward.
-  //
-  // Debounced by REFRESH_ALL_MIN_INTERVAL_MS so a misfiring Home Assistant
-  // automation cannot pin the bus. Returns false when a call is suppressed.
-  //
-  // Callable from a lambda:
+  // Mark every polled entity due now (next_due_ms_ = 0, "never polled"). The
+  // scheduler drains them as at boot: no read is queued twice, writes still go
+  // first, read-backs still jump the queue. Reads only. An entity with a read
+  // pending or in flight keeps it and reads once more afterwards. At most once
+  // per REFRESH_ALL_MIN_INTERVAL_MS, so a looping automation cannot hold the
+  // bus; false when a call is dropped for that.
   //
   //   id(vito).refresh_all();
   bool refresh_all();
 
-  // Connectivity binary sensors do not poll the bus themselves. The hub feeds
-  // them its own view of the Optolink link, using device_class: connectivity in
-  // Home Assistant.
+  // Connectivity binary sensors do not poll; the hub publishes its view of the
+  // link to them, on change only.
   //
-  // A complete response, a NACK, or a complete device ERROR frame
-  // (OptolinkResult::DEVICE_ERROR) proves that the peer answered and resets
-  // the timeout streak; malformed traffic (ERROR/CRC/LENGTH) proves nothing
-  // and is ignored. OFFLINE is published after LINK_OFFLINE_AFTER_ERRORS
-  // consecutive timeout/lost-callback observations, or when start-up protocol
-  // verification fails. Under GWG a timeout counts only when the request never
-  // went out for want of an ENQ: a request the unit took and did not answer is
-  // an address it does not serve, not a link fault. State is edge-published,
-  // so a healthy link does not publish on every response.
+  // A complete response, a NACK or a device error frame (DEVICE_ERROR) is an
+  // answer and resets the timeout streak; corrupt traffic (ERROR, CRC, LENGTH)
+  // is ignored. OFFLINE follows LINK_OFFLINE_AFTER_ERRORS timeouts or lost
+  // callbacks in a row, or a failed start-up check. Under GWG a timeout counts
+  // only when the request never went out for want of an ENQ: a request the
+  // unit took and left unanswered is an address it does not serve.
 #ifdef USE_BINARY_SENSOR
-  // Codegen collects every connectivity binary_sensor and emits ONE static
-  // table (see __init__.py::_emit_hub_sensor_tables), so the hub stores a
-  // pointer and a count instead of growing a vector one push_back at a time.
-  // The pointees are mutated (publish_state), so this is an array of const
-  // pointers to non-const sensors, not the other way round.
+  // One static table from codegen (__init__.py, _emit_hub_sensor_tables).
+  // Const pointers to sensors that get published.
   void set_link_sensors(binary_sensor::BinarySensor *const *sensors, uint16_t count) {
     this->link_sensors_ = sensors;
     this->link_sensor_count_ = count;
   }
 #endif
 
-  // device_id text sensors do not poll the bus themselves. They subscribe to
-  // the hub's one-shot identification result.
+  // device_id text sensors do not poll; the hub publishes the identification.
 #ifdef USE_TEXT_SENSOR
   void set_device_id_sensors(text_sensor::TextSensor *const *sensors, uint16_t count) {
     this->device_id_sensors_ = sensors;
@@ -133,25 +101,15 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   void set_identify_device(bool value) { this->identify_device_ = value; }
 
-  // Capacity for the raw operation lane (the interactive scan console), applied
-  // by setup()'s one-shot reserve(). Each slot costs sizeof(RawOp) (38 B on a
-  // typical 32-bit ABI). RAW_QUEUE_DEFAULT is 0: the lane is a debug tool, so
-  // only configs that actually scan pay for it, and an unallocated lane rejects
-  // enqueues with a warning naming the option. Clock sync does NOT ride this
-  // lane -- it is a VitoClock entity on the read/write lanes (vito_clock.h) --
-  // so there is no minimum here.
+  // Slots of the raw lane (scan console), allocated in setup(); see
+  // RAW_QUEUE_DEFAULT.
   void set_raw_queue_capacity(std::size_t capacity) { this->raw_queue_capacity_ = capacity; }
 
-  // System-time sync is optional. The hub periodically reads the device clock
-  // at 0x088E and writes the configured time source back only when the measured
-  // drift exceeds the configured threshold.
-  //
-  // The feature is inert unless a time source is assigned. The implementation
-  // is a VitoClock (vito_clock.h) -- a hub-owned VitoEntityBase that rides the
-  // ordinary read/write lanes -- and the whole thing is compiled behind
-  // VITOHOME_TIME_SYNC so a configuration without a time component does not
-  // pull that component into the build. These setters keep the same signatures
-  // the codegen has always emitted and simply forward.
+  // Optional clock sync: read the device clock (clock_address, 0x088E by
+  // default) and write the time source's time when the drift exceeds the
+  // threshold. Inert without a time source. VitoClock (vito_clock.h) does the
+  // work on the ordinary lanes. Without VITOHOME_TIME_SYNC these setters are
+  // no-ops, so the generated code is the same either way.
   void set_time_source(time::RealTimeClock *time_source) {
 #ifdef VITOHOME_TIME_SYNC
     this->clock_.set_time_source(time_source);
@@ -180,41 +138,26 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 #endif
   }
 
-  // Queue a write for `entity`; the entity has already staged its payload in
-  // its fixed write buffer.
+  // Queue a write of the payload `entity` has staged. Writes go before reads.
+  // Still queued: the queued write sends the newest payload. In flight: the
+  // entity queues once more for the newer value. False for an invalid entity
+  // or payload, or a full lane.
   //
-  // Writes are dispatched with priority over reads. If the entity is already
-  // queued, the entity-owned payload is simply overwritten and the existing
-  // queue item transmits the newest value. If a write is already in flight,
-  // the entity may be queued once more so a newer value is sent afterward.
-  //
-  // Returns false when the entity/payload is invalid or the bounded write lane
-  // rejected the item.
-  //
-  // Normal ESPHome control callbacks are loop-dispatched. RingBuffer protects
-  // the queue itself, but does not independently synchronize concurrent writes
-  // to the entity-owned staging buffer. External FreeRTOS tasks must defer
-  // control operations to the ESPHome loop rather than mutate an entity
-  // directly.
+  // Call from the ESPHome loop: the lane is locked, the entity's staging
+  // buffer is not, so another task must defer to the loop.
   bool request_write(VitoEntityBase *entity);
 
-  // Queue a read for `entity` at the HEAD of the read lane, ahead of any
-  // pending polls. Two callers, both of which need to jump the queue rather
-  // than wait out a poll cycle (~150 s on a full catalog):
-  //   * the write-ACK read-back, confirming the device's view of a value just
-  //     written;
-  //   * VitoClock's sync schedule, preserving the dispatch priority that clock
-  //     sync had when it rode the raw lane.
-  //
-  // Returns true if the entity is queued OR was already queued (nothing to
-  // add); false only if the bounded lane rejected the insertion, which the
-  // read_queued_ dedup flag plus reserve(entities_.size()) make unreachable.
+  // Queue a read for `entity` at the head of the read lane, ahead of polls:
+  // the read-back after a write ACK, and VitoClock's sync. Neither should wait
+  // out a poll cycle (about 150 s on a full catalog). True when queued or
+  // already queued; false only for a full lane, which the lane sizing rules
+  // out.
   bool request_priority_read(VitoEntityBase *entity);
 
   // --- raw scan console (debug) --------------------------------------------
 
-  // Subscribe a hub-fed text sensor (text_sensor: type: scan_result) to raw
-  // result lines. The sensor never polls.
+  // scan_result text sensors: they do not poll; the hub publishes each raw
+  // result line.
 #ifdef USE_TEXT_SENSOR
   void set_raw_result_sensors(text_sensor::TextSensor *const *sensors, uint16_t count) {
     this->raw_result_sensors_ = sensors;
@@ -250,28 +193,22 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   void set_gwg_enq_send_delay_ms(uint32_t ms);
   uint32_t gwg_enq_send_delay_ms() const { return this->gwg_enq_send_delay_ms_; }
 
-  // True once the GWG engine has given up on bursting for this session (see
-  // GWGEngine::BURST_FAILURES_BEFORE_FALLBACK). Latched until reboot. A burst
-  // A/B test must check it first: after the fallback every request goes out on
-  // a fresh ENQ and proves nothing about the burst frame. Always false on
-  // non-GWG builds.
+  // True once the GWG engine has stopped bursting
+  // (GWGEngine::BURST_FAILURES_BEFORE_FALLBACK), until reboot. A burst A/B test
+  // checks it first: after the fallback every request waits for a fresh ENQ
+  // and proves nothing about the burst frame. Always false off GWG.
   bool gwg_burst_disabled() const { return this->gwg_burst_disabled_; }
 
-  // Queue a one-off read or write to an arbitrary address, for the scan
-  // console's raw lane. The front raw item is dispatched after identification
-  // and ahead of user writes and polls: the console is a person waiting at a
-  // button, and the lane is empty unless someone is scanning. Results are
-  // logged and published to every scan_result text sensor.
+  // Scan console: queue a one-off read or write of any address on the raw
+  // lane, which goes after identification and before writes and polls. The
+  // result is logged and published to every scan_result text sensor.
   //
-  // access applies under `protocol: GWG` only (default PHYSICAL; see
-  // GWGAccessMode in constants.h). Other builds accept and ignore it, so
-  // lambdas compile on every protocol.
-
+  // `access` is used under `protocol: GWG` only (GWGAccessMode, constants.h)
+  // and ignored elsewhere, so lambdas compile on every protocol.
   void queue_raw_read(uint16_t address, uint8_t length,
                       optolink::GWGAccessMode access = optolink::GWGAccessMode::PHYSICAL);
-  // Two write overloads: the pointer/length form is the no-allocation path for
-  // callers holding a stack buffer; the vector form is the ergonomic one for
-  // lambdas building a braced-init-list, and forwards to the pointer form.
+  // The pointer form takes a stack buffer without allocating; the vector form
+  // takes a braced-init-list from a lambda.
   void queue_raw_write(uint16_t address, const uint8_t *data, std::size_t len,
                        optolink::GWGAccessMode access = optolink::GWGAccessMode::PHYSICAL);
   void queue_raw_write(uint16_t address, const std::vector<uint8_t> &bytes,
@@ -306,50 +243,40 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
  protected:
   // What has the bus: the one operation in flight, and whose it is. One value
-  // answers both "is the bus free" and "who gets the callback"; it used to be
-  // spread over an entity pointer, an operation type and one bool each for
-  // identification and the raw console, which allowed combinations that mean
-  // nothing (an entity with no operation, two owners at once) and needed a
-  // branch to clean them up.
+  // answers "is the bus free" and "who gets the callback", so the two cannot
+  // disagree.
   enum class OpType : uint8_t {
     NONE,  // nothing in flight
     // An entity operation: in_flight_ is the entity.
     READ,
     WRITE,
-    // First half of a bit-field write: the read of the byte that the merged
-    // write will replace. It belongs to the WRITE lane (the entity has left
-    // write_queue_ and write_in_flight_ is set), so every completion path
-    // treats its failure as a failed write. See rmw_pending_.
+    // First half of a read-modify-write: the read of what the merged write
+    // replaces. Part of the write (write_in_flight_ is set), so its failure is
+    // a failed write. See rmw_pending_.
     RMW_READ,
-    // The hub's own: an identification read, a raw-console operation. No
-    // entity.
+    // The hub's own, with no entity.
     IDENT,
     RAW,
   };
 
-  // One-shot device identification, run immediately after protocol start-up:
+  // Device identification, once after start-up (and again on link-up if it
+  // failed):
   //
-  //   step 0: read 0x00F8 length 4, covering F8..FB;
+  //   0x00F8 length 4 (F8..FB), or four length-1 reads if that fails;
   //
-  //   fallback: four length-1 reads at F8/F9/FA/FB. The length-1 reads at
-  //             F8/F9 are wire-confirmed on the reference unit. Every fallback
-  //             step is fail-soft.
+  //   P300/KW: 0x7650 length 1, the burner-control chip (Vitosoft's
+  //   GFA_Kennung), which selects the GFA fault texts
+  //   (example/catalogs/<lang>/gfa/). GWG addresses one byte and has no such
+  //   address;
   //
-  //   then (P300/KW only): read 0x7650 length 1, the burner-control chip
-  //             (Vitosoft's GFA_Kennung). It selects the GFA fault-text companion
-  //             (example/catalogs/<lang>/gfa/). GWG addresses one byte, so the
-  //             read does not exist there.
+  //   P300/KW: 0x00F0 length 2, Vitosoft's "Erweiterte Geraetekennung (F0)",
+  //   which tells apart a few variants sharing one software-index range. Kept
+  //   raw (F0=0xXXYY, &f0=XXYY, register order); the catalog finder decides
+  //   what it selects. A unit without it answers with an error frame (P300) or
+  //   FF FF (KW).
   //
-  //   then (P300/KW only): read 0x00F0 length 2, Vitosoft's "Erweiterte
-  //             Geraetekennung (F0)", which tells a few variants apart that
-  //             share one software-index range. The hub does not interpret it:
-  //             it is logged and linked raw (F0=0xXXYY, &f0=XXYY, register
-  //             order) and the catalog finder decides what it selects. Read on
-  //             every unit, fail-soft: a unit without it answers with an error
-  //             frame (P300) or FF FF fill (KW), and the value stays unknown.
-  //
-  // The result is logged, shown in dump_config(), and published to registered
-  // device_id text sensors.
+  // Every step fails soft. The result is logged, shown in dump_config() and
+  // published to device_id text sensors.
   enum class IdentState : uint8_t {
     IDLE,
     READ4,
@@ -364,14 +291,11 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   void dispatch_next_();
 
-  // Attempt to dispatch the current raw front item. The operation is removed
-  // only after the protocol engine accepted it: peek, hand over, remove. The
-  // engine copies a write payload into its own packet synchronously, so no
-  // RawOp reference escapes that operation.
+  // Hand the head of a lane to the engine: peek, hand over, remove once
+  // accepted. dispatch_write_front_() returns whether the write lane held
+  // anything (sent, dropped, or waiting for the engine): no read goes ahead of
+  // a waiting write.
   void dispatch_raw_front_();
-  // The same hand-off for the two entity lanes. dispatch_write_front_()
-  // returns whether the write lane held anything (dispatched, dropped, or
-  // still waiting for the engine): reads do not go ahead of a waiting write.
   bool dispatch_write_front_();
   void dispatch_read_front_();
 
@@ -387,37 +311,31 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // --- bit-field read-modify-write (see rmw_pending_) ------------------------
   void rmw_handle_read_(VitoEntityBase *entity, const ResponseView &response);
   void rmw_dispatch_write_();
-  // Fail the bit-field write of `entity` WITHOUT transmitting anything: clears
-  // write_in_flight_ and reports the error to the entity. `why` is logged.
+  // Fail the read-modify-write of `entity` without sending anything; `why` is
+  // logged.
   void rmw_abort_(VitoEntityBase *entity, optolink::OptolinkResult error, const char *why);
   void rmw_verify_read_back_(VitoEntityBase *entity, const ResponseView &response);
-  // After a write ACK: queue a read for every OTHER polled entity whose read
-  // datapoint is the written register, so entities sharing the block (a test
-  // output and its speed byte, coding flags of one byte, a climate setpoint and
-  // a switch on the same register) show the device's state now, not at their
-  // next poll.
+  // After a write ACK, queue a read for every other polled entity on the
+  // written register (a test output and its speed byte, the coding flags of
+  // one byte, a setpoint and a switch), so they show the new state now, not at
+  // their next poll.
   void refresh_siblings_(VitoEntityBase *writer);
 
   // --- read coalescing --------------------------------------------------------
-  // Several entities often read one datapoint and differ only in what they
-  // take from it: eight coding flags of one byte, the fields of one block, a
-  // sensor and a text_sensor on the same register. In the generated catalogs
-  // 17% of all entities repeat another entity's read (14,453 of 82,650). Each
-  // used to send its own telegram.
+  // Entities often read one datapoint and differ only in what they take from
+  // it: eight coding flags of one byte, the fields of a block, a sensor and a
+  // text_sensor on one register. In the generated catalogs 14,453 of 82,650
+  // entities (17%) repeat another's read.
   //
-  // When a poll read completes, every OTHER entity that is waiting in the read
-  // lane for the same telegram (VitoEntityBase::reads_same_datapoint()) leaves
-  // the lane and is handed the same outcome: the answer, or the error. One
-  // telegram then serves the group, which matters most where it hurts most --
-  // a datapoint that does not answer costs its timeout once, not once per
-  // entity.
+  // When a poll read completes, every other entity waiting in the read lane
+  // for the same telegram (VitoEntityBase::reads_same_datapoint()) leaves the
+  // lane with the same outcome, answer or error. A datapoint that does not
+  // answer costs its timeout once, not once per entity.
   //
-  // Only entities already waiting are served: nothing is delivered to an entity
-  // that did not ask, so an entity's own interval still decides when it reads.
-  // The answer is at least as fresh as the one the waiting entity would have
-  // fetched itself, except in one ordering -- its own write queued behind the
-  // read in flight -- and that write's ACK re-reads it anyway (read-back, or
-  // refresh_siblings_()).
+  // Only waiting entities are served, so each entity's interval still decides
+  // when it reads. The answer is as fresh as the one it would have fetched,
+  // except when its own write is queued behind the read in flight; that
+  // write's ACK reads it again (read-back or refresh_siblings_()).
   void share_read_response_(VitoEntityBase *reader, const ResponseView &response);
   void share_read_error_(VitoEntityBase *reader, optolink::OptolinkResult error);
   // The next entity waiting in the read lane for `reader`'s telegram, taken
@@ -426,7 +344,6 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   VitoEntityBase *take_waiting_on_same_read_(VitoEntityBase *reader, std::size_t &from);
 
   // --- identification -------------------------------------------------------
-
   void ident_start_();
   void ident_dispatch_(IdentState state);
   void ident_handle_response_(const ResponseView &response);
@@ -441,22 +358,13 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   static constexpr size_t CATALOG_FINDER_URL_SIZE = 88;
 
   // --- raw scan console -----------------------------------------------------
-  //
-  // This lane is the interactive debug console and nothing else. It used to
-  // carry device-clock synchronization too, behind a RawPurpose tag; the clock
-  // is now a VitoClock entity on the ordinary read/write lanes (vito_clock.h),
-  // which removed the tag, the purpose-based arbitration, and the two failure
-  // modes the sharing created.
-
   void raw_handle_response_(const ResponseView &response);
   void raw_handle_error_(optolink::OptolinkResult error);
   void raw_publish_(const char *line);
 
-  // Shared enqueue for the raw lane. bytes/bytes_len is the write payload and
-  // must be nullptr/0 for a read. The payload is copied into RawOp, so queue
-  // storage remains self-contained and heap-free after setup.
-  //
-  // Returns false for invalid arguments or queue overflow.
+  // Every raw operation is queued here. bytes/bytes_len is the write payload or
+  // the procedure parameter, nullptr/0 for a read, copied into the RawOp. False
+  // for invalid arguments or a full lane.
   bool enqueue_raw_(uint16_t address, uint8_t length, bool is_write, const uint8_t *bytes, uint8_t bytes_len,
                     AddressSpace space = AddressSpace::OWN, RawLayer layer = RawLayer::NONE, uint8_t code = 0);
 
@@ -468,11 +376,9 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // flight (or being queued) is, for log and result lines.
   static void raw_label_(char *out, std::size_t cap, bool is_write, AddressSpace space, RawLayer layer, uint8_t code);
 
-  // The telegram for a read (or an RPC call) / a write of `address` in
-  // `space`, on the selected engine: the one place an AddressSpace becomes an
-  // engine call. False when the engine does not take it -- busy (transient) or
-  // never (permanent; the callers tell them apart with isBusy()), which is
-  // also the answer for a space the protocol does not have.
+  // The telegram for a read (or procedure call) or a write of `address` in
+  // `space`. False when the engine does not take it: busy, or never (also for
+  // a space the protocol lacks); the callers tell them apart with isBusy().
   bool send_read_(uint16_t address, uint8_t length, AddressSpace space, const uint8_t *parameter = nullptr,
                   uint8_t parameter_len = 0);
   bool send_write_(uint16_t address, const uint8_t *data, uint8_t length, AddressSpace space,
@@ -481,33 +387,20 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
  private:
   ESPHomeUARTInterface iface_;
 
-  // Build-time-selected protocol engine. All three engines expose the same
-  // byte-oriented read/write API and callback shape:
-  //
-  //   response(data, length, address)
-  //   error(result, request_address)
-  //
-  // setup() wraps the raw response payload in ResponseView before forwarding it
-  // to an entity or one of the hub's internal state machines.
+  // Selected at build time; all three engines have the same read/write calls
+  // and callbacks, response(data, length, address) and
+  // error(result, request_address).
   std::unique_ptr<optolink::OptolinkEngine<SelectedProtocol>> vito_;
 
-  // True after any verified response from the selected protocol, including a
-  // complete NACK/ERROR response that proves the peer spoke the protocol.
+  // Set by the first answer of the selected protocol, a NACK or device error
+  // frame included.
   bool link_established_{false};
 
-  // Registration vectors are populated by code generation before setup().
-  // Runtime queue sizing depends on entities_ being complete at setup time.
-  // Single-allocation entity registry: reserve_entities() (from codegen) calls
-  // init() once with an upper bound on the registration count, then
-  // register_entity() push_back()s into it. FixedVector never reallocates and
-  // never over-allocates via geometric growth (ESPHome container guidance,
-  // developers.esphome.io/contributing/code), so no shrink_to_fit() is needed.
+  // One allocation (reserve_entities()), filled by register_entity() before
+  // setup() sizes the lanes from it. FixedVector never reallocates.
   FixedVector<VitoEntityBase *> entities_;
 
-  // Latched by setup() the moment entities_.size() is sampled for reserve().
-  // From then on entities_ is frozen: register_entity() refuses to grow it,
-  // because a later arrival would leave the lanes one slot short of the count
-  // they are supposed to bound.
+  // Set when setup() sizes the lanes; register_entity() refuses from then on.
   bool lanes_sized_{false};
 
 #ifdef USE_TEXT_SENSOR
@@ -520,10 +413,7 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   uint16_t link_sensor_count_{0};
 #endif
 
-  // Tri-state published connectivity:
-  //   -1 = unknown / nothing published
-  //    0 = offline
-  //    1 = online
+  // Published connectivity: -1 nothing published, 0 offline, 1 online.
   int8_t link_state_{-1};
 
   uint8_t link_error_streak_{0};
@@ -531,34 +421,29 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   static constexpr uint8_t LINK_OFFLINE_AFTER_ERRORS = 3;
 
 #ifdef VITOHOME_PROTOCOL_GWG
-  // All-0xFF response detector -- see gwg_note_all_ff_() for why GWG needs one
-  // and why the threshold is deliberately high.
+  // All-0xFF answers in a row (gwg_note_all_ff_()).
   uint8_t gwg_all_ff_streak_{0};
   bool gwg_all_ff_warned_{false};
 
-  // Eight consecutive whole responses of nothing but 0xFF. Chosen above the
-  // longest plausible run of genuinely-0xFF datapoints in a real catalog, so
-  // the warning does not fire on a device that merely has a few unset enums.
+  // Above the longest plausible run of datapoints that really read 0xFF, such
+  // as a few unset enums.
   static constexpr uint8_t GWG_ALL_FF_WARN_AFTER = 8;
 #endif
 
   uint32_t last_refresh_all_ms_{0};
-  // Every answer the engine delivered, of any lane. A poll timeout advances an
-  // entity's backoff streak only if this moved since its previous timeout, i.e.
-  // the link answered something in between (note_poll_timeout_). Wraps
-  // harmlessly: only equality is ever tested.
+  // Answers delivered, any lane. A poll timeout advances an entity's backoff
+  // streak only if this moved since its previous one (note_poll_timeout_()).
+  // Only compared for equality, so wrapping is harmless.
   uint32_t answers_total_{0};
 
   static constexpr uint32_t REFRESH_ALL_MIN_INTERVAL_MS = 5000;
 
   void publish_link_(bool up);
 
-  // Record verified link activity. This resets the timeout streak, marks
-  // start-up protocol verification successful, and edge-publishes ONLINE.
+  // An answer: resets the timeout streak, passes the start-up check, publishes
+  // ONLINE on change.
   void link_note_alive_();
-
-  // Record one no-response/lost-callback observation. OFFLINE is edge-published
-  // once the threshold is reached.
+  // A timeout or lost callback: OFFLINE at LINK_OFFLINE_AFTER_ERRORS in a row.
   void link_note_error_();
 #ifdef VITOHOME_PROTOCOL_GWG
   void gwg_note_all_ff_(const uint8_t *data, uint8_t length);
@@ -566,30 +451,22 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   // --- entity queues and in-flight state ------------------------------------
   //
-  // Under normal operation each entity's read_queued_ / write_queued_ flag
-  // prevents a second pending occurrence in the corresponding lane. The
-  // registered entity count is therefore the expected maximum lane depth.
+  // An entity is at most once in each lane (read_queued_, write_queued_), so
+  // the entity count bounds the lane depth.
   //
-  // read_queued_ covers both a queued read and a read currently in flight. It
-  // is cleared by the response, error, mismatch, or watchdog completion path.
+  // read_queued_: read queued or in flight, cleared on answer, error, address
+  // mismatch or watchdog. write_queued_: waiting in write_queue_, cleared when
+  // the engine takes it; write_in_flight_ then lasts until ACK, error,
+  // mismatch or watchdog. So a newer value can queue while the older one is in
+  // flight. A refused push rolls its flag back.
   //
-  // write_queued_ covers only an item waiting in write_queue_. It is cleared
-  // when the engine accepts that item. write_in_flight_ then covers the
-  // transaction until ACK, error, mismatch, or watchdog completion. Keeping
-  // them separate lets a newer value enqueue while an older write is in flight.
-  //
-  // Every insertion is checked. A rejected push rolls back its companion flag
-  // instead of leaving the entity permanently marked as queued.
-  //
-  // RingBuffer synchronization is per object. Separate VitoHomeComponent
-  // instances therefore own independent queues and locks. That does not make
-  // it valid for multiple hubs to consume the same UART stream.
+  // Each hub has its own lanes and locks; two hubs on one UART still do not
+  // work.
   RingBuffer<VitoEntityBase *> read_queue_;
   RingBuffer<VitoEntityBase *> write_queue_;
 
-  // The operation in flight (OpType) and, for an entity operation, its
-  // entity. Written only by set_in_flight_() and take_in_flight_(), so the two
-  // cannot disagree.
+  // The operation in flight and, for an entity operation, its entity. Written
+  // only by set_in_flight_() and take_in_flight_().
   OpType in_flight_op_{OpType::NONE};
   VitoEntityBase *in_flight_{nullptr};
   uint32_t in_flight_started_ms_{0};
@@ -599,9 +476,8 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   void apply_gwg_diagnostics_();
   // Start the watchdog for an operation of `telegrams` telegrams.
   void arm_watchdog_(uint8_t telegrams = 1);
-  // The engine has accepted a telegram: record whose it is and start its
-  // watchdog. `entity` is given for READ / WRITE / RMW_READ and for nothing
-  // else.
+  // The engine took a telegram: record whose it is, start the watchdog.
+  // `entity` for READ, WRITE and RMW_READ only.
   void set_in_flight_(OpType operation, VitoEntityBase *entity = nullptr, uint8_t telegrams = 1) {
     this->in_flight_op_ = operation;
     this->in_flight_ = entity;
@@ -619,46 +495,38 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   // --- read-modify-write (bit fields and whole blocks) ------------------------
   //
-  // An entity with needs_rmw() -- a field_mask(), or a field smaller than its
-  // block (block mode) -- writes only its field. The write lane turns its write
-  // into two transactions: an RMW_READ of the whole write datapoint (one byte for
-  // a plain bit field, the block in block mode), then a WRITE of all of it with
-  // only the field replaced (decode.h::merge_block_field). Everything else --
-  // other datapoints sharing the byte or the block, e.g. eight coding flags at
-  // GWG EEPROM 0x0005, or a Neptun test output and its speed byte -- goes back
-  // exactly as read. The block is written whole because the device writes its
-  // whole datapoint (docs/design_notes.md SS5b).
+  // An entity with needs_rmw() (a field_mask(), or a field smaller than its
+  // block) writes only its field, in two transactions: an RMW_READ of the
+  // whole write datapoint (one byte, or the block), then a WRITE of all of it
+  // with only the field replaced (decode.h, merge_block_field). The rest, such
+  // as eight coding flags at GWG EEPROM 0x0005 or a Neptun test output and its
+  // speed byte, goes back as read. The device writes its whole datapoint
+  // (docs/design_notes.md SS5b).
   //
-  // INVARIANT (host-unprovable; docs/design_notes.md SS10a, invariant 3):
-  //   between an RMW_READ response and the dispatch of its merged write,
-  //   dispatch_next_() dispatches NOTHING else -- rmw_pending_ is checked before
-  //   identification, the raw lane and both entity lanes -- and every RMW_READ
-  //   completion path (response, error, address mismatch, watchdog) either arms
-  //   rmw_pending_ or ends in rmw_abort_(). That is what makes two quick changes
-  //   to sibling fields safe: A's read and write can never straddle B's.
+  // INVARIANT (not host-provable; docs/design_notes.md SS10a, invariant 3):
+  //   between an RMW_READ answer and its merged write, dispatch_next_() sends
+  //   nothing else (rmw_pending_ is checked first), and every RMW_READ
+  //   completion path (answer, error, address mismatch, watchdog) arms
+  //   rmw_pending_ or ends in rmw_abort_(). So two quick changes to sibling
+  //   fields never interleave.
   //
-  // Fail closed: if the read fails for any reason, nothing is written. A blind
-  // fallback write is exactly the corruption this exists to prevent.
-  //
-  // All state is inline and fixed-size (a block is at most MAX_RMW_BLOCK bytes,
-  // enforced at config time and again at runtime), so there is no allocation
-  // (guidelines A4).
+  // A failed read writes nothing; a blind write is the corruption this
+  // prevents. All state is inline (MAX_RMW_BLOCK, checked by config and at
+  // runtime); nothing is allocated.
  public:
-  // Mirror of MAX_RMW_BLOCK in __init__.py. Hardware-proven P300 write sizes are
-  // 1, 2 and 8 bytes; 16 covers every writable block the export declares (the
-  // 42-byte label blocks are strings, not a read-modify-write).
+  // Mirrors MAX_RMW_BLOCK in __init__.py. P300 writes of 1, 2 and 8 bytes are
+  // hardware-proven; 16 covers every writable block in the export (the 42-byte
+  // label blocks are strings, not a read-modify-write).
   static constexpr uint8_t MAX_RMW_BLOCK = 16;
 
  private:
   VitoEntityBase *rmw_pending_{nullptr};  // armed: merged block ready to write
   uint8_t rmw_buf_[MAX_RMW_BLOCK]{};      // the merged block to transmit
   uint8_t rmw_len_{0};
-  // The read-modify-write most recently transmitted, for the read-back check:
-  // after the ACK the hub reads the register back anyway (read_back), and every
-  // byte OUTSIDE the field -- and every bit outside the mask inside it -- must
-  // still match what was written. A difference means the device changed a
-  // sibling inside the read/write window, or did not take the write as sent;
-  // either way it is logged, never silently accepted.
+  // The last merged write sent, for its read-back: every byte outside the
+  // field, and every bit outside the mask in it, must read back as written. A
+  // difference (a sibling changed between read and write, or the device did
+  // not take the write as sent) is logged.
   VitoEntityBase *rmw_verify_entity_{nullptr};
   uint8_t rmw_verify_buf_[MAX_RMW_BLOCK]{};
   uint8_t rmw_verify_len_{0};
@@ -695,23 +563,12 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   // --- raw scan console lane -------------------------------------------------
   //
-  // The raw lane contains complete inline operations and has exactly one item
-  // in flight at a time. Its single tenant is the interactive scan console
-  // (queue_raw_read / queue_raw_write). Device-clock synchronization used to
-  // share this FIFO behind a RawPurpose tag; since the NTP refactor it is a
-  // VitoClock entity on the ordinary read/write lanes (vito_clock.h), so this
-  // lane needs no per-item arbitration: the front raw item simply preempts
-  // user writes and polls (dispatch_next_ has the rationale).
-  //
-  // Write payloads are stored inline. Protocol engines serialize the payload
-  // synchronously into their own packet buffer during write(), so queued bytes
-  // do not need to outlive dispatch.
+  // Operations with their payload inline, one in flight at a time. The engine
+  // copies the payload into its packet when it takes the write.
   static constexpr uint8_t RAW_WRITE_MAX = 32;
 
-  // The read cap is separate and larger because a raw read stores no outbound
-  // payload. Forty-eight bytes matches the widest catalog-generated text block
-  // currently emitted and keeps format_raw_dump() output within its fixed
-  // result buffer.
+  // A read stores no payload, so its cap is separate: the widest text block in
+  // the catalogs, and what format_raw_dump()'s result buffer holds.
   static constexpr uint8_t RAW_READ_MAX = 48;
 
   struct RawOp {
@@ -720,60 +577,29 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
     bool is_write;
     uint8_t bytes[RAW_WRITE_MAX];
     uint8_t bytes_len;
-    // Which telegram (AddressSpace; address_space.h): a GWG access mode on
-    // GWG, a remote procedure call (`bytes`/`bytes_len` its parameter, `length`
-    // equal to bytes_len, 0 allowed), a GFA read. See queue_raw_read() /
-    // queue_raw_write() / queue_raw_rpc() / queue_raw_gfa_read().
+    // Which telegram (address_space.h): a GWG access mode, a procedure call
+    // (`bytes`/`bytes_len` its parameter, `length` equal to bytes_len, 0
+    // allowed), a GFA read.
     //
-    // NO default member initializer here (bug fixed 2026-08-24, found on a
-    // real ESP32-C3/ESP-IDF build, not caught by the native proof suite
-    // because it never instantiates RingBuffer<RawOp>). A default member
-    // initializer makes the implicitly-defined default constructor
-    // non-trivial, which fails RingBuffer<T>'s
-    // `is_trivially_default_constructible` static_assert (ring_buffer.h) the
-    // moment raw_queue_ is instantiated -- i.e. always. AddressSpace::OWN
-    // is 0 (static_assert below), so `RawOp operation{};` (used at every
-    // construction site) already value-initializes this to OWN.
+    // No default member initializers: RingBuffer static_asserts a trivially
+    // default-constructible element. `RawOp operation{};` value-initializes
+    // this to OWN (0).
     AddressSpace space;
     // A queue_raw_op() operation: its layer and function code / type byte
-    // (`bytes` its payload when is_write). NONE (0, value-initialized, see
-    // above) for every other raw operation.
+    // (`bytes` its payload when is_write). NONE (0) for every other one.
     RawLayer layer;
     uint8_t code;
   };
 
-  // The raw lane is explicitly bounded because a range sweep can enqueue much
-  // faster than a 4800-baud link drains.
+  // Default raw_queue_size (0..1024, __init__.py). Each slot is sizeof(RawOp),
+  // about 40 bytes on a 32-bit target, and a sweep-sized lane is a quarter of
+  // an ESP8266's heap, so only configs that scan allocate one. An operation
+  // queued on no lane is refused with a warning naming the option.
   //
-  // RawOp carries RAW_WRITE_MAX inline bytes, so each slot is real RAM:
-  // sizeof(RawOp) is 40 bytes on a typical 32-bit ABI, exact value dependent on
-  // the selected compiler and target.
-  //
-  // DEFAULT 0: the lane is allocated only by configs that actually scan.
-  //
-  // This lane serves exactly one feature -- the interactive scan console
-  // (queue_raw_read() / queue_raw_write() / the scan_result text_sensor). It is
-  // a debug tool, so paying for it by default is backwards, and on a memory-
-  // constrained target (ESP8266: ~40 KiB heap) a sweep-sized lane is a
-  // quarter of the budget. Clock synchronization used to live here too and
-  // forced a non-zero default; it is now a VitoClock entity on the ordinary
-  // read/write lanes (vito_clock.h), so a config that does not scan needs no
-  // raw lane at all.
-  //
-  // Scanning is therefore opt-in. Size it to the largest burst you intend:
-  // a one-off queue_raw_read() from a button needs 1; a RANGE SWEEP needs
-  // depth proportional to its count (example/vitohome-scanner-raw.yaml uses
-  // 256, ~9.7 KiB). An enqueue against an unallocated lane is rejected with a
-  // warning naming this option, so the failure is loud rather than silent.
-  //
-  // The size cannot be derived from the config: the lane is driven through
-  // queue_raw_read()/queue_raw_write() from lambdas, and the shipped sweep's
-  // count is a Home Assistant action parameter chosen at runtime -- the
-  // required depth does not exist at codegen time in any form.
-  //
-  // This is the DEFAULT, not a ceiling; the YAML raw_queue_size option
-  // overrides it through set_raw_queue_capacity() and is validated to
-  // 0..1024 in __init__.py.
+  // Size it to the largest burst: 1 for a button's queue_raw_read(), the
+  // sweep's count for a range sweep (example/vitohome-scanner-raw.yaml: 256,
+  // about 9.7 KiB). Codegen cannot derive it: lambdas fill the lane, and the
+  // sweep's count is a Home Assistant action parameter.
   static constexpr std::size_t RAW_QUEUE_DEFAULT = 0;
   std::size_t raw_queue_capacity_{RAW_QUEUE_DEFAULT};
 
@@ -789,8 +615,7 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   optolink::Datapoint raw_dp_{"scan", 0, 1, optolink::noconv};
 
-  // Length of the last dispatched raw write. The payload itself is already in
-  // the engine packet; only this length is retained for the ACK log line.
+  // Length of the raw write in flight, for the ACK line.
   uint8_t raw_write_len_{0};
 
 #ifdef USE_TEXT_SENSOR
@@ -800,31 +625,20 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   // --- system-time synchronization ------------------------------------------
 
-  // The clock is a hub-OWNED entity, not a codegen'd one: it has no platform
-  // and no YAML of its own, so nothing else would construct it. setup()
-  // register_entity()s it before sizing the lanes, so it counts toward
-  // entities_.size() like any other participant.
-  //
-  // Under the #else there is no member at all -- a build without a time:
-  // component carries none of this.
+  // Owned by the hub: the clock has no platform or YAML of its own. setup()
+  // registers it before sizing the lanes. Absent without a time: component.
 #ifdef VITOHOME_TIME_SYNC
   VitoClock clock_;
 #endif
 
-  // Failsafe for a lost engine callback. The protocol engines have their own
-  // shorter transaction timeouts, but this prevents a permanently occupied hub
-  // slot if a callback is ever lost because of an engine defect.
+  // For a callback the engine lost; the engines time out sooner.
   static constexpr uint32_t IN_FLIGHT_WATCHDOG_MS = 10000;
 
-  // Start-up protocol check. The selected engine should establish verified
-  // protocol activity within max(PROTOCOL_VERIFY_MIN_MS, 3 * hub interval).
-  // If it does not, the hub logs an error, publishes the link offline and
-  // raises the component's error status -- and keeps polling: the device may
-  // simply be off. The first answer clears all three (link_note_alive_()).
-  //
-  // The implementation caps the derived interval to INT32_MAX because the
-  // rollover-safe signed-difference deadline comparison is valid only for
-  // deadlines less than 2^31 milliseconds away.
+  // Start-up check: no answer within max(PROTOCOL_VERIFY_MIN_MS, 3 * hub
+  // interval) logs an error, publishes the link offline and sets the error
+  // status, and polling goes on: the device may be off. The first answer
+  // clears all three (link_note_alive_()). The window is capped at INT32_MAX
+  // for the signed-difference deadline check.
   static constexpr uint32_t PROTOCOL_VERIFY_MIN_MS = 90000;
 
   bool protocol_verify_pending_{false};
