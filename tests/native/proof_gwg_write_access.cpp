@@ -4,8 +4,8 @@
 // Vitosoft GWG device tokens the writable datapoints are EEPROM_WRITE (1082)
 // and BE_WRITE (280) -- and zero PHYSICAL_WRITE. Since 0xC8 (PHYSICAL WRITE)
 // was the only write TYPE byte this engine could emit before the mode table
-// existed, that is the most likely reason no GWG write has ever been confirmed
-// to work anywhere, including openv issue #467.
+// existed, that is the most likely reason no GWG write was confirmed anywhere
+// before it, including openv issue #467.
 //
 // This proof pins:
 //   (1) each access mode selects the documented WRITE TYPE byte;

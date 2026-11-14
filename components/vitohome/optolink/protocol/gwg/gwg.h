@@ -283,8 +283,8 @@ class GWGEngine {
   // A pair that does not sum to 0xFF fails the whole read with
   // OptolinkResult::CRC rather than delivering a guess -- except FF FF, which
   // uwen70 documents as "address not in use" and is delivered as 0xFF, the
-  // same answer every other GWG mode gives for an unserved address. EEPROM WRITES are not
-  // affected: their frame is still unconfirmed (see setWriteEotBeforePayload()).
+  // same answer every other GWG mode gives for an unserved address. An EEPROM
+  // write carries the pair too (PacketGWG::createTelegram()).
   static constexpr uint8_t kEepromPairLength = 2;
 
   // Active sync poke. OFF by default: INIT waits passively for the device's ENQ

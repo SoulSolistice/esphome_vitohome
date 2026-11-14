@@ -104,17 +104,31 @@ Vitosoft pairs every writable datapoint within one mode (`EEPROM_WRITE` 1082,
 `BE_WRITE` 280, `PHYSICAL_WRITE` 0). Given the `be` results above, `eeprom`
 datapoints are the candidates left, and those are codings.
 
-EEPROM writes reach the unit (VR20, SW `0x2B`, coding (55) at `0x16`). It
-acked all four test writes with `00` and stores the two bytes after the
-address as the cell's complement pair. The generic layout put the length byte
-there, so the cell read back `01:29` or `01:04` and failed its check. An
-EEPROM write is now `01 AD ADDR ~V V 04`, one cell per frame
-(design_notes.md, "GWG EEPROM"); that frame is not yet confirmed by a
-read-back. For the other write types, where the `0x04` goes is unknown; both
-layouts are switchable at run time (`set_gwg_write_eot_before_payload()`).
+**EEPROM writes work** (HW #35, the #13 unit: `0x2053` HW `0x01` SW `0x2B`,
+2026-11-13). An EEPROM write is `01 AD ADDR ~V V 04`, one cell per frame
+(design_notes.md, "GWG EEPROM"). The unit stores the two bytes after the
+address as the cell's complement pair:
 
-The engine completes a write on any single answer byte. Which value means
-"taken" is unknown (KW uses `0x00`), so the byte is not checked but shown: the
+| Sent | Answer | Read back `0x16` / `0x96` |
+|---|---|---|
+| `01 AD 16 CF 30 04` | `00` | `CF:30` / `CF:30`; `CF:30` again 16 min later |
+| `01 AD 16 D7 28 04` | `00` | `D7:28` / `D7:28` |
+
+- `0x96` follows the write: `0x80`–`0xBF` is the same cell, not a copy.
+- The generic layout put the length byte after the address, so the cell read
+  back `01:29` or `01:04` and failed its check (HW #35, SW `0x1E` and
+  `0x2B`).
+- Not shown yet: that a value survives a power cycle, and that the
+  controller acts on it.
+
+No other write type is confirmed. `be` answers `0xFF` everywhere on the
+units tried, and for the non-EEPROM types where the `0x04` goes is unknown;
+both layouts are switchable at run time
+(`set_gwg_write_eot_before_payload()`).
+
+The engine completes a write on any single answer byte. The confirmed EEPROM
+writes answered `00` (as on KW); whether other values occur is unknown, so
+the byte is not checked but shown: the
 raw result reads `write ACK (1 byte), answered XX`, and an entity write logs
 it at DEBUG. Only a read-back proves that a write landed.
 

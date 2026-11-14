@@ -390,9 +390,9 @@ climate:
         - {name: "Standby", write: 0x00, read: [0x05], mode: "off"}
 ```
 
-Note GWG writes remain **unconfirmed on hardware**: EEPROM writes reach the
-unit, but no write has been read back intact yet. See
-[`docs/design_notes.md`](docs/design_notes.md#writes).
+Note only GWG **EEPROM writes are confirmed on hardware** (one unit, written
+and read back intact); `be` writes and the other write types are not. See
+[`docs/gwg_protocol.md`](docs/gwg_protocol.md#writes).
 
 You normally will not write these by hand: `scripts/gen_catalog.py` reads the
 access mode out of Vitosoft's own `FCRead` field and emits `access:` on every

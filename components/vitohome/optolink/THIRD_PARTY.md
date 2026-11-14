@@ -809,7 +809,9 @@ These are intentional divergences from upstream `edc059a7`:
     `01 AD ADDR ~V V 04` for type `0xAD`: no length byte, the pair as the
     read returns it, one cell per frame (a longer write is refused), and the
     EOT last whatever `gwgWriteEotBeforePayload` says. The other write types
-    are unchanged. Proof: `proof_gwg_write_access.cpp` (6).
+    are unchanged. Hardware-confirmed (#35, the #13 unit, `0x2053` SW
+    `0x2B`): `01 AD 16 CF 30 04` and `01 AD 16 D7 28 04` were acked `00` and
+    read back intact. Proof: `proof_gwg_write_access.cpp` (6).
 
 33. **GWG ENQ-to-send delay (diagnostic, default off, issue #35).** The
     request goes out in the `loop()` pass that read the device's ENQ (item

@@ -11,7 +11,7 @@
 #
 # The addresses below are taken from vcontrold's GWG device overrides. This is
 # a CODEGEN gate (OptolinkEngine<GWG> + the GWG branch of ProtocolAdapter), not
-# a wire test: GWG remains unverified on hardware.
+# a wire test. What GWG units do on hardware is in docs/gwg_protocol.md.
 
 esphome:
   name: ${name}
@@ -150,8 +150,8 @@ number:
   # A WRITABLE entity carrying access: -- one mode drives both directions, so
   # this reads with EEPROM_READ (0xAE) and writes with EEPROM_WRITE (0xAD).
   # Vitosoft marks every writable GWG datapoint as EEPROM or BE and NONE as
-  # physical, so this is the shape a real GWG write takes. Codegen gate only:
-  # GWG writes are unverified on hardware (THIRD_PARTY.md #19).
+  # physical, so this is the shape a real GWG write takes. Codegen gate only;
+  # EEPROM writes are hardware-confirmed (THIRD_PARTY.md #32).
   - platform: vitohome
     name: "GWG Kesselmaximaltemperatur"
     address: 0x01
@@ -168,8 +168,8 @@ number:
   # access: until the writable-entity requirement landed -- it was relying on
   # the implicit physical default, i.e. exactly the silent-wrong-datapoint case
   # that requirement exists to stop (PHYSICAL_WRITE is used by zero Vitosoft
-  # GWG datapoints). Codegen gate only: GWG writes are unverified on hardware
-  # (THIRD_PARTY.md #19).
+  # GWG datapoints). Codegen gate only: `be` writes are unverified on hardware,
+  # and `be` answered 0xFF at every address tried (docs/gwg_protocol.md).
   - platform: vitohome
     name: "GWG WW Solltemperatur"
     address: 0x63
@@ -197,8 +197,8 @@ number:
 
 # Two flags of the SAME byte (EEPROM 0x05 holds eight coding flags). The
 # read-modify-write keeps each write from clearing the other seven; the hub
-# serialises the two so neither can undo the other. Codegen gate only: GWG
-# writes are unverified on hardware.
+# serialises the two so neither can undo the other. Codegen gate only: whole-
+# cell EEPROM writes are hardware-confirmed, a GWG bit-field write is not.
 select:
   - platform: vitohome
     name: "GWG K13 Speichernachlauf"

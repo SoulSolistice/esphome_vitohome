@@ -109,7 +109,7 @@ signedness rules.
 |---|---|---|
 | P300 / VS2 | `P300` (default) | **Hardware-confirmed** on a VScotHO1 (`0x20CB`). |
 | KW / VS1 | `KW` | **Hardware-confirmed** on a VScotHO1. |
-| GWG | `GWG` | **Reads hardware-confirmed** on three `0x2053` units (issues #13, #21, #35; first capture 2026-08-23, which exposed the ENQ-misread defect fixed in THIRD_PARTY.md #18). `physical`, `virtual`, `eeprom`, `xram` and `port` answer; `be` and `kmbus_eeprom` did not return data on the units that tried them. **No write is confirmed.** Per-mode status and open questions: [gwg_protocol.md](gwg_protocol.md). |
+| GWG | `GWG` | **Reads hardware-confirmed** on three `0x2053` units (issues #13, #21, #35; first capture 2026-08-23, which exposed the ENQ-misread defect fixed in THIRD_PARTY.md #18). `physical`, `virtual`, `eeprom`, `xram` and `port` answer; `be` and `kmbus_eeprom` did not return data on the units that tried them. **EEPROM writes are confirmed** (#35, on the #13 unit); no other write type is. Per-mode status and open questions: [gwg_protocol.md](gwg_protocol.md). |
 
 - **8E2 at 4800 baud is mandatory, give or take a drifting clock.** `esphome
   config` rejects any data-bit/stop-bit/parity mismatch on the referenced
@@ -392,8 +392,11 @@ in the generic layout (`01 AD 16 01 29 04`) the unit acked `00` and read back
 `01:29`; with the EOT before the payload (`01 AD 16 01 04 29`) it read back
 `01:04`. It stores the two bytes after the address as the pair, so a length
 byte lands in the complement half and the next read fails its check. The
-frame with the complement has not been sent to a unit yet. The EOT switch
-below does not apply to EEPROM writes.
+frame with the complement works (#35, the #13 unit, `0x2053` SW `0x2B`,
+2026-11-13): `01 AD 16 CF 30 04` and `01 AD 16 D7 28 04` were acked `00` and
+read back as `CF:30` and `D7:28`, the first still `CF:30` 16 minutes later,
+and `0x96` followed both. Survival across a power cycle is not shown yet.
+The EOT switch below does not apply to EEPROM writes.
 
 One VR20 serves 64 cells: `0x01`–`0x3F` answer, `0x00` and `0x40`–`0x7F` answer
 `FF FF`, and `0x80`–`0xFF` repeat the lower half (a dump of all 256 addresses,
@@ -490,8 +493,8 @@ tokens the writable datapoints are `EEPROM_WRITE` (1082) and `BE_WRITE` (280),
 plus 17 unreachable `KBUS_VIRTUAL_WRITE` — and *zero* `PHYSICAL_WRITE`. Yet
 `0xC8` was the only write byte this engine could emit before the mode table,
 and dannerph's legacy path defaults to it too. That is the most economical
-explanation for why no GWG write has ever been confirmed to work anywhere,
-openv issue #467 included. (Re-read #467 alongside §the response deadline: its
+explanation for why no GWG write was confirmed anywhere before the mode
+table, openv issue #467 included. (Re-read #467 alongside §the response deadline: its
 capture shows genuine answers at ~50 ms against a ~1230 ms idle-ENQ cadence, so
 its "writes only ever return `0x05`" is almost certainly *no answer at all*,
 with the next idle ENQ misread as the ack.)
@@ -2919,7 +2922,8 @@ happen in production.
   work is confirmation on the unit, not investigation: generate the catalog for
   the matching `GWG_*` token and compare.
   GWG reads, bursting and the EEPROM complement pairs have since been
-  hardware-confirmed (issue #21, 2026-10-10..13; §2); GWG writes have not.
+  hardware-confirmed (issue #21, 2026-10-10..13; §2), EEPROM writes too
+  (issue #35, 2026-11-13); other GWG write types have not.
   Note the vendored
   engine now
   deliberately diverges from upstream here: upstream's completion check waited
