@@ -188,6 +188,16 @@ from a generated table; the ESP does not need internet access. Opening the link
 sends the identification bytes in the URL to GitHub Pages, like any page
 request; they are not stored by the finder itself.
 
+**Trim the catalog before you flash it.** The hub polls every entity in the
+YAML. `disabled_by_default: true` only hides an entity in Home Assistant; the
+ESP still reads it every cycle and holds it in RAM. A full catalog is hundreds
+of entities (`vscotho1_72.yaml`: 776, 762 of them hidden; the largest: 2,324),
+which at 4800 baud stretches a poll cycle to minutes and can exhaust an
+ESP8266's heap. Keep only the entities you use: the
+[catalog editor](https://soulsolistice.github.io/esphome_vitohome/editor.html),
+which the finder links to, filters by tag and burner-control chip and exports
+the selected entities as YAML.
+
 ## What you need
 
 - ESPHome 2026.9.0 or newer. An older release stops at the import with a
