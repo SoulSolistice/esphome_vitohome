@@ -24,7 +24,7 @@ namespace esphome::vitohome {
 // modes are deliberately unsupported: switch.py pins restore_mode to
 // DISABLED, and this class never calls get_initial_state_with_restore_mode(),
 // so a reboot can never write to the heater.
-class VitoSwitch final : public switch_::Switch, public Component, public VitoEntityBase {
+class VitoSwitch final : public switch_::Switch, public Component, public VitoWritableEntity {
  public:
   void set_on_value(uint32_t v) { this->on_value_ = v; }
   void set_off_value(uint32_t v) { this->off_value_ = v; }
@@ -33,7 +33,6 @@ class VitoSwitch final : public switch_::Switch, public Component, public VitoEn
     this->on_state_values_ = values;
     this->on_state_count_ = count;
   }
-  void set_read_back(bool v) { this->read_back_ = v; }
 
   void dump_config() override;
   void handle_response(const ResponseView &response) override;

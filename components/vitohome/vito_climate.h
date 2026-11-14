@@ -17,12 +17,10 @@ class VitoClimate;
 // and MODE (Betriebsart, whose live state is read at one address and commanded
 // at another -- the read/write split). Reads are handed to the parent climate;
 // writes are staged as a single raw byte and queued through the hub.
-class VitoClimateChannel final : public VitoEntityBase {
+class VitoClimateChannel final : public VitoWritableEntity {
  public:
   enum Kind : uint8_t { SETPOINT, MODE };
   VitoClimateChannel(VitoClimate *parent, Kind kind) : parent_(parent), kind_(kind) {}
-
-  void set_read_back(bool v) { this->read_back_ = v; }
 
   void handle_response(const ResponseView &response) override;
   // Keeps the last state: ESPHome has no public way to report a climate as

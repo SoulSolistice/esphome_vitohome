@@ -35,9 +35,9 @@ class VitoRefreshButton final : public button::Button, public Component {
 // never polled and never read back (reading a procedure would run it again);
 // once the controller acknowledges, the hub re-reads every value, so what the
 // procedure changed shows up.
-class VitoActionButton final : public button::Button, public Component, public VitoEntityBase {
+class VitoActionButton final : public button::Button, public Component, public VitoWritableEntity {
  public:
-  VitoActionButton() { this->read_back_ = false; }
+  VitoActionButton() { this->write_path_.read_back = false; }
 
   bool wants_polling() const override { return false; }
   void handle_response(const ResponseView & /*response*/) override {}

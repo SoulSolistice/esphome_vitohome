@@ -19,8 +19,8 @@ using namespace esphome::vitohome;
 
 namespace {
 
-// The smallest concrete entity: the base is abstract.
-class Probe final : public VitoEntityBase {
+// The smallest concrete entity that can carry a write target.
+class Probe final : public VitoWritableEntity {
  public:
   Probe(uint16_t address, uint8_t length) {
     this->set_datapoint(optolink::Datapoint("probe", address, length, optolink::noconv));

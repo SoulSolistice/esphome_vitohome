@@ -9,83 +9,45 @@
 
 namespace esphome::vitohome {
 
-// Device-clock synchronization, expressed as a VitoEntityBase.
-//
-// WHY THIS IS AN ENTITY AND NOT A LANE OF ITS OWN
-// -----------------------------------------------
-// VitoEntityBase is deliberately NOT an ESPHome entity -- it inherits from
-// nothing, and the concrete types (VitoSensor, ...) multiply-inherit their Home
-// Assistant surface separately. So "a participant in the hub's datapoint lanes"
-// and "a thing the user sees in Home Assistant" are already independent ideas
-// here. VitoClock is the first: a pure lane participant with no HA presence, no
-// platform, and no YAML of its own (it is configured by the hub's time_id /
-// time_sync options).
-//
-// The clock chain maps onto the base class exactly:
+// Device-clock synchronization as an entity on the hub's read/write lanes, with
+// no Home Assistant presence, platform or YAML of its own (the hub's time_id /
+// time_sync options configure it). The chain maps onto the entity calls:
 //
 //   read device clock  -> request_priority_read() -> handle_response()
 //   compare drift      -> handle_response()
 //   write device clock -> set_write_payload_() + request_write()
 //   verify             -> wants_read_back() -> handle_response() again
 //
-// and the payload fits with zero growth: VitoEntityBase::write_buf_ is 8 bytes
-// and the device clock datapoint (0x088E) is exactly 8 bytes of BCD.
-//
-// WHAT THIS REPLACED
-// ------------------
-// Clock sync used to ride the raw scan-console lane behind a RawPurpose tag.
-// That coupled two unrelated tenants in one queue and produced two failure
-// modes that do not exist here:
-//   * a sweep filling the raw lane could starve a mid-chain clock write;
-//   * raw_queue_size: 0 silently disabled time sync (hence a validator rule).
-// The read/write lanes are reserve()d to entities_.size() and the
-// read_queued_/write_queued_ flags admit an entity at most once, so they
-// provably cannot fill. The raw lane is now purely the scan console and
-// defaults to 0.
-//
-// PRIORITY
-// --------
-// The old raw lane was dispatched AHEAD of the poll lane. An ordinary polled
-// entity is not: it queues behind every pending poll, which at a full catalog
-// (~700 entities at ~4-5 ops/s) is a ~150 s wait. Harmless for drift itself
-// (drift is measured against the live time source at response time, so a late
-// read is not a wrong read) but a visible regression for sync_on_boot. So the
-// clock is excluded from the poll rotation (wants_polling() == false) and
-// pushes to the HEAD of the read lane from its own schedule, preserving the
-// original ordering. Writes already preempt reads, so the write step needs
-// nothing special.
-class VitoClock final : public VitoEntityBase {
+// It is not polled (wants_polling() is false): tick() queues its reads at the
+// head of the read lane, so sync_on_boot does not wait out a poll cycle (about
+// 150 s on a full catalog). Drift is measured against the time source when the
+// answer arrives, so a late read is not a wrong one. Writes go before reads
+// anyway.
+class VitoClock final : public VitoWritableEntity {
  public:
-  // NRF_Uhrzeit~0x088E: the Vitotronic-family clock, and the schema default.
-  // Overridable per device -- see set_config(). Kept as a named constant so the
-  // C++ fallback and the Python default (__init__.py's CONF_CLOCK_ADDRESS) are
-  // each a single literal rather than scattered magic numbers.
+  // NRF_Uhrzeit~0x088E: the Vitotronic-family clock and the schema default
+  // (__init__.py, CONF_CLOCK_ADDRESS); set_config() overrides it.
   static constexpr uint16_t CLOCK_ADDRESS_DEFAULT = 0x088E;
 
   // Fixed, unlike the address: every DateTimeBCD variant in the Vitosoft data
-  // is 8 bytes, and 8 is exactly VitoEntityBase::write_buf_.
+  // is 8 bytes, the size of VitoWritePath::buf.
   static constexpr uint8_t CLOCK_LEN = 8;
 
   VitoClock();
 
-  // Called from to_code(), i.e. before App.setup() -- so the callback is in
-  // place before any time component can deliver its first sync.
+  // Called from to_code(), before App.setup(), so the callback is in place
+  // before a time component can deliver its first sync.
   void set_time_source(time::RealTimeClock *time_source) {
     this->time_source_ = time_source;
     time_source->add_on_time_sync_callback([this]() { this->source_synced_ = true; });
   }
 
-  // clock_address is NOT a constant across Viessmann devices: NRF/Vitotronic
-  // uses 0x088E (the schema default, hardware-confirmed on a Vitodens 300-W),
-  // while the WPR heat-pump controllers use 0x08E0 for the same 8-byte
-  // DateTimeBCD shape. Both are 8 bytes, so only the address moves -- which is
-  // why one option covers it. Where a clock counts its weekday byte from is
-  // not assumed: each sync reads it off the device's own clock
-  // (clock_weekday_base, decode.h). GWG is a different shape entirely (three 1-byte
-  // registers) and is rejected at config time rather than mis-served here.
-  //
-  // Called from to_code() before setup(), so the datapoint is rebuilt here
-  // rather than in the constructor.
+  // The clock address differs by device: 0x088E on NRF/Vitotronic (the
+  // default, hardware-confirmed on a Vitodens 300-W), 0x08E0 on the WPR
+  // heat-pump controllers, both the 8-byte DateTimeBCD. The weekday base is
+  // read off the device's clock (clock_weekday_base, decode.h). GWG has three
+  // 1-byte registers instead and is refused at config time. Called from
+  // to_code(), so the datapoint is rebuilt here.
   void set_config(uint32_t interval_ms, uint32_t drift_threshold_s, bool sync_on_boot, uint16_t clock_address) {
     this->interval_ms_ = interval_ms;
     this->drift_threshold_s_ = drift_threshold_s;
@@ -99,8 +61,7 @@ class VitoClock final : public VitoEntityBase {
     this->configured_base_ok_ = true;
   }
 
-  // Driven from VitoHomeComponent::update(), so the granularity is the hub's
-  // update_interval -- the same tick the old time_sync_tick_() ran on.
+  // Driven from VitoHomeComponent::update(), at the hub's update_interval.
   void tick(uint32_t now_ms);
 
   // --- VitoEntityBase --------------------------------------------------------
@@ -111,18 +72,13 @@ class VitoClock final : public VitoEntityBase {
   void dump_config() override;
   const char *entity_kind() const override { return "clock"; }
 
-  // Not polled on a datapoint interval: tick() drives the schedule and pushes
-  // to the head of the read lane. See the PRIORITY note above.
+  // tick() drives the schedule instead (see above).
   bool wants_polling() const override { return false; }
 
  protected:
-  // Which step of the chain the entity is in. A verify read-back arrives
-  // through the same handle_response() as the initial read, so without this the
-  // compare would run again and could write again, forever.
-  //
-  // This is not new state: it is RawPurpose::CLOCK_{READ,WRITE,VERIFY} moved
-  // out of the shared raw lane and made local to the only thing that used it --
-  // the three tags map one-to-one onto READING/WRITING/VERIFYING.
+  // The step of the chain. The verify read-back arrives through the same
+  // handle_response() as the first read; without the phase the compare would
+  // run again and could write again, forever.
   enum class Phase : uint8_t {
     IDLE,       // no chain in flight
     READING,    // initial read dispatched; response drives the drift compare
@@ -150,21 +106,16 @@ class VitoClock final : public VitoEntityBase {
   WeekdayBase learned_base_{WeekdayBase::SUNDAY_0};
   bool learned_ok_{false};
   bool did_boot_{false};      // first-synced-time handling completed
-  uint32_t next_sync_ms_{0};  // next periodic deadline
+  uint32_t next_sync_ms_{0};  // next periodic sync; not next_due_ms_, the poll scheduler's
 
-  // Set by the time source's on_time_sync callback, never cleared. now() being
-  // is_valid() is not enough to write the boiler: it only checks year >= 2019,
-  // and on ESP32 the system clock survives a software reset (RTC timer), so a
-  // stale or wrong time can be "valid" at boot before any sync has happened --
-  // the 43 h boiler shift in issue #28. Requiring an actual sync since boot
-  // closes that. Caveat: on platforms where SNTP cannot signal a sync
-  // (RP2040, LibreTiny) the callback fires as soon as now() is valid, so there
-  // this is no stronger than the old check -- but no weaker either.
+  // Set by the time source's on_time_sync callback, never cleared. A valid
+  // now() is not enough to write the boiler: is_valid() only checks year >=
+  // 2019, and on ESP32 the system clock survives a software reset, so a stale
+  // time is "valid" at boot before any sync (it shifted a boiler clock by
+  // 43 h). Where SNTP cannot signal a sync (RP2040, LibreTiny) the callback
+  // fires as soon as now() is valid, so there this adds nothing.
   bool source_synced_{false};
 
-  // Deliberately not next_due_ms_: that field belongs to the poll scheduler,
-  // and refresh_all() resets it across every entity. The clock is not polled,
-  // so it keeps its own deadline and is unaffected by a refresh_all().
   Phase phase_{Phase::IDLE};
 };
 

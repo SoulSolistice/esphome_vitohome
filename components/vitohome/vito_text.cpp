@@ -16,7 +16,7 @@ static constexpr uint8_t SCHALTZEITEN_LEN = 8;
 void VitoText::dump_config() {
   LOG_TEXT("  ", "Text", this);
   ESP_LOGCONFIG(TAG, "    Type: schaltzeiten  Address: 0x%04X  Length: %u  read_back: %s", this->datapoint_.address(),
-                this->datapoint_.length(), this->read_back_ ? "yes" : "no");
+                this->datapoint_.length(), this->write_path_.read_back ? "yes" : "no");
 }
 
 void VitoText::control(const std::string &value) {
@@ -68,7 +68,7 @@ void VitoText::handle_response(const ResponseView &response) {
 void VitoText::handle_write_response(const ResponseView & /*response*/) {
   // With read_back (default) the hub re-reads the address and handle_response()
   // publishes the device's view; without it, the acknowledged program.
-  if (!this->read_back_)
+  if (!this->write_path_.read_back)
     this->publish_state(this->pending_value_);
 }
 

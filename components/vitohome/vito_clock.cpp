@@ -15,16 +15,14 @@ static const char *const TAG = "vitohome.clock";
 VitoClock::VitoClock() {
   this->set_clock_address(CLOCK_ADDRESS_DEFAULT);
 
-  // wants_read_back() defaults true, which is what makes the verify step free:
-  // the hub's write-ACK path pushes the read-back to the head of the read lane
-  // for us. Stated explicitly because the whole VERIFYING phase depends on it.
-  this->read_back_ = true;
+  // VERIFYING is the read-back the hub queues at the head of the read lane
+  // after the ACK. The default, stated because the phase depends on it.
+  this->write_path_.read_back = true;
 }
 
 // The ADDRESS is configurable (see the header); the LENGTH is not. Both known
-// DateTimeBCD variants -- NRF 0x088E and WPR 0x08E0 -- are 8 bytes, and 8 is
-// also exactly VitoEntityBase::write_buf_, which is what lets the clock ride
-// the ordinary entity write path with no growth anywhere.
+// DateTimeBCD variants, NRF 0x088E and WPR 0x08E0, are 8 bytes, which is
+// VitoWritePath::buf: the clock writes through the ordinary entity path.
 void VitoClock::set_clock_address(uint16_t address) {
   this->clock_address_ = address;
   // noconv: like every other vitohome entity, this decodes and encodes the raw

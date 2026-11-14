@@ -13,42 +13,37 @@ namespace esphome::vitohome {
 
 class VitoHomeComponent;
 
-// One {wire value -> label} row of a codegen-emitted lookup table.
-//
-// The tables (text_sensor `options:` / `codes:`, event `codes:`) are emitted as
-// `static const VitoOption name[] = {...}` via cg.static_const_array(), so they
-// live in .rodata and an entity holds only a pointer and a count. Previously
-// each row was a separate `add_option()` / `add_code()` statement doing an
-// emplace_back on a growing std::vector: a 94-entry fault map reallocated eight
-// times (capacity 1 -> 128) and freed each predecessor, interleaved with every
-// other allocation ESPHome makes during setup(). Across the complete catalog
-// that is 1883 rows and 662 boot allocations -- fatal on an ESP8266 (~40 KiB
-// heap), which is why this matters even where the ESP32 absorbs it.
-//
-// The labels are codegen string literals with static storage, so nothing here
-// is owned or freed.
+// One {wire value -> label} row of a lookup table (text_sensor `options:` /
+// `codes:`, event `codes:`). Codegen emits the tables as static const arrays
+// in .rodata, so an entity holds a pointer and a count and setup() allocates
+// nothing per row: 1883 rows across the catalogs would otherwise be 662 boot
+// allocations, too many for an ESP8266's heap.
 struct VitoOption {
   uint32_t value;
   const char *label;
 };
 
-// Common base for any entity that owns an optolink datapoint. The component
-// holds a vector<VitoEntityBase*> and dispatches read/write responses and
-// errors back to the originating entity via its in-flight pointer. Concrete
-// subclasses translate raw Optolink payloads into ESPHome state publishes.
-//
-// Beyond the read path, the base also carries:
-//  * per-entity poll interval (0 = poll on every hub cycle), scheduled by
-//    the hub at hub-tick granularity;
-//  * a small write buffer + handle_write_response() hook for the encode
-//    path (number/select). Entities fill write_buf_/write_len_ and call
-//    VitoHomeComponent::request_write(this); the hub owns bus arbitration.
+// What only a writable entity carries (VitoWritableEntity).
+struct VitoWritePath {
+  // Distinct write target (command address); used only when has_datapoint.
+  optolink::Datapoint datapoint{"uninitialized", 0, 1, optolink::noconv};
+  bool has_datapoint{false};
+  // Block mode: the field is block_width bytes at block_offset of the write
+  // datapoint; 0 = not block mode.
+  uint8_t block_offset{0};
+  uint8_t block_width{0};
+  bool read_back{true};
+  uint8_t len{0};
+  // The staged payload. 8 bytes: numbers and selects take up to 4, a day's
+  // switching times and the device clock 8.
+  uint8_t buf[8]{};
+};
+
+// An entity that owns an optolink datapoint. The hub polls it, hands it the
+// answer or the error, and, for a writable entity, sends what it staged.
 class VitoEntityBase {
-  // Hub-side bookkeeping (the fields in the private section below) is the
-  // "invariant coupling" case in ESPHome's component guidelines: it is the
-  // hub's queue-state machine, not entity state, so it lives private to this
-  // base and is reachable only by the one class that owns it. The forward
-  // declaration is at file scope above.
+  // The hub's queue bookkeeping (private section) is reachable by the hub
+  // only.
   friend class VitoHomeComponent;
 
  public:
@@ -57,41 +52,23 @@ class VitoEntityBase {
   void set_datapoint(const optolink::Datapoint &dp) { this->datapoint_ = dp; }
   const optolink::Datapoint &get_datapoint() const { return this->datapoint_; }
 
-  // Optional distinct write target. When set, polling, read-back and read
-  // response-matching still use datapoint_ (the state / read address) but
-  // writes go here (the command address) -- for mode controls whose live state
-  // is read at a different address than the command register (see the
-  // read/write-split analysis). Unset: writes use datapoint_, i.e. the
-  // original single-address behaviour, so existing entities are unaffected.
-  void set_write_datapoint(const optolink::Datapoint &dp) {
-    this->write_datapoint_ = dp;
-    this->has_write_dp_ = true;
-  }
-  const optolink::Datapoint &get_write_datapoint() const {
-    return this->has_write_dp_ ? this->write_datapoint_ : this->datapoint_;
-  }
-
   void set_vitohome_parent(VitoHomeComponent *parent) { this->vh_parent_ = parent; }
 
   // Where the datapoint lives, and so which telegram reads it (and writes it,
-  // on a writable platform): the YAML `access:`. See AddressSpace
-  // (address_space.h). One space drives both directions -- Vitosoft pairs
-  // every writable GWG datapoint as (EEPROM_READ, EEPROM_WRITE) or (BE_READ,
-  // BE_WRITE), never across modes. OWN, the protocol's own read and write,
-  // until codegen sets another; the setters below are what it calls.
+  // on a writable platform): the YAML `access:` (address_space.h). One space
+  // drives both directions: Vitosoft pairs every writable GWG datapoint as
+  // EEPROM_READ/EEPROM_WRITE or BE_READ/BE_WRITE, never across modes. OWN
+  // until codegen sets another.
   AddressSpace space() const { return this->space_; }
 
   // A GWG access mode (meaningless, and OWN, outside protocol: GWG).
   void set_access(optolink::GWGAccessMode access) { this->space_ = space_from_gwg(access); }
 
-  // `access: rpc` (P300 only). The datapoint is read as a remote procedure
-  // call: function code 0x07 with `prefix:` as the call's parameter -- the
-  // catalog's PrefixRead, typically the index of one entry in a list the
-  // controller keeps behind one address, so several entities share an address
-  // and differ only in their prefix. A call without a parameter has an empty
-  // prefix. The answer is decoded like a read of datapoint_'s length. Set only
-  // on read-only platforms and the action button (the codegen refuses it
-  // elsewhere).
+  // `access: rpc` (P300 only): read as a remote procedure call, function code
+  // 0x07 with `prefix:` as its parameter (the catalog's PrefixRead, typically
+  // the index of an entry in a list behind one address, so several entities
+  // share an address). The answer decodes like a read of datapoint_'s length.
+  // Read-only platforms and the action button only (codegen refuses others).
   static constexpr uint8_t RPC_PREFIX_MAX = 4;
   void set_rpc_prefix(const std::vector<uint8_t> &prefix) {
     this->space_ = AddressSpace::RPC;
@@ -101,12 +78,10 @@ class VitoEntityBase {
   }
   bool is_rpc() const { return this->space_ == AddressSpace::RPC; }
 
-  // Whether the telegram that reads this entity is the telegram that reads
-  // `other`: the same access space, address and length, and for a remote
-  // procedure call the same parameter. The hub then needs only one of them on
-  // the wire and hands the answer to both (read coalescing; vitohome.cpp,
-  // share_read_). What each entity takes from the answer -- a byte offset, a
-  // bit mask, a converter -- does not enter into it.
+  // Whether the telegram that reads this entity reads `other` too: same space,
+  // address and length, and for a procedure call the same parameter. The hub
+  // then sends one and hands the answer to both (vitohome.cpp,
+  // share_read_response_). What each takes from the answer does not matter.
   bool reads_same_datapoint(const VitoEntityBase &other) const {
     if (this->space_ != other.space_ || this->datapoint_.address() != other.datapoint_.address() ||
         this->datapoint_.length() != other.datapoint_.length())
@@ -119,44 +94,35 @@ class VitoEntityBase {
   const uint8_t *rpc_prefix() const { return this->rpc_prefix_; }
   uint8_t rpc_prefix_len() const { return this->rpc_prefix_len_; }
 
-  // `access: gfa` (KW and P300). The datapoint lives in the burner control's
-  // address space and is read with the KW telegram 0x6B (Vitosoft's GFA_READ,
-  // see PacketVS1Type); the answer is decoded like any read. The same address
-  // in the Vitotronic's own space is a different datapoint. Set only on
-  // read-only platforms: Vitosoft defines no GFA write.
+  // `access: gfa` (KW and P300): the burner control's address space, read with
+  // the KW telegram 0x6B (Vitosoft's GFA_READ). The same address in the
+  // Vitotronic is another datapoint. Read-only platforms only: Vitosoft
+  // defines no GFA write.
   void set_gfa() { this->space_ = AddressSpace::GFA; }
   bool is_gfa() const { return this->space_ == AddressSpace::GFA; }
 
   // --- scheduling -----------------------------------------------------------
-  // 0 (default) = poll on every hub update cycle. Anything else is a minimum
-  // period; effective granularity is the hub's own update_interval (the hub
-  // warns at setup if an entity interval is shorter than the hub's).
+  // 0 (default): every hub cycle. Otherwise a minimum period, at the hub's
+  // update_interval granularity.
   void set_poll_interval(uint32_t ms) { this->poll_interval_ms_ = ms; }
   uint32_t poll_interval() const { return this->poll_interval_ms_; }
 
-  // Whether the hub's poll scheduler may enqueue this entity on its datapoint
-  // interval. Every configured entity wants this; VitoClock does not -- it is
-  // not polled on an interval but driven by its own sync schedule, which pushes
-  // to the HEAD of the read lane to keep the dispatch priority the raw lane
-  // used to give it. Returning false only removes an entity from the poll
-  // rotation: it still counts toward the lane sizing at setup() and still
-  // receives responses and errors like any other.
+  // Whether the poll scheduler queues this entity. False only for VitoClock,
+  // which reads on its own sync schedule. Either way the entity counts for the
+  // lane sizing and gets its answers and errors.
   virtual bool wants_polling() const { return true; }
 
   // --- read path ------------------------------------------------------------
-  // Called by the component on a successful read response. Packet length and
-  // checksum have already been verified by the optolink engine.
+  // A read answer; the engine has checked length and checksum.
   virtual void handle_response(const ResponseView &response) = 0;
 
-  // Called by the component on a protocol-level READ error (poll or
-  // read-back). Write errors go to handle_write_error() below, so an entity
-  // can keep its last known state on a failed write (the device value did not
-  // change) while still applying an unavailability policy to failed reads.
+  // A failed read (poll or read-back). Failed writes go to
+  // handle_write_error(), so an entity can keep its state on a failed write
+  // and still count failed reads.
   virtual void handle_error(optolink::OptolinkResult error) = 0;
 
-  // Called by the component on a protocol-level WRITE error (NACK, timeout,
-  // ...). Default: no-op -- the hub logs the specific error, and the entity's
-  // published state still reflects the device (the write did not take).
+  // A failed write. Default: nothing; the hub logs it, and the published state
+  // still matches the device.
   virtual void handle_write_error(optolink::OptolinkResult /*error*/) {}
 
   // --- field extraction (`byte_offset`, `byte_length`) -----------------------
@@ -168,72 +134,66 @@ class VitoEntityBase {
   void set_extract_len(uint8_t len) { this->extract_len_ = len; }
 
   // --- bit field (`bit_mask`) -----------------------------------------------
-  // Non-zero: this entity's value is the masked bits of ONE byte (decode.h,
-  // "bit fields"), not the whole byte. The read side extracts the field before
-  // decoding; the write side stages the FIELD value and the hub turns the
-  // write into a read-modify-write of that byte (rmw.cpp), so the bits outside
-  // the mask -- other datapoints sharing the byte -- are written back exactly
-  // as read. 0 (default): the whole field.
-  //
-  // Named field_mask, not bit_mask, because VitoBinarySensor already owns a
-  // `bit_mask_` with "any masked bit set" semantics; the YAML key is
-  // `bit_mask` on every platform.
+  // Non-zero: the value is the masked bits of one byte (decode.h, "bit
+  // fields"). A write stages the field value, and the hub writes it as a
+  // read-modify-write of that byte (rmw.cpp), so the other bits go back as
+  // read. Named field_mask because VitoBinarySensor's `bit_mask_` means "any
+  // masked bit set"; the YAML key is `bit_mask` everywhere.
   void set_field_mask(uint8_t mask) { this->field_mask_ = mask; }
   uint8_t field_mask() const { return this->field_mask_; }
 
-  // --- whole-block read-modify-write ------------------------------------------
-  // Block mode (`byte_offset` without `state_address` on number/select/switch):
-  // this entity's field is `width` bytes at `offset` inside its write datapoint,
-  // which is the WHOLE block. The device writes its whole datapoint -- a 1-byte
-  // write into a 2-byte block stored the telegram's checksum in byte 1
-  // (docs/design_notes.md SS5b) -- so the hub reads the block, replaces the field
-  // (decode.h::merge_block_field) and writes all of it back. The entity stages
-  // the FIELD (`width` bytes, or one masked byte); width 0 = not block mode.
-  void set_block_field(uint8_t offset, uint8_t width) {
-    this->block_field_offset_ = offset;
-    this->block_field_width_ = width;
-  }
-  uint8_t block_field_offset() const { return this->block_field_offset_; }
-  uint8_t block_field_width() const { return this->block_field_width_; }
-  // Whether a write must be a read-modify-write: a bit field, or a field smaller
-  // than the block it is written in.
-  bool needs_rmw() const { return this->field_mask_ != 0 || this->block_field_width_ != 0; }
-  // The number of bytes control() / write_state() stage: the field in block
-  // mode, else the whole write datapoint (the pre-existing behaviour).
-  uint8_t staged_width() const {
-    return this->block_field_width_ != 0 ? this->block_field_width_ : this->get_write_datapoint().length();
-  }
-
   // --- write path -----------------------------------------------------------
-  const uint8_t *write_data() const { return this->write_buf_; }
-  uint8_t write_length() const { return this->write_len_; }
+  // nullptr on a read-only entity; the accessors below then describe one that
+  // never writes.
+  virtual const VitoWritePath *write_path() const { return nullptr; }
 
-  // Whether a confirmed write should be followed by an immediate read of the
-  // same address (publish the device's view, not our optimistic one).
-  bool wants_read_back() const { return this->read_back_; }
+  // The write target: the command address when one is set, else datapoint_.
+  const optolink::Datapoint &get_write_datapoint() const {
+    const VitoWritePath *w = this->write_path();
+    return w != nullptr && w->has_datapoint ? w->datapoint : this->datapoint_;
+  }
+  uint8_t block_field_offset() const {
+    const VitoWritePath *w = this->write_path();
+    return w != nullptr ? w->block_offset : 0;
+  }
+  uint8_t block_field_width() const {
+    const VitoWritePath *w = this->write_path();
+    return w != nullptr ? w->block_width : 0;
+  }
+  // A bit field, or a field smaller than the block it is written in.
+  bool needs_rmw() const { return this->field_mask_ != 0 || this->block_field_width() != 0; }
+  // The bytes a write stages: the field in block mode, else the whole write
+  // datapoint.
+  uint8_t staged_width() const {
+    const uint8_t width = this->block_field_width();
+    return width != 0 ? width : this->get_write_datapoint().length();
+  }
+  const uint8_t *write_data() const {
+    const VitoWritePath *w = this->write_path();
+    return w != nullptr ? w->buf : nullptr;
+  }
+  uint8_t write_length() const {
+    const VitoWritePath *w = this->write_path();
+    return w != nullptr ? w->len : 0;
+  }
+  // Whether an acknowledged write is followed by a read of the device's value.
+  bool wants_read_back() const {
+    const VitoWritePath *w = this->write_path();
+    return w != nullptr && w->read_back;
+  }
 
-  // Called by the component when the device ACKed a write. Default: no-op
-  // (the hub enqueues the read-back when wants_read_back()).
+  // The device acknowledged a write. Default: nothing (the hub queues the
+  // read-back when wants_read_back()).
   virtual void handle_write_response(const ResponseView & /*response*/) {}
 
   // --- logging / dump_config --------------------------------------------------
   virtual const char *entity_kind() const = 0;
 
-  // Each concrete entity logs its own config; the component fans out to
-  // these from its own dump_config(). Concrete subclasses also inherit a
-  // dump_config() from ESPHome's Component, so a single `override` in each
-  // satisfies both declarations.
+  // Also declared by ESPHome's Component, so one `override` in each concrete
+  // entity covers both.
   virtual void dump_config() = 0;
 
  protected:
-  bool set_write_payload_(const uint8_t *data, uint8_t len) {
-    if (data == nullptr || len == 0 || len > sizeof(this->write_buf_))
-      return false;
-    std::memcpy(this->write_buf_, data, len);
-    this->write_len_ = len;
-    return true;
-  }
-
   // Failed reads (an error or an undecodable answer) in a row before an entity
   // reports "unknown". Writes never count: a failed write leaves the device
   // value as it was.
@@ -262,54 +222,72 @@ class VitoEntityBase {
                          this->field_mask_, value);
   }
 
-  // Default-constructed Datapoint until set_datapoint runs from codegen.
-  // The optolink converter slot is always noconv: vitohome decodes and
-  // encodes the raw payload itself (decode.h) and uses the raw-bytes write
-  // overload, so the library converter is never exercised.
+  // Set by codegen. The converter is always noconv: decode.h does the
+  // decoding.
   optolink::Datapoint datapoint_{"uninitialized", 0, 1, optolink::noconv};
-  // Distinct write target (command address); used only when has_write_dp_.
-  optolink::Datapoint write_datapoint_{"uninitialized", 0, 1, optolink::noconv};
-  bool has_write_dp_{false};
-
   VitoHomeComponent *vh_parent_{nullptr};
-  // 8 bytes covers every write path: numeric/select (<= 4), a per-day
-  // Schaltzeiten program (8), and the system-time set (8). set_write_payload_
-  // bounds-checks against sizeof, so existing <= 4-byte writers are unaffected.
-  uint8_t write_buf_[8]{0, 0, 0, 0, 0, 0, 0, 0};
-  uint8_t write_len_{0};
+  uint32_t poll_interval_ms_{0};
   // int16_t: an offset reaches 254, and -1 means "no extraction".
   int16_t extract_byte_{-1};
   uint8_t extract_len_{1};
   uint8_t field_mask_{0};
-  uint8_t block_field_offset_{0};
-  uint8_t block_field_width_{0};
-  bool read_back_{true};
-  uint32_t poll_interval_ms_{0};
   AddressSpace space_{AddressSpace::OWN};
-  uint8_t rpc_prefix_[RPC_PREFIX_MAX]{0, 0, 0, 0};
   uint8_t rpc_prefix_len_{0};
+  uint8_t rpc_prefix_[RPC_PREFIX_MAX]{0, 0, 0, 0};
   uint8_t read_failures_{0};
 
  private:
-  // Hub-side bookkeeping. Private, not public: only VitoHomeComponent (the
-  // friend above) reads or writes these -- they are the hub's queue-state
-  // machine, not entity state, and a subclass touching them would corrupt lane
-  // arbitration. The poll scheduler sees next_due_ms_ only as a by-value
-  // argument the hub passes to poll_schedule_step().
-  uint32_t next_due_ms_{0};
+  // The hub's queue state, not entity state; a subclass touching it would
+  // corrupt the lanes.
   bool read_queued_{false};
-  // Poll backoff (poll_backoff_interval()): consecutive poll TIMEOUTs with the
-  // link otherwise alive, and the hub's answer count at the last of them.
-  uint8_t timeout_streak_{0};
-  uint32_t answers_at_timeout_{0};
-  // write_queued_ means "sitting in the hub write_queue_, awaiting dispatch";
-  // write_in_flight_ means "dispatched to the engine, awaiting ACK/error". They
-  // are deliberately independent: a value changed while a write is in flight
-  // must be able to re-enqueue (write_queued_ = true) even though the entity is
-  // still in flight, so the newest value is transmitted once the in-flight
-  // transaction completes. Conflating them silently drops the newer write.
+  // write_queued_: waiting in the hub's write_queue_. write_in_flight_: sent,
+  // waiting for ACK or error. Independent, so a value changed while a write is
+  // in flight queues again and goes out after it.
   bool write_queued_{false};
   bool write_in_flight_{false};
+  // Poll backoff (poll_backoff_interval()): poll timeouts in a row with the
+  // link otherwise alive, and the hub's answer count at the last of them.
+  uint8_t timeout_streak_{0};
+  uint32_t next_due_ms_{0};
+  uint32_t answers_at_timeout_{0};
+};
+
+// An entity that writes: number, select, switch, text, the action button, the
+// climate channels and the clock.
+class VitoWritableEntity : public VitoEntityBase {
+ public:
+  const VitoWritePath *write_path() const final { return &this->write_path_; }
+
+  // A distinct write target: polling, read-back and answer matching use
+  // datapoint_ (the state address), writes go here (the command address).
+  void set_write_datapoint(const optolink::Datapoint &dp) {
+    this->write_path_.datapoint = dp;
+    this->write_path_.has_datapoint = true;
+  }
+
+  // Block mode (`byte_offset` without `state_address`): the field is `width`
+  // bytes at `offset` of the write datapoint, which is the whole block. The
+  // device writes its whole datapoint (a 1-byte write into a 2-byte block
+  // stored the telegram's checksum in byte 1; docs/design_notes.md SS5b), so
+  // the hub reads the block, replaces the field (decode.h, merge_block_field)
+  // and writes all of it back.
+  void set_block_field(uint8_t offset, uint8_t width) {
+    this->write_path_.block_offset = offset;
+    this->write_path_.block_width = width;
+  }
+
+  void set_read_back(bool v) { this->write_path_.read_back = v; }
+
+ protected:
+  bool set_write_payload_(const uint8_t *data, uint8_t len) {
+    if (data == nullptr || len == 0 || len > sizeof(this->write_path_.buf))
+      return false;
+    std::memcpy(this->write_path_.buf, data, len);
+    this->write_path_.len = len;
+    return true;
+  }
+
+  VitoWritePath write_path_;
 };
 
 }  // namespace esphome::vitohome
