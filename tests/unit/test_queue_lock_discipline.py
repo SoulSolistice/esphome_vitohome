@@ -82,6 +82,18 @@ def _sources(include_ring_buffer=False):
                 yield name, f.read()
 
 
+# The hub's sources: VitoHomeComponent is implemented across these files.
+_HUB_SOURCES = ("vitohome.cpp", "ident.cpp", "raw_console.cpp", "rmw.cpp")
+
+
+def _hub_source():
+    parts = []
+    for name in _HUB_SOURCES:
+        with open(os.path.join(_COMPONENT, name), encoding="utf-8") as f:
+            parts.append(f.read())
+    return "\n".join(parts)
+
+
 def _offenders(source, name="<source>", calls=_LOCKED_CALLS):
     found = []
     for call, line, body in _lambda_bodies(source, calls):
@@ -102,8 +114,7 @@ def test_the_locked_hand_off_is_gone():
 
 
 def test_the_hub_dispatches_by_peek_and_drop():
-    with open(os.path.join(_COMPONENT, "vitohome.cpp"), encoding="utf-8") as f:
-        code = _strip_comments(f.read())
+    code = _strip_comments(_hub_source())
     for lane in ("raw_queue_", "write_queue_", "read_queue_"):
         assert re.search(rf"\b{lane}\.try_front\(", code), f"{lane} is not peeked with try_front()"
         assert re.search(rf"\b{lane}\.drop_front\(", code), f"{lane} is not removed with drop_front()"
@@ -134,8 +145,7 @@ def test_the_check_would_catch_the_reviewed_deadlock():
 
 
 def test_every_dispatch_arms_the_watchdog_through_its_budget():
-    with open(os.path.join(_COMPONENT, "vitohome.cpp"), encoding="utf-8") as f:
-        src = f.read()
+    src = _hub_source()
     assignments = re.findall(r"in_flight_started_ms_\s*=", src)
     assert len(assignments) == 1, "in_flight_started_ms_ is set only in arm_watchdog_()"
 
@@ -144,8 +154,7 @@ def test_the_in_flight_state_has_one_writer():
     # The operation in flight and its entity are one fact (vitohome.h, OpType):
     # written together by set_in_flight_() / take_in_flight_() in the header,
     # never assigned piecemeal in the hub's source.
-    with open(os.path.join(_COMPONENT, "vitohome.cpp"), encoding="utf-8") as f:
-        code = _strip_comments(f.read())
+    code = _strip_comments(_hub_source())
     assert not re.search(r"\bin_flight_op_\s*=[^=]", code), "in_flight_op_ assigned outside set/take_in_flight_()"
     assert not re.search(r"\bin_flight_\s*=[^=]", code), "in_flight_ assigned outside set/take_in_flight_()"
     for gone in ("ident_in_flight_", "raw_in_flight_"):

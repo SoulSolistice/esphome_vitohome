@@ -3,7 +3,7 @@ name: Catalog finder (Pages)
 # Publishes the static catalog finder and editor in web/ together with the
 # generated lookup table and catalogs in example/catalogs/ to GitHub Pages.
 # The hub logs a link to this site (CATALOG_FINDER_URL in
-# components/vitohome/vitohome.cpp).
+# components/vitohome/ident.cpp).
 #
 # One-time repository setup: Settings -> Pages -> Build and deployment ->
 # Source: "GitHub Actions". Until that is set, the deploy job fails.

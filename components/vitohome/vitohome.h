@@ -437,6 +437,8 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // Writes the catalog finder URL for the identification read so far. Returns
   // false, leaving the buffer untouched, when the device id is unknown.
   bool ident_finder_url_(char *buffer, size_t size) const;
+  // URL (49) + "?id=XXXX&hw=XX&sw=XX" (20) + "&gfa=XX" (7) + "&f0=XXXX" (8) + NUL = 85.
+  static constexpr size_t CATALOG_FINDER_URL_SIZE = 88;
 
   // --- raw scan console -----------------------------------------------------
   //
