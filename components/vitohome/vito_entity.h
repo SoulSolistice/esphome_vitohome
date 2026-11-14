@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "address_space.h"
+#include "decode.h"
 #include "optolink/optolink.h"
 #include "response_view.h"
 
@@ -158,6 +159,14 @@ class VitoEntityBase {
   // published state still reflects the device (the write did not take).
   virtual void handle_write_error(optolink::OptolinkResult /*error*/) {}
 
+  // --- field extraction (`byte_offset`, `byte_length`) -----------------------
+  // The datapoint is the block read from the wire, at the block base: an
+  // interior read is answered with an error telegram on P300 and with 0xFF
+  // fill on KW. The field is extract_len_ bytes at extract_byte_ inside it;
+  // extract_byte_ < 0 makes the whole datapoint the field.
+  void set_extract_byte(int16_t byte) { this->extract_byte_ = byte; }
+  void set_extract_len(uint8_t len) { this->extract_len_ = len; }
+
   // --- bit field (`bit_mask`) -----------------------------------------------
   // Non-zero: this entity's value is the masked bits of ONE byte (decode.h,
   // "bit fields"), not the whole byte. The read side extracts the field before
@@ -239,6 +248,21 @@ class VitoEntityBase {
   }
   void clear_read_failures_() { this->read_failures_ = 0; }
 
+  uint8_t field_width_() const { return this->extract_byte_ >= 0 ? this->extract_len_ : this->datapoint_.length(); }
+  // Bytes a response must hold to contain the field.
+  unsigned field_end_() const {
+    return static_cast<unsigned>(this->extract_byte_ >= 0 ? this->extract_byte_ : 0) + this->field_width_();
+  }
+  // The field's bytes, or its integer value (with bit_mask applied), in a read
+  // response; false when the response is shorter than the field.
+  bool field_bytes_(const ResponseView &response, const uint8_t **field) const {
+    return field_slice(response.data, response.data_length, this->extract_byte_, this->field_width_(), field);
+  }
+  bool field_value_(const ResponseView &response, uint32_t *value) const {
+    return extract_field(response.data, response.data_length, this->extract_byte_, this->field_width_(),
+                         this->field_mask_, value);
+  }
+
   // Default-constructed Datapoint until set_datapoint runs from codegen.
   // The optolink converter slot is always noconv: vitohome decodes and
   // encodes the raw payload itself (decode.h) and uses the raw-bytes write
@@ -254,6 +278,9 @@ class VitoEntityBase {
   // bounds-checks against sizeof, so existing <= 4-byte writers are unaffected.
   uint8_t write_buf_[8]{0, 0, 0, 0, 0, 0, 0, 0};
   uint8_t write_len_{0};
+  // int16_t: an offset reaches 254, and -1 means "no extraction".
+  int16_t extract_byte_{-1};
+  uint8_t extract_len_{1};
   uint8_t field_mask_{0};
   uint8_t block_field_offset_{0};
   uint8_t block_field_width_{0};

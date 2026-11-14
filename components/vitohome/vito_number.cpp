@@ -81,40 +81,28 @@ void VitoNumber::control(float value) {
 }
 
 void VitoNumber::handle_response(const ResponseView &response) {
-  // Same decode path as the sensor platform: read-back after a write, and
-  // the periodic poll that reflects panel-side changes. With extraction the
-  // response is the whole block read at the state address; the numeric field
-  // is extract_len_ bytes at extract_byte_ (bound-checked against the bytes
-  // actually received, like VitoSensor).
+  // The read-back after a write, and the poll that reflects panel changes.
   if (response.data == nullptr) {
     ESP_LOGW(TAG, "%s: null response payload", this->datapoint_.name());
     return;
   }
+  const uint8_t width = this->field_width_();
   double value = NAN;
   bool ok;
   if (this->field_mask_ != 0) {
-    // Bit field: the same extraction as VitoSensor -- one byte, masked and
-    // shifted to the field, then scaled (unsigned; see control()).
-    const uint16_t off = this->extract_byte_ >= 0 ? static_cast<uint16_t>(this->extract_byte_) : 0;
-    uint8_t field = 0;
-    ok = off < response.data_length && extract_bit_field(response.data[off], this->field_mask_, &field) &&
-         decode_scaled(&field, 1, 1, false, this->scale_, &value);
-  } else if (this->extract_byte_ >= 0) {
-    const uint16_t off = static_cast<uint16_t>(this->extract_byte_);
-    ok =
-        off + this->extract_len_ <= response.data_length &&
-        decode_scaled(response.data + off, this->extract_len_, this->extract_len_, this->signed_, this->scale_, &value);
+    // Unsigned, as in VitoSensor (see control()).
+    uint32_t field = 0;
+    ok = this->field_value_(response, &field);
+    const uint8_t bits = static_cast<uint8_t>(field);
+    ok = ok && decode_scaled(&bits, 1, 1, false, this->scale_, &value);
   } else {
-    ok = decode_scaled(response.data, response.data_length, this->datapoint_.length(), this->signed_, this->scale_,
-                       &value);
+    const uint8_t *field = nullptr;
+    ok =
+        this->field_bytes_(response, &field) && decode_scaled(field, width, width, this->signed_, this->scale_, &value);
   }
   if (!ok) {
     ESP_LOGW(TAG, "%s: response too short (have %u bytes, need %u)", this->datapoint_.name(), response.data_length,
-             this->extract_byte_ >= 0 ? static_cast<unsigned>(this->extract_byte_ + this->extract_len_)
-                                      : this->datapoint_.length());
-    // A decode failure is a failed read (same rule as VitoSensor): advance
-    // the streak so a persistently short/garbage response eventually blanks
-    // the entity instead of pinning the last good value forever.
+             this->field_end_());
     this->handle_error(optolink::OptolinkResult::LENGTH);
     return;
   }

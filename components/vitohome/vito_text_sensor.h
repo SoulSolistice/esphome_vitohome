@@ -28,14 +28,6 @@ class VitoTextSensor final : public text_sensor::TextSensor, public Component, p
     this->options_ = options;
     this->option_count_ = count;
   }
-  // Aligned block extraction (read-only twin of the sensor's byte_offset):
-  // `length` is a block read at the block BASE and the field is extract_len_
-  // bytes at extract_byte_ inside it. Used by `enum` (1..4 bytes) and by the
-  // string types `ascii` / `utf16` (up to 32 / 40 bytes). An interior read at
-  // base+offset is NOT a substitute: P300 answers it with an error telegram and
-  // KW answers it with 0xFF fill.
-  void set_extract_byte(int16_t byte) { this->extract_byte_ = byte; }
-  void set_extract_len(uint8_t len) { this->extract_len_ = len; }
 
   void dump_config() override;
   void handle_response(const ResponseView &response) override;
@@ -56,8 +48,6 @@ class VitoTextSensor final : public text_sensor::TextSensor, public Component, p
   TextSensorType type_{TextSensorType::RAW_HEX};
   const VitoOption *options_{nullptr};
   uint16_t option_count_{0};
-  int16_t extract_byte_{-1};
-  uint8_t extract_len_{1};  // field width to slice at extract_byte_ (enum 1..4, ascii <=32, utf16 <=40)
 };
 
 }  // namespace esphome::vitohome

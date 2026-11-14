@@ -144,6 +144,38 @@ inline uint64_t read_le(const uint8_t *data, uint8_t len) {
   return v;
 }
 
+// An entity's field in a read response: `width` bytes at `byte_offset` inside
+// the block, or from the start when byte_offset < 0. False when the response
+// holds fewer bytes.
+inline bool field_slice(const uint8_t *data, std::size_t have, int byte_offset, uint8_t width, const uint8_t **field) {
+  if (data == nullptr || field == nullptr || width == 0)
+    return false;
+  const std::size_t off = byte_offset >= 0 ? static_cast<std::size_t>(byte_offset) : 0;
+  if (off + width > have)
+    return false;
+  *field = data + off;
+  return true;
+}
+
+// The field's integer value: little-endian over its first four bytes, or, with
+// a non-zero bit_mask, the masked bits of its first byte shifted down. False
+// when the response is short or the mask is not contiguous.
+inline bool extract_field(const uint8_t *data, std::size_t have, int byte_offset, uint8_t width, uint8_t bit_mask,
+                          uint32_t *value) {
+  const uint8_t *field = nullptr;
+  if (value == nullptr || !field_slice(data, have, byte_offset, width, &field))
+    return false;
+  if (bit_mask == 0) {
+    *value = static_cast<uint32_t>(read_le(field, width > 4 ? 4 : width));
+    return true;
+  }
+  uint8_t bits = 0;
+  if (!extract_bit_field(field[0], bit_mask, &bits))
+    return false;
+  *value = bits;
+  return true;
+}
+
 // Big-endian assembly for Vitosoft's "RotateBytes" conversion (the same bytes
 // read most-significant-first): data[0] << 8*(len-1) | ... | data[len-1].
 // Used by e.g. GWG_Codierstecker_Kennziffer (0x1040) and VSKO_Scot_NEC_* on

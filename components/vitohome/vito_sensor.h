@@ -18,16 +18,6 @@ class VitoSensor final : public sensor::Sensor, public Component, public VitoEnt
   void set_signed(bool s) { this->signed_ = s; }
   // RotateBytes: assemble the raw integer big-endian (read_be) before scaling.
   void set_big_endian(bool b) { this->big_endian_ = b; }
-  // Optional field extraction from a WIDER block read. The datapoint's length
-  // is the number of bytes fetched from the wire (the whole firmware block, so
-  // P300 gets an aligned read at the block base); this selects the FIELD
-  // within that payload -- `byte` is the start offset (0..block-1) and
-  // `set_extract_len` the field width (1..4 bytes, default 1) -- to scale/sign
-  // as the value. So a 2-byte room-setpoint or a 4-byte solar-yield counter
-  // sitting deep inside a 22- or 32-byte block is reachable with one aligned
-  // read. -1 disables extraction (the whole length is decoded as one integer).
-  void set_extract_byte(int16_t byte) { this->extract_byte_ = byte; }
-  void set_extract_len(uint8_t len) { this->extract_len_ = len; }
 
   void dump_config() override;
   void handle_response(const ResponseView &response) override;
@@ -42,11 +32,6 @@ class VitoSensor final : public sensor::Sensor, public Component, public VitoEnt
   double scale_{1.0};
   bool signed_{false};
   bool big_endian_{false};
-  // int16_t, not int8_t: a block can be up to 255 bytes and the selected byte
-  // may sit past offset 127, so the signed offset needs the wider type to
-  // still represent the -1 "disabled" sentinel unambiguously.
-  int16_t extract_byte_{-1};
-  uint8_t extract_len_{1};  // field width to slice at extract_byte_ (1..4)
 };
 
 }  // namespace esphome::vitohome
