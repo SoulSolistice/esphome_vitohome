@@ -93,6 +93,9 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
   BCD, DateTimeBCD and switch-point codecs, `utf16_label_bytes` and
   `setpoint_byte`. Its seeds are in `fuzz_corpus_field.h`; see "The `field`
   target" below.
+- `fuzz_gwg_session.cpp` — the same two builds over whole GWG sessions: up
+  to six reads and writes in any access mode against a scripted device. Its
+  seeds are in `fuzz_corpus_gwg_session.h`; see "The session targets" below.
 - `fuzz.sh` — campaign driver (clang/libFuzzer), one target per run. Not a
   gate, not run by CI.
 - `build_and_run_wsl.sh` — Windows-only convenience wrapper. Mirrors the two
@@ -234,6 +237,24 @@ bytes, and the BCD, DateTimeBCD and switch-point codecs refuse the same inputs
 on both sides. The rest are bounds: `field_slice()` accepts exactly the fields
 inside the response, `utf16_label_bytes()` never exceeds the field, and
 `setpoint_byte()` stays inside `[min, max]`, NaN included.
+
+### The session targets
+
+`fuzz_raw_engines.cpp` drives one telegram against a fuzzed controller. The
+session targets drive up to six operations back to back, the way the hub sends
+them, so the state an engine carries from one telegram to the next is under
+test too. The input picks the operations and then scripts the device: a byte
+with bit 7 set lets time pass in 10 ms steps, any other byte feeds that many
+plus one bytes. The clock is frozen and moves only on the script's say.
+
+`fuzz_gwg_session.cpp` covers GWG: the burst window and its fallback, EEPROM
+pair runs, the ENQ-to-send delay and the response deadline, each set from the
+input. Its oracles check that every accepted operation completes exactly once
+with its own address and length, that refusals follow the documented rules,
+that a request sent on an ENQ waited at least the delay, and that a late-answer
+report names an address of the session, states the configured deadline and
+never covers a telegram that got exactly its answer. An idle engine must not
+write to the line.
 
 **Running a campaign.**
 
