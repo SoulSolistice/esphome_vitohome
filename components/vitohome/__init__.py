@@ -264,8 +264,8 @@ GWG_ACCESS_MODES = {
 # `access: rpc` under both.
 ACCESS_RPC = "rpc"
 CONF_PREFIX = "prefix"
-# Mirrors VitoEntityBase::RPC_PREFIX_MAX (vito_entity.h). Vitosoft's longest
-# PrefixRead is three bytes.
+# Equal to VitoEntityBase::RPC_PREFIX_MAX (vito_entity.h; test_limits_agree.py).
+# Vitosoft's longest PrefixRead is three bytes.
 RPC_PREFIX_MAX = 4
 _RPC_DOMAINS = ("sensor", "binary_sensor", "text_sensor")
 # Where _final_validate looks for `access: rpc`: the readings above, and the
@@ -501,15 +501,17 @@ def converter_default_signed(name: str) -> bool:
 #
 # 48 is chosen as the ceiling we are willing to ATTEMPT: it covers every block
 # the catalogs emit (the widest is the 42-byte Beschriftung_* label block, which
-# is proven), and it matches VitoHomeComponent::RAW_READ_MAX so the raw scan
-# console can test any block read before you enable the entity that performs it.
+# is proven), and it equals VitoHomeComponent::RAW_READ_MAX (test_limits_agree.py)
+# so the raw scan console can test any block read before you enable the entity
+# that performs it.
 # Bytes 43..48 are unverified. Raise it with evidence, not lore.
 MAX_P300_READ_LENGTH = 48
 
-# Largest block a whole-block read-modify-write sends (mirror of
-# VitoHomeComponent::MAX_RMW_BLOCK in vitohome.h). The device writes its whole
-# datapoint, so a field smaller than its block is written by reading the block,
-# replacing the field and writing all of it back (docs/design_notes.md SS5b).
+# Largest block a whole-block read-modify-write sends; equal to
+# VitoHomeComponent::MAX_RMW_BLOCK (vitohome.h; test_limits_agree.py). The
+# device writes its whole datapoint, so a field smaller than its block is
+# written by reading the block, replacing the field and writing all of it back
+# (docs/design_notes.md SS5b).
 # Hardware-proven P300 write sizes are 1, 2 and 8 bytes; 16 covers every writable
 # block in the Vitosoft export apart from the 42-byte label strings.
 MAX_RMW_BLOCK = 16

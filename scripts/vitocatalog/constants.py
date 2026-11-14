@@ -233,8 +233,8 @@ NO_BORDERS_CAUTION = [
     "# `number` with a min_value / max_value / step you have confirmed on the",
     "# unit: nothing in this catalog bounds what you would send.",
 ]
-# Mirrors components/vitohome/__init__.py RPC_PREFIX_MAX. Vitosoft's longest
-# PrefixRead is three bytes.
+# Equal to components/vitohome/__init__.py RPC_PREFIX_MAX (test_limits_agree.py).
+# Vitosoft's longest PrefixRead is three bytes.
 RPC_PREFIX_MAX = 4
 
 # Protocol tokens for --protocol / _protocol_for_device().
@@ -333,14 +333,14 @@ _CONV_LENGTHS = {
 # into rotatebytes or a hint before signedness matters.
 _UNSIGNED_PARAMETER_TYPES = ("byte", "int", "int4")
 
-# Single-telegram READ payload cap for P300/VS2 (mirror of
-# components/vitohome/__init__.py::MAX_P300_READ_LENGTH). A wider block read
-# NAKs on P300, so such a datapoint becomes a commented hint instead of config
-# that fails on the wire.
+# Single-telegram READ payload cap for P300/VS2, equal to
+# components/vitohome/__init__.py::MAX_P300_READ_LENGTH (test_limits_agree.py).
+# A wider block read NAKs on P300, so such a datapoint becomes a commented hint
+# instead of config that fails on the wire.
 MAX_P300_READ_LENGTH = 48
 MAX_TEXT_BLOCK_LENGTH = MAX_P300_READ_LENGTH
-# Mirror of components/vitohome/__init__.py::MAX_RMW_BLOCK: the largest block a
-# whole-block read-modify-write sends.
+# Equal to components/vitohome/__init__.py::MAX_RMW_BLOCK (test_limits_agree.py):
+# the largest block a whole-block read-modify-write sends.
 MAX_RMW_BLOCK = 16
 
 # German weekday names for the per-day Schaltzeiten text entities, Monday first
