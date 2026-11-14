@@ -88,6 +88,11 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
 - `fuzz_corpus_decode.h` — its seed corpus. The first two bytes of every seed
   steer the output-buffer capacity and the declared field width; the rest is
   the payload.
+- `fuzz_field.cpp` — the same two builds over the value half of `decode.h`:
+  `field_slice`, `extract_field`, the scaled decoders and `encode_scaled`, the
+  BCD, DateTimeBCD and switch-point codecs, `utf16_label_bytes` and
+  `setpoint_byte`. Its seeds are in `fuzz_corpus_field.h`; see "The `field`
+  target" below.
 - `fuzz.sh` — campaign driver (clang/libFuzzer), one target per run. Not a
   gate, not run by CI.
 - `build_and_run_wsl.sh` — Windows-only convenience wrapper. Mirrors the two
@@ -213,6 +218,22 @@ the longest canonical Schaltzeiten string (47 + NUL) — and that silently made
 always full first. gcov found it; no amount of fuzzing would have, because the
 input space never contained the case. **A harness whose parameter range is
 narrower than the caller's is not testing the caller.**
+
+### The `field` target
+
+`fuzz_decode.cpp` covers how a payload becomes text; `fuzz_field.cpp` covers
+how it becomes a number, which is what nearly every entity reads. The input
+picks a response length (up to 71, past `MAX_PAYLOAD` on purpose), a field
+offset, width, mask, sign and scale, and the response is copied into a buffer
+of exactly that length, so a read one past it is an ASan report.
+
+Most oracles are round trips, because the decoders and encoders are written as
+inverses: a field merged into the block with `merge_block_field()` reads back
+as written, a value `decode_scaled()` delivered encodes back to the same
+bytes, and the BCD, DateTimeBCD and switch-point codecs refuse the same inputs
+on both sides. The rest are bounds: `field_slice()` accepts exactly the fields
+inside the response, `utf16_label_bytes()` never exceeds the field, and
+`setpoint_byte()` stays inside `[min, max]`, NaN included.
 
 **Running a campaign.**
 

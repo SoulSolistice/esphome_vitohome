@@ -25,6 +25,8 @@
 #               ceiling at INITED, so a long campaign here buys little.
 #   decode      the buffer-writing helpers in decode.h -- payload->text, plus
 #               encode_schaltzeiten_day, the one input a PERSON types.
+#   field       the value half of decode.h -- field extraction, scaling and
+#               the encode inverses, with round-trip oracles.
 #
 # WHAT TO DO WITH A FINDING. libFuzzer writes the reproducer to
 # $FUZZ_DIR/<target>/findings/ and prints the path. First replay it against the
@@ -67,6 +69,11 @@ case "$TARGET" in
     HEADER="fuzz_corpus_decode.h"
     EXTRA=()
     ;;
+  field)
+    SRC="fuzz_field.cpp"
+    HEADER="fuzz_corpus_field.h"
+    EXTRA=()
+    ;;
   raw_spec)
     SRC="fuzz_raw_spec.cpp"
     HEADER="fuzz_corpus_raw_spec.h"
@@ -84,6 +91,7 @@ case "$TARGET" in
     echo "targets:" >&2
     echo "  parser_vs2   ParserVS2::parse() -- wire to payload" >&2
     echo "  decode       decode.h buffer writers -- payload to text" >&2
+    echo "  field        decode.h field extraction and scaling -- payload to value and back" >&2
     echo "  raw_spec     raw_op.h spec parser -- a typed line to an operation" >&2
     echo "  raw_engines  generic telegrams -- one operation against a fuzzed controller" >&2
     exit 2
