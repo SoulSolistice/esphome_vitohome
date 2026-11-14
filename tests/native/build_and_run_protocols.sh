@@ -80,6 +80,10 @@ echo "== GWG sessions: fuzz corpus (deterministic replay; fuzz.sh gwg_session) =
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO"   fuzz_gwg_session.cpp "${SRCS[@]}" -o fuzz_gwg_session
 ./fuzz_gwg_session
 
+echo "== KW sessions, native and over the P300 detour: fuzz corpus (fuzz.sh kw_session) =="
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO"   fuzz_kw_session.cpp "${SRCS[@]}" -o fuzz_kw_session
+./fuzz_kw_session
+
 echo "== GWG read/write completion (THIRD_PARTY.md #8 fix) =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
   proof_gwg_read.cpp "${SRCS[@]}" -o gwg_read
