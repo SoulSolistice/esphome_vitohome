@@ -13,7 +13,7 @@
 //       are REFUSED rather than silently downgraded to another mode;
 //   (3) the default (2-argument-plus-data) write is byte-identical to the
 //       single PHYSICAL frame this emitted before, so nothing regresses;
-//   (4) the write frame layout matches gwgWriteEotBeforePayload -- the one
+//   (4) the write frame layout matches writeEotBeforePayload() -- the one
 //       part of the GWG write frame with no evidence behind it, kept behind a
 //       switch until a unit settles it;
 //   (5) a write completes on one ack byte and is subject to the same
@@ -71,7 +71,7 @@ int main() {
   check(adapter.write(0x0053, &payload, 1), "write(addr, data, len) [3-arg] accepted");
   uart.feed({0x05});
   adapter.loop();
-  const std::vector<uint8_t> want_physical = optolink::gwgWriteEotBeforePayload
+  const std::vector<uint8_t> want_physical = adapter.writeEotBeforePayload()
                                                  ? std::vector<uint8_t>{0x01, 0xC8, 0x53, 0x01, 0x04, 0x2A}
                                                  : std::vector<uint8_t>{0x01, 0xC8, 0x53, 0x01, 0x2A, 0x04};
   check(uart.written() == want_physical, "3-arg write == PHYSICAL WRITE frame (unchanged)");
@@ -80,16 +80,14 @@ int main() {
   check(g_responses == 1 && g_errors == 0, "write completes on a single ack byte");
   uart.clear_written();
 
-  // --- (5) the layout flag is RUNTIME: flipping it changes the very next
-  // frame. Added 2026-08-28 when gwgWriteEotBeforePayload stopped being a
-  // constexpr, so that one hardware session can try both layouts against the
-  // same address instead of needing two firmware builds. This proof asserts
-  // BOTH byte orders explicitly, so it also pins the two candidate layouts
-  // themselves rather than only the currently-selected one.
+  // --- (5) the layout switch applies from the very next frame, so one session
+  // can try both layouts against the same address. Both byte orders are
+  // asserted explicitly, which pins the two candidate layouts themselves.
   {
-    const bool saved = optolink::gwgWriteEotBeforePayload;
+    check(adapter.writeEotBeforePayload() == optolink::GWGEngine::DEFAULT_WRITE_EOT_BEFORE_PAYLOAD,
+          "a new engine starts in the default layout");
 
-    optolink::gwgWriteEotBeforePayload = false;
+    adapter.setWriteEotBeforePayload(false);
     check(adapter.write(0x0053, &payload, 1), "layout=false: write accepted");
     uart.feed({0x05});
     adapter.loop();
@@ -99,7 +97,7 @@ int main() {
     pump(adapter);
     uart.clear_written();
 
-    optolink::gwgWriteEotBeforePayload = true;
+    adapter.setWriteEotBeforePayload(true);
     check(adapter.write(0x0053, &payload, 1), "layout=true: write accepted");
     uart.feed({0x05});
     adapter.loop();
@@ -111,7 +109,7 @@ int main() {
 
     // Reads must be byte-identical under both layouts -- that is what makes it
     // safe to flip mid-session while a read-back verifies the write.
-    optolink::gwgWriteEotBeforePayload = true;
+    adapter.setWriteEotBeforePayload(true);
     check(adapter.read(0x0053, 1), "layout=true: read accepted");
     uart.feed({0x05});
     adapter.loop();
@@ -120,7 +118,7 @@ int main() {
     pump(adapter);
     uart.clear_written();
 
-    optolink::gwgWriteEotBeforePayload = false;
+    adapter.setWriteEotBeforePayload(false);
     check(adapter.read(0x0053, 1), "layout=false: read accepted");
     uart.feed({0x05});
     adapter.loop();
@@ -129,7 +127,7 @@ int main() {
     pump(adapter);
     uart.clear_written();
 
-    optolink::gwgWriteEotBeforePayload = saved;
+    adapter.setWriteEotBeforePayload(optolink::GWGEngine::DEFAULT_WRITE_EOT_BEFORE_PAYLOAD);
   }
 
   // --- (1) each writable mode selects the documented TYPE byte ---------------
@@ -156,7 +154,7 @@ int main() {
     adapter.loop();
     // (4) frame layout follows the switch; reads are identical under both.
     // EEPROM has its own layout, (6).
-    std::vector<uint8_t> want = optolink::gwgWriteEotBeforePayload
+    std::vector<uint8_t> want = adapter.writeEotBeforePayload()
                                     ? std::vector<uint8_t>{0x01, c.expected_type, 0x21, 0x01, 0x04, 0x2A}
                                     : std::vector<uint8_t>{0x01, c.expected_type, 0x21, 0x01, 0x2A, 0x04};
     if (c.mode == optolink::GWGAccessMode::EEPROM)
@@ -190,9 +188,8 @@ int main() {
   // A VR20 (#35) stored the two bytes after ADDR as the pair: `01 AD 16 01 29 04`
   // read back 01:29, `01 AD 16 01 04 29` read back 01:04.
   {
-    const bool saved = optolink::gwgWriteEotBeforePayload;
     for (const bool eot_first : {false, true}) {
-      optolink::gwgWriteEotBeforePayload = eot_first;
+      adapter.setWriteEotBeforePayload(eot_first);
       const uint8_t value = 0x28;
       check(adapter.write(0x0016, &value, 1, optolink::GWGAccessMode::EEPROM),
             eot_first ? "EEPROM write accepted (layout=true)" : "EEPROM write accepted (layout=false)");
@@ -203,7 +200,7 @@ int main() {
       pump(adapter);
       uart.clear_written();
     }
-    optolink::gwgWriteEotBeforePayload = saved;
+    adapter.setWriteEotBeforePayload(optolink::GWGEngine::DEFAULT_WRITE_EOT_BEFORE_PAYLOAD);
   }
 
   // The raw lane's type byte takes the same path.

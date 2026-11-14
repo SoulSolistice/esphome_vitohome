@@ -74,7 +74,7 @@ int main() {
   pump(adapter);
   check(uart.written().size() == 5, "(2) request sent on the ENQ");
   uart.clear_written();
-  optolink::optolink_test_clock_advance(optolink::gwgResponseTimeoutMs + 100);
+  optolink::optolink_test_clock_advance(adapter.responseTimeoutMs() + 100);
   pump(adapter);
   check(g_errors == 2 && g_last_error == optolink::OptolinkResult::TIMEOUT, "(2) TIMEOUT reported");
   check(!g_last_unsynced, "(2) ... and it is NOT unsynced (link untouched)");
@@ -92,12 +92,12 @@ int main() {
   check(adapter.read(0xAA, 1, optolink::GWGAccessMode::KMBUS_EEPROM), "(3) second read accepted");
   pump(adapter);
   check(!uart.written().empty(), "(3) second read burst-sent");
-  optolink::optolink_test_clock_advance(optolink::gwgResponseTimeoutMs + 100);
+  optolink::optolink_test_clock_advance(adapter.responseTimeoutMs() + 100);
   pump(adapter);
   check(g_errors == 2, "(3) no TIMEOUT yet: waiting to retry on an ENQ");
   uart.feed({0x05});
   pump(adapter);
-  optolink::optolink_test_clock_advance(optolink::gwgResponseTimeoutMs + 100);
+  optolink::optolink_test_clock_advance(adapter.responseTimeoutMs() + 100);
   pump(adapter);
   check(g_errors == 3 && g_last_error == optolink::OptolinkResult::TIMEOUT, "(3) TIMEOUT after the retry");
   check(!g_last_unsynced, "(3) ... NOT unsynced: the retry went out on an ENQ");
@@ -112,7 +112,7 @@ int main() {
   check(g_responses == 2, "(4) first read answered");
   check(adapter.read(0xAA, 1, optolink::GWGAccessMode::KMBUS_EEPROM), "(4) second read accepted");
   pump(adapter);
-  optolink::optolink_test_clock_advance(optolink::gwgResponseTimeoutMs + 100);
+  optolink::optolink_test_clock_advance(adapter.responseTimeoutMs() + 100);
   pump(adapter);
   check(g_errors == 3, "(4) no TIMEOUT yet: waiting to retry on an ENQ");
   optolink::optolink_test_clock_advance(optolink::GWGEngine::REQUEST_TIMEOUT_MS + 100);

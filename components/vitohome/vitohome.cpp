@@ -204,6 +204,7 @@ void VitoHomeComponent::setup() {
     this->mark_failed(LOG_STR("engine allocation failed"));
     return;
   }
+  this->apply_gwg_diagnostics_();
 
   // All three engines share one byte-mover callback shape, so the hub registers
   // directly with the engine and wraps the raw payload in a ResponseView here.
@@ -259,13 +260,12 @@ void VitoHomeComponent::setup() {
           this->link_note_error_();
         } else if (this->vito_->lastSendWasEnqPaced()) {
           // The same two numbers as an answered telegram's `GWG timing:` line,
-          // to tell a stale ENQ from a too-early answer to it (issue #35, see
-          // optolink::gwgEnqSendDelayMs).
+          // to tell a stale ENQ from a too-early answer to it.
           ESP_LOGD(TAG,
                    "GWG 0x%04X unanswered: enq age <=%" PRIu32 " ms, enq->send %" PRIu32 " ms (delay setting %" PRIu32
                    " ms)",
                    request_address, this->vito_->lastEnqAgeMs(), this->vito_->lastEnqToSendMs(),
-                   optolink::gwgEnqSendDelayMs);
+                   this->gwg_enq_send_delay_ms_);
         }
 #else
         this->link_note_error_();
@@ -300,18 +300,17 @@ void VitoHomeComponent::setup() {
     }
   });
 
-  // Burst fallback (2026-10-10). WARNING, not DEBUG: this permanently caps the
-  // poll rate at one datapoint per ENQ interval -- 749-2070 ms on the captures
-  // so far -- for the rest of the session, and until now it happened in total
-  // silence because the engine's own warning is compiled out of normal builds
-  // (see GWGEngine::OnBurstFallbackCallback).
+  // Burst fallback, as a warning: it caps polling at one datapoint per ENQ
+  // interval (749-2070 ms on the captures so far) for the rest of the session,
+  // and the engine's own warning is compiled out of normal builds (see
+  // GWGEngine::OnBurstFallbackCallback).
   this->vito_->onBurstFallback([this](uint8_t consecutive_failures) {
     this->gwg_burst_disabled_ = true;
     ESP_LOGW(TAG,
              "GWG burst disabled after %u unanswered burst-sent request(s); polling is now one "
              "telegram per ENQ for the rest of this session (burst frames %s the leading 0x01; "
-             "see gwgBurstOmitsEnqAck).",
-             static_cast<unsigned>(consecutive_failures), optolink::gwgBurstOmitsEnqAck ? "omit" : "carry");
+             "see set_gwg_burst_omits_enq_ack()).",
+             static_cast<unsigned>(consecutive_failures), this->gwg_burst_omits_enq_ack_ ? "omit" : "carry");
   });
 
   // Late-answer report (2026-11-08, issue #35). WARNING: a TIMEOUT alone does
@@ -506,9 +505,30 @@ void VitoHomeComponent::loop() {
   this->dispatch_next_();
 }
 
+void VitoHomeComponent::apply_gwg_diagnostics_() {
+#ifdef VITOHOME_PROTOCOL_GWG
+  if (!this->vito_)
+    return;  // setup() applies them once the engine exists
+  this->vito_->setWriteEotBeforePayload(this->gwg_write_eot_before_payload_);
+  this->vito_->setBurstOmitsEnqAck(this->gwg_burst_omits_enq_ack_);
+  this->vito_->setResponseTimeoutMs(this->gwg_response_timeout_ms_);
+  this->vito_->setEnqSendDelayMs(this->gwg_enq_send_delay_ms_);
+#endif
+}
+
 void VitoHomeComponent::arm_watchdog_(uint8_t telegrams) {
   this->in_flight_started_ms_ = App.get_loop_component_start_time();
   this->in_flight_watchdog_ms_ = in_flight_watchdog_ms(IN_FLIGHT_WATCHDOG_MS, telegrams);
+}
+
+void VitoHomeComponent::set_gwg_write_eot_before_payload(bool eot_first) {
+  this->gwg_write_eot_before_payload_ = eot_first;
+  this->apply_gwg_diagnostics_();
+}
+
+void VitoHomeComponent::set_gwg_burst_omits_enq_ack(bool omit) {
+  this->gwg_burst_omits_enq_ack_ = omit;
+  this->apply_gwg_diagnostics_();
 }
 
 void VitoHomeComponent::set_gwg_response_timeout_ms(uint32_t ms) {
@@ -516,7 +536,8 @@ void VitoHomeComponent::set_gwg_response_timeout_ms(uint32_t ms) {
   // see GWGEngine::_requestTimeoutMs()) inside one IN_FLIGHT_WATCHDOG_MS budget.
   const uint32_t clamped =
       std::min(std::max(ms, optolink::GWG_RESPONSE_TIMEOUT_MIN_MS), optolink::GWG_RESPONSE_TIMEOUT_MAX_MS);
-  optolink::gwgResponseTimeoutMs = clamped;
+  this->gwg_response_timeout_ms_ = clamped;
+  this->apply_gwg_diagnostics_();
   if (clamped != ms) {
     ESP_LOGW(TAG, "GWG response deadline %" PRIu32 " ms is out of range; using %" PRIu32 " ms", ms, clamped);
   } else {
@@ -526,7 +547,8 @@ void VitoHomeComponent::set_gwg_response_timeout_ms(uint32_t ms) {
 
 void VitoHomeComponent::set_gwg_enq_send_delay_ms(uint32_t ms) {
   const uint32_t clamped = std::min(ms, optolink::GWG_ENQ_SEND_DELAY_MAX_MS);
-  optolink::gwgEnqSendDelayMs = clamped;
+  this->gwg_enq_send_delay_ms_ = clamped;
+  this->apply_gwg_diagnostics_();
   if (clamped != ms) {
     ESP_LOGW(TAG, "GWG ENQ-to-send delay %" PRIu32 " ms is out of range; using %" PRIu32 " ms", ms, clamped);
   } else {
@@ -987,8 +1009,8 @@ void VitoHomeComponent::dump_config() {
     ESP_LOGCONFIG(TAG, "  Frame logging: ON (tag 'vitohome.frames')");
   }
 #ifdef VITOHOME_PROTOCOL_GWG
-  if (optolink::gwgEnqSendDelayMs > 0) {
-    ESP_LOGCONFIG(TAG, "  GWG ENQ-to-send delay: %" PRIu32 " ms", optolink::gwgEnqSendDelayMs);
+  if (this->gwg_enq_send_delay_ms_ > 0) {
+    ESP_LOGCONFIG(TAG, "  GWG ENQ-to-send delay: %" PRIu32 " ms", this->gwg_enq_send_delay_ms_);
   }
 #endif
 

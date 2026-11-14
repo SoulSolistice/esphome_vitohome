@@ -179,9 +179,9 @@ void GWGEngine::_init() {
       _enqSeenMillis = optolink_millis();
       _lastSendEnqPaced = true;
       _stampEnqToSend = true;
-      if (gwgEnqSendDelayMs > 0) {
-        // Diagnostic ENQ-to-send delay (issue #35, see gwgEnqSendDelayMs):
-        // wait in HOLD instead of answering in this pass.
+      if (_enqSendDelayMs > 0) {
+        // Diagnostic ENQ-to-send delay (setEnqSendDelayMs()): wait in HOLD
+        // instead of answering in this pass.
         _setState(State::HOLD);
         _hold();  // a delay already elapsed (long host stall) sends at once
         return;
@@ -218,14 +218,14 @@ void GWGEngine::_init() {
   // this needs no drain. It is also what bounds the window in practice: it can
   // only be ridden while the device has not spoken since the last answer.
   if (_busy && _canBurst()) {
-    // Frame byte 0 is ENQ_ACK (0x01). Under gwgBurstOmitsEnqAck it is the
+    // Frame byte 0 is ENQ_ACK (0x01). With _burstOmitsEnqAck it is the
     // acknowledgement of the device's ENQ rather than part of the request, so
     // a burst-sent request -- which answers no ENQ -- must not carry it.
     // Starting the transfer index at 1 skips it; _send() indexes the frame by
     // _bytesTransferred and completes at length(), so it needs no change and
     // stays re-entrant across loop iterations on a partial write.
     _closeLateWatch();
-    _bytesTransferred = gwgBurstOmitsEnqAck ? 1 : 0;
+    _bytesTransferred = _burstOmitsEnqAck ? 1 : 0;
     _enqAgeMillis = _currentMillis - _lastSyncMillis;  // age of the sync we are riding
     _sentInBurst = true;
     _lastSendEnqPaced = false;
@@ -246,7 +246,7 @@ void GWGEngine::_init() {
   }
 }
 
-// Diagnostic ENQ-to-send delay (issue #35, see gwgEnqSendDelayMs). Fresh
+// Diagnostic ENQ-to-send delay (setEnqSendDelayMs()). Fresh
 // optolink_millis(), not the per-loop snapshot: the delay is shorter than an
 // idle ESPHome loop interval. Nothing is expected from the device while we
 // hold its ENQ; anything that does arrive is not the answer to this request,
@@ -254,7 +254,7 @@ void GWGEngine::_init() {
 void GWGEngine::_hold() {
   while (_interface->available())
     _interface->read();
-  if (optolink_millis() - _enqSeenMillis < gwgEnqSendDelayMs)
+  if (optolink_millis() - _enqSeenMillis < _enqSendDelayMs)
     return;
   _setState(State::SEND);
   _send();
@@ -293,7 +293,7 @@ void GWGEngine::_receive() {
   // datapoint of value 0x05 are indistinguishable. The cost is a discarded
   // genuine response when the host stalls >250 ms; the alternative is
   // publishing a sync byte as a temperature.
-  if (_currentMillis - _lastMillis > gwgResponseTimeoutMs) {
+  if (_currentMillis - _lastMillis > _responseTimeoutMs) {
     // A burst-sent read gets one retry on a fresh ENQ before anything is
     // concluded (see BURST_FAILURES_BEFORE_FALLBACK).
     const bool retry = _sentInBurst && !_burstDisabled && !_currentRequest.hasPayload() && !_retryUnburst;
@@ -425,7 +425,7 @@ void GWGEngine::_openLateWatch(bool retried) {
   _late.address = _currentAddress;
   _late.received = _bytesTransferred;
   _late.expected = _currentRequest.hasPayload() ? 1 : _currentLength;
-  _late.deadline_ms = gwgResponseTimeoutMs;
+  _late.deadline_ms = _responseTimeoutMs;
   _late.retried = retried;
 }
 

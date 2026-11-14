@@ -145,7 +145,7 @@ int main() {
   // This is the whole point: no ENQ is fed, and the frame still goes out.
   check(adapter.read(0x0070, 1), "second read accepted");
   pump(adapter);
-  // Burst-sent, so no ENQ_ACK in front (gwgBurstOmitsEnqAck, default true).
+  // Burst-sent, so no ENQ_ACK in front (burstOmitsEnqAck(), default true).
   const std::vector<uint8_t> want70 = {0xCB, 0x70, 0x01, 0x04};
   check(uart.written() == want70, "BURST: sent without waiting for an ENQ, no 0x01");
   uart.feed({0x5F});
@@ -318,24 +318,22 @@ int main() {
     check(fallbacks == 1, "  and only once, however many follow");
   }
 
-  // --- (8) gwgBurstOmitsEnqAck: the leading 0x01 on a burst-sent request ----
-  // Frame byte 0 is ENQ_ACK. dannerph and uwen70 both treat it as the reply to
-  // the device's 0x05 rather than part of the request, and both therefore omit
-  // it when sending inside an already-open window. This project included it
-  // unconditionally until the 2026-10-13 hardware A/B (see constants.h), which
-  // made omit=true the default.
+  // --- (8) burstOmitsEnqAck(): the leading 0x01 on a burst-sent request -----
+  // Frame byte 0 is ENQ_ACK, the reply to the device's 0x05 rather than part of
+  // the request, so a request sent inside an already-open window omits it by
+  // default (design_notes.md, "Bursting").
   //
   // Pinned here: the flag changes the burst frame and NOTHING else. An
   // ENQ-paced request keeps the 0x01 under both settings -- it is a genuine
   // acknowledgement there -- so flipping this can only ever affect a frame
   // that answers no ENQ.
   {
-    const bool saved = optolink::gwgBurstOmitsEnqAck;
     for (const bool omit : {false, true}) {
-      optolink::gwgBurstOmitsEnqAck = omit;
-
       FakeOptolink u3;
       Engine a3(&u3);
+      check(a3.burstOmitsEnqAck() == optolink::GWGEngine::DEFAULT_BURST_OMITS_ENQ_ACK,
+            "a new engine starts with the default (omit)");
+      a3.setBurstOmitsEnqAck(omit);
       a3.onResponse([](const uint8_t *, uint8_t, uint16_t) {});
       a3.onError([](optolink::OptolinkResult, uint16_t) {});
       a3.begin();
@@ -374,8 +372,6 @@ int main() {
       u3.feed({0x00});
       pump(a3);
     }
-    optolink::gwgBurstOmitsEnqAck = saved;
-    check(optolink::gwgBurstOmitsEnqAck == true, "flag restored to its default (omit)");
   }
 
   // --- (9) a datapoint that never answers does not trip the fallback --------
@@ -499,7 +495,6 @@ int main() {
   // needs (issue #35); the request watchdog has to grow with it, or the ENQ
   // wait it also covers would be cut short.
   {
-    const uint32_t saved = optolink::gwgResponseTimeoutMs;
     FakeOptolink u11;
     Engine a11(&u11);
     int responses = 0;
@@ -512,7 +507,8 @@ int main() {
     a11.onError([&](optolink::OptolinkResult, uint16_t) { errors++; });
     a11.begin();
 
-    optolink::gwgResponseTimeoutMs = 1000;
+    check(a11.responseTimeoutMs() == optolink::GWGEngine::RESPONSE_TIMEOUT_MS, "a new engine starts at 250 ms");
+    a11.setResponseTimeoutMs(1000);
     a11.read(0x006E, 1);
     u11.feed({0x05});
     a11.loop();
@@ -536,8 +532,10 @@ int main() {
     pump(a11);
     check(responses == 2 && errors == 0, "  and the late ENQ still carries the read");
 
-    optolink::gwgResponseTimeoutMs = saved;
-    check(optolink::gwgResponseTimeoutMs == optolink::GWGEngine::RESPONSE_TIMEOUT_MS, "deadline restored (250 ms)");
+    FakeOptolink u12;
+    Engine a12(&u12);
+    check(a12.responseTimeoutMs() == optolink::GWGEngine::RESPONSE_TIMEOUT_MS,
+          "  another engine keeps its own deadline (250 ms)");
   }
 
   std::printf("gwg burst: %d failure(s)\n", failures);

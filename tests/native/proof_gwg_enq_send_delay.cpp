@@ -1,4 +1,4 @@
-// Proves the diagnostic GWG ENQ-to-send delay (optolink::gwgEnqSendDelayMs,
+// Proves the diagnostic GWG ENQ-to-send delay (GWGEngine::setEnqSendDelayMs(),
 // issue #35, THIRD_PARTY.md #33).
 //
 //   * Default 0: the request goes out in the loop() pass that read the ENQ,
@@ -50,7 +50,7 @@ int main() {
   };
 
   // (1) Default: unchanged behaviour.
-  check(optolink::gwgEnqSendDelayMs == 0, "(1) default delay is 0");
+  check(adapter.enqSendDelayMs() == 0, "(1) default delay is 0");
   check(adapter.read(0x55, 1), "(1) read accepted");
   uart.feed({0x05});
   adapter.loop();
@@ -66,7 +66,7 @@ int main() {
   optolink::optolink_test_clock_advance(optolink::GWGEngine::ENQ_VALIDITY_MS + 100);
 
   // (2) 30 ms: held, then sent; a stray byte during the hold is dropped.
-  optolink::gwgEnqSendDelayMs = 30;
+  adapter.setEnqSendDelayMs(30);
   check(adapter.read(0x16, 1), "(2) read accepted");
   uart.feed({0x05});
   adapter.loop();
@@ -104,14 +104,13 @@ int main() {
   optolink::optolink_test_clock_advance(30);
   adapter.loop();
   check(uart.written().size() == 5, "(4) sent after the hold");
-  optolink::optolink_test_clock_advance(optolink::gwgResponseTimeoutMs + 100);
+  optolink::optolink_test_clock_advance(adapter.responseTimeoutMs() + 100);
   pump(adapter);
   check(g_errors == 1, "(4) TIMEOUT reported");
   check(adapter.lastSendWasEnqPaced() && adapter.lastEnqToSendMs() == 30, "(4) enq->send readable after it");
   check(adapter.lastEnqAgeMs() == optolink::GWGEngine::ENQ_VALIDITY_MS + 100,
         "(4) enq age (loop gap that read the ENQ) readable after it");
 
-  optolink::gwgEnqSendDelayMs = 0;
   std::printf("gwg enq send delay: %d failure(s)\n", failures);
   return failures == 0 ? 0 : 1;
 }

@@ -818,13 +818,25 @@ These are intentional divergences from upstream `edc059a7`:
     firmware. Not yet tested on hardware. Proof:
     `proof_gwg_enq_send_delay.cpp`.
 
+34. **GWG diagnostic switches are engine members (structural, no wire
+    change).** The write frame layout (#19), the ENQ_ACK of a burst-sent
+    request (#24), the response deadline (#30) and the ENQ-to-send delay
+    (#33) were process-wide globals in `constants.cpp`, read at packet-build
+    time. They are now members of `GWGEngine` (`setWriteEotBeforePayload()`,
+    `setBurstOmitsEnqAck()`, `setResponseTimeoutMs()`, `setEnqSendDelayMs()`;
+    the layout is held by its `PacketGWG`), with the same defaults. The hub
+    keeps the values its lambdas set and applies them to the engine at setup
+    and on change. Proofs: `proof_gwg_burst.cpp` (8) and (11),
+    `proof_gwg_write_access.cpp` (5), `proof_gwg_enq_send_delay.cpp` (1).
+
 Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32 and 33 (when its delay is set) are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16 are structural (no behavior change from any call
 site that exists -- item 16 alters bytes only on a RESPONSE-construction path
 nothing exercises); item 17 changes only construction-failure handling
 (abort -> fail-soft), not protocol or normal-path behavior; item 20 is a
-read-only diagnostic that emits nothing, and items 25 and 31 are additive
-accessors that change no delivered byte; item 23 is confined to the host test
+read-only diagnostic that emits nothing, items 25 and 31 are additive
+accessors that change no delivered byte, and item 34 moves state without
+changing a default; item 23 is confined to the host test
 branch of `optolink_millis()` and cannot reach a device build. Everything else
 preserves upstream protocol behavior. Each of items 7-12, 18 and 19 is covered by a host proof
 that fails against the upstream code (item 18:
