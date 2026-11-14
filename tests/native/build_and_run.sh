@@ -151,5 +151,11 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" \
   fuzz_decode.cpp -o fuzz_decode
 ./fuzz_decode
 
+# decode.h fuzz corpus over the value half: field extraction, scaling and the
+# encode inverses (fuzz.sh field).
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" \
+  fuzz_field.cpp -o fuzz_field
+./fuzz_field
+
 # Protocol-adapter proofs: all three engines compile + the GWG poke stays off.
 bash "$(dirname "$0")/build_and_run_protocols.sh" "$ROOT"
