@@ -38,7 +38,8 @@
 //       the burst fallback fires at most once;
 //   (6) a late-answer report names an address of the session, stores at most
 //       8 of the late bytes, states the configured deadline and never covers
-//       a telegram that received exactly its answer;
+//       a telegram that received exactly its answer; an empty one is a
+//       retried burst, sent no later than ENQ_VALIDITY_MS after its sync;
 //   (7) an idle engine writes nothing to the line;
 //   (8) afterwards the engine is idle and takes the next request.
 //
@@ -166,7 +167,8 @@ void on_late(const GWGEngine::LateAnswer &late) {
   // An answer of exactly `expected` bytes completes; a longer one times out.
   oracle(late.received != late.expected, "a late-answer report for a telegram that got its answer");
   oracle(late.deadline_ms == g_s.deadline, "a late-answer report states another deadline");
-  oracle(late.received != 0 || late.late_count != 0, "an empty late-answer report");
+  oracle(late.received != 0 || late.late_count != 0 || late.retried, "an empty late-answer report");
+  oracle(!late.retried || late.enq_age_ms <= GWGEngine::ENQ_VALIDITY_MS, "a burst rode a sync older than the window");
 }
 
 // Submits operations until one is accepted or none is left.

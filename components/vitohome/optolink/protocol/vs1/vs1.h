@@ -60,8 +60,8 @@ class VS1Engine {
   // transactions (median 29, p90 35). Against the old 50 ms that is ~8 ms of
   // headroom -- fine on that config, but any extra loop latency pushes a gap
   // past it and silently ends the chain, dropping the poll rate back to one
-  // telegram per ENQ (~1.2-2 s each). vogod uses 1500 ms for exactly this job,
-  // and GWGEngine::ENQ_VALIDITY_MS is 1500 ms; this matches them.
+  // telegram per ENQ (~1.2-2 s each). vogod uses 1500 ms for exactly this job;
+  // this matches it.
   //
   // Exceeding it is a SOFT failure: the chain simply ends and the next
   // telegram waits for an ENQ. So the cost of being too tight is throughput,

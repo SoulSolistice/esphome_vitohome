@@ -478,12 +478,16 @@ These are intentional divergences from upstream `edc059a7`:
 
 21. **GWG burst (behavioral divergence, throughput).** `_init()` may now send a
     queued request on a sync it already earned, without waiting for the device's
-    next ENQ, for up to `ENQ_VALIDITY_MS` (1500 ms). Upstream, and the openv
+    next ENQ, for up to `ENQ_VALIDITY_MS` (500 ms). Upstream, and the openv
     wiki, wait for a fresh `0x05` every time -- which caps the poll rate at one
     datapoint per ENQ interval (749-2070 ms on the 2026-08-23 capture).
 
+    The window is shorter than vogod's 1500 ms because on issue #35 logs 11-14
+    every answered burst left within 381 ms of the previous answer, and the
+    two sent about 1 s after it went unanswered.
+
     Sourced from the implementations that have run on hardware: vogod uses
-    exactly this 1500 ms ENQ validity on KW and re-stamps it at the end of every
+    a 1500 ms ENQ validity on KW and re-stamps it at the end of every
     completed transaction; dannerph has an explicit GWG burst mode; and this
     engine's own `VS1Engine::_syncRecv()` already re-sends with no fresh ENQ
     (see item 22), so GWG was the outlier.
@@ -512,8 +516,8 @@ These are intentional divergences from upstream `edc059a7`:
     the second to the first.
 
     Split into `ENQ_ACK_WINDOW_MS = 50` (unchanged, upstream's value) and
-    `CHAIN_WINDOW_MS = 1500`, matching vogod's figure for the same job and
-    GWG's `ENQ_VALIDITY_MS`. Motivated by measurement: on the 2026-08-24
+    `CHAIN_WINDOW_MS = 1500`, matching vogod's figure for the same job.
+    Motivated by measurement: on the 2026-08-24
     VScotHO1_72 capture the answer-to-next-request gap ran 22-42 ms over 235
     transactions (median 29, p90 35), i.e. ~8 ms under the old 50 ms ceiling.
     Nothing breached it there, but any extra loop latency would, and the effect
@@ -776,6 +780,9 @@ These are intentional divergences from upstream `edc059a7`:
       they, the partial answer, and every non-ENQ byte consumed in INIT for
       `LATE_WATCH_MS` afterwards go to `onLateAnswer()`, with the time from
       the end of the request write to the first late byte.
+    - A silent burst-sent read that is retried is reported through
+      `onLateAnswer()` too (`retried`, with the age of the sync it rode in
+      `enq_age_ms`); the hub logs it at DEBUG.
     - The response deadline is `optolink::gwgResponseTimeoutMs` (default
       `RESPONSE_TIMEOUT_MS`, 250 ms), settable from a lambda for a test; the
       request watchdog grows with it.

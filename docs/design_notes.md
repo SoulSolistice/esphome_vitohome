@@ -250,8 +250,11 @@ completed answer to the next request ran **22–42 ms (median 29, p90 35)** acro
 235 transactions, against what was then a 50 ms budget — no breach, but only
 ~8 ms of headroom. That measurement is what prompted the split below.
 
-GWG now bursts too, on vogod's 1500 ms window (`GWGEngine::ENQ_VALIDITY_MS`),
-kept deliberately rather than tuned since it is the only figure anyone ships.
+GWG bursts too, on a 500 ms window (`GWGEngine::ENQ_VALIDITY_MS`). It started
+on vogod's 1500 ms. On the issue #35 logs 11–14 (GWG_VBEM `0x2053` SW `0x1E`),
+2,327 burst-sent reads left within 100 ms of the previous answer and one
+after 381 ms; the two sent about 1 s after it went unanswered. By then the
+device's next ENQ is due, so a later burst saves nothing.
 
 Because this contradicts the only written specification, it is **self-correcting
 rather than assumed**:
@@ -295,6 +298,10 @@ with the `0x01` sync: if the retry is answered, the burst failed (and counts
 towards the fallback); if the retry times out too, the datapoint is silent and
 the burst counter is left alone. Writes are never retried, because a lost
 answer does not mean a lost write; a burst-sent write timeout still counts.
+
+A silent burst-sent read is logged at DEBUG when it is retried
+(`GWG 0x… unanswered: enq age <=N ms (burst); retrying on the next ENQ`), so
+the retry is visible although no TIMEOUT follows when it is answered.
 
 The engine also reports what arrived around a timeout. Bytes drained at the
 deadline, and every non-ENQ byte up to the next request's ENQ (at most
@@ -347,8 +354,8 @@ distinct constants:
 | `ENQ_ACK_WINDOW_MS` | `_syncEnq()` | protocol constraint — how fast we must answer the device's ENQ | 50 ms (unchanged) |
 | `CHAIN_WINDOW_MS` | `_syncRecv()` | throughput policy — how long a chain may pause | 1500 ms |
 
-1500 ms is vogod's figure for the same job and matches GWG's
-`ENQ_VALIDITY_MS`. The 22–42 ms measurement above is what the second window has
+1500 ms is vogod's figure for the same job. The 22–42 ms measurement above is
+what the second window has
 to cover, and it was sitting ~8 ms under the old ceiling.
 
 Widening it needed one guard, because a long window and an empty queue would
