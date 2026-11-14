@@ -41,9 +41,25 @@ from esphome.const import (
     CONF_TIME_ID,
     CONF_UART_ID,
     CONF_UPDATE_INTERVAL,
+    __version__ as ESPHOME_VERSION,
 )
-from esphome.core import CORE, ID, CoroPriority, coroutine_with_priority
+from esphome.core import CORE, ID, CoroPriority, Version, coroutine_with_priority
 import esphome.final_validate as fv
+
+# The oldest ESPHome release this component is built against (CI pins a
+# release of it). Checked at import, before any schema below touches a newer
+# API, so an older ESPHome names the cause instead of failing on a missing
+# attribute.
+MIN_ESPHOME_VERSION = "2026.9.0"
+
+
+def _release(version):
+    v = Version.parse(version)
+    return (v.major, v.minor, v.patch)
+
+
+if _release(ESPHOME_VERSION) < _release(MIN_ESPHOME_VERSION):
+    raise ImportError(f"vitohome needs ESPHome {MIN_ESPHOME_VERSION} or newer; this is ESPHome {ESPHOME_VERSION}")
 
 _LOGGER = logging.getLogger(__name__)
 
