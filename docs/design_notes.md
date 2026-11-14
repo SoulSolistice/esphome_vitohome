@@ -271,8 +271,9 @@ one-telegram-per-ENQ property instead when it is off).
 SW `0x7A`), with one condition: a burst-sent GWG request must **not** carry the
 leading `0x01`. That byte acknowledges the device's ENQ, and a burst request
 answers none. With it left off, 25 of 25 burst-sent requests were answered;
-with it kept, 0 of 4, across two sessions. `gwgBurstOmitsEnqAck` therefore
-defaults to `true`. With the old default, the boot-time identification reads
+with it kept, 0 of 4, across two sessions. Omitting it is therefore the
+default (`GWGEngine::setBurstOmitsEnqAck()`, from a lambda
+`set_gwg_burst_omits_enq_ack()`). With the old default, the boot-time identification reads
 could already trip the fallback and lose the device id before any user
 action. If `GWG burst disabled` still shows up in a log, that unit differs —
 report it.
@@ -301,8 +302,9 @@ GWG has no framing, so this is a diagnostic, not a decode: a data byte `0x05`
 and the device's idle ENQ cannot be told apart. The warning says whether the
 datapoint answers slowly (raise the deadline) or never (leave it out).
 
-The 250 ms answer deadline is the default of `optolink::gwgResponseTimeoutMs`,
-settable at run time from a lambda, between 50 and 2000 ms:
+The 250 ms answer deadline is the engine's default
+(`GWGEngine::setResponseTimeoutMs()`), settable at run time from a lambda,
+between 50 and 2000 ms:
 
 ```yaml
 button:
@@ -491,11 +493,18 @@ KW sibling     01 F4  ADDR LEN <data...>          no terminator at all
 ```
 
 The wiki calls `0x04` the "Telegramm Ende Byte" and shows no write example.
-Neither GWG layout has hardware evidence, so the choice sits behind
-`gwgWriteEotBeforePayload` in `constants.h` (default: this project's
-pre-existing layout) until a unit settles it. **Reads are byte-identical under
-both**, which is why this never surfaced. Both settings build and pass the full
-proof suite, so flipping it is a one-line change and a reflash.
+Neither GWG layout has hardware evidence, so the choice is a run-time switch
+(`GWGEngine::setWriteEotBeforePayload()`, from a lambda
+`set_gwg_write_eot_before_payload()`; default: EOT last) until a unit settles
+it. **Reads are byte-identical under both**, which is why this never surfaced.
+
+dannerph's implementation is the one independent source: its write puts the
+`0x04` before the payload. If a unit expects that layout, a write in this
+project's default layout is acknowledged and stores `0x04`: the unit takes the
+first data byte as its terminator and the trailing `0x04` as the value. A
+GWG write that reads back as `0x04` is the signature of the wrong layout, and
+what an A/B test looks for. The switch is run-time, not compile-time, so both
+layouts can be tried on one unit, against one address, in one session.
 
 **The identify read is always `virtual`** (see §Identification under GWG), not
 affected by any entity's `access:`.

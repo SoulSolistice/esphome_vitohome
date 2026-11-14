@@ -34,7 +34,7 @@ them have a BES. See [Identification](#identification).
 | Read request | `01 TYPE ADDR LEN 04` after an ENQ; `TYPE ADDR LEN 04` inside a burst | HW #21 |
 | Response | LEN raw bytes; no framing, checksum, address echo or error telegram | HW |
 | Answer time | 23–53 ms after the request | HW #21, #35 |
-| Answer deadline | 250 ms default (`gwgResponseTimeoutMs`, 50–2000 ms from a lambda) | design choice |
+| Answer deadline | 250 ms default (`set_gwg_response_timeout_ms()`, 50–2000 ms from a lambda) | design choice |
 | Address | one byte; anything above `0xFF` is rejected at config time | source, §8d |
 
 - **No error answer.** An address a mode does not serve answers `0xFF` (all

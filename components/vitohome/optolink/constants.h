@@ -175,150 +175,15 @@ constexpr uint8_t gwgReadTypeByte(GWGAccessMode mode) {
 // the same read-only conclusion for KMBUS that gwgModeIsWritable() encodes.
 constexpr uint8_t kNoGwgWriteType = 0x00;
 
-// GWG WRITE frame layout switch. The read frame is settled -- three sources
-// agree on `01 TYPE ADDR LEN 04` -- but where the payload sits relative to the
-// EOT terminator on a WRITE is genuinely unknown, and the two existing
-// implementations disagree:
-//
-//   false (default, this project's pre-existing layout):
-//       01 TYPE ADDR LEN <data...> 04     EOT terminates the frame
-//   true (dannerph/esphome_vitoconnect):
-//       01 TYPE ADDR LEN 04 <data...>     EOT precedes the payload
-//
-// Neither has hardware evidence. The wiki calls 0x04 the "Telegramm Ende Byte"
-// and shows no write example, which argues for the default; the KW sibling
-// (vcontrold KW2 `SETADDR $addr $hexlen; SEND BYTES`) emits no terminator at
-// all, so it does not decide the question either. vcontrold has no GWG write
-// implementation to compare against -- its `setaddr` is `SYNC;RECV 1`, which
-// transmits no telegram whatsoever.
-//
-// Flip this to test the other layout. Reads are byte-identical under both.
-// Once a unit settles it, this switch and this comment should collapse into
-// the single correct layout.
-//
-// RUNTIME, not constexpr (2026-08-28). Deciding this needs both layouts tried
-// against the same address on the same unit in one session; a compile-time
-// constant would mean two firmware builds and a reflash between them, which
-// makes the comparison much weaker (different uptime, different bus state).
-// VitoHomeComponent::set_gwg_write_eot_before_payload() flips it from a lambda.
-// The default is UNCHANGED (false), so no existing behaviour moves until the
-// evidence is in.
-//
-// NEW EVIDENCE, 2026-08-28: dannerph/esphome_vitoconnect's
-// vitoconnect_optolinkGWG.cpp (GPLv3, 2025) settles what the wiki does not. Its
-// _send() builds `buff[3] = 0x04` and then `memcpy(&buff[4], dp->data, length)`,
-// documented in that file as:
-//     READ : <TYPE> <ADDR> <LEN> 0x04
-//     WRITE: <TYPE> <ADDR> <LEN> 0x04 <DATA...>
-// i.e. EOT BEFORE payload -- the `true` branch here. That is an independent
-// implementation, not a restatement of the wiki, so it is real evidence and it
-// points away from this project's current default.
-//
-// It also predicts the exact failure we observed. Under the `false` layout the
-// device reads LEN, then takes the NEXT byte as payload -- which is 0x04, not
-// the intended value. So the write is accepted and ACKed, and stores 0x04
-// instead of what was asked for: silent, not rejected, exactly as the
-// hardware session showed. A read-back of 0x04 after a write is therefore the
-// signature of the wrong layout, and is what the paired A/B test looks for.
-//
-// Still not flipped by default: dannerph's layout is evidence, not proof, and
-// this project's rule is that a wire-format change waits for a reading from a
-// real unit.
-//
-// An EEPROM write (0xAD) ignores this: it carries the cell's complement pair
-// right after ADDR, `01 AD ADDR ~V V 04` (PacketGWG::createTelegram()).
-extern bool gwgWriteEotBeforePayload;
-
-// GWG BURST frame switch: is the leading 0x01 part of the request, or the
-// acknowledgement of the device's ENQ?
-//
-//   false (this project's behaviour until 2026-10-13):
-//       every request carries 01 as its first byte, ENQ-paced or burst-sent
-//   true (default; dannerph / uwen70):
-//       01 is written in IDLE as the reply to the device's 0x05 and is NOT
-//       part of the request; a burst-sent request therefore starts at TYPE
-//
-// Reads and writes are byte-identical under both when the request answers a
-// fresh ENQ -- the ACK immediately precedes the frame either way. The two
-// differ ONLY for a burst-sent request, where `true` omits the 0x01 entirely.
-//
-// Evidence that this, not burst itself, is what fails here. Both external
-// implementations state the rule in prose and implement it:
-//   dannerph, _send(): "No ACK (0x01) is sent here. ACK belongs exclusively to
-//     IDLE as a reaction to READY (0x05). In burst mode, SEND is entered
-//     without a new READY (0x05) event and therefore without ACK."
-//   uwen70 eeprom branch, chaining EEPROM sub-reads: "Burst mode is naturally
-//     satisfied here: we do NOT wait for READY (0x05), and we do NOT send ACK
-//     (0x01), because ACK is only used to acknowledge READY."
-// The uwen70 branch is a working EEPROM read path that chains byte-wise
-// sub-requests back-to-back with no ENQ between them -- i.e. a positive
-// hardware control for bursting WITHOUT the ACK.
-//
-// Against that, hardware capture 2026-10-10 (GWG_VBEM, ident 0x2053 HW=0x01
-// SW=0x7A, 15-address BE sweep): 13 ENQ-paced requests answered, 31-48 ms
-// after the ENQ they acknowledged; the only 2 requests sent inside an already
-// consumed window -- both carrying the leading 0x01 -- went unanswered and hit
-// BURST_FAILURES_BEFORE_FALLBACK. So this project has a negative control for
-// bursting WITH the ACK on the same protocol family.
-//
-// Settled on hardware (issue #21, GWG_VBEM 0x2053 HW=0x01 SW=0x7A, same unit
-// throughout, 6x PHYSICAL 0x006F per run):
-//   2026-10-11, omit=true:  25 of 25 burst-sent requests answered (6 x 0x006F,
-//       then EEPROM, mixed CB/AE and a 15-address 9E sweep), no fallback.
-//   2026-10-13, omit=false: both burst-sent requests unanswered, fallback after
-//       2; every ENQ-paced request around them was answered.
-// Plus the 2026-10-10 capture above (omit=false: 0 of 2). So the unit DOES
-// burst, and the leading 0x01 is what breaks a burst frame.
-//
-// The old default also cost the identification: the boot-time reads at
-// 0xF8..0xFB run before any user action, so with omit=false their burst-sent
-// sub-reads could time out, trip the fallback and leave the device id unknown
-// before the first button press (2026-10-13 boot B: "Device: unknown",
-// strict one-telegram-per-ENQ from the first request on).
-//
-// Still a runtime switch, so a unit that turns out to need the old layout can
-// be set back from a lambda: VitoHomeComponent::set_gwg_burst_omits_enq_ack().
-extern bool gwgBurstOmitsEnqAck;
-
-// GWG response deadline (ms), diagnostic. GWGEngine::RESPONSE_TIMEOUT_MS
-// (250) is the default and the value every hardware capture so far was taken
-// against; this variable is what the engine actually reads, so a lambda can
-// lengthen it at runtime (VitoHomeComponent::set_gwg_response_timeout_ms()).
-//
-// Why it exists (issue #35, GWG_VBEM 0x2053 HW=0x01 SW=0x1E, 2026-11-07): all
-// 54 `kmbus_eeprom` datapoints of the catalog went unanswered within 250 ms,
-// while every other mode answered in 23-50 ms. Those reads are forwarded over
-// the KM-Bus to the burner control, so the answer may simply arrive later.
-// Raising the deadline is how to find out; the late-answer report
-// (GWGEngine::OnLateAnswerCallback) says by how much.
-//
-// The cost of a longer deadline is the misread RESPONSE_TIMEOUT_MS exists to
-// stop: the device's idle ENQ (0x05, every 749-2070 ms) can complete a
-// one-byte read that the device ignored. Keep it below the shortest idle-ENQ
-// gap seen (749 ms) unless the read under test is longer than one byte, and
-// set it back afterwards. Clamped to GWG_RESPONSE_TIMEOUT_{MIN,MAX}_MS by the
-// hub setter.
-extern uint32_t gwgResponseTimeoutMs;
+// Bounds of a GWG response deadline set at run time
+// (VitoHomeComponent::set_gwg_response_timeout_ms()). The upper one keeps a
+// retried burst read inside the hub's request watchdog.
 inline constexpr uint32_t GWG_RESPONSE_TIMEOUT_MIN_MS = 50;
 inline constexpr uint32_t GWG_RESPONSE_TIMEOUT_MAX_MS = 2000;
 
-// GWG ENQ-to-send delay (ms), diagnostic. Default 0: the request goes out in
-// the same loop() pass that read the device's ENQ, as it always has (see
-// GWGEngine::_init()). A value above 0 holds the request until that many ms
-// after the ENQ was read, then sends it; this variable is what the engine
-// reads, set from a lambda (VitoHomeComponent::set_gwg_enq_send_delay_ms()).
-//
-// Why it exists (issue #35, GWG_VBEM 0x2053, 2026-11-13): with no catalog
-// loaded, 7 of 8 ENQ-paced EEPROM reads went unanswered, not one byte back.
-// The reporter's own firmware waits 30-35 ms after the 0x05 before its 0x01
-// and reports that this all but removed such timeouts. No capture in this
-// project has measured the gap yet, so this is a test knob, not a fix.
-//
-// Only an ENQ-paced request waits; a burst-sent one answers no ENQ. The ENQ's
-// arrival is known only as the time it was read out of the UART buffer, so the
-// delay counts from there. Clamped to GWG_ENQ_SEND_DELAY_MAX_MS by the hub
-// setter, well under the shortest idle-ENQ gap seen (749 ms).
-extern uint32_t gwgEnqSendDelayMs;
+// Upper bound of a GWG ENQ-to-send delay set at run time
+// (VitoHomeComponent::set_gwg_enq_send_delay_ms()), well under the shortest
+// idle-ENQ gap seen (749 ms).
 inline constexpr uint32_t GWG_ENQ_SEND_DELAY_MAX_MS = 100;
 
 constexpr uint8_t gwgWriteTypeByte(GWGAccessMode mode) {

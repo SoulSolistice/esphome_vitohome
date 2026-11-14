@@ -49,6 +49,10 @@ class PacketGWG {
   // Whether the frame carries `len` payload bytes (a write's shape): its
   // answer is then a one-byte acknowledgement, otherwise `len` data bytes.
   bool hasPayload() const;
+  // Write frame layout for the packets built from now on: EOT after the
+  // payload (false) or before it (true). See GWGEngine::setWriteEotBeforePayload().
+  void setEotBeforePayload(bool eotFirst) { _eotBeforePayload = eotFirst; }
+  bool eotBeforePayload() const { return _eotBeforePayload; }
 
   void reset();
 
@@ -56,6 +60,7 @@ class PacketGWG {
   std::array<uint8_t, kMaxFrame> _buffer;
   uint8_t _length{0};
   bool _hasPayload{false};
+  bool _eotBeforePayload{false};
 };
 
 }  // namespace esphome::vitohome::optolink

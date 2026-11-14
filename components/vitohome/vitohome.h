@@ -222,86 +222,50 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   }
 #endif
 
-  // Queue a one-off read or write to an arbitrary address.
+  // GWG diagnostics for A/B tests from a lambda. Not YAML keys: a production
+  // config has no reason to pick a wire format. Each applies from the next
+  // telegram. Accepted on every build, so lambdas need no #ifdef; only the GWG
+  // engine uses them. Background: design_notes.md, "Writes" and "Bursting".
   //
-  // These feed the interactive scan console's raw lane, which since the NTP
-  // refactor has exactly one tenant: scan operations. (Device-clock sync used
-  // to share this FIFO behind a purpose tag; it is now a VitoClock entity on
-  // the ordinary read/write lanes -- see vito_clock.h.) The front raw item is
-  // dispatched after identification and ahead of user writes and polls: the
-  // console is a human waiting at a button, and the lane is empty unless
-  // someone is actively scanning.
+  // Write frame layout: EOT after the payload (default) or before it.
+  void set_gwg_write_eot_before_payload(bool eot_first);
+  bool gwg_write_eot_before_payload() const { return this->gwg_write_eot_before_payload_; }
+  // Whether a burst-sent request omits the leading 0x01 (default: omits).
+  void set_gwg_burst_omits_enq_ack(bool omit);
+  bool gwg_burst_omits_enq_ack() const { return this->gwg_burst_omits_enq_ack_; }
+  // Answer deadline, clamped to optolink::GWG_RESPONSE_TIMEOUT_{MIN,MAX}_MS
+  // (50..2000) and logged; default 250 ms. For one-byte reads keep it under the
+  // device's idle-ENQ gap (about 700 ms), or an idle ENQ reads as the value.
   //
-  // Results are logged and published to every scan_result text sensor.
-  // access is additive (default GWGAccessMode::PHYSICAL, the pre-existing and
-  // only-ever-emitted behaviour on every protocol before this parameter
-  // existed). Meaningful only under `protocol: GWG` -- see GWGAccessMode in
-  // constants.h. A non-GWG build accepts the argument (so lambdas compile
-  // unconditionally) but never reads it.
-  // GWG WRITE frame layout, diagnostic. Selects where the EOT byte sits
-  // relative to the payload -- see optolink::gwgWriteEotBeforePayload in
-  // constants.h for the two candidate layouts and the evidence. Takes effect
-  // on the NEXT write packet built, so one session can try both layouts
-  // against the same address and compare read-backs.
-  //
-  // This is a diagnostic, not a configuration choice: exactly one layout is
-  // correct, and once a real unit settles it the flag collapses into that
-  // layout. Deliberately NOT a YAML key -- there is no legitimate reason for a
-  // production config to select a wire format.
-  //
-  // Meaningful only under `protocol: GWG`. Compiles and is accepted on every
-  // build (so lambdas need no #ifdef) but nothing reads it elsewhere. An
-  // EEPROM write has its own fixed layout and ignores it.
-  void set_gwg_write_eot_before_payload(bool eot_first) { optolink::gwgWriteEotBeforePayload = eot_first; }
-  bool gwg_write_eot_before_payload() const { return optolink::gwgWriteEotBeforePayload; }
-
-  // GWG BURST frame switch, diagnostic. Selects whether a burst-sent request
-  // carries the leading 0x01 -- see optolink::gwgBurstOmitsEnqAck in
-  // constants.h for the two behaviours and the hardware evidence that made
-  // omit=true the default. Same not-a-YAML-key rule as the layout flag above.
-  //
-  // Takes effect on the next burst-sent request, so one session can A/B it.
-  void set_gwg_burst_omits_enq_ack(bool omit) { optolink::gwgBurstOmitsEnqAck = omit; }
-  bool gwg_burst_omits_enq_ack() const { return optolink::gwgBurstOmitsEnqAck; }
-
-  // GWG response deadline (ms), diagnostic -- see optolink::gwgResponseTimeoutMs
-  // in constants.h for why it exists and what a longer one costs. Clamped to
-  // optolink::GWG_RESPONSE_TIMEOUT_{MIN,MAX}_MS (50..2000) and logged; takes
-  // effect on the next telegram. Same not-a-YAML-key rule as the flags above:
-  // it is for finding out how long a datapoint takes to answer, after which the
-  // default goes back in.
-  //
-  //   id(vito).set_gwg_response_timeout_ms(700);    // a test, under the idle-ENQ gap
-  //   id(vito).set_gwg_response_timeout_ms(250);    // the default again
-  //
-  // Compiles and is accepted on every build; only the GWG engine reads it.
+  //   id(vito).set_gwg_response_timeout_ms(700);
   void set_gwg_response_timeout_ms(uint32_t ms);
-  uint32_t gwg_response_timeout_ms() const { return optolink::gwgResponseTimeoutMs; }
+  uint32_t gwg_response_timeout_ms() const { return this->gwg_response_timeout_ms_; }
 
-  // GWG ENQ-to-send delay (ms), diagnostic -- see optolink::gwgEnqSendDelayMs
-  // in constants.h. 0 (the default) sends on the ENQ as before. Clamped to
-  // 0..optolink::GWG_ENQ_SEND_DELAY_MAX_MS (100) and logged; takes effect on
-  // the next ENQ. Same not-a-YAML-key rule as the flags above: it is for
-  // finding out whether a unit needs one (issue #35).
+  // Ms to wait after the device's ENQ before sending the request that answers
+  // it, clamped to 0..optolink::GWG_ENQ_SEND_DELAY_MAX_MS (100) and logged;
+  // default 0, send on the ENQ. Burst-sent requests do not wait. The DEBUG
+  // `GWG timing:` and `GWG ... unanswered` lines state the measured gap.
   //
-  //   esphome:
-  //     on_boot:
-  //       - lambda: id(vito).set_gwg_enq_send_delay_ms(30);
-  //
-  // The DEBUG `GWG timing:` line and the `GWG ... unanswered` line state the
-  // measured gap per telegram. Compiles and is accepted on every build; only
-  // the GWG engine reads it.
+  //   id(vito).set_gwg_enq_send_delay_ms(30);
   void set_gwg_enq_send_delay_ms(uint32_t ms);
-  uint32_t gwg_enq_send_delay_ms() const { return optolink::gwgEnqSendDelayMs; }
+  uint32_t gwg_enq_send_delay_ms() const { return this->gwg_enq_send_delay_ms_; }
 
   // True once the GWG engine has given up on bursting for this session (see
-  // GWGEngine::BURST_FAILURES_BEFORE_FALLBACK). Latched, never cleared: the
-  // engine itself does not re-enable bursting short of a reboot. A test that
-  // compares burst framings must check this first -- a burst probe run after
-  // the fallback sends every request on a fresh ENQ and so proves nothing
-  // about the burst frame (2026-10-13 capture, boot B). Always false on
+  // GWGEngine::BURST_FAILURES_BEFORE_FALLBACK). Latched until reboot. A burst
+  // A/B test must check it first: after the fallback every request goes out on
+  // a fresh ENQ and proves nothing about the burst frame. Always false on
   // non-GWG builds.
   bool gwg_burst_disabled() const { return this->gwg_burst_disabled_; }
+
+  // Queue a one-off read or write to an arbitrary address, for the scan
+  // console's raw lane. The front raw item is dispatched after identification
+  // and ahead of user writes and polls: the console is a person waiting at a
+  // button, and the lane is empty unless someone is scanning. Results are
+  // logged and published to every scan_result text sensor.
+  //
+  // access applies under `protocol: GWG` only (default PHYSICAL; see
+  // GWGAccessMode in constants.h). Other builds accept and ignore it, so
+  // lambdas compile on every protocol.
 
   void queue_raw_read(uint16_t address, uint8_t length,
                       optolink::GWGAccessMode access = optolink::GWGAccessMode::PHYSICAL);
@@ -629,6 +593,8 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   uint32_t in_flight_started_ms_{0};
   // The watchdog budget of the operation in flight (in_flight_watchdog_ms()).
   uint32_t in_flight_watchdog_ms_{IN_FLIGHT_WATCHDOG_MS};
+  // Pushes the gwg_* diagnostics to the engine (GWG builds; no-op before setup).
+  void apply_gwg_diagnostics_();
   // Start the watchdog for an operation of `telegrams` telegrams.
   void arm_watchdog_(uint8_t telegrams = 1);
   // The engine has accepted a telegram: record whose it is and start its
@@ -715,10 +681,15 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   bool gwg_burst_disabled_{false};  // see gwg_burst_disabled()
 #ifdef VITOHOME_PROTOCOL_GWG
   // Keeps the main loop from idling while the GWG engine holds an ENQ for
-  // gwgEnqSendDelayMs (see GWGEngine::isHoldingEnq()); otherwise the delay
+  // its ENQ-to-send delay (see GWGEngine::isHoldingEnq()); otherwise the delay
   // would overrun by up to one loop interval.
   HighFrequencyLoopRequester gwg_hold_loop_;
 #endif
+  // GWG diagnostics as last set; pushed to the engine at setup and on change.
+  bool gwg_write_eot_before_payload_{optolink::GWGEngine::DEFAULT_WRITE_EOT_BEFORE_PAYLOAD};
+  bool gwg_burst_omits_enq_ack_{optolink::GWGEngine::DEFAULT_BURST_OMITS_ENQ_ACK};
+  uint32_t gwg_response_timeout_ms_{optolink::GWGEngine::RESPONSE_TIMEOUT_MS};
+  uint32_t gwg_enq_send_delay_ms_{0};
 
   // --- raw scan console lane -------------------------------------------------
   //

@@ -91,15 +91,9 @@ bool PacketGWG::createTelegram(uint8_t type, uint16_t addr, uint8_t len, const u
   }
   _buffer[step++] = len;
   if (data) {
-    // Payload placement relative to the EOT terminator in the other write
-    // frames has no evidence behind it -- see
-    // gwgWriteEotBeforePayload (constants.h) for the two candidate layouts,
-    // the evidence for each, and why the default has not moved. Reads are
-    // unaffected: both layouts produce the identical 01 TYPE ADDR LEN 04.
-    // The flag is read here on every packet build, so flipping it at runtime
-    // takes effect on the very next write -- which is what lets one session
-    // try both layouts against the same address.
-    if (gwgWriteEotBeforePayload) {
+    // Where the EOT sits in a write frame is unsettled (design_notes.md,
+    // "Writes"). Read frames are the same under both layouts.
+    if (_eotBeforePayload) {
       _buffer[step++] = internals::ProtocolBytes.EOT;
       for (uint8_t i = 0; i < len; ++i) {
         _buffer[step++] = data[i];
@@ -113,11 +107,7 @@ bool PacketGWG::createTelegram(uint8_t type, uint16_t addr, uint8_t len, const u
   } else {
     _buffer[step++] = internals::ProtocolBytes.EOT;
   }
-  // Bug fixed 2026-08-24 (caught by proof_gwg_access_mode.cpp): length() used
-  // to compare the TYPE byte against PHYSICAL READ only and reported 0 for the
-  // other read modes, so _send() wrote nothing. It is now the length built
-  // here, whatever the TYPE byte.
-  // uint8_t: createTelegram() refuses a frame above 255 bytes (above).
+  // The length built here, whatever the TYPE byte; at most 255 (checked above).
   _length = static_cast<uint8_t>(step);
   _hasPayload = data != nullptr;
   return true;

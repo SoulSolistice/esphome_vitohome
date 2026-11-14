@@ -297,8 +297,8 @@ void gwg_cases() {
           "H: 01 31 05 01 04", "H: 7F delivered");
   const uint8_t data[] = {0x42};
   gwg_one(0x99, 0x10, 1, data,
-          optolink::gwgWriteEotBeforePayload ? Bytes({0x01, 0x99, 0x10, 0x01, 0x04, 0x42})
-                                             : Bytes({0x01, 0x99, 0x10, 0x01, 0x42, 0x04}),
+          optolink::GWGEngine::DEFAULT_WRITE_EOT_BEFORE_PAYLOAD ? Bytes({0x01, 0x99, 0x10, 0x01, 0x04, 0x42})
+                                                                : Bytes({0x01, 0x99, 0x10, 0x01, 0x42, 0x04}),
           Bytes({0x00}), Bytes({0x00}), "H: with payload, the write layout", "H: completes on the one ack byte");
   {
     FakeOptolink io;

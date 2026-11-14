@@ -27,7 +27,7 @@ mode tables and their evidence. Note nothing on a GWG unit is physical-WRITABLE
 per Vitosoft -- EEPROM (0xAD) and BE (0x9D) are the modes that matter there.
 An EEPROM write carries the cell's complement pair (THIRD_PARTY.md #32); for
 the other write types the payload/EOT ordering is still unsettled, see
-gwgWriteEotBeforePayload.
+setWriteEotBeforePayload().
 Timing instrument: an optional onTiming() callback reports, per completed read,
 the loop() gap that preceded the ENQ we answered and the send-to-response delta,
 both in milliseconds; motivated by the same hardware capture as the response
@@ -50,10 +50,13 @@ Burst retry (2026-11-08): a burst-sent read that times out is retried once on a
 fresh ENQ, so only a burst that fails where an ENQ-paced copy succeeds counts
 toward the fallback. Late-answer report: bytes arriving after a TIMEOUT are
 reported through onLateAnswer() instead of being dropped unseen. The response
-deadline is a runtime variable (optolink::gwgResponseTimeoutMs). See
+deadline is settable per engine (setResponseTimeoutMs()). See
 THIRD_PARTY.md #30.
 Timeout kind (2026-11-10): lastTimeoutWasUnsynced() tells a request that never
 went out (no ENQ) from one that went out unanswered. See THIRD_PARTY.md #31.
+Diagnostic switches: the write frame layout, the ENQ_ACK of a burst-sent
+request, the response deadline and the ENQ-to-send delay are engine members
+with setters, not process-wide globals. See THIRD_PARTY.md #34.
 */
 
 #pragma once
@@ -195,10 +198,13 @@ class GWGEngine {
   // _receive() -- checking after the drain makes the whole guard inert under
   // the host stalls it was written for.
   //
-  // This is the DEFAULT. The engine reads optolink::gwgResponseTimeoutMs, which
-  // starts at this value and can be changed at runtime for a test (see
-  // constants.h); the request watchdog grows with it (_requestTimeoutMs()).
+  // The default; setResponseTimeoutMs() changes it for a test, and the request
+  // watchdog grows with it (_requestTimeoutMs()).
   static constexpr uint32_t RESPONSE_TIMEOUT_MS = 250;
+
+  // Defaults of the other two diagnostic switches (setters below).
+  static constexpr bool DEFAULT_WRITE_EOT_BEFORE_PAYLOAD = false;
+  static constexpr bool DEFAULT_BURST_OMITS_ENQ_ACK = true;
 
   // How long after a TIMEOUT the engine keeps collecting bytes for the
   // late-answer report (see OnLateAnswerCallback). Above the largest response
@@ -279,7 +285,7 @@ class GWGEngine {
   // OptolinkResult::CRC rather than delivering a guess -- except FF FF, which
   // uwen70 documents as "address not in use" and is delivered as 0xFF, the
   // same answer every other GWG mode gives for an unserved address. EEPROM WRITES are not
-  // affected: their frame is still unconfirmed (see gwgWriteEotBeforePayload).
+  // affected: their frame is still unconfirmed (see setWriteEotBeforePayload()).
   static constexpr uint8_t kEepromPairLength = 2;
 
   // Active sync poke. OFF by default: INIT waits passively for the device's ENQ
@@ -392,7 +398,30 @@ class GWGEngine {
   // read()/write()/telegram(). THIRD_PARTY.md #31.
   bool lastTimeoutWasUnsynced() const { return _timeoutUnsynced; }
 
-  // ENQ-to-send measurement (issue #35, see gwgEnqSendDelayMs). For the last
+  // Diagnostic switches, for A/B tests on a unit; each applies from the next
+  // telegram. Background and evidence: design_notes.md, "Writes" and
+  // "Bursting".
+  //
+  // Write frame layout: 01 TYPE ADDR LEN <data> 04 (false, default) or
+  // 01 TYPE ADDR LEN 04 <data> (true). Reads are the same under both.
+  void setWriteEotBeforePayload(bool eotFirst) { _currentRequest.setEotBeforePayload(eotFirst); }
+  bool writeEotBeforePayload() const { return _currentRequest.eotBeforePayload(); }
+  // Whether a burst-sent request omits the leading 0x01 (default true). That
+  // byte acknowledges an ENQ, and a burst-sent request answers none; an
+  // ENQ-paced request carries it either way.
+  void setBurstOmitsEnqAck(bool omit) { _burstOmitsEnqAck = omit; }
+  bool burstOmitsEnqAck() const { return _burstOmitsEnqAck; }
+  // Answer deadline in ms (default RESPONSE_TIMEOUT_MS). Not range-checked
+  // here; the hub clamps it to GWG_RESPONSE_TIMEOUT_{MIN,MAX}_MS.
+  void setResponseTimeoutMs(uint32_t ms) { _responseTimeoutMs = ms; }
+  uint32_t responseTimeoutMs() const { return _responseTimeoutMs; }
+  // Ms to wait after reading an ENQ before sending the request that answers it
+  // (default 0: send in the same pass). Burst-sent requests do not wait. Not
+  // range-checked here; the hub clamps it to GWG_ENQ_SEND_DELAY_MAX_MS.
+  void setEnqSendDelayMs(uint32_t ms) { _enqSendDelayMs = ms; }
+  uint32_t enqSendDelayMs() const { return _enqSendDelayMs; }
+
+  // ENQ-to-send measurement (issue #35, see setEnqSendDelayMs()). For the last
   // request sent on an ENQ: the ms from reading the ENQ out of the UART buffer
   // to handing the frame's first byte to the interface. Taken with a fresh
   // optolink_millis() after the write, so it includes whatever write() itself
@@ -406,7 +435,7 @@ class GWGEngine {
   // Same validity as lastEnqToSendMs().
   uint32_t lastEnqAgeMs() const { return _enqAgeMillis; }
   bool lastSendWasEnqPaced() const { return _lastSendEnqPaced; }
-  // True while a request waits out gwgEnqSendDelayMs after an ENQ. The hub
+  // True while a request waits out enqSendDelayMs() after an ENQ. The hub
   // keeps the main loop running continuously meanwhile, so the delay is not
   // stretched by ESPHome's idle sleep.
   bool isHoldingEnq() const { return _state == State::HOLD; }
@@ -418,7 +447,7 @@ class GWGEngine {
   bool isBusy() const;
 
  private:
-  // HOLD: an ENQ was read and the request waits out gwgEnqSendDelayMs before
+  // HOLD: an ENQ was read and the request waits out _enqSendDelayMs before
   // SEND. Appended last so the numbers _setState() logs for the others stay.
   enum class State { INIT, SEND, RECEIVE, UNDEFINED, HOLD } _state;
   uint32_t _currentMillis;
@@ -483,6 +512,9 @@ class GWGEngine {
   // lastTimeoutWasUnsynced()).
   bool _timeoutUnsynced;
   bool _busy;
+  bool _burstOmitsEnqAck{DEFAULT_BURST_OMITS_ENQ_ACK};
+  uint32_t _responseTimeoutMs{RESPONSE_TIMEOUT_MS};
+  uint32_t _enqSendDelayMs{0};
   PacketGWG _currentRequest;
   std::array<uint8_t, kResponseBufferSize> _responseBuffer;
   OnResponseCallback _onResponseCallback;
@@ -501,10 +533,9 @@ class GWGEngine {
 
   // REQUEST_TIMEOUT_MS, lengthened by however much a test raised the response
   // deadline above its default, so the ENQ wait it also covers is not eaten.
-  static uint32_t _requestTimeoutMs() {
-    return gwgResponseTimeoutMs > RESPONSE_TIMEOUT_MS
-               ? REQUEST_TIMEOUT_MS + (gwgResponseTimeoutMs - RESPONSE_TIMEOUT_MS)
-               : REQUEST_TIMEOUT_MS;
+  uint32_t _requestTimeoutMs() const {
+    return _responseTimeoutMs > RESPONSE_TIMEOUT_MS ? REQUEST_TIMEOUT_MS + (_responseTimeoutMs - RESPONSE_TIMEOUT_MS)
+                                                    : REQUEST_TIMEOUT_MS;
   }
 
   void _init();
