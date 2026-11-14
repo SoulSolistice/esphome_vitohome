@@ -1,0 +1,30 @@
+# KW (VS1) on ESP8266. Same pin swap as test.esp8266-arduino.yaml; see there.
+# Compile gate: the KW engine through the ESP8266 toolchain, whose millis()
+# branch and heap budget no ESP32 build reaches.
+substitutions:
+  name: vitohome-test-esp8266-kw
+  protocol: KW
+  log_frames: "false"
+  identify_device: "true"
+
+esp8266:
+  board: d1_mini
+
+i2c:
+  sda: GPIO4
+  scl: GPIO5
+
+uart:
+  - id: uart_optolink
+    rx_pin: GPIO13
+    tx_pin: GPIO15
+    baud_rate: 4800
+    data_bits: 8
+    parity: EVEN
+    stop_bits: 2
+
+<<: !include common.yaml
+
+# `access: gfa` entities (KW and P300; GWG has no GFA read).
+packages:
+  gfa: !include common-gfa.yaml

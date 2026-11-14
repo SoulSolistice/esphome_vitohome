@@ -84,6 +84,20 @@ jobs:
       - name: decode.h coverage ratchet
         run: bash scripts/coverage_decode.sh
 
+  tidy:
+    name: clang-tidy (c++)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      # Same LLVM release line as the clang-format hook in
+      # .pre-commit-config.yaml. Checks and their exclusions: .clang-tidy.
+      - run: pip install clang-tidy==23.1.3
+      - run: bash scripts/clang_tidy.sh
+
   examples:
     name: example configs
     runs-on: ubuntu-latest
@@ -126,7 +140,7 @@ jobs:
   compile:
     name: ${{ matrix.config }}
     runs-on: ubuntu-latest
-    needs: [lint, unit, native]   # don't burn ~2 min of toolchain on code that won't lint
+    needs: [lint, unit, native, tidy]   # don't burn ~2 min of toolchain on code that won't lint
     strategy:
       fail-fast: false
       matrix:
@@ -161,6 +175,10 @@ jobs:
           # green. Also the platform with the tightest heap budget the
           # component's allocation design targets. See the file's header.
           - test.esp8266-arduino.yaml   # P300 / esp8266 arduino
+          # KW and GWG on the same target: each engine through the ESP8266
+          # toolchain and heap budget, which no ESP32 build reaches.
+          - test.esp8266-arduino-kw.yaml    # KW   / esp8266 arduino
+          - test.esp8266-arduino-gwg.yaml   # GWG  / esp8266 arduino
     steps:
       - uses: actions/checkout@v7
 
@@ -199,7 +217,7 @@ jobs:
     # cache key does not apply. See design_notes.md §11.
     name: ${{ matrix.config }}
     runs-on: ubuntu-latest
-    needs: [lint, unit, native]   # same gate as `compile`: don't fetch the IDF SDK for code that won't lint
+    needs: [lint, unit, native, tidy]   # same gate as `compile`: don't fetch the IDF SDK for code that won't lint
     strategy:
       fail-fast: false
       matrix:
