@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Coverage-guided fuzzing campaign. Human-initiated, one target at a time.
+# Coverage-guided fuzzing campaign. Human-initiated, one target or all of them
+# in turn.
 #
 # Not a gate and NOT run by CI. CI executes the same targets in their
-# deterministic replay builds (build_and_run.sh -> fuzz_parser_vs2,
-# fuzz_decode), which walk the committed seed corpora in a fraction of a
+# deterministic replay builds (build_and_run.sh and build_and_run_protocols.sh
+# -> ./fuzz_<target>), which walk the committed seed corpora in a fraction of a
 # second. What lives here is the open-ended search: it runs for as long as you
 # let it, its result depends on the seed and the clock, and a campaign that
 # finds nothing is not evidence worth spending a CI minute on. Each target is
@@ -14,23 +15,41 @@
 # equivalent, which is why the CI-side builds stay on g++ and this one does
 # not. Ubuntu 24.04's clang 18 is sufficient.
 #
-#   bash fuzz.sh                      # list the targets
-#   bash fuzz.sh parser_vs2           # 5 minutes, one worker per core
-#   bash fuzz.sh decode 3600          # an hour
-#   bash fuzz.sh decode 300 2         # 5 minutes, 2 workers
+#   bash fuzz.sh                         # list the targets
+#   bash fuzz.sh parser_vs2              # 5 minutes, one worker per core
+#   bash fuzz.sh decode 3600             # an hour
+#   bash fuzz.sh decode 300 2            # 5 minutes, 2 workers
+#   bash fuzz.sh all 3600                # every target for an hour each
+#   KEEP_GOING=1 bash fuzz.sh all 14400  # overnight: findings do not stop it
+#
+# MODES. By default every worker runs until its first finding, which suits a
+# short campaign whose finding you look at right away. KEEP_GOING=1 runs
+# libFuzzer's fork mode instead: crashes, timeouts and out-of-memory reports
+# are written to findings/ and the search goes on, so a long run is not spent
+# by one shallow defect. `all` runs every target in turn, SECONDS each, carries
+# on past a target with findings and lists them at the end.
+#
+# STATE. Corpus and findings live in $FUZZ_DIR/<target>/, by default
+# ~/.cache/vitohome-fuzz, which survives a reboot (WSL clears /tmp), so the
+# next campaign starts from the corpus the last one reached. Each run's output
+# is kept in $FUZZ_DIR/<target>/log/.
 #
 # TARGETS
-#   parser_vs2  ParserVS2::parse() -- the wire->payload state machine.
-#               Saturates fast: the committed seeds already reach the coverage
-#               ceiling at INITED, so a long campaign here buys little.
-#   decode      the buffer-writing helpers in decode.h -- payload->text, plus
-#               encode_schaltzeiten_day, the one input a PERSON types.
-#   gwg_session GWG sessions -- burst, EEPROM runs, ENQ delay, deadline and the
-#               late-answer report against a fuzzed device.
-#   kw_session  KW sessions on a KW link and over the P300 detour -- chain
-#               window, GFA pause, protocol switches against a fuzzed controller.
-#   field       the value half of decode.h -- field extraction, scaling and
-#               the encode inverses, with round-trip oracles.
+#   parser_vs2   ParserVS2::parse() -- the wire->payload state machine.
+#                Saturates fast: the committed seeds already reach the coverage
+#                ceiling at INITED, so a long campaign here buys little.
+#   decode       the buffer-writing helpers in decode.h -- payload->text, plus
+#                encode_schaltzeiten_day, the one input a PERSON types.
+#   field        the value half of decode.h -- field extraction, scaling and
+#                the encode inverses, with round-trip oracles.
+#   raw_spec     raw_op.h's spec parser -- a typed line to an operation.
+#   raw_engines  one generic telegram on each engine against a fuzzed
+#                controller.
+#   gwg_session  GWG sessions -- burst, EEPROM runs, ENQ delay, deadline and
+#                the late-answer report against a fuzzed device.
+#   kw_session   KW sessions on a KW link and over the P300 detour -- chain
+#                window, GFA pause and protocol switches against a fuzzed
+#                controller.
 #
 # WHAT TO DO WITH A FINDING. libFuzzer writes the reproducer to
 # $FUZZ_DIR/<target>/findings/ and prints the path. First replay it against the
@@ -43,8 +62,8 @@
 # Then minimise it (`-minimize_crash=1 -runs=100000 <file>`) and add the
 # reduced bytes to the target's corpus header with a comment saying what it
 # broke. That is the step that converts a campaign into a permanent gate; a
-# crash file left in /tmp is a finding that will be rediscovered from scratch
-# next year.
+# crash file left behind is a finding that will be rediscovered from scratch
+# next year. Delete it from findings/ once it is a seed.
 set -euo pipefail
 
 # Resolved before anything else so the script works from any cwd; the relative
@@ -52,12 +71,31 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+TARGETS=(parser_vs2 decode field raw_spec raw_engines gwg_session kw_session)
 TARGET="${1:-}"
 SECS="${2:-300}"
 WORKERS="${3:-$(nproc)}"
 ROOT="${VITOHOME_ROOT:-../../components/vitohome}"
 OPTO="$ROOT/optolink"
-FUZZ_DIR="${FUZZ_DIR:-${TMPDIR:-/tmp}/vitohome-fuzz}"
+FUZZ_DIR="${FUZZ_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/vitohome-fuzz}"
+KEEP_GOING="${KEEP_GOING:-0}"
+
+if [ "$TARGET" = all ]; then
+  failed=()
+  for t in "${TARGETS[@]}"; do
+    bash "$SCRIPT_DIR/fuzz.sh" "$t" "$SECS" "$WORKERS" || failed+=("$t")
+  done
+  echo
+  if [ ${#failed[@]} -gt 0 ]; then
+    echo "== all: findings or errors in: ${failed[*]} =="
+    for t in "${failed[@]}"; do
+      find "$FUZZ_DIR/$t/findings" -type f -printf '  %p (%s bytes)\n' 2>/dev/null || true
+    done
+    exit 1
+  fi
+  echo "== all: ${#TARGETS[@]} targets, no findings =="
+  exit 0
+fi
 
 # target -> source, corpus header, and any extra translation units it links.
 # decode.h is header-only and included relatively, so that target needs no
@@ -102,7 +140,7 @@ case "$TARGET" in
       "$OPTO/protocol/vs2/packet_vs2.cpp" "$OPTO/protocol/vs1/vs1.cpp" "$OPTO/protocol/vs1/packet_vs1.cpp")
     ;;
   *)
-    echo "usage: bash fuzz.sh <target> [seconds] [workers]" >&2
+    echo "usage: [KEEP_GOING=1] bash fuzz.sh <target|all> [seconds] [workers]" >&2
     echo "targets:" >&2
     echo "  parser_vs2   ParserVS2::parse() -- wire to payload" >&2
     echo "  decode       decode.h buffer writers -- payload to text" >&2
@@ -124,7 +162,9 @@ fi
 WORK="$FUZZ_DIR/$TARGET"
 CORPUS="$WORK/corpus"
 FINDINGS="$WORK/findings"
-mkdir -p "$CORPUS" "$FINDINGS"
+LOGS="$WORK/log"
+mkdir -p "$CORPUS" "$FINDINGS" "$LOGS"
+before=$(find "$FINDINGS" -type f | wc -l)
 
 # Materialise the committed seeds as files. libFuzzer wants a directory; the
 # corpora live in headers so they stay reviewable and survive the text-typed
@@ -154,28 +194,49 @@ clang++ -std=c++17 -g -Wall -Wextra -Werror \
   "$SRC" ${EXTRA[@]+"${EXTRA[@]}"} \
   -o "$WORK/fuzz_$TARGET"
 
-echo "== campaign: ${SECS}s, ${WORKERS} worker(s), corpus $CORPUS =="
+STAMP="$(date +%Y%m%d-%H%M%S)"
+LOG="$LOGS/$STAMP.log"
+if [ "$KEEP_GOING" = 1 ]; then
+  MODE_ARGS=(-fork="$WORKERS" -ignore_crashes=1 -ignore_timeouts=1 -ignore_ooms=1)
+  MODE="fork mode, findings do not stop it"
+else
+  MODE_ARGS=(-workers="$WORKERS" -jobs="$WORKERS")
+  MODE="each worker stops at its first finding"
+fi
+echo "== campaign '$TARGET': ${SECS}s, ${WORKERS} worker(s), $MODE =="
+echo "   corpus $CORPUS"
+echo "   log    $LOG"
 # Run from $WORK, not from the source tree: with -jobs, libFuzzer writes a
-# fuzz-<N>.log per worker into the CURRENT directory, so launching from
-# tests/native litters the checkout with untracked logs. Every path handed to
-# the binary below is absolute, so the cd costs nothing.
+# fuzz-<N>.log per worker into the CURRENT directory. They are appended to the
+# run's log afterwards. Every path handed to the binary is absolute.
 cd "$WORK"
+rm -f fuzz-*.log
+# -timeout: every input runs a bounded script, so one taking 10 s is a loop
+# that does not end, and is reported as a finding.
 set +e
 "$WORK/fuzz_$TARGET" "$CORPUS" \
   -artifact_prefix="$FINDINGS/" \
   -max_total_time="$SECS" \
-  -workers="$WORKERS" -jobs="$WORKERS" \
-  -print_final_stats=1
-rc=$?
+  -timeout=10 \
+  "${MODE_ARGS[@]}" \
+  -print_final_stats=1 2>&1 | tee "$LOG"
+rc=${PIPESTATUS[0]}
 set -e
+for f in fuzz-*.log; do
+  [ -e "$f" ] || continue
+  { echo "== $f =="; cat "$f"; } >>"$LOG"
+  rm -f "$f"
+done
 
 found=$(find "$FINDINGS" -type f | wc -l)
+cov=$(grep -o 'cov: [0-9]*' "$LOG" | awk '{print $2}' | sort -n | tail -1 || true)
 echo
+echo "'$TARGET': libFuzzer cov ${cov:-?}, corpus $(find "$CORPUS" -type f | wc -l) units."
 if [ "$found" -gt 0 ]; then
-  echo "FINDINGS: $found reproducer(s) in $FINDINGS"
+  echo "FINDINGS: $found reproducer(s) in $FINDINGS ($((found - before)) new)"
   find "$FINDINGS" -type f -printf '  %p (%s bytes)\n'
   echo "Replay one against the CI build, minimise it, then promote it into $HEADER."
   exit 1
 fi
-echo "no findings. corpus is now $(find "$CORPUS" -type f | wc -l) units."
-exit $rc
+echo "no findings."
+exit "$rc"
