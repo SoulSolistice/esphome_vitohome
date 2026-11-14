@@ -76,6 +76,10 @@ echo "== generic telegrams: fuzz corpus (deterministic replay; fuzz.sh raw_engin
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO"   fuzz_raw_engines.cpp "${SRCS[@]}" -o fuzz_raw_engines
 ./fuzz_raw_engines
 
+echo "== GWG sessions: fuzz corpus (deterministic replay; fuzz.sh gwg_session) =="
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO"   fuzz_gwg_session.cpp "${SRCS[@]}" -o fuzz_gwg_session
+./fuzz_gwg_session
+
 echo "== GWG read/write completion (THIRD_PARTY.md #8 fix) =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
   proof_gwg_read.cpp "${SRCS[@]}" -o gwg_read
