@@ -9,15 +9,17 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 #include "gwg.h"
 
+#include <utility>
+
 namespace esphome::vitohome::optolink {
 
 GWGEngine::~GWGEngine() { delete _interface; }
 
-void GWGEngine::onResponse(OnResponseCallback callback) { _onResponseCallback = callback; }
-void GWGEngine::onError(OnErrorCallback callback) { _onErrorCallback = callback; }
-void GWGEngine::onTiming(OnTimingCallback callback) { _onTimingCallback = callback; }
-void GWGEngine::onBurstFallback(OnBurstFallbackCallback callback) { _onBurstFallbackCallback = callback; }
-void GWGEngine::onLateAnswer(OnLateAnswerCallback callback) { _onLateAnswerCallback = callback; }
+void GWGEngine::onResponse(OnResponseCallback callback) { _onResponseCallback = std::move(callback); }
+void GWGEngine::onError(OnErrorCallback callback) { _onErrorCallback = std::move(callback); }
+void GWGEngine::onTiming(OnTimingCallback callback) { _onTimingCallback = std::move(callback); }
+void GWGEngine::onBurstFallback(OnBurstFallbackCallback callback) { _onBurstFallbackCallback = std::move(callback); }
+void GWGEngine::onLateAnswer(OnLateAnswerCallback callback) { _onLateAnswerCallback = std::move(callback); }
 
 bool GWGEngine::read(uint16_t address, uint8_t length, GWGAccessMode access) {
   if (_busy) {

@@ -9,12 +9,14 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 #include "vs1.h"
 
+#include <utility>
+
 namespace esphome::vitohome::optolink {
 
 VS1Engine::~VS1Engine() { delete _interface; }
 
-void VS1Engine::onResponse(OnResponseCallback callback) { _onResponseCallback = callback; }
-void VS1Engine::onError(OnErrorCallback callback) { _onErrorCallback = callback; }
+void VS1Engine::onResponse(OnResponseCallback callback) { _onResponseCallback = std::move(callback); }
+void VS1Engine::onError(OnErrorCallback callback) { _onErrorCallback = std::move(callback); }
 
 bool VS1Engine::read(uint16_t address, uint8_t length) { return telegram(PacketVS1Type.READ, address, length); }
 
