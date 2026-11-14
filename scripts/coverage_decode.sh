@@ -4,7 +4,7 @@
 # WHY ONLY decode.h
 # -----------------
 # This is deliberately NOT a repo-wide coverage number, and that is the whole
-# design. The component's own C++ is ~4600 lines, of which ~3600 (vitohome.cpp,
+# design. The component's own C++ is ~4600 lines, of which ~3600 (the hub's .cpp files,
 # vito_*.cpp) is bound to esphome::Component and CANNOT execute on a build host
 # by construction. A repo-wide percentage would therefore be dominated by code
 # that is intentionally unexecutable here, and would create exactly two bad

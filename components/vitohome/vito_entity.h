@@ -170,11 +170,10 @@ class VitoEntityBase {
   // --- bit field (`bit_mask`) -----------------------------------------------
   // Non-zero: this entity's value is the masked bits of ONE byte (decode.h,
   // "bit fields"), not the whole byte. The read side extracts the field before
-  // decoding; the write side stages the FIELD value as the first staged byte and the hub
-  // turns the write into a read-modify-write of that byte (vitohome.cpp,
-  // dispatch_next_), so the bits outside the mask -- other datapoints sharing
-  // the byte -- are written back exactly as read. 0 (default) = whole field,
-  // the pre-existing behaviour.
+  // decoding; the write side stages the FIELD value and the hub turns the
+  // write into a read-modify-write of that byte (rmw.cpp), so the bits outside
+  // the mask -- other datapoints sharing the byte -- are written back exactly
+  // as read. 0 (default): the whole field.
   //
   // Named field_mask, not bit_mask, because VitoBinarySensor already owns a
   // `bit_mask_` with "any masked bit set" semantics; the YAML key is
