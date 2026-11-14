@@ -129,8 +129,9 @@ class GWGEngine {
   // comes first). first_late_ms, measured from the end of the request write,
   // is the deadline the device would have needed.
   //
-  // Fires only when something arrived (received or late_count non-zero); a
-  // silent datapoint produces just its TIMEOUT. A late 0x05 is not counted --
+  // Fires when something arrived (received or late_count non-zero) and for a
+  // burst-sent read that is retried, arrived or not; otherwise a silent
+  // datapoint produces just its TIMEOUT. A late 0x05 is not counted --
   // GWG has no framing, so a data byte 0x05 and the device's idle ENQ are
   // indistinguishable -- except in the bytes drained at the deadline itself.
   struct LateAnswer {
@@ -141,6 +142,7 @@ class GWGEngine {
     uint8_t late_stored;     // how many of them are in `late`
     uint32_t first_late_ms;  // end of request write -> first late byte
     uint32_t deadline_ms;    // the response deadline that expired
+    uint32_t enq_age_ms;     // age of the sync the telegram went out on (see OnTimingCallback)
     bool retried;            // a burst-sent read that is being retried on a fresh ENQ
     std::array<uint8_t, 8> late;
   };
@@ -212,33 +214,30 @@ class GWGEngine {
   // needs that long still shows up as late rather than silent.
   static constexpr uint32_t LATE_WATCH_MS = 2500;
 
-  // Burst window (ms): how long a sync stays usable for a FURTHER telegram
-  // without waiting for the device's next ENQ.
+  // Burst window (ms): how long after the last answer, or after an ENQ used to
+  // send, a further telegram may go out without waiting for the device's next
+  // ENQ.
   //
   // Divergence from the openv wiki, which says "before transmitting additional
   // telegrams one must wait for the next 0x05" -- and from vcontrold, which
   // runs SYNC (send EOT, wait ENQ) before every command. Two implementations
   // ship the opposite: vogod (pkg/vogo/fsm.go) treats an ENQ as valid for
-  // 1500 ms and, with a command pending inside that window, goes straight to
-  // send while re-stamping the window at the end of every completed
+  // 1500 ms and re-stamps the window at the end of every completed
   // transaction; dannerph/esphome_vitoconnect has an explicit burst mode that
   // ACKs the 0x05 once and then sends further requests without re-syncing.
-  // This engine's own VS1 sibling already does the same thing on a much
-  // tighter budget before its own windows were split (VS1Engine::_syncRecv,
-  // CHAIN_WINDOW_MS; see THIRD_PARTY.md #22) -- and that
-  // sibling is now HARDWARE-CONFIRMED to burst: a 2026-08-24 capture from a
-  // VScotHO1_72 shows nine ENQ-delimited chains with a median of 29 telegrams
-  // per ENQ and a maximum of 49, a whole 60 s poll cycle inside one chain.
-  // That is KW, not GWG, so it does not prove the GWG device behaves the same
-  // way -- but it does show the family tolerates it.
+  // On KW the same reuse is hardware-confirmed (VS1Engine::CHAIN_WINDOW_MS).
   //
   // Why it matters: without it the poll rate is capped at one datapoint per
   // ENQ interval, which the 2026-08-23 capture measured at 749-2070 ms
   // (median 1229). A 180-entity catalog is then a multi-minute sweep.
   //
-  // 1500 ms is vogod's number, kept deliberately rather than tuned, since it
-  // is the only figure any implementation actually ships.
-  static constexpr uint32_t ENQ_VALIDITY_MS = 1500;
+  // 500 ms rather than vogod's 1500: on the issue #35 captures (GWG_VBEM
+  // 0x2053 SW=0x1E, logs 11-14) 2,327 burst-sent reads left within 100 ms of
+  // the previous answer, one of them unanswered, and one after 381 ms,
+  // answered. The two sent about 1 s after it went unanswered. By then the
+  // device's next ENQ is due, so a late burst saves nothing and risks the
+  // response deadline and a retry.
+  static constexpr uint32_t ENQ_VALIDITY_MS = 500;
 
   // Compile-time off switch, in the style of SEND_ENQ_POKE. Set false to
   // restore strict one-telegram-per-ENQ behaviour.

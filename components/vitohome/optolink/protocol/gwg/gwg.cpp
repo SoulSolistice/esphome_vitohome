@@ -437,6 +437,7 @@ void GWGEngine::_openLateWatch(bool retried) {
   _late.received = _bytesTransferred;
   _late.expected = _currentRequest.hasPayload() ? 1 : _currentLength;
   _late.deadline_ms = _responseTimeoutMs;
+  _late.enq_age_ms = _enqAgeMillis;
   _late.retried = retried;
 }
 
@@ -455,7 +456,7 @@ void GWGEngine::_closeLateWatch() {
   if (!_lateWatch)
     return;
   _lateWatch = false;
-  if ((_late.received != 0 || _late.late_count != 0) && _onLateAnswerCallback)
+  if ((_late.received != 0 || _late.late_count != 0 || _late.retried) && _onLateAnswerCallback)
     _onLateAnswerCallback(_late);
 }
 

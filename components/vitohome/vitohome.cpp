@@ -184,6 +184,13 @@ void VitoHomeComponent::setup() {
   // short or not at all, and the deadline it needs is what
   // set_gwg_response_timeout_ms() sets.
   this->vito_->onLateAnswer([](const optolink::GWGEngine::LateAnswer &late) {
+    // A silent burst-sent read, retried on the next ENQ: a TIMEOUT follows
+    // only if the retry goes unanswered too.
+    if (late.retried && late.received == 0 && late.late_count == 0) {
+      ESP_LOGD(TAG, "GWG 0x%04X unanswered: enq age <=%" PRIu32 " ms (burst); retrying on the next ENQ", late.address,
+               late.enq_age_ms);
+      return;
+    }
     char hex[3 * sizeof(late.late) + 1] = "";
     for (uint8_t i = 0; i < late.late_stored; ++i)
       snprintf(hex + 3 * i, sizeof(hex) - 3 * i, " %02X", late.late[i]);
