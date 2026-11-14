@@ -23,8 +23,9 @@
 //       error -- once enough time has passed, and a refused one never;
 //   (2) a delivered answer has the shape the operation promises: KW and
 //       GWG (outside the EEPROM pairs) <length> bytes, or the one
-//       acknowledgement byte after a payload; the detour the same; a P300
-//       answer at most the frame's 250 payload bytes;
+//       acknowledgement byte after a payload; the detour the same; any
+//       answer at most MAX_PAYLOAD bytes, and a read asking for more is
+//       refused;
 //   (3) afterwards the engine is idle and takes the next request;
 //   (4) a KW telegram with payload, native or over the detour, delivers only
 //       the acknowledgement 00 -- any other byte is an error.
@@ -147,7 +148,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
   g_completions = 0;
   g_shape_ok = true;
   g_expect_length = 0;
-  g_max_length = 250;
+  g_max_length = optolink::MAX_PAYLOAD;
   g_ack_must_be_zero = false;
   bool accepted = false;
   bool idle_after = false;
@@ -187,7 +188,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
       auto *e = new optolink::VS1Engine(&io);
       wire(*e);
       g_expect_length = has_payload ? 1 : length;
-      g_max_length = 255;
       g_ack_must_be_zero = has_payload;
       accepted = e->telegram(code, address, length, payload);
       run_script(*e, io, script, script_len);
@@ -203,7 +203,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
       // An EEPROM read (0xAE) delivers its decoded values, `length` of them
       // like every other read; a write mode's ack is one byte.
       g_expect_length = has_payload ? 1 : length;
-      g_max_length = 255;
       accepted = e->telegram(code, address, length, payload);
       run_script(*e, io, script, script_len);
       settle(*e);
@@ -219,6 +218,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
   } else {
     oracle(g_completions == 0, "a refused operation completed");
   }
+  if (payload == nullptr && length > g_max_length)
+    oracle(!accepted, "a read longer than the answer can be was accepted");
   oracle(g_shape_ok, "a delivered answer of the wrong length");
   oracle(idle_after, "the engine is still busy after every timeout");
   oracle(next_taken, "the engine refuses the next request");
