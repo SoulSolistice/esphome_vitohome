@@ -1,0 +1,196 @@
+# =============================================================================
+# vitohome -- GWG KM-BUS PROBE  (issue #35)
+# =============================================================================
+# Settles how a GWG unit frames a KM-bus read (KMBUS_RAM 0x33, KMBUS_EEPROM
+# 0x43) and which bus address answers. Reported frame: `01 33 10 00 04` reads
+# four bytes from address 00 of the device at bus 10. vitohome sends
+# `01 TYPE BUS ADDR LEN`, the bus in the 16-bit address's high byte, and an EOT
+# after LEN when set_gwg_kmbus_eot(true) is set.
+#
+# Use: merge into a working GWG config with the catalog package removed, so
+# nothing else runs on the bus:
+#
+#   packages:
+#     kmbus_probe: !include vitohome-gwg-kmbus-probe.yaml
+#
+# The hub must have `id: vito`. Settings in your own `vitohome:` and `logger:`
+# blocks win over this file's: set `log_frames: true` there, and
+# `raw_queue_size` to at least 1.
+#
+# Press the buttons one after another and wait for each "done" line:
+#
+#   A  layout    KMBUS_RAM bus 10 address 00, counts 1, 2 and 4, first without
+#                and then with the EOT (about 1 min). The layout the unit
+#                expects answers with exactly 1, 2 and 4 bytes. If both
+#                answer, the EOT is ignored.
+#   B  bus scan  one byte from address 01 on buses 00..FF, KMBUS_EEPROM, then
+#                address 00, KMBUS_RAM (about 10 min each: a silent bus costs
+#                a deadline, an ENQ wait and a second deadline). A bus that
+#                answers shows as `Raw: ... 0xBB01: ...`, a silent one as
+#                `... FAILED (...)`.
+#   C  values    the Vitosoft KMBUS_EEPROM datapoints on the bus set in
+#                "KM-Bus Probe: Bus" (decimal; 16 = 0x10), at their catalog
+#                block lengths.
+#
+# A and B run in the layout set at the time (A leaves it at no EOT); to repeat
+# B or C with the EOT, call id(vito).set_gwg_kmbus_eot(true) first. Every
+# frame is logged (log_frames). All of these are reads.
+# =============================================================================
+
+vitohome:
+  log_frames: true
+  raw_queue_size: 2
+
+logger:
+  level: DEBUG
+
+globals:
+  - id: kmbus_probe_i
+    type: int
+    initial_value: "0"
+
+number:
+  - platform: template
+    id: kmbus_probe_bus
+    name: "KM-Bus Probe: Bus"
+    optimistic: true
+    min_value: 0
+    max_value: 255
+    step: 1
+    initial_value: 16
+    mode: box
+
+script:
+  # A: counts 1, 2, 4 without the EOT (i 0..2), then with it (i 3..5).
+  - id: kmbus_probe_layout
+    mode: single
+    then:
+      - lambda: |-
+          id(kmbus_probe_i) = 0;
+          id(vito).set_gwg_kmbus_eot(false);
+          ESP_LOGI("kmbus", "A: layout 01 TYPE BUS ADDR LEN (no EOT), KMBUS_RAM bus 10 address 00");
+      - while:
+          condition:
+            lambda: "return id(kmbus_probe_i) < 6;"
+          then:
+            - wait_until:
+                condition:
+                  lambda: "return id(vito).raw_queue_pending() == 0;"
+                timeout: 30s
+            - if:
+                condition:
+                  lambda: "return id(kmbus_probe_i) == 3;"
+                then:
+                  - delay: 5s
+                  - lambda: |-
+                      id(vito).set_gwg_kmbus_eot(true);
+                      ESP_LOGI("kmbus", "A: layout 01 TYPE BUS ADDR LEN 04 (EOT), KMBUS_RAM bus 10 address 00");
+            - lambda: |-
+                static const uint8_t counts[] = {1, 2, 4};
+                id(vito).queue_raw_read(0x1000, counts[id(kmbus_probe_i) % 3],
+                                        vitohome::optolink::GWGAccessMode::KMBUS_RAM);
+                id(kmbus_probe_i)++;
+      - wait_until:
+          condition:
+            lambda: "return id(vito).raw_queue_pending() == 0;"
+          timeout: 30s
+      - delay: 5s
+      - lambda: |-
+          id(vito).set_gwg_kmbus_eot(false);
+          ESP_LOGI("kmbus", "A: done (layout back to no EOT)");
+
+  # B: KMBUS_EEPROM bus 00..FF address 01 (i 0..255), then KMBUS_RAM bus
+  # 00..FF address 00 (i 256..511).
+  - id: kmbus_probe_scan
+    mode: single
+    then:
+      - lambda: |-
+          id(kmbus_probe_i) = 0;
+          ESP_LOGI("kmbus", "B: KMBUS_EEPROM address 01 on bus 00..FF (EOT %s)",
+                   id(vito).gwg_kmbus_eot() ? "on" : "off");
+      - while:
+          condition:
+            lambda: "return id(kmbus_probe_i) < 512;"
+          then:
+            - wait_until:
+                condition:
+                  lambda: "return id(vito).raw_queue_pending() == 0;"
+                timeout: 30s
+            - if:
+                condition:
+                  lambda: "return id(kmbus_probe_i) == 256;"
+                then:
+                  - delay: 5s
+                  - lambda: |-
+                      ESP_LOGI("kmbus", "B: KMBUS_RAM address 00 on bus 00..FF (EOT %s)",
+                               id(vito).gwg_kmbus_eot() ? "on" : "off");
+            - lambda: |-
+                const int i = id(kmbus_probe_i);
+                const uint16_t bus = static_cast<uint16_t>(i & 0xFF) << 8;
+                if (i < 256)
+                  id(vito).queue_raw_read(bus | 0x01, 1, vitohome::optolink::GWGAccessMode::KMBUS_EEPROM);
+                else
+                  id(vito).queue_raw_read(bus, 1, vitohome::optolink::GWGAccessMode::KMBUS_RAM);
+                id(kmbus_probe_i)++;
+      - wait_until:
+          condition:
+            lambda: "return id(vito).raw_queue_pending() == 0;"
+          timeout: 30s
+      - delay: 5s
+      - lambda: 'ESP_LOGI("kmbus", "B: done");'
+
+  # C: the Vitosoft KMBUS_EEPROM datapoints on one bus.
+  - id: kmbus_probe_values
+    mode: single
+    then:
+      - lambda: |-
+          id(kmbus_probe_i) = 0;
+          ESP_LOGI("kmbus", "C: Vitosoft KMBUS_EEPROM datapoints on bus %02X (EOT %s)",
+                   static_cast<int>(id(kmbus_probe_bus).state) & 0xFF, id(vito).gwg_kmbus_eot() ? "on" : "off");
+      - while:
+          condition:
+            lambda: "return id(kmbus_probe_i) < 11;"
+          then:
+            - wait_until:
+                condition:
+                  lambda: "return id(vito).raw_queue_pending() == 0;"
+                timeout: 30s
+            - lambda: |-
+                // address, catalog block length
+                static const uint8_t points[11][2] = {
+                    {0x01, 1},   // GWG_FA_OEM_Kennung
+                    {0x0A, 5},   // GWG_FA_OEM_GeraeteNummer
+                    {0x0F, 8},   // GWG_FA_OEM_ModGas_*
+                    {0x3B, 6},   // GWG_FA_OEM_ModLuft_*
+                    {0x64, 2},   // GWG_FA_Takt_Brennermindestpause
+                    {0x6A, 5},   // GWG_FA_MinTemp, _KesselSollNotbetrieb
+                    {0x6E, 1},   // GWG_FA_TempWaechter
+                    {0x71, 2},   // GWG_FA_Takt_*Mindestpause
+                    {0x78, 6},   // GWG_FA_AusloeseschwelleAbgas, _WiedereinschaltpunktAbgas
+                    {0x83, 2},   // GWG_FA_Takt_Brennermindestlaufzeit, _ReglerverzoegerungStart
+                    {0xA0, 10},  // GWG_FA_Historie_StoerCode_01
+                };
+                const uint16_t bus = static_cast<uint16_t>(static_cast<int>(id(kmbus_probe_bus).state) & 0xFF) << 8;
+                const auto &p = points[id(kmbus_probe_i)];
+                id(vito).queue_raw_read(bus | p[0], p[1], vitohome::optolink::GWGAccessMode::KMBUS_EEPROM);
+                id(kmbus_probe_i)++;
+      - wait_until:
+          condition:
+            lambda: "return id(vito).raw_queue_pending() == 0;"
+          timeout: 30s
+      - delay: 5s
+      - lambda: 'ESP_LOGI("kmbus", "C: done");'
+
+button:
+  - platform: template
+    name: "KM-Bus Probe A: layout"
+    on_press:
+      - script.execute: kmbus_probe_layout
+  - platform: template
+    name: "KM-Bus Probe B: bus scan"
+    on_press:
+      - script.execute: kmbus_probe_scan
+  - platform: template
+    name: "KM-Bus Probe C: values"
+    on_press:
+      - script.execute: kmbus_probe_values

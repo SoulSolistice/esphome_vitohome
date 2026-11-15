@@ -870,7 +870,22 @@ These are intentional divergences from upstream `edc059a7`:
     `proof_gwg_write_access.cpp` (6), `proof_raw_op.cpp` (C),
     `proof_address_space.cpp`.
 
-Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35 and 36 are the only intentional changes to on-wire/runtime
+37. **GWG KM-bus reads carry a bus address (behavioral divergence, issue
+    #35).** A KMBUS_RAM (`0x33`) or KMBUS_EEPROM (`0x43`) read went out in
+    the generic layout `01 TYPE ADDR LEN 04`, and 54 `kmbus_eeprom` reads
+    on GWG_VBEM `0x2053` SW `0x1E` went unanswered. The unit's owner reports
+    `01 TYPE BUS ADDR LEN` (`01 33 10 00 04` answered `01 30 00 00`).
+    `PacketGWG::createTelegram()` now sends a KM-bus read as
+    `01 TYPE BUS ADDR LEN`, the bus in the 16-bit address's high byte, and
+    accepts addresses up to `0xFFFF` for these two types only; an EOT after
+    LEN is a switch (`PacketGWG::setKmbusEot()`, `GWGEngine::setKmbusEot()`,
+    `DEFAULT_KMBUS_EOT` false; from a lambda `set_gwg_kmbus_eot()`). A
+    KM-bus type with payload keeps the one-byte limit. Entity reads, one
+    byte, now go to bus `00`. Proofs: `proof_gwg_kmbus.cpp`,
+    `proof_gwg_access_mode.cpp`, `proof_gwg_write_access.cpp`,
+    `proof_raw_op.cpp` (A, B).
+
+Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36 and 37 are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16 are structural (no behavior change from any call
 site that exists -- item 16 alters bytes only on a RESPONSE-construction path
 nothing exercises); item 17 changes only construction-failure handling

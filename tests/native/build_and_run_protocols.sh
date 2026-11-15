@@ -114,6 +114,11 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTO
   proof_gwg_enq_send_delay.cpp "${SRCS[@]}" -o gwg_enq_send_delay
 ./gwg_enq_send_delay
 
+echo "== GWG KM-bus reads: bus address, optional EOT (THIRD_PARTY.md #37) =="
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
+  proof_gwg_kmbus.cpp "${SRCS[@]}" -o gwg_kmbus
+./gwg_kmbus
+
 echo "== GWG write access modes (EEPROM/BE; KMBUS refused) =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
   proof_gwg_write_access.cpp "${SRCS[@]}" -o gwg_write_access

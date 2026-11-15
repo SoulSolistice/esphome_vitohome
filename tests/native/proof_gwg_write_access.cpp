@@ -179,8 +179,9 @@ int main() {
   check(adapter.read(0x0001, 1, optolink::GWGAccessMode::KMBUS_EEPROM), "KMBUS read still accepted");
   uart.feed({0x05});
   adapter.loop();
-  const std::vector<uint8_t> want_kmbus_read = {0x01, 0x43, 0x01, 0x01, 0x04};
-  check(uart.written() == want_kmbus_read, "  KMBUS read frame unchanged");
+  // Bus 00, address 01 (proof_gwg_kmbus.cpp).
+  const std::vector<uint8_t> want_kmbus_read = {0x01, 0x43, 0x00, 0x01, 0x01};
+  check(uart.written() == want_kmbus_read, "  KMBUS read frame: 01 43 00 01 01");
   uart.feed({0x11});
   pump(adapter);
   uart.clear_written();

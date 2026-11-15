@@ -402,8 +402,10 @@ entity when generating for a `GWG_*` device token.
 The TYPE bytes come from the openv wiki's `Protokoll-GWG` table, and all but
 `kmbus_ram` (`0x33`) are corroborated twice over — by vcontrold's GWG macros and
 by Vitosoft. On the units reported so far, `physical`, `virtual`, `eeprom`,
-`xram` and `port` answer; `be` answers `0xFF` everywhere and `kmbus_eeprom` not
-at all. What each mode did on which unit, and what is still open, is in
+`xram` and `port` answer; `be` answers `0xFF` everywhere. A KM-bus read names
+the bus device (`01 TYPE BUS ADDR LEN`); catalog entities read bus `00`, and
+[`example/vitohome-gwg-kmbus-probe.yaml`](example/vitohome-gwg-kmbus-probe.yaml)
+finds the right bus. What each mode did on which unit, and what is still open, is in
 [`docs/gwg_protocol.md`](docs/gwg_protocol.md). The full TYPE-byte table and
 the reasoning are in
 [`docs/design_notes.md`](docs/design_notes.md#gwg-access-modes-access).

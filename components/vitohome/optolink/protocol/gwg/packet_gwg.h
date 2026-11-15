@@ -57,6 +57,10 @@ class PacketGWG {
   // payload (false) or before it (true). See GWGEngine::setWriteEotBeforePayload().
   void setEotBeforePayload(bool eotFirst) { _eotBeforePayload = eotFirst; }
   bool eotBeforePayload() const { return _eotBeforePayload; }
+  // Whether a KM-bus read ends in an EOT after its count, for the packets
+  // built from now on. See GWGEngine::setKmbusEot().
+  void setKmbusEot(bool eot) { _kmbusEot = eot; }
+  bool kmbusEot() const { return _kmbusEot; }
 
   void reset();
 
@@ -65,6 +69,7 @@ class PacketGWG {
   uint8_t _length{0};
   bool _hasPayload{false};
   bool _eotBeforePayload{false};
+  bool _kmbusEot{false};
 };
 
 }  // namespace esphome::vitohome::optolink

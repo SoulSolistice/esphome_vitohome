@@ -176,6 +176,10 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // Whether a burst-sent request omits the leading 0x01 (default: omits).
   void set_gwg_burst_omits_enq_ack(bool omit);
   bool gwg_burst_omits_enq_ack() const { return this->gwg_burst_omits_enq_ack_; }
+  // Whether a KM-bus read (`kmbus_ram`, `kmbus_eeprom`; bus in the address's
+  // high byte) ends in an EOT after its count (default: it does not).
+  void set_gwg_kmbus_eot(bool eot);
+  bool gwg_kmbus_eot() const { return this->gwg_kmbus_eot_; }
   // Answer deadline, clamped to optolink::GWG_RESPONSE_TIMEOUT_{MIN,MAX}_MS
   // (50..2000) and logged; default 250 ms. For one-byte reads keep it under the
   // device's idle-ENQ gap (about 700 ms), or an idle ENQ reads as the value.
@@ -213,6 +217,8 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
                        optolink::GWGAccessMode access = optolink::GWGAccessMode::PHYSICAL);
   void queue_raw_write(uint16_t address, const std::vector<uint8_t> &bytes,
                        optolink::GWGAccessMode access = optolink::GWGAccessMode::PHYSICAL);
+  // Operations waiting on the raw lane, not counting the one in flight.
+  std::size_t raw_queue_pending() const { return this->raw_queue_.size(); }
   // Remote procedure call (P300 function code 0x07) with `parameter` as its
   // payload; the answer is published like a raw read's. A procedure that
   // answers a parameter with an entry of a list is read this way; one without
@@ -558,6 +564,7 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // GWG diagnostics as last set; pushed to the engine at setup and on change.
   bool gwg_write_eot_before_payload_{optolink::GWGEngine::DEFAULT_WRITE_EOT_BEFORE_PAYLOAD};
   bool gwg_burst_omits_enq_ack_{optolink::GWGEngine::DEFAULT_BURST_OMITS_ENQ_ACK};
+  bool gwg_kmbus_eot_{optolink::GWGEngine::DEFAULT_KMBUS_EOT};
   uint32_t gwg_response_timeout_ms_{optolink::GWGEngine::RESPONSE_TIMEOUT_MS};
   uint32_t gwg_enq_send_delay_ms_{0};
 

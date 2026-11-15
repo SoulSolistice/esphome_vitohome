@@ -204,9 +204,10 @@ class GWGEngine {
   // watchdog grows with it (_requestTimeoutMs()).
   static constexpr uint32_t RESPONSE_TIMEOUT_MS = 250;
 
-  // Defaults of the other two diagnostic switches (setters below).
+  // Defaults of the other diagnostic switches (setters below).
   static constexpr bool DEFAULT_WRITE_EOT_BEFORE_PAYLOAD = false;
   static constexpr bool DEFAULT_BURST_OMITS_ENQ_ACK = true;
+  static constexpr bool DEFAULT_KMBUS_EOT = false;
 
   // How long after a TIMEOUT the engine keeps collecting bytes for the
   // late-answer report (see OnLateAnswerCallback). Above the largest response
@@ -407,6 +408,10 @@ class GWGEngine {
   // 01 TYPE ADDR LEN 04 <data> (true). Reads are the same under both.
   void setWriteEotBeforePayload(bool eotFirst) { _currentRequest.setEotBeforePayload(eotFirst); }
   bool writeEotBeforePayload() const { return _currentRequest.eotBeforePayload(); }
+  // KM-bus read layout: 01 TYPE BUS ADDR LEN (false, default) or with an EOT
+  // after LEN (true). The bus is the address's high byte.
+  void setKmbusEot(bool eot) { _currentRequest.setKmbusEot(eot); }
+  bool kmbusEot() const { return _currentRequest.kmbusEot(); }
   // Whether a burst-sent request omits the leading 0x01 (default true). That
   // byte acknowledges an ENQ, and a burst-sent request answers none; an
   // ENQ-paced request carries it either way.

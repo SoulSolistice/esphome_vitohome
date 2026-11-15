@@ -36,7 +36,8 @@ bool PacketGWG::createPacket(uint8_t packetType, uint16_t addr, uint8_t len, con
   return createTelegram(packetType, addr, len, is_write ? data : nullptr);
 }
 
-// Any TYPE byte: `01 TYPE ADDR LEN 04`, or with `data` the write layout. The
+// Any TYPE byte: `01 TYPE ADDR LEN 04`, a KM-bus read `01 TYPE BUS ADDR LEN
+// [04]`, or with `data` the write layout. The
 // frame length and whether a payload rides are fixed here rather than derived
 // from the TYPE byte later, so a byte this project has no name for still goes
 // out whole (the raw lane, GWGEngine::telegram()).
@@ -48,14 +49,16 @@ bool PacketGWG::createTelegram(uint8_t type, uint16_t addr, uint8_t len, const u
     optolink_log_w("Zero length given");
     return false;
   }
-  if (addr > 0xFF) {
+  // A KM-bus read carries the bus in the address's high byte.
+  const bool kmbus = data == nullptr && isGwgKmbusReadType(type);
+  if (addr > 0xFF && !kmbus) {
     optolink_log_w("GWG doesn't support addresses > 0xFF");
     return false;
   }
 
   // bounds check against the fixed buffer (fail-soft, no overflow)
   // write frame = ENQ_ACK + type + addr + len + data[len] + EOT
-  const std::size_t needed = data ? static_cast<std::size_t>(len) + 5 : 5;
+  const std::size_t needed = data ? static_cast<std::size_t>(len) + 5 : 6;
   if (needed > _buffer.size()) {
     optolink_log_w("frame too long: need %u > %u", static_cast<unsigned>(needed),
                    static_cast<unsigned>(_buffer.size()));
@@ -78,6 +81,19 @@ bool PacketGWG::createTelegram(uint8_t type, uint16_t addr, uint8_t len, const u
   size_t step = 0;
   _buffer[step++] = internals::ProtocolBytes.ENQ_ACK;
   _buffer[step++] = type;
+  if (kmbus) {
+    // `01 TYPE BUS ADDR LEN`, then the EOT only if asked for: the frame
+    // reported for KMBUS_RAM (`01 33 10 00 04`) ends in its count, which
+    // cannot tell the two layouts apart.
+    _buffer[step++] = static_cast<uint8_t>(addr >> 8);
+    _buffer[step++] = addr & 0xFF;
+    _buffer[step++] = len;
+    if (_kmbusEot)
+      _buffer[step++] = internals::ProtocolBytes.EOT;
+    _length = static_cast<uint8_t>(step);
+    _hasPayload = false;
+    return true;
+  }
   _buffer[step++] = addr & 0xFF;
   _buffer[step++] = len;
   if (data) {

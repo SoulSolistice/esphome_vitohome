@@ -203,7 +203,18 @@ Viessmann's own Vitosoft data, which carries the mode per datapoint in
 of the 4143 across Vitosoft's 22 `GWG_*` tokens use it. It is not unsourced,
 though: `speters/vogod` declares the full GWG command-type set independently and
 includes `physicalKmbusRAMRead = 0x33`. So the byte is corroborated; what is
-missing is any datapoint that needs it. Nothing in this project emits it.
+missing is any datapoint that needs it. Only raw reads emit it.
+
+**A KM-bus read names the bus device** (owner of issue #35): `01 TYPE BUS ADDR
+LEN`, so `01 33 10 00 04` reads four bytes from address `00` at bus `10`. The
+generic frame `01 43 ADDR LEN 04` that vcontrold's `GETKMADDR` and this
+project used before would ask bus `ADDR`, address `LEN`, count `04`, which
+fits #35's 54 silent `kmbus_eeprom` reads. The bus is the 16-bit address's
+high byte (`PacketGWG::createTelegram()`), so catalog entities, which are one
+byte, read bus `00`, and a raw read can name any bus. Whether an EOT follows
+LEN is open: `set_gwg_kmbus_eot()` (default off, the reported frame) switches
+it, and `example/vitohome-gwg-kmbus-probe.yaml` tests both layouts and every
+bus. Details: [gwg_protocol.md](gwg_protocol.md#km-bus-reads-kmbus_eeprom-kmbus_ram).
 
 ### The address is not the identity
 
