@@ -7,15 +7,10 @@
 # `01 TYPE BUS ADDR LEN`, the bus in the 16-bit address's high byte, and an EOT
 # after LEN when set_gwg_kmbus_eot(true) is set.
 #
-# Use: merge into a working GWG config with the catalog package removed, so
-# nothing else runs on the bus:
-#
-#   packages:
-#     kmbus_probe: !include vitohome-gwg-kmbus-probe.yaml
-#
-# The hub must have `id: vito`. Settings in your own `vitohome:` and `logger:`
-# blocks win over this file's: set `log_frames: true` there, and
-# `raw_queue_size` to at least 1.
+# Standalone for validation. Add your own network (the reference board uses
+# SPI-Ethernet / DM9051) + api/ota as in user_curated/vscotho1_72/, and your
+# UART pins. Flash it instead of your usual config: it carries no catalog, so
+# nothing else runs on the bus while it probes.
 #
 # Press the buttons one after another and wait for each "done" line:
 #
@@ -37,12 +32,46 @@
 # frame is logged (log_frames). All of these are reads.
 # =============================================================================
 
-vitohome:
-  log_frames: true
-  raw_queue_size: 2
+substitutions:
+  vitohome_repo: "https://github.com/SoulSolistice/esphome_vitohome"
+  vitohome_ref: "main"
+
+esphome:
+  name: vitohome-gwg-kmbus-probe
+
+esp32:
+  variant: esp32c3
+  board: esp32-c3-devkitm-1
+  framework:
+    type: esp-idf
+
+external_components:
+  - source:
+      type: git
+      url: ${vitohome_repo}
+      ref: ${vitohome_ref}
+    components: [vitohome]
+    refresh: 0s
 
 logger:
+  baud_rate: 0 # free the UART for Optolink
   level: DEBUG
+
+uart:
+  id: optolink_uart
+  rx_pin: GPIO5
+  tx_pin: GPIO2
+  baud_rate: 4800
+  data_bits: 8
+  parity: EVEN
+  stop_bits: 2
+
+vitohome:
+  id: vito
+  uart_id: optolink_uart
+  protocol: GWG
+  log_frames: true
+  raw_queue_size: 2   # the scripts queue one read at a time
 
 globals:
   - id: kmbus_probe_i
