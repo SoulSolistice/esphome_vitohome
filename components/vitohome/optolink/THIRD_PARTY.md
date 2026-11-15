@@ -855,7 +855,22 @@ These are intentional divergences from upstream `edc059a7`:
     Proofs: `proof_vs2_rpc.cpp` (F), `proof_packet_vs2_response.cpp` (C, F),
     `proof_raw_engines.cpp` (frame limits).
 
-Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set) and 35 are the only intentional changes to on-wire/runtime
+36. **GWG BE and PORT read per address; raw EEPROM pair (behavioral
+    divergence, issue #35).** A BE (`0x9E`) or PORT (`0x6E`) read is
+    answered with one byte per address whatever LEN the telegram carries
+    (GWG_VBEM `0x2053` SW `0x1E`), so a read longer than one byte timed out.
+    `read()` now issues one LEN-1 telegram per address in these modes too,
+    as for EEPROM (`gwgCellLength()`), and delivers the bytes together; the
+    hub's watchdog counts one telegram per address. Every catalog datapoint
+    in both modes is one byte, so entity reads are unchanged on the wire.
+    `telegram()` with type `0xAD` and two bytes sends them as the cell's pair
+    unchanged, `01 AD ADDR B0 B1 04` (`PacketGWG::createEepromPair()`), and
+    `raw_op_class()` classes it UNSAFE; `write()` still takes one value byte
+    per cell. Proofs: `proof_gwg_eeprom_pairs.cpp` (9),
+    `proof_gwg_write_access.cpp` (6), `proof_raw_op.cpp` (C),
+    `proof_address_space.cpp`.
+
+Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35 and 36 are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16 are structural (no behavior change from any call
 site that exists -- item 16 alters bytes only on a RESPONSE-construction path
 nothing exercises); item 17 changes only construction-failure handling

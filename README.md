@@ -258,8 +258,9 @@ vitohome:
   #                         # of any layer (reverse engineering; needs
   #                         # raw_queue_size). unsafe_raw_writes: true adds
   #                         # the ones that may change the controller (EEPROM
-  #                         # / physical writes, GFA_WRITE, unnamed codes with
-  #                         # payload). Both off by default.
+  #                         # / physical writes, GFA_WRITE, a GWG EEPROM pair
+  #                         # as given, unnamed codes with payload). Both off
+  #                         # by default.
   # raw_queue_size: 0       # scan-console lane slots (~40 B each, reserved once
   #                         # at boot). Default 0: the scan console is a debug
   #                         # tool, so it is opt-in and costs nothing unless

@@ -21,7 +21,8 @@
 //       later cannot pose as the ack (which is what #467's capture most likely
 //       recorded);
 //   (6) an EEPROM write carries the cell's complement pair and no length
-//       byte, `01 AD ADDR ~V V 04`, under either layout, one cell per frame.
+//       byte, `01 AD ADDR ~V V 04`, under either layout, one cell per frame;
+//       on the raw lane two bytes are the pair as given, `01 AD ADDR B0 B1 04`.
 //
 // Built with -DVITOHOME_PROTOCOL_GWG by build_and_run_protocols.sh.
 #include <cstdio>
@@ -215,12 +216,29 @@ int main() {
     uart.clear_written();
   }
 
-  // One cell per frame: a two-byte EEPROM write is refused, nothing goes out.
+  // The raw lane's two bytes are the pair as given, nothing computed.
+  {
+    const uint8_t pair[2] = {0xFF, 0xFF};
+    check(adapter.telegram(0xAD, 0x0016, 2, pair), "raw 0xAD telegram of two bytes accepted");
+    uart.feed({0x05});
+    adapter.loop();
+    check(uart.written() == std::vector<uint8_t>({0x01, 0xAD, 0x16, 0xFF, 0xFF, 0x04}), "  01 AD 16 FF FF 04");
+    uart.feed({0x00});
+    pump(adapter);
+    check(!adapter.isBusy(), "  completes on the ack");
+    uart.clear_written();
+  }
+
+  // One cell per frame: a two-byte EEPROM write is refused, nothing goes out,
+  // and so is a raw one of three bytes.
   {
     const uint8_t two[2] = {0x28, 0x29};
     check(!adapter.write(0x0016, two, 2, optolink::GWGAccessMode::EEPROM), "two-byte EEPROM write refused");
     check(!adapter.isBusy(), "  engine not busy after the refusal");
     check(uart.written().empty(), "  nothing written to the wire");
+    const uint8_t three[3] = {0xD7, 0x28, 0x00};
+    check(!adapter.telegram(0xAD, 0x0016, 3, three), "raw 0xAD telegram of three bytes refused");
+    check(!adapter.isBusy() && uart.written().empty(), "  nothing written to the wire");
   }
 
   // --- (5) an unanswered write must TIMEOUT, not be acked by an idle ENQ -----

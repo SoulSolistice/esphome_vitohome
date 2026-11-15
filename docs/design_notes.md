@@ -398,6 +398,10 @@ read back as `CF:30` and `D7:28`, the first still `CF:30` 16 minutes later,
 and `0x96` followed both. Survival across a power cycle is not shown yet.
 The EOT switch below does not apply to EEPROM writes.
 
+`be` and `port` are read the same way, one LEN-1 telegram per address
+(`optolink::gwgCellLength()`), because they answer one byte per address
+whatever LEN asks for (#35).
+
 One VR20 serves 64 cells: `0x01`–`0x3F` answer, `0x00` and `0x40`–`0x7F` answer
 `FF FF`, and `0x80`–`0xFF` repeat the lower half (a dump of all 256 addresses,
 #35).
@@ -928,7 +932,8 @@ Two config gates, both off by default:
 - PROBE: a code with no name here, without payload. The controller refuses
   one it lacks (P300 `05`); each is logged.
 - UNSAFE: everything that may change the controller -- P300 04 / 06
-  (physical / EEPROM write), KW 68 / 78 (GFA_WRITE / PROZESS_WRITE), a
+  (physical / EEPROM write), KW 68 / 78 (GFA_WRITE / PROZESS_WRITE), a GWG
+  EEPROM write of two bytes (the cell's pair as given, unchecked), a
   payload on a read code or on an unnamed one.
 
 `unrestricted` needs `raw_queue_size`, and `unsafe_raw_writes` needs

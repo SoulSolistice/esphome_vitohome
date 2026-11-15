@@ -2,7 +2,7 @@
 // reads and writes in any access mode, sent back to back the way the hub sends
 // them, against a scripted device whose bytes and timing come from the input.
 // fuzz_raw_engines.cpp drives one generic telegram; this drives the session
-// logic around it: the burst window, the burst retry and fallback, EEPROM pair
+// logic around it: the burst window, the burst retry and fallback, per-address
 // runs, the ENQ-to-send delay, the response deadline and the late-answer
 // report.
 //
@@ -27,11 +27,11 @@
 //   (1) every accepted operation completes exactly once, and nothing completes
 //       while no operation is in flight;
 //   (2) a completion carries its operation's address; a read delivers
-//       `length` bytes (an EEPROM read one value per address), a write one
+//       `length` bytes (EEPROM, BE and PORT one value per address), a write one
 //       acknowledgement byte;
 //   (3) refusals follow the documented rules: a KMBUS write, an EEPROM write
-//       of more than one byte, a read longer than MAX_PAYLOAD and an EEPROM
-//       run past 0xFF are refused;
+//       of more than one byte, a read longer than MAX_PAYLOAD and an EEPROM,
+//       BE or PORT run past 0xFF are refused;
 //   (4) with a delay set, a request sent on an ENQ went out no earlier than
 //       the delay after it; at delay 0 the engine never holds;
 //   (5) the timing report fires for answered reads only, with their address;
@@ -187,8 +187,8 @@ void submit() {
       op.accepted = e.read(op.address, op.length, op.mode);
       if (op.accepted) {
         oracle(op.length <= optolink::MAX_PAYLOAD, "a read longer than MAX_PAYLOAD accepted");
-        oracle(op.mode != GWGAccessMode::EEPROM || (op.length != 0 && op.address + op.length - 1 <= 0xFF),
-               "an EEPROM run past 0xFF accepted");
+        oracle(optolink::gwgCellLength(op.mode) == 0 || (op.length != 0 && op.address + op.length - 1 <= 0xFF),
+               "a per-address run past 0xFF accepted");
       }
     }
     if (op.accepted)

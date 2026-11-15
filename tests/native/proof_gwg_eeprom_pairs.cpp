@@ -24,7 +24,10 @@
 //       callback exactly when an FF FF pair was part of the read -- also as
 //       the SECOND pair of a 2-byte read -- and false for a good EEPROM read,
 //       after a reset by the next read, and for every PHYSICAL read. The
-//       delivered bytes are the same either way.
+//       delivered bytes are the same either way;
+//   (9) BE and PORT go one address per telegram too, one byte each (issue
+//       #35: both answer a single byte whatever LEN asks for), delivered
+//       together at the base address, with the same range limits.
 #include <cstdio>
 #include <vector>
 
@@ -200,6 +203,45 @@ int main() {
   pump(adapter);
   check(g_responses == 8 && g_last_data == std::vector<uint8_t>{0x28}, "    delivers 0x28");
   check(!g_last_unserved, "    and the flag was reset by the new read");
+
+  // --- (9) BE and PORT: one byte per address ---------------------------------
+  const int timing_be = g_timing_calls;
+  check(adapter.read(0x0010, 2, Mode::BE), "(9) 2-byte BE read of 0x0010 accepted");
+  pump(adapter);
+  const std::vector<uint8_t> want_be10 = {0x9E, 0x10, 0x01, 0x04};
+  check(uart.written() == want_be10, "    first telegram: 0x0010, LEN 1");
+  uart.clear_written();
+  uart.feed({0xFF});
+  pump(adapter);
+  check(g_responses == 8 && g_errors == 2, "    one byte answers the first address, not delivered yet");
+  const std::vector<uint8_t> want_be11 = {0x9E, 0x11, 0x01, 0x04};
+  check(uart.written() == want_be11, "    second telegram: 0x0011, LEN 1");
+  uart.clear_written();
+  uart.feed({0xFF});
+  pump(adapter);
+  check(g_responses == 9 && g_errors == 2, "    delivered once both bytes are in");
+  check(g_last_addr == 0x0010 && g_last_data == (std::vector<uint8_t>{0xFF, 0xFF}), "    as FF FF at the base address");
+  check(!g_last_unserved, "    not flagged unserved (an EEPROM pair's flag)");
+  check(g_timing_calls == timing_be + 1, "    timing fired once for the datapoint");
+
+  check(adapter.read(0x0000, 4, Mode::PORT), "    4-byte PORT read of 0x0000 accepted");
+  const uint8_t port_values[4] = {0x12, 0x34, 0x56, 0x78};
+  bool port_frames = true;
+  for (uint8_t i = 0; i < 4; ++i) {
+    pump(adapter);
+    const std::vector<uint8_t> want_port = {0x6E, i, 0x01, 0x04};
+    port_frames = port_frames && uart.written() == want_port;
+    uart.clear_written();
+    uart.feed({port_values[i]});
+  }
+  pump(adapter);
+  check(port_frames, "    four telegrams, 0x0000..0x0003, LEN 1 each");
+  check(g_responses == 10 && g_errors == 2 && g_last_addr == 0x0000 &&
+            g_last_data == (std::vector<uint8_t>{0x12, 0x34, 0x56, 0x78}),
+        "    delivered as the four bytes at the base address");
+
+  check(!adapter.read(0x0010, 0, Mode::BE), "    BE length 0 refused");
+  check(!adapter.read(0x00FF, 2, Mode::PORT), "    PORT run past 0xFF refused");
 
   std::printf("gwg eeprom pairs: %d failure(s)\n", failures);
   return failures == 0 ? 0 : 1;

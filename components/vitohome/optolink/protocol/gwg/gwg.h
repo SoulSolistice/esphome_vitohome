@@ -322,9 +322,10 @@ class GWGEngine {
         _interface(nullptr),
         _currentAddress(0),
         _currentLength(0),
-        _eepromPairs(false),
-        _eepromLength(0),
-        _eepromIndex(0),
+        _perAddress(false),
+        _runMode(GWGAccessMode::PHYSICAL),
+        _runLength(0),
+        _runIndex(0),
         _eepromUnserved(false),
         _timeoutUnsynced(false),
         _busy(false),
@@ -370,10 +371,11 @@ class GWGEngine {
   bool write(uint16_t address, const uint8_t *data, uint8_t length, GWGAccessMode access = GWGAccessMode::PHYSICAL);
   // Any GWG TYPE byte: `01 TYPE ADDR LEN 04`, or the write layout when `data`
   // is given. A byte of the access-mode table goes through read()/write() in
-  // that mode (an EEPROM read keeps its complement pairs); any other is
-  // answered with `length` raw bytes, or one acknowledgement byte when it
-  // carries a payload (assumed: the KW convention). For the raw lane
-  // (VitoHomeComponent::queue_raw_op()).
+  // that mode (an EEPROM, BE or PORT read goes one address per telegram); any
+  // other is answered with `length` raw bytes, or one acknowledgement byte when
+  // it carries a payload (assumed: the KW convention). The exception: an EEPROM
+  // write (0xAD) of two bytes sends them as the cell's pair, unchecked. For the
+  // raw lane (VitoHomeComponent::queue_raw_op()).
   bool telegram(uint8_t type, uint16_t address, uint8_t length, const uint8_t *data = nullptr);
 
   // True when the transaction that just completed was an EEPROM read in which
@@ -494,16 +496,17 @@ class GWGEngine {
   internals::SerialInterface *_interface;
   uint16_t _currentAddress;
   uint8_t _currentLength;
-  // EEPROM pair state (see kEepromPairLength). _currentLength is the number
-  // of bytes expected on the wire for the telegram in flight (2 per pair);
-  // _eepromLength is the caller's datapoint length and _eepromIndex the
-  // address offset of the pair in flight. The verified value bytes are packed
-  // into _responseBuffer[0.._eepromIndex-1] as they arrive; the pair in flight
-  // is received at _responseBuffer[_eepromIndex], so the buffer never needs
-  // more than _eepromLength + 1 bytes.
-  bool _eepromPairs;
-  uint8_t _eepromLength;
-  uint8_t _eepromIndex;
+  // Per-address read state (gwgCellLength()). _currentLength is the number of
+  // bytes expected on the wire for the telegram in flight (the cell's length);
+  // _runLength is the caller's datapoint length and _runIndex the address
+  // offset of the telegram in flight. The value bytes are packed into
+  // _responseBuffer[0.._runIndex-1] as they arrive; the cell in flight is
+  // received at _responseBuffer[_runIndex], so the buffer never needs more
+  // than _runLength + 1 bytes.
+  bool _perAddress;
+  GWGAccessMode _runMode;
+  uint8_t _runLength;
+  uint8_t _runIndex;
   // Latched FF FF seen in the current EEPROM transaction (see
   // lastReadHadUnservedEeprom()).
   bool _eepromUnserved;

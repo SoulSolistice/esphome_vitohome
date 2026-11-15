@@ -118,7 +118,7 @@ bool VitoHomeComponent::queue_raw_op(RawLayer layer, uint8_t code, uint16_t addr
     ESP_LOGW(TAG, "queue_raw_op: %s has no %s layer", PROTOCOL_NAME, raw_layer_name(layer));
     return false;
   }
-  const RawClass cls = raw_op_class(layer, code, payload != nullptr);
+  const RawClass cls = raw_op_class(layer, code, payload != nullptr ? length : 0);
 #ifndef VITOHOME_RAW_UNSAFE_WRITES
   if (cls == RawClass::UNSAFE) {
     ESP_LOGW(TAG,
@@ -343,15 +343,13 @@ void VitoHomeComponent::dispatch_raw_front_() {
   // for the address-space affinity.
   this->last_space_ =
       operation.layer == RawLayer::KW && space_has_switch_cost(AddressSpace::GFA) ? AddressSpace::GFA : operation.space;
-  // A GWG EEPROM read, through its access mode or the generic route's 0xAE,
-  // takes one telegram per address.
-  const bool gwg_eeprom_type =
-      operation.layer == RawLayer::GWG && operation.code == optolink::gwgReadTypeByte(optolink::GWGAccessMode::EEPROM);
-  this->set_in_flight_(
-      OpType::RAW, nullptr,
-      operation.is_write
-          ? 1
-          : read_telegram_count(gwg_eeprom_type ? AddressSpace::GWG_EEPROM : operation.space, operation.length));
+  // A GWG EEPROM, BE or PORT read, through its access mode or the generic
+  // route's TYPE byte, takes one telegram per address.
+  const bool gwg_per_address = operation.layer == RawLayer::GWG && optolink::gwgReadTypeIsPerAddress(operation.code);
+  this->set_in_flight_(OpType::RAW, nullptr,
+                       operation.is_write ? 1
+                       : gwg_per_address  ? read_telegram_count(AddressSpace::GWG_EEPROM, operation.length)
+                                          : read_telegram_count(operation.space, operation.length));
 
   ESP_LOGV(TAG, "Dispatched raw %s 0x%04X len %u", label, operation.address, operation.length);
 }

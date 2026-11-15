@@ -32,7 +32,7 @@ them have a BES. See [Identification](#identification).
 | Line | 4800 baud, 8E2 | Spec, HW |
 | Idle ENQ | `0x05`, every 749–2070 ms (median 1229) | HW #13 |
 | Read request | `01 TYPE ADDR LEN 04` after an ENQ; `TYPE ADDR LEN 04` inside a burst | HW #21 |
-| Response | LEN raw bytes; no framing, checksum, address echo or error telegram | HW |
+| Response | LEN raw bytes; `eeprom` a pair, `be` and `port` one byte, per address whatever LEN asks; no framing, checksum, address echo or error telegram | HW |
 | Answer time | 23–53 ms after the request | HW #21, #35 |
 | Answer deadline | 250 ms default (`set_gwg_response_timeout_ms()`, 50–2000 ms from a lambda) | design choice |
 | Address | one byte; anything above `0xFF` is rejected at config time | source, §8d |
@@ -58,8 +58,8 @@ unrelated registers. The catalog's `access:` comes from Vitosoft's `FCRead`.
 | `virtual` | `0xC7` | `0xC4` | answers; identification lives here (HW #13, #21, #35) |
 | `eeprom` | `0xAE` | `0xAD` | answers in complement pairs (HW #21, #35) |
 | `xram` | `0xC5` | `0xC3` | answers (HW #35) |
-| `port` | `0x6E` | `0x6D` | answers (HW #35) |
-| `be` | `0x9E` | `0x9D` | answers fast, but `0xFF` at every address tried (HW #21, #35) |
+| `port` | `0x6E` | `0x6D` | answers one byte per address whatever LEN asks; `0x00`–`0x03` in use (HW #35) |
+| `be` | `0x9E` | `0x9D` | answers fast, one byte per address whatever LEN asks, but `0xFF` at every address tried (HW #21, #35) |
 | `kmbus_eeprom` | `0x43` | none | never answers, not even late (HW #35) |
 | `kmbus_ram` | `0x33` | none | no Vitosoft datapoint uses it; never sent |
 
@@ -72,6 +72,14 @@ unrelated registers. The catalog's `access:` comes from Vitosoft's `FCRead`.
 - The owner of #35 reports that half of `0x00..0xFF` answers `FF FF` and that
   the used part repeats from `0x80` (a 128-byte part). Vitosoft's GWG
   datapoints use `0x01..0x24` only.
+
+### `be` and `port`
+
+- Both answer one byte per address, whatever LEN the telegram asks for
+  (HW #35, SW `0x1E`). The engine reads them like `eeprom`: one LEN-1
+  telegram per address, sent as a burst, delivered together. Every catalog
+  datapoint in these modes is one byte, so this only changes longer raw
+  reads, which timed out before.
 
 ### `be`
 
@@ -125,6 +133,11 @@ No other write type is confirmed. `be` answers `0xFF` everywhere on the
 units tried, and for the non-EEPROM types where the `0x04` goes is unknown;
 both layouts are switchable at run time
 (`set_gwg_write_eot_before_payload()`).
+
+A raw EEPROM write of two bytes, `queue_raw_op("gwg w AD ADDR B0 B1")`, sends
+them as the cell's pair unchanged (`01 AD ADDR B0 B1 04`), for example `FF FF`
+to mark a cell unused. Nothing checks the pair, so it can store one that
+every read rejects; it needs `unsafe_raw_writes: true`.
 
 The engine completes a write on any single answer byte. The confirmed EEPROM
 writes answered `00` (as on KW); whether other values occur is unknown, so

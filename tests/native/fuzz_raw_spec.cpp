@@ -82,7 +82,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
     oracle(spec.length <= kReadMax, "read length above the cap");
     oracle((spec.length == 0) == call, "length 0 for something other than a call");
   }
-  const RawClass cls = raw_op_class(spec.layer, spec.code, spec.has_payload);
+  const RawClass cls = raw_op_class(spec.layer, spec.code, spec.has_payload ? spec.length : 0);
   oracle(!spec.has_payload || (cls != RawClass::READ && cls != RawClass::PROBE), "a payload classed as a read");
 
   // (3) canonical form: "<layer> <r|w> <code> <address> <length | bytes>".
