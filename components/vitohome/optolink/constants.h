@@ -215,6 +215,30 @@ constexpr uint8_t gwgWriteTypeByte(GWGAccessMode mode) {
 
 constexpr bool gwgModeIsWritable(GWGAccessMode mode) { return gwgWriteTypeByte(mode) != kNoGwgWriteType; }
 
+// Bytes a unit answers per address in a mode it serves one address per
+// telegram, whatever LEN the telegram asks for; 0 for a mode that answers LEN
+// bytes. EEPROM answers a complement pair (GWGEngine::kEepromPairLength), BE
+// and PORT a single byte (issue #35, GWG_VBEM 0x2053 SW 0x1E). GWGEngine::read()
+// reads these modes one LEN-1 telegram per address.
+constexpr uint8_t gwgCellLength(GWGAccessMode mode) {
+  switch (mode) {
+    case GWGAccessMode::EEPROM:
+      return 2;
+    case GWGAccessMode::BE:
+    case GWGAccessMode::PORT:
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+// Whether a read TYPE byte belongs to a mode read one address per telegram
+// (gwgCellLength()).
+constexpr bool gwgReadTypeIsPerAddress(uint8_t type) {
+  return type == gwgReadTypeByte(GWGAccessMode::EEPROM) || type == gwgReadTypeByte(GWGAccessMode::BE) ||
+         type == gwgReadTypeByte(GWGAccessMode::PORT);
+}
+
 // True for any TYPE byte this project supports on the write path. Mirrors
 // isKnownGwgReadType() below; the two sets are disjoint, so a TYPE byte
 // unambiguously names its direction.

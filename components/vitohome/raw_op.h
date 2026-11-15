@@ -44,7 +44,8 @@ enum class RawLayer : uint8_t { NONE = 0, P300, KW, GWG };
 // without payload -- the controller refuses what it lacks (P300 error 05);
 // UNSAFE everything that may change the controller: a payload with an unknown
 // code, a known write telegram outside the ones above (P300 physical / EEPROM
-// write, KW GFA_WRITE / PROZESS_WRITE), a payload on a read code.
+// write, KW GFA_WRITE / PROZESS_WRITE, a GWG EEPROM pair sent as given), a
+// payload on a read code.
 enum class RawClass : uint8_t { READ, PROBE, WRITE, UNSAFE };
 
 inline constexpr std::size_t RAW_OP_PAYLOAD_MAX = 32;
@@ -85,7 +86,8 @@ inline const char *raw_class_name(RawClass cls) {
   }
 }
 
-inline RawClass raw_op_class(RawLayer layer, uint8_t code, bool has_payload) {
+inline RawClass raw_op_class(RawLayer layer, uint8_t code, std::size_t payload_len) {
+  const bool has_payload = payload_len != 0;
   switch (layer) {
     case RawLayer::P300:
       // 01 Virtual_READ, 03 Physical_READ, 05 EEPROM_READ; 02 Virtual_WRITE;
@@ -111,6 +113,10 @@ inline RawClass raw_op_class(RawLayer layer, uint8_t code, bool has_payload) {
         return RawClass::UNSAFE;
       break;
     case RawLayer::GWG:
+      // Two bytes on an EEPROM write are the cell's pair as given
+      // (GWGEngine::telegram()), unchecked.
+      if (code == optolink::gwgWriteTypeByte(optolink::GWGAccessMode::EEPROM) && payload_len == 2)
+        return RawClass::UNSAFE;
       // The access-mode table (constants.h): what queue_raw_read() /
       // queue_raw_write() send in some mode.
       if (optolink::isKnownGwgReadType(code))

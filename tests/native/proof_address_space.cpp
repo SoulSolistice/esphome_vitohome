@@ -38,9 +38,11 @@ static_assert(IS_GWG ? gwg_mode(space_from_gwg(optolink::GWGAccessMode::BE)) == 
                      : space_from_gwg(optolink::GWGAccessMode::BE) == AddressSpace::OWN,
               "GWG modes map only on GWG");
 
-// The hub watchdog's telegram count: a GWG EEPROM read takes one telegram per
-// address, everything else one.
+// The hub watchdog's telegram count: a GWG EEPROM, BE or PORT read takes one
+// telegram per address, everything else one.
 static_assert(read_telegram_count(AddressSpace::GWG_EEPROM, 16) == (IS_GWG ? 16 : 1), "EEPROM per address");
+static_assert(read_telegram_count(AddressSpace::GWG_BE, 4) == (IS_GWG ? 4 : 1), "BE per address");
+static_assert(read_telegram_count(AddressSpace::GWG_PORT, 4) == (IS_GWG ? 4 : 1), "PORT per address");
 static_assert(read_telegram_count(AddressSpace::GWG_EEPROM, 1) == 1, "one address, one telegram");
 static_assert(read_telegram_count(AddressSpace::OWN, 48) == 1, "an own read is one telegram");
 static_assert(read_telegram_count(AddressSpace::GWG_XRAM, 8) == 1, "an XRAM read is one telegram");

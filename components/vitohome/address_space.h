@@ -92,12 +92,15 @@ constexpr bool space_writable(AddressSpace space) {
 constexpr bool space_has_switch_cost(AddressSpace space) { return IS_P300 && space == AddressSpace::GFA; }
 
 // How many telegrams a read of `length` bytes in `space` takes on the wire. A
-// GWG EEPROM read is answered as a complement pair per address, so the engine
-// reads one address per telegram (GWGEngine::read(), kEepromPairLength) and
+// GWG EEPROM, BE or PORT read is answered per address, so the engine reads one
+// address per telegram (GWGEngine::read(), optolink::gwgCellLength()) and
 // re-arms its own timeout for each; after a burst fallback each one waits for
 // an ENQ. Every other read is one telegram.
 constexpr uint8_t read_telegram_count(AddressSpace space, uint8_t length) {
-  return (IS_GWG && space == AddressSpace::GWG_EEPROM && length > 1) ? length : 1;
+  return (IS_GWG && length > 1 &&
+          (space == AddressSpace::GWG_EEPROM || space == AddressSpace::GWG_BE || space == AddressSpace::GWG_PORT))
+             ? length
+             : 1;
 }
 
 // The hub's last-resort watchdog for one operation: `per_telegram_ms` for each

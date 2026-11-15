@@ -108,28 +108,30 @@ int main() {
   }
 
   // --- C ------------------------------------------------------------------
-  check(raw_op_class(RawLayer::P300, 0x01, false) == RawClass::READ, "C: p300 01 read");
-  check(raw_op_class(RawLayer::P300, 0x03, false) == RawClass::READ, "C: p300 03 physical read");
-  check(raw_op_class(RawLayer::P300, 0x05, false) == RawClass::READ, "C: p300 05 EEPROM read");
-  check(raw_op_class(RawLayer::P300, 0x05, true) == RawClass::UNSAFE, "C: p300 05 with payload unsafe");
-  check(raw_op_class(RawLayer::P300, 0x02, true) == RawClass::WRITE, "C: p300 02 Virtual_WRITE");
-  check(raw_op_class(RawLayer::P300, 0x04, true) == RawClass::UNSAFE, "C: p300 04 physical write unsafe");
-  check(raw_op_class(RawLayer::P300, 0x06, false) == RawClass::UNSAFE, "C: p300 06 EEPROM write unsafe");
-  check(raw_op_class(RawLayer::P300, 0x07, false) == RawClass::WRITE, "C: p300 07 call as raw rpc");
-  check(raw_op_class(RawLayer::P300, 0x09, false) == RawClass::PROBE, "C: p300 09 probe");
-  check(raw_op_class(RawLayer::P300, 0x09, true) == RawClass::UNSAFE, "C: p300 09 with payload unsafe");
-  check(raw_op_class(RawLayer::KW, 0xF7, false) == RawClass::READ, "C: kw F7 read");
-  check(raw_op_class(RawLayer::KW, 0x6B, false) == RawClass::READ, "C: kw 6B GFA read");
-  check(raw_op_class(RawLayer::KW, 0x7B, false) == RawClass::READ, "C: kw 7B PROZESS read");
-  check(raw_op_class(RawLayer::KW, 0xF4, true) == RawClass::WRITE, "C: kw F4 write");
-  check(raw_op_class(RawLayer::KW, 0x68, true) == RawClass::UNSAFE, "C: kw 68 GFA_WRITE unsafe");
-  check(raw_op_class(RawLayer::KW, 0x78, false) == RawClass::UNSAFE, "C: kw 78 PROZESS_WRITE unsafe");
-  check(raw_op_class(RawLayer::KW, 0x31, false) == RawClass::PROBE, "C: kw 31 probe");
-  check(raw_op_class(RawLayer::GWG, 0xAE, false) == RawClass::READ, "C: gwg AE EEPROM read");
-  check(raw_op_class(RawLayer::GWG, 0xAD, true) == RawClass::WRITE, "C: gwg AD EEPROM write");
-  check(raw_op_class(RawLayer::GWG, 0xAD, false) == RawClass::UNSAFE, "C: gwg AD without payload unsafe");
-  check(raw_op_class(RawLayer::GWG, 0x31, false) == RawClass::PROBE, "C: gwg 31 probe");
-  check(raw_op_class(RawLayer::NONE, 0x01, false) == RawClass::UNSAFE, "C: no layer unsafe");
+  check(raw_op_class(RawLayer::P300, 0x01, 0) == RawClass::READ, "C: p300 01 read");
+  check(raw_op_class(RawLayer::P300, 0x03, 0) == RawClass::READ, "C: p300 03 physical read");
+  check(raw_op_class(RawLayer::P300, 0x05, 0) == RawClass::READ, "C: p300 05 EEPROM read");
+  check(raw_op_class(RawLayer::P300, 0x05, 1) == RawClass::UNSAFE, "C: p300 05 with payload unsafe");
+  check(raw_op_class(RawLayer::P300, 0x02, 1) == RawClass::WRITE, "C: p300 02 Virtual_WRITE");
+  check(raw_op_class(RawLayer::P300, 0x04, 1) == RawClass::UNSAFE, "C: p300 04 physical write unsafe");
+  check(raw_op_class(RawLayer::P300, 0x06, 0) == RawClass::UNSAFE, "C: p300 06 EEPROM write unsafe");
+  check(raw_op_class(RawLayer::P300, 0x07, 0) == RawClass::WRITE, "C: p300 07 call as raw rpc");
+  check(raw_op_class(RawLayer::P300, 0x09, 0) == RawClass::PROBE, "C: p300 09 probe");
+  check(raw_op_class(RawLayer::P300, 0x09, 1) == RawClass::UNSAFE, "C: p300 09 with payload unsafe");
+  check(raw_op_class(RawLayer::KW, 0xF7, 0) == RawClass::READ, "C: kw F7 read");
+  check(raw_op_class(RawLayer::KW, 0x6B, 0) == RawClass::READ, "C: kw 6B GFA read");
+  check(raw_op_class(RawLayer::KW, 0x7B, 0) == RawClass::READ, "C: kw 7B PROZESS read");
+  check(raw_op_class(RawLayer::KW, 0xF4, 1) == RawClass::WRITE, "C: kw F4 write");
+  check(raw_op_class(RawLayer::KW, 0x68, 1) == RawClass::UNSAFE, "C: kw 68 GFA_WRITE unsafe");
+  check(raw_op_class(RawLayer::KW, 0x78, 0) == RawClass::UNSAFE, "C: kw 78 PROZESS_WRITE unsafe");
+  check(raw_op_class(RawLayer::KW, 0x31, 0) == RawClass::PROBE, "C: kw 31 probe");
+  check(raw_op_class(RawLayer::GWG, 0xAE, 0) == RawClass::READ, "C: gwg AE EEPROM read");
+  check(raw_op_class(RawLayer::GWG, 0xAD, 1) == RawClass::WRITE, "C: gwg AD EEPROM write");
+  check(raw_op_class(RawLayer::GWG, 0xAD, 0) == RawClass::UNSAFE, "C: gwg AD without payload unsafe");
+  check(raw_op_class(RawLayer::GWG, 0xAD, 2) == RawClass::UNSAFE, "C: gwg AD pair as given unsafe");
+  check(raw_op_class(RawLayer::GWG, 0xC4, 2) == RawClass::WRITE, "C: gwg C4 two-byte write");
+  check(raw_op_class(RawLayer::GWG, 0x31, 0) == RawClass::PROBE, "C: gwg 31 probe");
+  check(raw_op_class(RawLayer::NONE, 0x01, 0) == RawClass::UNSAFE, "C: no layer unsafe");
 
   // --- D ------------------------------------------------------------------
   bool payload_never_read = true;

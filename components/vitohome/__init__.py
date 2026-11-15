@@ -1080,7 +1080,8 @@ CONFIG_SCHEMA = cv.All(
             # telegram that does not change the controller (reads, probes of
             # unnamed codes, the writes the raw lane already makes);
             # unsafe_raw_writes adds the rest -- P300 physical / EEPROM writes,
-            # KW GFA_WRITE / PROZESS_WRITE, payloads with unnamed codes.
+            # KW GFA_WRITE / PROZESS_WRITE, a GWG EEPROM pair as given,
+            # payloads with unnamed codes.
             cv.Optional(CONF_RAW_ACCESS, default=RAW_ACCESS_STANDARD, visibility=cv.Visibility.ADVANCED): cv.one_of(
                 RAW_ACCESS_STANDARD, RAW_ACCESS_UNRESTRICTED, lower=True
             ),

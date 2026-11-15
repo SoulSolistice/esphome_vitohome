@@ -45,6 +45,9 @@ class PacketGWG {
  public:
   bool createPacket(uint8_t packetType, uint16_t addr, uint8_t len, const uint8_t *data = nullptr);
   bool createTelegram(uint8_t type, uint16_t addr, uint8_t len, const uint8_t *data = nullptr);
+  // An EEPROM write of one cell, `01 AD ADDR b0 b1 04`, the two bytes stored
+  // as the cell's pair as given.
+  bool createEepromPair(uint16_t addr, uint8_t b0, uint8_t b1);
   uint8_t length() const;
   uint8_t packetType() const;
   // Whether the frame carries `len` payload bytes (a write's shape): its

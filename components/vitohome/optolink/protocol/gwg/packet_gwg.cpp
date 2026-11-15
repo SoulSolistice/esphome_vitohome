@@ -62,11 +62,6 @@ bool PacketGWG::createTelegram(uint8_t type, uint16_t addr, uint8_t len, const u
     return false;
   }
 
-  // Serialize into buffer
-  size_t step = 0;
-  _buffer[step++] = internals::ProtocolBytes.ENQ_ACK;
-  _buffer[step++] = type;
-  _buffer[step++] = addr & 0xFF;
   if (data && type == gwgWriteTypeByte(GWGAccessMode::EEPROM)) {
     // An EEPROM cell is a complement pair, written as the read returns it:
     // `01 AD ADDR ~V V 04`, one cell per frame, no length byte. A VR20 (#35)
@@ -76,13 +71,14 @@ bool PacketGWG::createTelegram(uint8_t type, uint16_t addr, uint8_t len, const u
       optolink_log_w("GWG EEPROM write: one cell per frame, got %u bytes", static_cast<unsigned>(len));
       return false;
     }
-    _buffer[step++] = static_cast<uint8_t>(~data[0]);
-    _buffer[step++] = data[0];
-    _buffer[step++] = internals::ProtocolBytes.EOT;
-    _length = static_cast<uint8_t>(step);
-    _hasPayload = true;
-    return true;
+    return createEepromPair(addr, static_cast<uint8_t>(~data[0]), data[0]);
   }
+
+  // Serialize into buffer
+  size_t step = 0;
+  _buffer[step++] = internals::ProtocolBytes.ENQ_ACK;
+  _buffer[step++] = type;
+  _buffer[step++] = addr & 0xFF;
   _buffer[step++] = len;
   if (data) {
     // Where the EOT sits in a write frame is unsettled (design_notes.md,
@@ -104,6 +100,24 @@ bool PacketGWG::createTelegram(uint8_t type, uint16_t addr, uint8_t len, const u
   // The length built here, whatever the TYPE byte; at most kMaxFrame.
   _length = static_cast<uint8_t>(step);
   _hasPayload = data != nullptr;
+  return true;
+}
+
+bool PacketGWG::createEepromPair(uint16_t addr, uint8_t b0, uint8_t b1) {
+  reset();
+  if (addr > 0xFF) {
+    optolink_log_w("GWG doesn't support addresses > 0xFF");
+    return false;
+  }
+  size_t step = 0;
+  _buffer[step++] = internals::ProtocolBytes.ENQ_ACK;
+  _buffer[step++] = gwgWriteTypeByte(GWGAccessMode::EEPROM);
+  _buffer[step++] = addr & 0xFF;
+  _buffer[step++] = b0;
+  _buffer[step++] = b1;
+  _buffer[step++] = internals::ProtocolBytes.EOT;
+  _length = static_cast<uint8_t>(step);
+  _hasPayload = true;
   return true;
 }
 
