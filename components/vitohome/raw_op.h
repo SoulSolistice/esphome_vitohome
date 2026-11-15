@@ -14,13 +14,14 @@
 //   layer    p300 (vs2), kw (vs1), gwg
 //   code     hex: the P300 function code (1..1F, the low five bits of the
 //            flags byte), the KW type byte, the GWG TYPE byte
-//   address  hex, 0..FFFF (GWG: 0..FF)
+//   address  hex, 0..FFFF (GWG: 0..FF; a KM-bus read 33 / 43: bus, address)
 //   length   decimal, the bytes asked for (P300 code 07 may ask for 0)
 //   bytes    hex, as separate bytes ("00 0A") or runs ("000A")
 //
 //   p300 r 05 1000 16      EEPROM read, 16 bytes at 0x1000
 //   kw r 7B 0800 2         PROZESS_READ (over P300: the KW detour)
 //   gwg r 31 05 1          an unnamed GWG TYPE byte
+//   gwg r 43 1001 1        KMBUS_EEPROM_READ, bus 10, address 01
 //   p300 w 02 2306 25      Virtual_WRITE of one byte
 
 #include <cctype>
@@ -245,9 +246,11 @@ inline bool parse_raw_spec(const char *text, RawSpec &out, const char *&error, u
   }
   out.code = static_cast<uint8_t>(value);
 
-  const unsigned long address_max = out.layer == RawLayer::GWG ? 0xFF : 0xFFFF;
+  // GWG addresses one byte, except a KM-bus read: bus in the high byte.
+  const bool gwg_short = out.layer == RawLayer::GWG && (out.has_payload || !optolink::isGwgKmbusReadType(out.code));
+  const unsigned long address_max = gwg_short ? 0xFF : 0xFFFF;
   if (!next_token(p, tok, len) || !parse_hex(tok, len, address_max, value)) {
-    error = out.layer == RawLayer::GWG ? "address: hex 00..FF" : "address: hex 0000..FFFF";
+    error = gwg_short ? "address: hex 00..FF" : "address: hex 0000..FFFF";
     return false;
   }
   out.address = static_cast<uint16_t>(value);

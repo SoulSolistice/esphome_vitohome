@@ -74,7 +74,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
   oracle(spec.layer == RawLayer::P300 || spec.layer == RawLayer::KW || spec.layer == RawLayer::GWG,
          "accepted without a layer");
   oracle(spec.code != 0 && (spec.layer != RawLayer::P300 || spec.code <= 0x1F), "code out of range");
-  oracle(spec.layer != RawLayer::GWG || spec.address <= 0xFF, "GWG address above FF");
+  oracle(spec.layer != RawLayer::GWG || spec.address <= 0xFF ||
+             (!spec.has_payload && optolink::isGwgKmbusReadType(spec.code)),
+         "GWG address above FF outside a KM-bus read");
   if (spec.has_payload) {
     oracle(spec.length >= 1 && spec.length <= RAW_OP_PAYLOAD_MAX, "payload length out of range");
   } else {

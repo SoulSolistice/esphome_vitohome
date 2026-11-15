@@ -32,10 +32,11 @@ them have a BES. See [Identification](#identification).
 | Line | 4800 baud, 8E2 | Spec, HW |
 | Idle ENQ | `0x05`, every 749–2070 ms (median 1229) | HW #13 |
 | Read request | `01 TYPE ADDR LEN 04` after an ENQ; `TYPE ADDR LEN 04` inside a burst | HW #21 |
+| KM-bus read | `01 TYPE BUS ADDR LEN`, no EOT by default (`set_gwg_kmbus_eot()`) | owner of #35 |
 | Response | LEN raw bytes; `eeprom` a pair, `be` and `port` one byte, per address whatever LEN asks; no framing, checksum, address echo or error telegram | HW |
 | Answer time | 23–53 ms after the request | HW #21, #35 |
 | Answer deadline | 250 ms default (`set_gwg_response_timeout_ms()`, 50–2000 ms from a lambda) | design choice |
-| Address | one byte; anything above `0xFF` is rejected at config time | source, §8d |
+| Address | one byte; anything above `0xFF` is rejected at config time. A raw KM-bus read takes `0xBBAA`: bus `BB`, address `AA` | source, §8d |
 
 - **No error answer.** An address a mode does not serve answers `0xFF` (all
   bytes), not a refusal. A silent datapoint does not answer at all.
@@ -60,8 +61,8 @@ unrelated registers. The catalog's `access:` comes from Vitosoft's `FCRead`.
 | `xram` | `0xC5` | `0xC3` | answers (HW #35) |
 | `port` | `0x6E` | `0x6D` | answers one byte per address whatever LEN asks; `0x00`–`0x03` in use (HW #35) |
 | `be` | `0x9E` | `0x9D` | answers fast, one byte per address whatever LEN asks, but `0xFF` at every address tried (HW #21, #35) |
-| `kmbus_eeprom` | `0x43` | none | never answers, not even late (HW #35) |
-| `kmbus_ram` | `0x33` | none | no Vitosoft datapoint uses it; never sent |
+| `kmbus_eeprom` | `0x43` | none | never answered `01 43 ADDR LEN 04` (HW #35); sent with bus `00` now, untested |
+| `kmbus_ram` | `0x33` | none | `01 33 10 00 04` answered `01 30 00 00` (owner of #35); no Vitosoft datapoint uses it |
 
 ### `eeprom`
 
@@ -96,12 +97,29 @@ unrelated registers. The catalog's `access:` comes from Vitosoft's `FCRead`.
 - So far no `be` read has returned data. A `be` write would go to a space
   nothing answers from.
 
-### `kmbus_eeprom`
+### KM-bus reads (`kmbus_eeprom`, `kmbus_ram`)
 
-- These reach the LGM29 burner control over the VR20's KM-Bus. On #35 all 54
-  went unanswered, with no late bytes either (late-answer report on, frames
-  logged). The owner says the KM-Bus itself works (the pump answers there) and
-  suspects the LGM29 needs enabling.
+- These reach devices on the VR20's KM-Bus, such as the LGM29 burner control.
+  On #35 all 54 `kmbus_eeprom` reads went unanswered, with no late bytes
+  either (late-answer report on, frames logged). They went out as
+  `01 43 ADDR LEN 04`.
+- The owner of #35 reports that a KM-bus read names the bus device first:
+  `01 33 10 00 04` reads four bytes from address `00` at bus `10`, answered
+  `01 30 00 00`. Read that way, the old frame asked bus `ADDR`, address
+  `LEN`, count `04`.
+- The engine now sends `01 TYPE BUS ADDR LEN`, the bus in the 16-bit
+  address's high byte. Catalog entities are one-byte addresses, so they go
+  to bus `00`; a raw read names the bus (`queue_raw_read(0x1001, 1,
+  GWGAccessMode::KMBUS_EEPROM)`, `gwg r 43 1001 1`). Inside a burst the
+  leading `01` is left off as for every read.
+- Open: whether the frame ends in an EOT (`set_gwg_kmbus_eot(true)` adds
+  one), which bus each device uses, and whether the reported frame was seen
+  on that unit or worked out. Every Vitosoft `KMBUS_EEPROM_READ` datapoint
+  carries `PrefixRead` `030000000101`, which the catalog generator ignores;
+  its meaning is not known.
+- [`example/vitohome-gwg-kmbus-probe.yaml`](../example/vitohome-gwg-kmbus-probe.yaml)
+  tests all three with buttons: A the frame layout, B a scan of buses `00`-`FF`,
+  C the Vitosoft datapoints on one bus.
 - Cost while silent: about one ENQ gap plus a 250 ms retry per read, so 54 of
   them overran a 60 s poll cycle until poll backoff set in (after three
   cycles).
@@ -239,6 +257,6 @@ The two families share every `physical`, `xram`, `port` and most `eeprom` and
 | Does #35's controller keep the BES or the BEM coding map? | Read `eeprom` `0x03`, `0x08`, `0x0A`, `0x0D`, `0x13`, `0x14`, `0x1C`, `0x21` with frames logged; compare BES codings (02), (03), (04) with the panel |
 | Is `xram` `0x88` big-endian? | Second Wasserdruck reading at another pressure |
 | Does any GWG unit serve `be`? | A unit with a BEM panel |
-| Can `kmbus_eeprom` be reached at all? | Unknown; possibly an LGM29 setting |
+| Which bus serves which KM-bus device, and does the read end in an EOT? | [`vitohome-gwg-kmbus-probe.yaml`](../example/vitohome-gwg-kmbus-probe.yaml), steps A-C |
 | Does #35's unit need a gap between ENQ and request? | Raw reads with frames logged at `set_gwg_enq_send_delay_ms(0)`, `15` and `30`; compare answered vs unanswered `enq->send` |
 | Where does the write frame's `0x04` go? | A first `eeprom` write on a unit whose owner accepts the risk |

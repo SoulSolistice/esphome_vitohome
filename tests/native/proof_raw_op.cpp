@@ -68,6 +68,9 @@ int main() {
   check(parse("p300 r 1F FFFF 48", s) && s.code == 0x1F && s.address == 0xFFFF && s.length == kReadMax,
         "A: the edges: code 1F, address FFFF, length = read cap");
   check(parse("gwg r CB FF 1", s) && s.address == 0xFF, "A: GWG address FF");
+  check(parse("gwg r 43 1001 1", s) && s.code == 0x43 && s.address == 0x1001,
+        "A: a GWG KM-bus read takes bus and address");
+  check(parse("gwg r 33 FFFF 4", s) && s.address == 0xFFFF, "A: GWG KM-bus address FFFF");
   {
     char line[160] = "p300 w 02 0000";
     for (int i = 0; i < 32; ++i)
@@ -86,6 +89,7 @@ int main() {
   check(refused("kw r G1 0000 1", "code"), "B: code not hex");
   check(refused("p300 r 01 10000 1", "address"), "B: address above FFFF");
   check(refused("gwg r CB 100 1", "address"), "B: GWG address above FF");
+  check(refused("gwg w 33 1000 01", "address"), "B: GWG 33 with payload keeps the one-byte address");
   check(refused("p300 r 01", "address"), "B: address missing");
   check(refused("p300 r 01 0000", "length"), "B: length missing");
   check(refused("p300 r 01 0000 0", "length"), "B: length 0 outside a call");
