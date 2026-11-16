@@ -64,6 +64,13 @@
 # broke. That is the step that converts a campaign into a permanent gate; a
 # crash file left behind is a finding that will be rediscovered from scratch
 # next year. Delete it from findings/ once it is a seed.
+#
+# NEW COVERAGE. A long campaign reaches lines the seeds miss without finding
+# anything. Only the seeds gate CI, so promote the few corpus units that add
+# those lines: run the binary with -runs=0 -print_coverage=1 on the seeds and
+# on the seeds plus each unit, pick units greedily by the UNCOVERED_PC lines
+# they remove, and add them as cov_* seeds naming the functions they reach.
+# The rest of the corpus stays in the cache.
 set -euo pipefail
 
 # Resolved before anything else so the script works from any cwd; the relative
@@ -171,8 +178,8 @@ before=$(find "$FINDINGS" -type f | wc -l)
 # pre-commit hooks (see fuzz_corpus_vs2.h). This is the one place the two
 # representations meet, and it is a pure export -- the header is the source of
 # truth and is never written back to. Corpus entries the fuzzer discovers
-# accumulate alongside them and are deliberately NOT committed: they are a
-# cache that makes the next campaign start warm, not a gate.
+# accumulate alongside them and are not committed as a whole: they are a
+# cache that makes the next campaign start warm (see NEW COVERAGE above).
 python3 - "$CORPUS" "$SCRIPT_DIR/$HEADER" <<'PY'
 import os, re, sys
 out, header = sys.argv[1], sys.argv[2]
