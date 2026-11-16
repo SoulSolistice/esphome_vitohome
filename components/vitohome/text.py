@@ -8,6 +8,7 @@ from . import (
     CONF_READ_BACK,
     CONF_VITOHOME_ID,
     GWG_ACCESS_MODES,
+    SCHALTZEITEN_LENGTH,
     VitoHomeComponent,
     datapoint_expression,
     emit_poll_interval,
@@ -20,10 +21,9 @@ DEPENDENCIES = ["vitohome"]
 
 VitoText = vitohome_ns.class_("VitoText", text.Text, cg.Component)
 
-# A per-day Schaltzeiten program is always 8 bytes (four ON/OFF switch-point
-# pairs); the address is the weekday block (base + day*8). Read and write use
-# the same address, so the hub's read-back re-reads exactly what was written.
-SCHALTZEITEN_LENGTH = 8
+# The datapoint is one day's program (SCHALTZEITEN_LENGTH bytes) at the weekday
+# block (base + day*8). Read and write use the same address, so the hub's
+# read-back re-reads exactly what was written.
 
 # Canonical string upper bound: "HH:MM-HH:MM" x4 + 3 spaces = 47.
 _MAX_LENGTH = 47
