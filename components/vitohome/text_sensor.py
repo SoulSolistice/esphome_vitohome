@@ -108,6 +108,11 @@ def _validate_string_extraction(field_max: int, even: bool):
                 raise cv.Invalid("byte_length requires byte_offset", path=[CONF_BYTE_LENGTH])
             if not 1 <= length <= field_max:
                 raise cv.Invalid(f"length must be 1..{field_max} (got {length})", path=[CONF_LENGTH])
+            if even and length % 2 != 0:
+                raise cv.Invalid(
+                    f"utf16 length must be even (UTF-16LE code units are 2 bytes; got {length})",
+                    path=[CONF_LENGTH],
+                )
         return config
 
     return validator
