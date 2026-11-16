@@ -194,6 +194,44 @@ inline constexpr uint8_t kSeed_raw_c9_refused[] = {
     0x41, 0x06, 0x03, 0xC9, 0x40, 0x50, 0x01, 0x05, 0x68,
 };
 
+// Coverage seeds: units from a 4 h campaign corpus that reach lines the
+// seeds above miss, picked greedily by the lines they add. Each names the
+// functions it reaches.
+
+// campaign coverage: ParserVS2::isNamedFunction, ParserVS2::parse
+inline constexpr uint8_t kSeed_cov_isnamedfunction[] = {
+    0x41,
+    0x07,
+    0x00,
+    0x22,
+};
+
+// campaign coverage: harness `if (size > 3)`
+inline constexpr uint8_t kSeed_cov_harness[] = {
+    0x07,
+};
+
+// campaign coverage: ParserVS2::parse
+inline constexpr uint8_t kSeed_cov_parse[] = {
+    0x41,
+    0xFF,
+    0x41,
+    0x41,
+};
+
+// campaign coverage: ParserVS2::parse
+inline constexpr uint8_t kSeed_cov_parse_2[] = {
+    0x41,
+    0x06,
+    0x03,
+    0xC7,
+};
+
+// campaign coverage: run_once
+inline constexpr uint8_t kSeed_cov_run_once[] = {
+    0x41, 0x41, 0x01, 0x49, 0x75,
+};
+
 struct FuzzSeed {
   const char *name;
   const uint8_t *bytes;
@@ -226,6 +264,11 @@ inline constexpr FuzzSeed kFuzzSeeds[] = {
     {"short_length", kSeed_short_length, sizeof(kSeed_short_length)},
     {"bad_type", kSeed_bad_type, sizeof(kSeed_bad_type)},
     {"payload_len_mismatch", kSeed_payload_len_mismatch, sizeof(kSeed_payload_len_mismatch)},
+    {"cov_isnamedfunction", kSeed_cov_isnamedfunction, sizeof(kSeed_cov_isnamedfunction)},
+    {"cov_harness", kSeed_cov_harness, sizeof(kSeed_cov_harness)},
+    {"cov_parse", kSeed_cov_parse, sizeof(kSeed_cov_parse)},
+    {"cov_parse_2", kSeed_cov_parse_2, sizeof(kSeed_cov_parse_2)},
+    {"cov_run_once", kSeed_cov_run_once, sizeof(kSeed_cov_run_once)},
 };
 
 inline constexpr std::size_t kFuzzSeedCount = sizeof(kFuzzSeeds) / sizeof(kFuzzSeeds[0]);

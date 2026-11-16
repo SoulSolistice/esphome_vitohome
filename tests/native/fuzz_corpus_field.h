@@ -105,6 +105,42 @@ inline constexpr uint8_t kFSeed_masked_write_back[] = {
     0x04, 0x02, 0x01, 0x08, 0x00, 0x10, 0x20, 0x30, 0x40, 0x01,
 };
 
+// Coverage seeds: units from a 4 h campaign corpus that reach lines the
+// seeds above miss, picked greedily by the lines they add. Each names the
+// functions it reaches.
+
+// campaign coverage: harness `const bool wd_ok = bcd_to_int(resp[doff + 4], &wd) && wd <= 7;`, harness
+// `encode_datetime_bcd(dt.year, dt.month, dt.day, wd_ok ? wd : 0, dt.h...`, harness `if (i != 4 || wd_ok)`, harness
+// `resp[i] = (5 + i < size) ? data[5 + i] : 0;`
+inline constexpr uint8_t kFSeed_cov_harness[] = {
+    0x08, 0x00, 0x08, 0x00, 0x00, 0x20, 0x26, 0x11, 0x14, 0x3B,
+};
+
+// campaign coverage: harness `if (size < 5)`
+inline constexpr uint8_t kFSeed_cov_harness_2[] = {
+    0x08,
+};
+
+// campaign coverage: merge_bit_field
+inline constexpr uint8_t kFSeed_cov_merge_bit_field[] = {
+    0x08, 0x00, 0x02, 0x06, 0x21,
+};
+
+// campaign coverage: harness input decoding
+inline constexpr uint8_t kFSeed_cov_harness_3[] = {
+    0x21, 0x0D, 0x5B, 0x80, 0x00,
+};
+
+// campaign coverage: decode_datetime_bcd
+inline constexpr uint8_t kFSeed_cov_decode_datetime_bcd[] = {
+    0x00, 0x02, 0x00, 0x38, 0x40,
+};
+
+// campaign coverage: harness `const uint8_t len = static_cast<uint8_t>(width == 0 ? 1 : (width > ...`
+inline constexpr uint8_t kFSeed_cov_harness_4[] = {
+    0x28, 0xFC, 0xD1, 0x9B, 0xFF,
+};
+
 struct FieldSeed {
   const char *name;
   const uint8_t *bytes;
@@ -131,6 +167,12 @@ inline constexpr FieldSeed kFieldSeeds[] = {
     {"empty_response", kFSeed_empty_response, sizeof(kFSeed_empty_response)},
     {"long_block", kFSeed_long_block, sizeof(kFSeed_long_block)},
     {"masked_write_back", kFSeed_masked_write_back, sizeof(kFSeed_masked_write_back)},
+    {"cov_harness", kFSeed_cov_harness, sizeof(kFSeed_cov_harness)},
+    {"cov_harness_2", kFSeed_cov_harness_2, sizeof(kFSeed_cov_harness_2)},
+    {"cov_merge_bit_field", kFSeed_cov_merge_bit_field, sizeof(kFSeed_cov_merge_bit_field)},
+    {"cov_harness_3", kFSeed_cov_harness_3, sizeof(kFSeed_cov_harness_3)},
+    {"cov_decode_datetime_bcd", kFSeed_cov_decode_datetime_bcd, sizeof(kFSeed_cov_decode_datetime_bcd)},
+    {"cov_harness_4", kFSeed_cov_harness_4, sizeof(kFSeed_cov_harness_4)},
 };
 
 inline constexpr std::size_t kFieldSeedCount = sizeof(kFieldSeeds) / sizeof(kFieldSeeds[0]);

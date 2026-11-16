@@ -131,6 +131,57 @@ inline constexpr uint8_t kRawSpecSeed_empty[] = {
     0x00,
 };
 
+// Coverage seeds: units from a 4 h campaign corpus that reach lines the
+// seeds above miss, picked greedily by the lines they add. Each names the
+// functions it reaches.
+
+// campaign coverage: raw_op_detail::token_is, parse_raw_spec -- "Vs2"
+inline constexpr uint8_t kRawSpecSeed_cov_token_is[] = {
+    0x56,
+    0x73,
+    0x32,
+};
+
+// campaign coverage: parse_raw_spec -- "+"
+inline constexpr uint8_t kRawSpecSeed_cov_parse_raw_spec[] = {
+    0x2B,
+};
+
+// campaign coverage: raw_op_detail::parse_hex -- "kw r ="
+inline constexpr uint8_t kRawSpecSeed_cov_parse_hex[] = {
+    0x6B, 0x77, 0x20, 0x72, 0x20, 0x3D,
+};
+
+// campaign coverage: parse_raw_spec -- "kw r B 8"
+inline constexpr uint8_t kRawSpecSeed_cov_parse_raw_spec_2[] = {
+    0x6B, 0x77, 0x20, 0x72, 0x20, 0x42, 0x20, 0x38,
+};
+
+// campaign coverage: parse_raw_spec -- "KW W F 0"
+inline constexpr uint8_t kRawSpecSeed_cov_parse_raw_spec_3[] = {
+    0x4B, 0x57, 0x20, 0x57, 0x20, 0x46, 0x20, 0x30,
+};
+
+// campaign coverage: parse_raw_spec -- "KW w 6 0 KW"
+inline constexpr uint8_t kRawSpecSeed_cov_parse_raw_spec_4[] = {
+    0x4B, 0x57, 0x20, 0x77, 0x20, 0x36, 0x20, 0x30, 0x20, 0x4B, 0x57,
+};
+
+// campaign coverage: harness input decoding -- "KW r F7 6 3"
+inline constexpr uint8_t kRawSpecSeed_cov_harness[] = {
+    0x4B, 0x57, 0x20, 0x72, 0x20, 0x46, 0x37, 0x20, 0x36, 0x20, 0x33,
+};
+
+// campaign coverage: parse_raw_spec -- "vs1 r 6 0 0"
+inline constexpr uint8_t kRawSpecSeed_cov_parse_raw_spec_5[] = {
+    0x76, 0x73, 0x31, 0x20, 0x72, 0x20, 0x36, 0x20, 0x30, 0x20, 0x30,
+};
+
+// campaign coverage: harness input decoding -- "gwg r C3 5 1"
+inline constexpr uint8_t kRawSpecSeed_cov_harness_2[] = {
+    0x67, 0x77, 0x67, 0x20, 0x72, 0x20, 0x43, 0x33, 0x20, 0x35, 0x20, 0x31,
+};
+
 struct RawSpecSeed {
   const char *name;
   const uint8_t *bytes;
@@ -160,6 +211,15 @@ inline constexpr RawSpecSeed kRawSpecSeeds[] = {
     {"high_bytes", kRawSpecSeed_high_bytes, sizeof(kRawSpecSeed_high_bytes)},
     {"only_prefix", kRawSpecSeed_only_prefix, sizeof(kRawSpecSeed_only_prefix)},
     {"empty", kRawSpecSeed_empty, 0},
+    {"cov_token_is", kRawSpecSeed_cov_token_is, sizeof(kRawSpecSeed_cov_token_is)},
+    {"cov_parse_raw_spec", kRawSpecSeed_cov_parse_raw_spec, sizeof(kRawSpecSeed_cov_parse_raw_spec)},
+    {"cov_parse_hex", kRawSpecSeed_cov_parse_hex, sizeof(kRawSpecSeed_cov_parse_hex)},
+    {"cov_parse_raw_spec_2", kRawSpecSeed_cov_parse_raw_spec_2, sizeof(kRawSpecSeed_cov_parse_raw_spec_2)},
+    {"cov_parse_raw_spec_3", kRawSpecSeed_cov_parse_raw_spec_3, sizeof(kRawSpecSeed_cov_parse_raw_spec_3)},
+    {"cov_parse_raw_spec_4", kRawSpecSeed_cov_parse_raw_spec_4, sizeof(kRawSpecSeed_cov_parse_raw_spec_4)},
+    {"cov_harness", kRawSpecSeed_cov_harness, sizeof(kRawSpecSeed_cov_harness)},
+    {"cov_parse_raw_spec_5", kRawSpecSeed_cov_parse_raw_spec_5, sizeof(kRawSpecSeed_cov_parse_raw_spec_5)},
+    {"cov_harness_2", kRawSpecSeed_cov_harness_2, sizeof(kRawSpecSeed_cov_harness_2)},
 };
 
 inline constexpr std::size_t kRawSpecSeedCount = sizeof(kRawSpecSeeds) / sizeof(kRawSpecSeeds[0]);
