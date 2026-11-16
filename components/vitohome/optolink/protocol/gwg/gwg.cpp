@@ -353,19 +353,13 @@ void GWGEngine::_receive() {
       ++_bytesTransferred;
     _lastMillis = _currentMillis;
   }
-  // Response-completion fix vs. upstream (THIRD_PARTY.md #8): upstream compared
-  // the received byte count against the REQUEST frame length (5 for a read,
-  // len+5 for a write), so a GWG read of any length != 5 could never complete
-  // and timed out. The device actually returns exactly the datapoint's data
-  // bytes for a read (vcontrold GWG getaddr: "SEND 01 CB $addr $hexlen 04;
-  // RECV $len" -- source-confirmed) and, per the KW-family convention, a
-  // single ack byte for a write (model-derived for GWG itself -- vcontrold's
-  // GWG setaddr entry is a stub -- but the 1-byte-ack convention is hardware-
-  // confirmed on the KW sibling protocol, THIRD_PARTY.md #11; GWG remains
-  // unverified on hardware).
-  // Exception, hardware-confirmed: EEPROM, BE and PORT reads are answered per
-  // address, so _currentLength is the cell's length there (gwgCellLength(),
-  // THIRD_PARTY.md #24).
+  // A read is answered with exactly the bytes asked for (vcontrold GWG getaddr:
+  // "SEND 01 CB $addr $hexlen 04; RECV $len"), a write with one ack byte, the
+  // KW-family convention: an EEPROM write answers 00 on hardware, the other
+  // write types are unconfirmed (THIRD_PARTY.md #8, #32). Upstream compared
+  // against the request frame's length instead.
+  // EEPROM, BE and PORT reads are answered per address, so _currentLength is
+  // the cell's length there (gwgCellLength(), THIRD_PARTY.md #24).
   const uint8_t expected = _currentRequest.hasPayload() ? 1 : _currentLength;
   if (_bytesTransferred == expected) {
     _bytesTransferred = 0;  // VS1 parity; _init() also resets before SEND

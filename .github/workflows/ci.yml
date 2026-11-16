@@ -153,7 +153,7 @@ jobs:
           # Each remaining protocol once (esp-idf, the modern default): the
           # protocol axis stresses that engine's translation units + the
           # protocol_select.h #if chain + the -DVITOHOME_PROTOCOL_* flow through
-          # ESPHome's build. UNTESTED on hardware -- this is a compile gate only.
+          # ESPHome's build. A compile gate only.
           # (The host `native` job already proves these engine branches
           # compile/link; this builds them end-to-end through ESPHome.)
           - test.esp32-idf-gwg.yaml   # GWG  / esp-idf

@@ -288,12 +288,10 @@ class GWGEngine {
   // write carries the pair too (PacketGWG::createTelegram()).
   static constexpr uint8_t kEepromPairLength = 2;
 
-  // Active sync poke. OFF by default: INIT waits passively for the device's ENQ
-  // (0x05), byte-identical to the original behaviour. Set to true only if a GWG
-  // device never establishes -- then INIT also sends an EOT (0x04) every
-  // ENQ_POKE_INTERVAL_MS while waiting, mirroring vcontrold's GWG sync
-  // (SEND 04; WAIT 05) and the VS1 engine's EOT fallback. Needs a real GWG unit
-  // to validate; GWG is an untested protocol.
+  // Active sync poke. Off: INIT waits for the device's ENQ (0x05). On, INIT
+  // also sends an EOT (0x04) every ENQ_POKE_INTERVAL_MS while waiting, like
+  // vcontrold's GWG sync (SEND 04; WAIT 05) and the VS1 engine's EOT fallback;
+  // for a unit that never sends an ENQ on its own. Not validated on a unit.
   static constexpr bool SEND_ENQ_POKE = false;
   static constexpr uint32_t ENQ_POKE_INTERVAL_MS = 3000;
 

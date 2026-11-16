@@ -103,7 +103,8 @@ These are intentional divergences from upstream `edc059a7`:
    itself: vcontrold's GWG `setaddr` entry is a stub (`SYNC;RECV 1`), so no
    independent GWG reference exists -- but the 1-byte-ack convention it
    follows is now **hardware-confirmed on the KW sibling protocol** (see
-   item 11). GWG remains unverified on hardware either way. Host-proven by `tests/native/proof_gwg_read.cpp` (read and
+   item 11), and a GWG EEPROM write is answered `00` on hardware (item 32).
+   Host-proven by `tests/native/proof_gwg_read.cpp` (read and
    write completion, exact wire frames); the same proof fails 8 checks
    against the upstream behaviour.
 
@@ -423,7 +424,7 @@ These are intentional divergences from upstream `edc059a7`:
     unreachable `KBUS_VIRTUAL_WRITE` -- and *zero* `PHYSICAL_WRITE`. But `0xC8`
     was the only write byte this engine could emit before this change, and
     dannerph's legacy path defaults to it too. That is the most economical
-    explanation for why no GWG write has ever been confirmed to work anywhere,
+    explanation for why no GWG write was confirmed anywhere before the mode table,
     including openv issue #467.
 
     That issue should also be re-read in light of item 18. Its capture is:

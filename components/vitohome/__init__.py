@@ -2,7 +2,8 @@
 
 P300 (VS2) and KW (VS1) are confirmed on hardware. GWG is build-time selectable
 through the same engine template (protocol_select.h); its reads are confirmed on
-three units, its writes on none (docs/gwg_protocol.md). Platforms:
+three units, of its writes only EEPROM writes, on one (docs/gwg_protocol.md).
+Platforms:
 sensor, binary_sensor, text_sensor, number, select, switch, text, button,
 climate and event. The component decodes and encodes raw Optolink payloads
 itself (see ``decode.h``) and uses the in-tree optolink engine (under
@@ -286,9 +287,9 @@ _RPC_CHECK_DOMAINS = (*_RPC_DOMAINS, "button")
 # `byte_offset:` and the converters mean what they mean for any read.
 #
 # Read-only platforms only (_GFA_DOMAINS): Vitosoft defines no GFA write at all.
-# Hardware-confirmed on KW (VScotHO1_72, burner control 0x24, 2026-10-26); the
-# P300 detour is not confirmed on a unit yet.
-# GWG has no such telegram; _final_validate rejects `access: gfa` there.
+# Hardware-confirmed on VScotHO1_72 (burner control 0x24), over KW and over the
+# P300 detour. GWG has no such telegram; _final_validate rejects `access: gfa`
+# there.
 ACCESS_GFA = "gfa"
 _GFA_DOMAINS = _RPC_DOMAINS
 _GFA_PROTOCOLS = ("KW", "P300")
@@ -374,9 +375,10 @@ VitoClimatePreset = vitohome_ns.struct("VitoClimatePreset")
 VitoHomeComponent = vitohome_ns.class_("VitoHomeComponent", cg.PollingComponent, uart.UARTDevice)
 
 # Selectable protocols. P300 (VS2) and KW (VS1) are confirmed on hardware. GWG
-# builds through the same engine template; its reads are confirmed, its writes
-# are not, and selecting it says so at compile time. The value is the
-# build-flag token (P300/KW/GWG) that selects the engine via protocol_select.h.
+# builds through the same engine template; its reads are confirmed, of its
+# writes only EEPROM writes, and selecting it says so at compile time. The value
+# is the build-flag token (P300/KW/GWG) that selects the engine via
+# protocol_select.h.
 PROTOCOLS = {
     "P300": "P300",
     "VS2": "P300",
@@ -1051,8 +1053,7 @@ CONFIG_SCHEMA = cv.All(
         {
             cv.GenerateID(): cv.declare_id(VitoHomeComponent),
             cv.Optional(CONF_PROTOCOL, default="P300"): cv.enum(PROTOCOLS, upper=True),
-            # Default depends on the protocol (on for P300, off for KW/GWG,
-            # whose boot identification scheme differs); resolved in to_code.
+            # On for every protocol unless set; the default is applied in to_code.
             cv.Optional(CONF_IDENTIFY_DEVICE, visibility=cv.Visibility.ADVANCED): cv.boolean,
             # Log every Optolink telegram (>>> TX / <<< RX) under the
             # 'vitohome.frames' tag. Compile-time: off costs nothing.
@@ -1595,15 +1596,14 @@ async def to_code(config):
     protocol = PROTOCOLS[str(config[CONF_PROTOCOL])]
     cg.add_build_flag(f"-DVITOHOME_PROTOCOL_{protocol}")
     if protocol == "GWG":
-        # KW graduated to hardware-confirmed (VScotHO1_72 field logs 2026-07:
-        # reads, multi-byte clock writes after THIRD_PARTY.md #11, Schaltzeiten,
-        # Betriebsart round-trips). GWG reads are confirmed on three 0x2053
-        # units (issues #13, #21, #35); no GWG write has been confirmed, and
-        # not every access mode answers on every unit (docs/gwg_protocol.md).
+        # GWG reads are confirmed on three 0x2053 units. Of the writes only
+        # EEPROM writes are, on one unit, and not every access mode answers on
+        # every unit (docs/gwg_protocol.md).
         _LOGGER.warning(
-            "vitohome protocol 'GWG': reads are confirmed on hardware, writes are NOT -- no GWG "
-            "write has been verified on any unit, and not every access mode answers on every "
-            "unit. See docs/gwg_protocol.md, and please report results.",
+            "vitohome protocol 'GWG': reads are confirmed on hardware. Of the writes only EEPROM "
+            "writes are (one unit, written and read back); the other write types are NOT, and "
+            "not every access mode answers on every unit. See docs/gwg_protocol.md, and please "
+            "report results.",
         )
 
     if config[CONF_LOG_FRAMES]:
