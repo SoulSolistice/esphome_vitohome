@@ -507,6 +507,10 @@ def converter_default_signed(name: str) -> bool:
 # Bytes 43..48 are unverified. Raise it with evidence, not lore.
 MAX_P300_READ_LENGTH = 48
 
+# A text entity's datapoint: one day's switching-time program, four ON/OFF
+# pairs. Read and written whole (text.py).
+SCHALTZEITEN_LENGTH = 8
+
 # Largest block a whole-block read-modify-write sends; equal to
 # VitoHomeComponent::MAX_RMW_BLOCK (vitohome.h; test_limits_agree.py). The
 # device writes its whole datapoint, so a field smaller than its block is
@@ -1328,9 +1332,19 @@ def _final_validate(config):
                     )
 
         # An EEPROM write carries one cell's complement pair per frame, and the
-        # engine refuses a wider one (PacketGWG::createTelegram()).
+        # engine refuses a wider one (PacketGWG::createTelegram()). A text
+        # entity has no `length`: it always writes a whole day program.
         for domain, entity in _entities_for_hub(full, _WRITE_DOMAINS, hub_id):
-            if str(entity.get(CONF_ACCESS)) == "eeprom" and entity.get(CONF_LENGTH, 1) > 1:
+            if str(entity.get(CONF_ACCESS)) != "eeprom":
+                continue
+            if domain == "text":
+                raise cv.Invalid(
+                    f"text '{_entity_name(entity)}' writes an {SCHALTZEITEN_LENGTH}-byte switching-time "
+                    f"program with 'access: eeprom', but a GWG EEPROM write sets one cell, so the "
+                    f"engine would refuse every write. Use another access mode.",
+                    path=[CONF_ACCESS],
+                )
+            if entity.get(CONF_LENGTH, 1) > 1:
                 raise cv.Invalid(
                     f"{domain} '{_entity_name(entity)}' writes {entity[CONF_LENGTH]} bytes with "
                     f"'access: eeprom', but a GWG EEPROM write sets one cell. Use length: 1, or one "

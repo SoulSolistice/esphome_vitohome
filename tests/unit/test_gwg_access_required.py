@@ -98,14 +98,30 @@ def test_writable_entity_requires_access(domain):
 
 @pytest.mark.parametrize("domain", _FLAT_WRITE_DOMAINS)
 def test_writable_entity_with_access_is_accepted(domain):
+    _validate("GWG", {domain: [_entity({CONF_ACCESS: "be"})]})
+
+
+# Platforms with a `length`; text always writes a whole day program.
+_SIZED_WRITE_DOMAINS = tuple(d for d in _FLAT_WRITE_DOMAINS if d != "text")
+
+
+@pytest.mark.parametrize("domain", _SIZED_WRITE_DOMAINS)
+def test_single_cell_eeprom_write_is_accepted(domain):
     _validate("GWG", {domain: [_entity({CONF_ACCESS: "eeprom"})]})
 
 
-@pytest.mark.parametrize("domain", _FLAT_WRITE_DOMAINS)
+@pytest.mark.parametrize("domain", _SIZED_WRITE_DOMAINS)
 def test_eeprom_write_wider_than_one_cell_is_rejected(domain):
     """An EEPROM write frame carries one cell's complement pair."""
     with pytest.raises(cv.Invalid, match="one cell"):
         _validate("GWG", {domain: [_entity({CONF_ACCESS: "eeprom", "length": 2})]})
+
+
+def test_eeprom_text_is_rejected():
+    """A text entity has no `length`; its 8-byte program is no single cell."""
+    with pytest.raises(cv.Invalid, match="one cell") as err:
+        _validate("GWG", {"text": [_entity({CONF_ACCESS: "eeprom"})]})
+    assert err.value.path == [CONF_ACCESS]
 
 
 @pytest.mark.parametrize("access", ["be", "virtual"])
