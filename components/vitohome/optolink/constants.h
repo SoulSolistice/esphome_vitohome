@@ -92,21 +92,14 @@ constexpr struct {
 // exception on that front too: its getkmaddr command references an undefined
 // `GETKMDDR` macro -- a typo in vcontrold -- so that path is dead there.)
 //
-// Read directions only -- GWG write access-mode support is deliberately out of
-// scope (see GWGEngine::write(), unchanged): the wiki gives write TYPE bytes
-// too, but no implementation anywhere has been confirmed to write to a GWG
-// unit. vogod declares the write bytes but never builds a GWG frame -- its
-// prepareCmd() handles only the P300 and KW send states and returns
-// "not implemented ... (GWG protocol?)" for every GWG type -- so it does not
-// settle the frame layout either. vcontrold's GWG `setaddr` is not merely a stub
-// but a no-op -- its whole body is `SYNC;RECV 1`, which sends the sync EOT and
-// reads a byte without ever transmitting an address, a length, a payload or a
-// TYPE byte. dannerph's write layout disagrees with vitohome's and is
-// untested; openv issue #467 shows a live GWG unit only ever returning 0x05 on
-// write.
+// The evidence above is for the read directions. For writes, see
+// gwgWriteTypeByte(): no other implementation settles the write frame (vogod
+// never builds a GWG frame, vcontrold's GWG `setaddr` sends no address or
+// payload, dannerph's layout is untested), and on hardware only the EEPROM
+// write is confirmed (docs/gwg_protocol.md).
 //
-// PHYSICAL is the pre-existing (and only) behaviour -- it stays the default so
-// a config that never sets `access:` is unaffected.
+// PHYSICAL is the default, so a config that never sets `access:` reads
+// physical.
 enum class GWGAccessMode : uint8_t {
   PHYSICAL = 0,
   VIRTUAL,
