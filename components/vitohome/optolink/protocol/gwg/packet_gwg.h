@@ -48,6 +48,9 @@ class PacketGWG {
   // An EEPROM write of one cell, `01 AD ADDR b0 b1 04`, the two bytes stored
   // as the cell's pair as given.
   bool createEepromPair(uint16_t addr, uint8_t b0, uint8_t b1);
+  // `len` bytes exactly as given, nothing added: an open frame for the raw
+  // lane. Its answer is data, not an acknowledgement.
+  bool createFrame(const uint8_t *bytes, uint8_t len);
   uint8_t length() const;
   uint8_t packetType() const;
   // Whether the frame carries `len` payload bytes (a write's shape): its
@@ -57,10 +60,6 @@ class PacketGWG {
   // payload (false) or before it (true). See GWGEngine::setWriteEotBeforePayload().
   void setEotBeforePayload(bool eotFirst) { _eotBeforePayload = eotFirst; }
   bool eotBeforePayload() const { return _eotBeforePayload; }
-  // Whether a KM-bus read ends in an EOT after its count, for the packets
-  // built from now on. See GWGEngine::setKmbusEot().
-  void setKmbusEot(bool eot) { _kmbusEot = eot; }
-  bool kmbusEot() const { return _kmbusEot; }
 
   void reset();
 
@@ -69,7 +68,6 @@ class PacketGWG {
   uint8_t _length{0};
   bool _hasPayload{false};
   bool _eotBeforePayload{false};
-  bool _kmbusEot{false};
 };
 
 }  // namespace esphome::vitohome::optolink

@@ -30,3 +30,10 @@ uart:
     stop_bits: 2
 
 <<: !include common.yaml
+
+# The second raw gate compiles queue_raw_frame()'s sending branch with the
+# P300 engine; the esp32 P300 configs keep the refusal.
+packages:
+  unsafe_raw:
+    vitohome:
+      unsafe_raw_writes: true

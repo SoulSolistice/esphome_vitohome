@@ -15,7 +15,11 @@
 //   (3) it round-trips: printed in canonical form and parsed again, it gives
 //       the same fields and payload. That is what catches a parser that
 //       accepts a line and silently reads something else from it;
-//   (4) a payload is never classed READ or PROBE (raw_op_class()).
+//   (4) a payload is never classed READ or PROBE (raw_op_class());
+//   (5) an open frame (`<layer> f`) has a layer, 1..RAW_OP_PAYLOAD_MAX bytes
+//       and no code, address or payload flag, and an answer of at most the
+//       cap; its canonical form spells the bytes out, `[ ]` and `{ }` check
+//       bytes included.
 
 #include <cstdio>
 #include <cstdlib>
@@ -46,6 +50,11 @@ void oracle(bool ok, const char *what) {
 }
 
 bool same(const RawSpec &a, const RawSpec &b) {
+  if (a.frame != b.frame)
+    return false;
+  if (a.frame)
+    return a.layer == b.layer && a.frame_len == b.frame_len && a.length == b.length &&
+           std::memcmp(a.payload, b.payload, a.frame_len) == 0;
   if (a.layer != b.layer || a.code != b.code || a.address != b.address || a.length != b.length ||
       a.has_payload != b.has_payload)
     return false;
@@ -71,12 +80,29 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
   }
 
   oracle(error == nullptr, "an accepted spec with an error message");
+  if (spec.frame) {
+    oracle(spec.layer == RawLayer::P300 || spec.layer == RawLayer::KW || spec.layer == RawLayer::GWG,
+           "a frame without a layer");
+    oracle(spec.frame_len >= 1 && spec.frame_len <= RAW_OP_PAYLOAD_MAX, "frame length out of range");
+    oracle(spec.code == 0 && spec.address == 0 && !spec.has_payload, "a frame with telegram fields");
+    oracle(spec.length <= kReadMax, "frame answer above the cap");
+    char line[256];
+    int n = std::snprintf(line, sizeof(line), "%s f", raw_layer_name(spec.layer));
+    for (uint8_t i = 0; i < spec.frame_len && n > 0 && n < static_cast<int>(sizeof(line)); ++i)
+      n += std::snprintf(line + n, sizeof(line) - n, " %02X", spec.payload[i]);
+    if (n > 0 && n < static_cast<int>(sizeof(line)))
+      std::snprintf(line + n, sizeof(line) - n, " / %u", spec.length);
+    RawSpec again;
+    const char *error2 = nullptr;
+    const bool ok2 = parse_raw_spec(line, again, error2, kReadMax);
+    oracle(ok2 && same(spec, again), "the canonical frame does not parse back to the same bytes");
+    std::free(text);
+    return 0;
+  }
   oracle(spec.layer == RawLayer::P300 || spec.layer == RawLayer::KW || spec.layer == RawLayer::GWG,
          "accepted without a layer");
   oracle(spec.code != 0 && (spec.layer != RawLayer::P300 || spec.code <= 0x1F), "code out of range");
-  oracle(spec.layer != RawLayer::GWG || spec.address <= 0xFF ||
-             (!spec.has_payload && optolink::isGwgKmbusReadType(spec.code)),
-         "GWG address above FF outside a KM-bus read");
+  oracle(spec.layer != RawLayer::GWG || spec.address <= 0xFF, "GWG address above FF");
   if (spec.has_payload) {
     oracle(spec.length >= 1 && spec.length <= RAW_OP_PAYLOAD_MAX, "payload length out of range");
   } else {

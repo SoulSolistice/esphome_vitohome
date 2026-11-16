@@ -10,19 +10,39 @@
 //
 //   <layer> r <code> <address> <length>      a telegram without payload
 //   <layer> w <code> <address> <bytes...>    a telegram carrying payload
+//   <layer> f <bytes...> [/ <length>]        an open frame
 //
 //   layer    p300 (vs2), kw (vs1), gwg
 //   code     hex: the P300 function code (1..1F, the low five bits of the
 //            flags byte), the KW type byte, the GWG TYPE byte
-//   address  hex, 0..FFFF (GWG: 0..FF; a KM-bus read 33 / 43: bus, address)
+//   address  hex, 0..FFFF (GWG: 0..FF)
 //   length   decimal, the bytes asked for (P300 code 07 may ask for 0)
 //   bytes    hex, as separate bytes ("00 0A") or runs ("000A")
+//
+// r and w stay inside the layer's protocol: the engine builds the telegram
+// and checks the answer by that protocol's rules. f is outside every
+// protocol: nothing is added to the bytes and nothing in the answer is
+// checked; only the link's timing applies.
+//
+// An open frame goes out exactly as given and is answered with `length`
+// bytes, or without `/ <length>` with whatever arrives until the line is
+// quiet. Its layer must be the link's protocol. On KW and GWG it answers the
+// device's ENQ, so a leading 01 is part of it; on P300 it goes out inside the
+// session, the 41 and the checksum included, and the answer is raw, the ACK
+// too. Bytes between `[` and `]` are followed by their CRC-16/KERMIT, low byte
+// first: the KM-bus telegram check (openv wiki, KM-Bus). Bytes between `{`
+// and `}` are followed by their sum modulo 256: the P300 checksum, over the
+// bytes after the 41. At most 32 bytes, the check bytes included.
 //
 //   p300 r 05 1000 16      EEPROM read, 16 bytes at 0x1000
 //   kw r 7B 0800 2         PROZESS_READ (over P300: the KW detour)
 //   gwg r 31 05 1          an unnamed GWG TYPE byte
-//   gwg r 43 1001 1        KMBUS_EEPROM_READ, bus 10, address 01
 //   p300 w 02 2306 25      Virtual_WRITE of one byte
+//   gwg f 01 CB 6F 01 04 / 1             a physical read, written out
+//   gwg f 01 43 [01 00 33 0A 01 01 F8 04] 04
+//                          a KM-bus telegram with its CRC appended
+//   kw f 01 F7 00 F8 02 / 2              a KW read, written out
+//   p300 f 41 {05 00 01 00 F8 02}        a P300 read with its checksum
 
 #include <cctype>
 #include <cstddef>
@@ -55,11 +75,35 @@ struct RawSpec {
   RawLayer layer;
   uint8_t code;
   uint16_t address;
-  // The bytes asked for (r), or the payload's length (w).
+  // The bytes asked for (r, f; 0 for f: until the line is quiet), or the
+  // payload's length (w).
   uint8_t length;
   bool has_payload;
+  // An open frame (f): `payload` holds its `frame_len` bytes; code and address
+  // are 0.
+  bool frame;
+  uint8_t frame_len;
   uint8_t payload[RAW_OP_PAYLOAD_MAX];
 };
+
+// CRC-16/KERMIT (poly 0x1021 reflected, init 0): the KM-bus telegram check.
+inline uint16_t km_crc16(const uint8_t *data, std::size_t len) {
+  uint16_t crc = 0;
+  for (std::size_t i = 0; i < len; ++i) {
+    crc ^= data[i];
+    for (int bit = 0; bit < 8; ++bit)
+      crc = (crc & 1) != 0 ? static_cast<uint16_t>((crc >> 1) ^ 0x8408) : static_cast<uint16_t>(crc >> 1);
+  }
+  return crc;
+}
+
+// The P300 checksum: the sum of the bytes after the 41, modulo 256.
+inline uint8_t p300_sum8(const uint8_t *data, std::size_t len) {
+  uint8_t sum = 0;
+  for (std::size_t i = 0; i < len; ++i)
+    sum = static_cast<uint8_t>(sum + data[i]);
+  return sum;
+}
 
 inline const char *raw_layer_name(RawLayer layer) {
   switch (layer) {
@@ -202,6 +246,98 @@ inline bool parse_dec(const char *begin, std::size_t len, unsigned long max, uns
 
 }  // namespace raw_op_detail
 
+// The rest of an open frame spec, after `<layer> f`.
+inline bool parse_raw_frame(const char *p, RawSpec &out, const char *&error, uint8_t read_max) {
+  using namespace raw_op_detail;
+  const char *tok = nullptr;
+  std::size_t len = 0;
+  std::size_t n = 0;
+  std::size_t group_from = 0;
+  char group = 0;  // '[' or '{' while one is open
+  bool answer = false;
+  while (next_token(p, tok, len)) {
+    if (len == 1 && tok[0] == '/') {
+      unsigned long value = 0;
+      if (!next_token(p, tok, len) || !parse_dec(tok, len, read_max, value)) {
+        error = "length: decimal after /, at most the read cap";
+        return false;
+      }
+      out.length = static_cast<uint8_t>(value);
+      answer = true;
+      break;
+    }
+    if (len != 0 && (tok[0] == '[' || tok[0] == '{')) {
+      if (group != 0) {
+        error = "bytes: a group inside [ ] or { }";
+        return false;
+      }
+      group = tok[0];
+      group_from = n;
+      ++tok;
+      --len;
+    }
+    const char close = len != 0 && (tok[len - 1] == ']' || tok[len - 1] == '}') ? tok[len - 1] : 0;
+    if (close != 0)
+      --len;
+    if (len > 2 && tok[0] == '0' && (tok[1] == 'x' || tok[1] == 'X')) {
+      tok += 2;
+      len -= 2;
+    }
+    if (len % 2 != 0) {
+      error = "bytes: hex, two digits each";
+      return false;
+    }
+    for (std::size_t i = 0; i < len; i += 2) {
+      const int hi = hex_digit(tok[i]);
+      const int lo = hex_digit(tok[i + 1]);
+      if (hi < 0 || lo < 0) {
+        error = "bytes: hex, two digits each";
+        return false;
+      }
+      if (n == RAW_OP_PAYLOAD_MAX) {
+        error = "bytes: at most 32, the check bytes included";
+        return false;
+      }
+      out.payload[n++] = static_cast<uint8_t>(hi * 16 + lo);
+    }
+    if (close != 0) {
+      if (group != (close == ']' ? '[' : '{') || n == group_from) {
+        error = "bytes: ] or } without its [ or {, or with nothing inside";
+        return false;
+      }
+      const bool crc = group == '[';
+      if (n + (crc ? 2 : 1) > RAW_OP_PAYLOAD_MAX) {
+        error = "bytes: at most 32, the check bytes included";
+        return false;
+      }
+      if (crc) {
+        const uint16_t value = km_crc16(out.payload + group_from, n - group_from);
+        out.payload[n++] = static_cast<uint8_t>(value & 0xFF);
+        out.payload[n++] = static_cast<uint8_t>(value >> 8);
+      } else {
+        out.payload[n] = p300_sum8(out.payload + group_from, n - group_from);
+        ++n;
+      }
+      group = 0;
+    }
+  }
+  if (group != 0) {
+    error = "bytes: [ or { never closed";
+    return false;
+  }
+  if (n == 0) {
+    error = "bytes: at least one";
+    return false;
+  }
+  if (answer && next_token(p, tok, len)) {
+    error = "trailing field after the length";
+    return false;
+  }
+  out.frame = true;
+  out.frame_len = static_cast<uint8_t>(n);
+  return true;
+}
+
 // Parses a spec (see the top of this file). On failure returns false and
 // points `error` at a static message naming the field. `read_max` caps the
 // length a read may ask for.
@@ -232,10 +368,12 @@ inline bool parse_raw_spec(const char *text, RawSpec &out, const char *&error, u
     return false;
   }
 
-  if (!next_token(p, tok, len) || !(token_is(tok, len, "r") || token_is(tok, len, "w"))) {
-    error = "direction: r or w";
+  if (!next_token(p, tok, len) || !(token_is(tok, len, "r") || token_is(tok, len, "w") || token_is(tok, len, "f"))) {
+    error = "direction: r, w or f";
     return false;
   }
+  if (token_is(tok, len, "f"))
+    return parse_raw_frame(p, out, error, read_max);
   out.has_payload = token_is(tok, len, "w");
 
   unsigned long value = 0;
@@ -246,11 +384,9 @@ inline bool parse_raw_spec(const char *text, RawSpec &out, const char *&error, u
   }
   out.code = static_cast<uint8_t>(value);
 
-  // GWG addresses one byte, except a KM-bus read: bus in the high byte.
-  const bool gwg_short = out.layer == RawLayer::GWG && (out.has_payload || !optolink::isGwgKmbusReadType(out.code));
-  const unsigned long address_max = gwg_short ? 0xFF : 0xFFFF;
+  const unsigned long address_max = out.layer == RawLayer::GWG ? 0xFF : 0xFFFF;
   if (!next_token(p, tok, len) || !parse_hex(tok, len, address_max, value)) {
-    error = gwg_short ? "address: hex 00..FF" : "address: hex 0000..FFFF";
+    error = out.layer == RawLayer::GWG ? "address: hex 00..FF" : "address: hex 0000..FFFF";
     return false;
   }
   out.address = static_cast<uint16_t>(value);

@@ -58,6 +58,7 @@ bool VS2Engine::request(uint8_t function, uint16_t address, uint8_t length, cons
     _busy = true;
     _requestTime = _currentMillis;
     _kw = false;
+    _frame = false;
     _errorPayloadLength = 0;
     _parser.expectFunction(function);
     optolink_log_i("function 0x%02x packet OK", function);
@@ -80,6 +81,7 @@ bool VS2Engine::kwTelegram(uint8_t type, uint16_t address, uint8_t length, const
     return false;
   }
   _kw = true;
+  _frame = false;
   _kwType = type;
   _kwHasPayload = data != nullptr;
   if (data)
@@ -90,6 +92,27 @@ bool VS2Engine::kwTelegram(uint8_t type, uint16_t address, uint8_t length, const
   _busy = true;
   _requestTime = _currentMillis;
   optolink_log_i("kw telegram 0x%02x OK", type);
+  return true;
+}
+
+bool VS2Engine::frame(const uint8_t *bytes, uint8_t length, uint8_t answerLength) {
+  if (_busy) {
+    return false;
+  }
+  if (bytes == nullptr || length == 0 || length > FRAME_MAX || answerLength > FRAME_MAX) {
+    optolink_log_w("frame of %u bytes, answer %u: out of range (1..%u)", length, answerLength, FRAME_MAX);
+    return false;
+  }
+  std::memcpy(_frameBytes, bytes, length);
+  _frameLen = length;
+  _frame = true;
+  _kw = false;
+  _currentAddress = 0;
+  _currentLength = answerLength;
+  _errorPayloadLength = 0;
+  _busy = true;
+  _requestTime = _currentMillis;
+  optolink_log_i("frame of %u bytes OK", length);
   return true;
 }
 
@@ -155,6 +178,12 @@ void VS2Engine::loop() {
       break;
     case State::KW_CHAIN:
       _kwChain();
+      break;
+    case State::FRAME_SEND:
+      _frameSend();
+      break;
+    case State::FRAME_RECEIVE:
+      _frameReceive();
       break;
     case State::UNDEFINED:
       // begin() not yet called
@@ -253,6 +282,10 @@ void VS2Engine::_idle() {
     // A KW telegram leaves P300 for KW (see kwTelegram()).
     if (_kw) {
       _setState(State::KW_DROP);
+      return;
+    }
+    if (_frame) {
+      _setState(State::FRAME_SEND);
       return;
     }
     _setState(State::SENDSTART);
@@ -486,6 +519,44 @@ void VS2Engine::_kwChain() {
   if (_busy || _currentMillis - _lastMillis > KW_LINGER_MS) {
     _setState(State::RESET);
   }
+}
+
+// --- An open frame (frame()) -------------------------------------------------
+
+void VS2Engine::_frameSend() {
+  _bytesTransferred += _interface->write(&_frameBytes[_bytesTransferred], _frameLen - _bytesTransferred);
+  if (_bytesTransferred == _frameLen) {
+    _bytesTransferred = 0;
+    _lastMillis = _currentMillis;
+    // A handshake before the session was idle may have used up most of the
+    // watchdog; the answer gets the whole of it.
+    _requestTime = _currentMillis;
+    _setState(State::FRAME_RECEIVE);
+  }
+}
+
+// Bytes past a fixed answer length stay on the line for RESET to drain.
+void VS2Engine::_frameReceive() {
+  while (_interface->available() && (_currentLength == 0 || _bytesTransferred < _currentLength)) {
+    const uint8_t byte = _interface->read();
+    if (_bytesTransferred < FRAME_MAX)
+      _frameAnswer[_bytesTransferred++] = byte;
+    _lastMillis = _currentMillis;
+  }
+  const bool complete = _currentLength != 0 && _bytesTransferred == _currentLength;
+  const bool quiet = _currentMillis - _lastMillis > FRAME_QUIET_MS;
+  if (!complete && !quiet)
+    return;
+  const uint8_t received = _bytesTransferred;
+  _setState(State::RESET);
+  if (complete || (_currentLength == 0 && received != 0)) {
+    if (_onResponseCallback) {
+      _onResponseCallback(_frameAnswer, received, 0);
+    }
+    _busy = false;
+    return;
+  }
+  _tryOnError(OptolinkResult::TIMEOUT);
 }
 
 void VS2Engine::_tryOnResponse() {

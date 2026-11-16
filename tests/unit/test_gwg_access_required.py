@@ -195,6 +195,17 @@ def test_no_warning_off_gwg(protocol, caplog):
     assert "assuming physical" not in caplog.text
 
 
+@pytest.mark.parametrize(
+    ("domain", "kind"),
+    [("binary_sensor", "connectivity"), ("text_sensor", "device_id"), ("text_sensor", "scan_result")],
+)
+def test_hub_fed_entity_does_not_warn(domain, kind, caplog):
+    """No address, no read: the hub publishes into it."""
+    entity = {"platform": "vitohome", CONF_NAME: "hub", CONF_VITOHOME_ID: _HUB_ID, "type": kind}
+    _validate("GWG", {domain: [entity]})
+    assert "assuming physical" not in caplog.text
+
+
 def test_warning_is_per_entity(caplog):
     _validate("GWG", {"sensor": [_entity(name="alpha"), _entity(name="beta")]})
     assert "alpha" in caplog.text

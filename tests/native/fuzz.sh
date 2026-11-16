@@ -43,13 +43,13 @@
 #   field        the value half of decode.h -- field extraction, scaling and
 #                the encode inverses, with round-trip oracles.
 #   raw_spec     raw_op.h's spec parser -- a typed line to an operation.
-#   raw_engines  one generic telegram on each engine against a fuzzed
-#                controller.
+#   raw_engines  one generic telegram or open frame on each engine against a
+#                fuzzed controller.
 #   gwg_session  GWG sessions -- burst, EEPROM runs, ENQ delay, deadline and
 #                the late-answer report against a fuzzed device.
 #   kw_session   KW sessions on a KW link and over the P300 detour -- chain
-#                window, GFA pause and protocol switches against a fuzzed
-#                controller.
+#                window, GFA pause, protocol switches and open frames against
+#                a fuzzed controller.
 #
 # WHAT TO DO WITH A FINDING. libFuzzer writes the reproducer to
 # $FUZZ_DIR/<target>/findings/ and prints the path. First replay it against the

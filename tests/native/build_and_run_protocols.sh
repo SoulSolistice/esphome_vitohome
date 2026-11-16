@@ -114,11 +114,6 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTO
   proof_gwg_enq_send_delay.cpp "${SRCS[@]}" -o gwg_enq_send_delay
 ./gwg_enq_send_delay
 
-echo "== GWG KM-bus reads: bus address, optional EOT (THIRD_PARTY.md #37) =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
-  proof_gwg_kmbus.cpp "${SRCS[@]}" -o gwg_kmbus
-./gwg_kmbus
-
 echo "== GWG write access modes (EEPROM/BE; KMBUS refused) =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
   proof_gwg_write_access.cpp "${SRCS[@]}" -o gwg_write_access
@@ -133,6 +128,19 @@ echo "== GWG EEPROM complement pairs =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
   proof_gwg_eeprom_pairs.cpp "${SRCS[@]}" -o gwg_eeprom_pairs
 ./gwg_eeprom_pairs
+
+echo "== GWG open frames (raw lane) =="
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
+  proof_gwg_frame.cpp "${SRCS[@]}" -o gwg_frame
+./gwg_frame
+
+echo "== KW open frames (raw lane) =="
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" -I"$OPTO"   proof_kw_frame.cpp "${SRCS[@]}" -o kw_frame
+./kw_frame
+
+echo "== P300 open frames (raw lane) =="
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO"   proof_p300_frame.cpp "${SRCS[@]}" -o p300_frame
+./p300_frame
 
 echo "== VS1/KW chaining + the two split sync windows (#22) =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" -I"$OPTO" \

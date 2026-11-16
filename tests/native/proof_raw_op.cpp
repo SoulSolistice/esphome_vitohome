@@ -8,6 +8,8 @@
 //      payload, and everything that may change the controller is UNSAFE;
 //   D) exhaustively over layer x code x payload: a payload is never READ or
 //      PROBE.
+//   E) open frames (`<layer> f`): bytes, `[ ]` with CRC-16/KERMIT, `{ }` with
+//      the P300 sum, `/ n`, on every layer.
 //
 // Built by build_and_run.sh.
 
@@ -68,9 +70,6 @@ int main() {
   check(parse("p300 r 1F FFFF 48", s) && s.code == 0x1F && s.address == 0xFFFF && s.length == kReadMax,
         "A: the edges: code 1F, address FFFF, length = read cap");
   check(parse("gwg r CB FF 1", s) && s.address == 0xFF, "A: GWG address FF");
-  check(parse("gwg r 43 1001 1", s) && s.code == 0x43 && s.address == 0x1001,
-        "A: a GWG KM-bus read takes bus and address");
-  check(parse("gwg r 33 FFFF 4", s) && s.address == 0xFFFF, "A: GWG KM-bus address FFFF");
   {
     char line[160] = "p300 w 02 0000";
     for (int i = 0; i < 32; ++i)
@@ -89,7 +88,6 @@ int main() {
   check(refused("kw r G1 0000 1", "code"), "B: code not hex");
   check(refused("p300 r 01 10000 1", "address"), "B: address above FFFF");
   check(refused("gwg r CB 100 1", "address"), "B: GWG address above FF");
-  check(refused("gwg w 33 1000 01", "address"), "B: GWG 33 with payload keeps the one-byte address");
   check(refused("p300 r 01", "address"), "B: address missing");
   check(refused("p300 r 01 0000", "length"), "B: length missing");
   check(refused("p300 r 01 0000 0", "length"), "B: length 0 outside a call");
@@ -109,6 +107,96 @@ int main() {
   {
     const char *error = nullptr;
     check(!parse_raw_spec(nullptr, s, error, kReadMax) && error != nullptr, "B: null text");
+  }
+
+  // --- E ------------------------------------------------------------------
+  {
+    // The openv wiki's KM-bus example: the ID read at F8 ends in 31 B4.
+    const uint8_t wiki[] = {0x01, 0x00, 0x33, 0x0A, 0x01, 0x01, 0xF8, 0x04};
+    check(km_crc16(wiki, sizeof(wiki)) == 0xB431, "E: CRC-16/KERMIT of the wiki example is 31 B4");
+    const uint8_t check_string[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9'};
+    check(km_crc16(check_string, sizeof(check_string)) == 0x2189, "E: CRC-16/KERMIT check value 2189");
+    check(km_crc16(nullptr, 0) == 0, "E: CRC of nothing is 0");
+    // The P300 read of 0x00F8, two bytes: 41 05 00 01 00 F8 02, checksum 00.
+    const uint8_t p300[] = {0x05, 0x00, 0x01, 0x00, 0xF8, 0x02};
+    check(p300_sum8(p300, sizeof(p300)) == 0x00, "E: P300 sum of a read of 00F8 is 00");
+    const uint8_t answer[] = {0x07, 0x01, 0x01, 0x00, 0xF8, 0x02, 0x20, 0xCB};
+    check(p300_sum8(answer, sizeof(answer)) == 0xEE, "E: P300 sum of its answer 20 CB is EE");
+  }
+  check(parse("gwg f 01 CB 6F 01 04 / 1", s) && s.frame && s.layer == RawLayer::GWG && s.frame_len == 5 &&
+            s.length == 1 && s.code == 0 && s.address == 0 && !s.has_payload && s.payload[0] == 0x01 &&
+            s.payload[1] == 0xCB && s.payload[4] == 0x04,
+        "A: gwg f 01 CB 6F 01 04 / 1");
+  check(parse("gwg f 01 43 01 01 04", s) && s.frame && s.frame_len == 5 && s.length == 0,
+        "A: no / is collect mode (length 0)");
+  check(parse("GWG F 0143 0x01 0104 / 0", s) && s.frame && s.frame_len == 5 && s.length == 0,
+        "A: case, runs, 0x, an explicit / 0");
+  check(parse("gwg f 01 43 [01 00 33 0A 01 01 F8 04] 04", s) && s.frame_len == 13 && s.payload[10] == 0x31 &&
+            s.payload[11] == 0xB4 && s.payload[12] == 0x04,
+        "A: [ ] appends the CRC, low byte first");
+  check(parse("gwg f 01 43 [ 01 00 33 0A 01 01 F8 04 ] 04", s) && s.frame_len == 13 && s.payload[10] == 0x31,
+        "A: [ and ] as tokens of their own");
+  check(parse("gwg f [01]", s) && s.frame_len == 3, "A: a CRC over one byte");
+  {
+    char line[160] = "gwg f";
+    for (int i = 0; i < 32; ++i)
+      std::strcat(line, " AB");
+    check(parse(line, s) && s.frame_len == 32, "A: a 32-byte frame");
+    std::strcat(line, " / 48");
+    check(parse(line, s) && s.length == kReadMax, "A: answer length = read cap");
+  }
+  check(parse("kw f 01 F7 00 F8 02 / 2", s) && s.frame && s.layer == RawLayer::KW && s.frame_len == 5 &&
+            s.length == 2 && s.payload[0] == 0x01,
+        "A: kw f 01 F7 00 F8 02 / 2");
+  check(parse("p300 f 41 {05 00 01 00 F8 02}", s) && s.frame && s.layer == RawLayer::P300 && s.frame_len == 8 &&
+            s.payload[0] == 0x41 && s.payload[6] == 0x02 && s.payload[7] == 0x00 && s.length == 0,
+        "A: { } appends the P300 sum");
+  check(parse("vs2 f 41 { 07 01 01 00 F8 02 20 CB } / 4", s) && s.layer == RawLayer::P300 && s.frame_len == 10 &&
+            s.payload[9] == 0xEE && s.length == 4,
+        "A: { and } as tokens, the vs2 alias");
+  check(parse("kw f [01 02] {03 04} 05", s) && s.frame_len == 8 && s.payload[4] == 0x03 && s.payload[6] == 0x07 &&
+            s.payload[7] == 0x05,
+        "A: a [ ] and a { } in one frame");
+  check(refused("gwg f", "bytes"), "B: frame without bytes");
+  check(refused("gwg f / 2", "bytes"), "B: only a length");
+  check(refused("gwg f 01 4", "bytes"), "B: frame byte with one digit");
+  check(refused("gwg f 01 GG", "bytes"), "B: frame byte not hex");
+  check(refused("gwg f 01 [02 [03] 04]", "bytes"), "B: nested [");
+  check(refused("gwg f 01 02]", "bytes"), "B: ] without [");
+  check(refused("gwg f 01 []", "bytes"), "B: empty [ ]");
+  check(refused("gwg f 01 [02 03", "bytes"), "B: [ without ]");
+  check(refused("gwg f 01 [02 / 1", "bytes"), "B: / inside [ ]");
+  check(refused("p300 f 41 {05 {06} 07}", "bytes"), "B: nested {");
+  check(refused("p300 f 41 [05 {06}]", "bytes"), "B: { inside [ ]");
+  check(refused("p300 f 41 {05 06]", "bytes"), "B: { closed by ]");
+  check(refused("p300 f 41 [05 06}", "bytes"), "B: [ closed by }");
+  check(refused("p300 f 41 {}", "bytes"), "B: empty { }");
+  check(refused("p300 f 41 05}", "bytes"), "B: } without {");
+  check(refused("p300 f 41 {05", "bytes"), "B: { without }");
+  check(refused("gwg f 01 /", "length"), "B: / without a length");
+  check(refused("gwg f 01 / 49", "length"), "B: answer above the read cap");
+  check(refused("gwg f 01 / 1x", "length"), "B: answer length not decimal");
+  check(refused("gwg f 01 / 1 02", "trailing"), "B: a field after the answer length");
+  {
+    char line[160] = "gwg f";
+    for (int i = 0; i < 33; ++i)
+      std::strcat(line, " AB");
+    check(refused(line, "bytes"), "B: 33 frame bytes");
+    char crc_line[160] = "gwg f [";
+    for (int i = 0; i < 31; ++i)
+      std::strcat(crc_line, " AB");
+    std::strcat(crc_line, " ]");
+    check(refused(crc_line, "bytes"), "B: 31 bytes and their CRC exceed 32");
+    char sum_line[160] = "p300 f {";
+    for (int i = 0; i < 31; ++i)
+      std::strcat(sum_line, " AB");
+    std::strcat(sum_line, " }");
+    check(parse(sum_line, s) && s.frame_len == 32, "A: 31 bytes and their sum are 32");
+    char over_line[160] = "p300 f {";
+    for (int i = 0; i < 32; ++i)
+      std::strcat(over_line, " AB");
+    std::strcat(over_line, " }");
+    check(refused(over_line, "bytes"), "B: 32 bytes and their sum exceed 32");
   }
 
   // --- C ------------------------------------------------------------------

@@ -37,7 +37,7 @@ secrets.
 | `vitohome-dhw.yaml` | Domestic hot water as a native HA `water_heater`, built from existing datapoints via ESPHome's template platform — temperature-only, because DHW on/off is folded into the shared Betriebsart register on this controller. |
 | `vitohome-timer-clock.yaml` | `time_sync` (hub reads the device clock at `0x088E` and rewrites it on drift) plus per-day Schaltzeiten editing through `text:` entities — one entity per weekday holding that day's switching program. |
 | `vitohome-scanner-raw.yaml` | The raw-lane console: one-off `queue_raw_read`/`queue_raw_write`, raw hex with exact 64-bit integer views (no float32 narrowing), and a range sweep from an HA action. Use it to probe addresses. |
-| `vitohome-gwg-kmbus-probe.yaml` | GWG KM-bus reads (issue #35): three buttons test the frame layout with and without the EOT, scan buses `00`-`FF`, and read the Vitosoft `kmbus_eeprom` datapoints on one bus. All reads; flash it in place of your config while probing. |
+| `vitohome-gwg-kmbus-probe.yaml` | GWG KM-bus framing (issue #35): one button sends five candidate frames for two addresses as open frames (`gwg f`, a KM-bus CRC appended where asked), another sends a frame typed in. Untested bytes, so it sets `unsafe_raw_writes`; flash it in place of your config while probing. |
 
 ## Supporting file
 

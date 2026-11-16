@@ -132,6 +132,19 @@ class VS2Engine {
   static constexpr uint32_t KW_ANSWER_TIMEOUT_MS = 1000;
   static constexpr uint32_t GFA_GAP_MS = 25;
 
+  // An open frame, for the raw lane (VitoHomeComponent::queue_raw_frame()):
+  // `bytes` exactly as given, inside the P300 session -- the 0x41 and the
+  // checksum are the caller's. What comes back is collected raw, the ACK and
+  // any frame included: `answerLength` bytes, or with 0 whatever arrives until
+  // the line is quiet for FRAME_QUIET_MS (at most FRAME_MAX bytes either way).
+  // Then the session is re-established (RESET), since the controller's state
+  // is unknown. Delivered at address 0.
+  bool frame(const uint8_t *bytes, uint8_t length, uint8_t answerLength);
+  static constexpr uint8_t FRAME_MAX = MAX_PAYLOAD;
+  // No P300 answer time is measured here, so this is a choice: an answer that
+  // starts later reads as silence.
+  static constexpr uint32_t FRAME_QUIET_MS = 500;
+
   bool begin();
   void loop();
   void end();
@@ -157,6 +170,9 @@ class VS2Engine {
     KW_SEND,     // [01] <type> <addr hi> <addr lo> <len> [payload]
     KW_RECEIVE,  // <len> raw bytes, or the one acknowledgement byte
     KW_CHAIN,    // another KW telegram, or back to P300
+    // An open frame (frame()).
+    FRAME_SEND,     // the caller's bytes
+    FRAME_RECEIVE,  // whatever comes back, raw
     UNDEFINED
   } _state;
   uint32_t _currentMillis;
@@ -181,6 +197,11 @@ class VS2Engine {
   uint8_t _kwFrame[5 + KW_MAX_PAYLOAD]{};
   uint8_t _kwFrameLen{0};
   uint8_t _kwAnswer[KW_MAX_LENGTH]{};
+  // An open frame in flight (frame()), and its answer.
+  bool _frame{false};
+  uint8_t _frameBytes[FRAME_MAX]{};
+  uint8_t _frameLen{0};
+  uint8_t _frameAnswer[FRAME_MAX]{};
   // See errorPayload().
   uint8_t _errorPayload[ERROR_PAYLOAD_MAX]{};
   uint8_t _errorPayloadLength{0};
@@ -206,6 +227,8 @@ class VS2Engine {
   void _kwReceive();
   void _kwChain();
   void _kwStart(bool enqAck);
+  void _frameSend();
+  void _frameReceive();
 
   void _tryOnResponse();
   void _tryOnError(OptolinkResult result);

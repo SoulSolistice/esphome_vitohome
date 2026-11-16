@@ -18,8 +18,15 @@ static constexpr bool raw_layer_available(RawLayer layer) {
          (layer == RawLayer::GWG && IS_GWG);
 }
 
+// The layer the link speaks, and so the only one an open frame can take.
+static constexpr RawLayer link_layer() { return IS_GWG ? RawLayer::GWG : IS_KW ? RawLayer::KW : RawLayer::P300; }
+
 void VitoHomeComponent::raw_label_(char *out, std::size_t cap, bool is_write, AddressSpace space, RawLayer layer,
-                                   uint8_t code) {
+                                   uint8_t code, bool frame) {
+  if (frame) {
+    snprintf(out, cap, "%s frame", raw_layer_name(layer));
+    return;
+  }
   if (layer != RawLayer::NONE) {
     snprintf(out, cap, "%s %02X %s", raw_layer_name(layer), code, is_write ? "write" : "read");
     return;
@@ -99,6 +106,14 @@ bool VitoHomeComponent::queue_raw_op(const char *spec) {
     ESP_LOGW(TAG, "queue_raw_op: '%s' -- %s", spec != nullptr ? spec : "", error);
     return false;
   }
+  if (parsed.frame) {
+    if (parsed.layer != link_layer()) {
+      ESP_LOGW(TAG, "queue_raw_op: '%s' -- a %s frame on a %s link; a frame takes the link's protocol", spec,
+               raw_layer_name(parsed.layer), PROTOCOL_NAME);
+      return false;
+    }
+    return this->queue_raw_frame(parsed.payload, parsed.frame_len, parsed.length);
+  }
   return this->queue_raw_op(parsed.layer, parsed.code, parsed.address, parsed.length,
                             parsed.has_payload ? parsed.payload : nullptr);
 }
@@ -145,6 +160,36 @@ bool VitoHomeComponent::queue_raw_op(RawLayer layer, uint8_t code, uint16_t addr
     return false;
   }
   return this->enqueue_raw_(address, length, false, nullptr, 0, AddressSpace::OWN, layer, code);
+#endif
+}
+
+bool VitoHomeComponent::queue_raw_frame(const uint8_t *bytes, std::size_t len, uint8_t answer_length) {
+#if !defined(VITOHOME_RAW_UNRESTRICTED) || !defined(VITOHOME_RAW_UNSAFE_WRITES)
+  ESP_LOGW(TAG, "queue_raw_frame: refused -- an open frame needs raw_access: unrestricted and unsafe_raw_writes: true "
+                "on the vitohome hub");
+  (void) bytes;
+  (void) len;
+  (void) answer_length;
+  return false;
+#else
+  if (bytes == nullptr || len == 0 || len > RAW_WRITE_MAX) {
+    ESP_LOGW(TAG, "queue_raw_frame: %zu bytes out of range (1..%u)", len, RAW_WRITE_MAX);
+    return false;
+  }
+  if (answer_length > RAW_READ_MAX) {
+    ESP_LOGW(TAG, "queue_raw_frame: answer length %u out of range (0..%u)", answer_length, RAW_READ_MAX);
+    return false;
+  }
+  char label[24];
+  raw_label_(label, sizeof(label), false, AddressSpace::OWN, link_layer(), 0, true);
+  ESP_LOGW(TAG, "queue_raw_frame: sending unsafe %s of %zu bytes", label, len);
+  RawOp operation{};
+  operation.length = answer_length;
+  operation.bytes_len = static_cast<uint8_t>(len);
+  std::memcpy(operation.bytes, bytes, len);
+  operation.layer = link_layer();
+  operation.frame = true;
+  return this->push_raw_(operation, label);
 #endif
 }
 
@@ -198,6 +243,10 @@ bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
   if ((is_write || is_rpc) && bytes_len != 0)
     std::memcpy(operation.bytes, bytes, bytes_len);
 
+  return this->push_raw_(operation, label);
+}
+
+bool VitoHomeComponent::push_raw_(const RawOp &operation, const char *label) {
   // push_back() decides; a full() check first would race another producer. An
   // unallocated lane is the default, and the warning is the only sign of it,
   // so it names the option.
@@ -206,16 +255,16 @@ bool VitoHomeComponent::enqueue_raw_(uint16_t address, uint8_t length, bool is_w
       ESP_LOGW(TAG,
                "raw lane not allocated; dropping %s 0x%04X. Set raw_queue_size on the vitohome hub to use the "
                "scan console.",
-               label, address);
+               label, operation.address);
     } else {
       ESP_LOGW(TAG, "raw queue full (%zu/%zu); dropping %s 0x%04X. Raise raw_queue_size for larger sweeps.",
-               this->raw_queue_.size(), this->raw_queue_.capacity(), label, address);
+               this->raw_queue_.size(), this->raw_queue_.capacity(), label, operation.address);
     }
 
     return false;
   }
 
-  ESP_LOGD(TAG, "Queued raw %s 0x%04X len %u", label, address, length);
+  ESP_LOGD(TAG, "Queued raw %s 0x%04X len %u", label, operation.address, operation.length);
   return true;
 }
 
@@ -228,7 +277,8 @@ void VitoHomeComponent::raw_handle_response_(const ResponseView &response) {
 
   if (this->raw_layer_ != RawLayer::NONE) {
     char label[24];
-    raw_label_(label, sizeof(label), this->raw_is_write_, this->raw_space_, this->raw_layer_, this->raw_code_);
+    raw_label_(label, sizeof(label), this->raw_is_write_, this->raw_space_, this->raw_layer_, this->raw_code_,
+               this->raw_frame_);
     offset = snprintf(buffer, sizeof(buffer), "%s, %" PRIu32 " ms: ", label, elapsed);
     if (offset < 0 || offset >= static_cast<int>(sizeof(buffer)))
       offset = 0;
@@ -256,7 +306,8 @@ void VitoHomeComponent::raw_handle_response_(const ResponseView &response) {
 void VitoHomeComponent::raw_handle_error_(optolink::OptolinkResult error) {
   char buffer[112];
   char label[24];
-  raw_label_(label, sizeof(label), this->raw_is_write_, this->raw_space_, this->raw_layer_, this->raw_code_);
+  raw_label_(label, sizeof(label), this->raw_is_write_, this->raw_space_, this->raw_layer_, this->raw_code_,
+             this->raw_frame_);
 
   int offset = snprintf(buffer, sizeof(buffer), "0x%04X: %s FAILED (%s", this->raw_dp_.address(), label,
                         optolink::errorToString(error));
@@ -309,19 +360,22 @@ void VitoHomeComponent::dispatch_raw_front_() {
   this->raw_space_ = operation.space;
   this->raw_layer_ = operation.layer;
   this->raw_code_ = operation.code;
+  this->raw_frame_ = operation.frame;
 
   // A queue_raw_op() operation names its layer and code. Otherwise the space
   // picks the telegram (send_read_ / send_write_): a GWG access mode, a
   // procedure call with its parameter, a GFA read, or the protocol's own.
   const bool dispatched =
-      operation.layer != RawLayer::NONE
+      operation.frame ? this->send_raw_frame_(operation.bytes, operation.bytes_len, operation.length)
+      : operation.layer != RawLayer::NONE
           ? this->send_raw_op_(operation.address, operation.length, operation.layer, operation.code,
                                operation.is_write ? operation.bytes : nullptr, operation.bytes_len)
       : operation.is_write ? this->send_write_(operation.address, operation.bytes, operation.bytes_len, operation.space)
                            : this->send_read_(operation.address, operation.length, operation.space, operation.bytes,
                                               operation.bytes_len);
   char label[24];
-  raw_label_(label, sizeof(label), operation.is_write, operation.space, operation.layer, operation.code);
+  raw_label_(label, sizeof(label), operation.is_write, operation.space, operation.layer, operation.code,
+             operation.frame);
 
   if (!dispatched) {
     // Busy is transient. A permanent refusal, such as a 16-bit address on GWG
@@ -345,11 +399,12 @@ void VitoHomeComponent::dispatch_raw_front_() {
       operation.layer == RawLayer::KW && space_has_switch_cost(AddressSpace::GFA) ? AddressSpace::GFA : operation.space;
   // A GWG EEPROM, BE or PORT read, through its access mode or the generic
   // route's TYPE byte, takes one telegram per address.
-  const bool gwg_per_address = operation.layer == RawLayer::GWG && optolink::gwgReadTypeIsPerAddress(operation.code);
+  const bool gwg_per_address =
+      operation.layer == RawLayer::GWG && !operation.frame && optolink::gwgReadTypeIsPerAddress(operation.code);
   this->set_in_flight_(OpType::RAW, nullptr,
-                       operation.is_write ? 1
-                       : gwg_per_address  ? read_telegram_count(AddressSpace::GWG_EEPROM, operation.length)
-                                          : read_telegram_count(operation.space, operation.length));
+                       operation.is_write || operation.frame ? 1
+                       : gwg_per_address ? read_telegram_count(AddressSpace::GWG_EEPROM, operation.length)
+                                         : read_telegram_count(operation.space, operation.length));
 
   ESP_LOGV(TAG, "Dispatched raw %s 0x%04X len %u", label, operation.address, operation.length);
 }

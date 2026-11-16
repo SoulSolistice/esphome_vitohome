@@ -136,7 +136,9 @@ provides several things you would otherwise have to build by hand:
   `queue_raw_read` / `queue_raw_write` lets you read or write an arbitrary
   address at runtime (`queue_raw_rpc` makes a P300 remote procedure call,
   `queue_raw_gfa_read` reads the burner control; with `raw_access: unrestricted`,
-  `queue_raw_op` sends any telegram of any layer, e.g. `p300 r 05 1000 16`) and sweep address ranges — useful for identifying
+  `queue_raw_op` sends any telegram of any layer, e.g. `p300 r 05 1000 16`, and
+  with `unsafe_raw_writes` an open frame in the link's protocol, e.g.
+  `gwg f 01 43 01 01 04`) and sweep address ranges — useful for identifying
   datapoints on an unknown unit. These interactive operations preempt normal
   polling so the console feels immediate.
 - **Boot-time device identification.** The hub reads the controller
@@ -259,8 +261,8 @@ vitohome:
   #                         # raw_queue_size). unsafe_raw_writes: true adds
   #                         # the ones that may change the controller (EEPROM
   #                         # / physical writes, GFA_WRITE, a GWG EEPROM pair
-  #                         # as given, unnamed codes with payload). Both off
-  #                         # by default.
+  #                         # as given, unnamed codes with payload, open GWG
+  #                         # frames). Both off by default.
   # raw_queue_size: 0       # scan-console lane slots (~40 B each, reserved once
   #                         # at boot). Default 0: the scan console is a debug
   #                         # tool, so it is opt-in and costs nothing unless
@@ -402,10 +404,8 @@ entity when generating for a `GWG_*` device token.
 The TYPE bytes come from the openv wiki's `Protokoll-GWG` table, and all but
 `kmbus_ram` (`0x33`) are corroborated twice over — by vcontrold's GWG macros and
 by Vitosoft. On the units reported so far, `physical`, `virtual`, `eeprom`,
-`xram` and `port` answer; `be` answers `0xFF` everywhere. A KM-bus read names
-the bus device (`01 TYPE BUS ADDR LEN`); catalog entities read bus `00`, and
-[`example/vitohome-gwg-kmbus-probe.yaml`](example/vitohome-gwg-kmbus-probe.yaml)
-finds the right bus. What each mode did on which unit, and what is still open, is in
+`xram` and `port` answer; `be` answers `0xFF` everywhere and `kmbus_eeprom` not
+at all. What each mode did on which unit, and what is still open, is in
 [`docs/gwg_protocol.md`](docs/gwg_protocol.md). The full TYPE-byte table and
 the reasoning are in
 [`docs/design_notes.md`](docs/design_notes.md#gwg-access-modes-access).

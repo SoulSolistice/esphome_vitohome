@@ -160,6 +160,8 @@ signedness rules.
   counts towards OFFLINE (`GWGEngine::lastTimeoutWasUnsynced()`). Before that
   rule, the silent `kmbus_eeprom` datapoints of issue #35 published the link
   offline about 14 times in 6.5 minutes on a unit that kept sending ENQs.
+  On KW and P300 an open frame's timeout does not count either: silence is
+  the expected answer to most candidate frames.
 
 ### GWG access modes (`access:`)
 
@@ -203,18 +205,17 @@ Viessmann's own Vitosoft data, which carries the mode per datapoint in
 of the 4143 across Vitosoft's 22 `GWG_*` tokens use it. It is not unsourced,
 though: `speters/vogod` declares the full GWG command-type set independently and
 includes `physicalKmbusRAMRead = 0x33`. So the byte is corroborated; what is
-missing is any datapoint that needs it. Only raw reads emit it.
+missing is any datapoint that needs it. Only the raw lane's open frame sends it.
 
-**A KM-bus read names the bus device** (owner of issue #35): `01 TYPE BUS ADDR
-LEN`, so `01 33 10 00 04` reads four bytes from address `00` at bus `10`. The
-generic frame `01 43 ADDR LEN 04` that vcontrold's `GETKMADDR` and this
-project used before would ask bus `ADDR`, address `LEN`, count `04`, which
-fits #35's 54 silent `kmbus_eeprom` reads. The bus is the 16-bit address's
-high byte (`PacketGWG::createTelegram()`), so catalog entities, which are one
-byte, read bus `00`, and a raw read can name any bus. Whether an EOT follows
-LEN is open: `set_gwg_kmbus_eot()` (default off, the reported frame) switches
-it, and `example/vitohome-gwg-kmbus-probe.yaml` tests both layouts and every
-bus. Details: [gwg_protocol.md](gwg_protocol.md#km-bus-reads-kmbus_eeprom-kmbus_ram).
+**The `kmbus_eeprom` frame is a guess.** vcontrold's `getkmaddr` calls
+`GETKMDDR`, a macro it does not define, so the `GETKMADDR` in the table is
+only ever sent by its `getkmtestaddr` test command, as `01 43 ADDR 01 04`.
+vogod declares the byte and maps it to no operation. vitohome sends the
+generic frame, and #35's unit never answered it. Vitosoft's KM-bus
+datapoints carry a `PrefixRead` (`03 00 00 00 01 01`) that matches a KM-bus
+telegram header, so the controller may expect a whole telegram after `0x43`.
+The candidates and the open frame that tests them:
+[`gwg_protocol.md`](gwg_protocol.md#kmbus_eeprom).
 
 ### The address is not the identity
 
@@ -913,13 +914,38 @@ Vitotronic and in the burner control). The hub models that once:
 ### The generic raw operation (`queue_raw_op()`)
 
 For reverse engineering, the raw lane sends any telegram of any layer, typed
-as one line in the scan console ("Scan · Raw op") or built from a lambda:
+as one line in the scan console ("Scan · Raw op") or built from a lambda.
+The second field says how much of the protocol applies:
+
+```
+<layer> r <code> <address> <length>     inside the protocol, no payload
+<layer> w <code> <address> <bytes...>   inside the protocol, with payload
+<layer> f <bytes...> [/ <length>]       outside the protocol: an open frame
+```
+
+- `r` and `w` are telegrams of the layer's protocol. The engine builds them
+  from code, address and length or payload (framing, length byte, checksum)
+  and checks the answer as that protocol's answer. The code picks the
+  function, so `r` and `w` only say whether a payload is carried.
+- `f` is not bound by any protocol. The bytes go out exactly as given,
+  nothing is added, and the answer is neither parsed nor checked. Only the
+  link's timing applies: when the frame may be sent and how long its answer
+  is awaited. Its layer must be the link's protocol.
+
+Layers are `p300`, `kw` and `gwg`; codes and addresses are hex, lengths
+decimal.
 
 ```
 p300 r 05 1000 16      P300 function code 05 (EEPROM_READ), 16 bytes at 0x1000
 p300 w 02 2306 25      a P300 telegram with payload
 kw r 7B 0800 2         a KW telegram -- native on KW, the detour on P300
 gwg r 31 05 1          any GWG TYPE byte
+gwg f 01 43 [03 00 43 0A 01 01 01 01] 04
+                       an open GWG frame, a CRC-16/KERMIT appended at ]
+kw f 01 F7 00 F8 02 / 2
+                       an open KW frame: a read written out, two bytes back
+p300 f 41 {05 00 01 00 F8 02}
+                       an open P300 frame, its checksum appended at }
 ```
 
 `raw_op.h` holds the parser and the safety class, framework-free, so the
@@ -935,6 +961,7 @@ Two config gates, both off by default:
 | | standard | `raw_access: unrestricted` | + `unsafe_raw_writes: true` |
 |---|---|---|---|
 | `queue_raw_op()` | refused | READ, PROBE, WRITE | also UNSAFE |
+| `queue_raw_frame()`, `<layer> f` | refused | refused | the link's protocol |
 
 - READ: P300 01 / 03 / 05, KW F7 / 6B / 7B, GWG's read TYPE bytes, without
   payload.
@@ -947,6 +974,32 @@ Two config gates, both off by default:
   EEPROM write of two bytes (the cell's pair as given, unchecked), a
   payload on a read code or on an unnamed one.
 
+An open frame (`queue_raw_frame()`, `<layer> f <bytes...> [/ <n>]`) is for
+framings nobody has settled, the GWG KM-bus read first
+([`gwg_protocol.md`](gwg_protocol.md#kmbus_eeprom)). Its layer must be the
+link's protocol, and the bytes go out exactly as given:
+
+| | when | after the answer |
+|---|---|---|
+| GWG | on the device's next ENQ, never in a burst; the `01` is the caller's | the next request waits for an ENQ |
+| KW | on the device's next ENQ, never chained; the engine sends no `01` of its own | the next request waits for an ENQ |
+| P300 | inside the session, the `41` and the checksum the caller's | RESET: EOT, ENQ, SYNC |
+
+With `/ n` the answer is `n` bytes, and fewer is a TIMEOUT whose bytes are
+not delivered (`log_frames` shows them on the line); without it the engine
+collects what arrives until the line is quiet (GWG its response deadline, KW 1000 ms, P300
+500 ms, a choice since no P300 answer time is measured; at most 64 bytes, the
+dump shows 48). On P300 the answer is raw: the ACK, then whatever frame the
+controller sends, unparsed and unacknowledged. A session-start variant needs
+the KW state a P300 controller drops to after an EOT, so it goes through
+`kw f` on a KW link, where the engine sends EOTs while it waits for an ENQ.
+
+The result line reads `<layer> frame` at address `0x0000`. Nothing checks
+what the bytes do, so a frame is always UNSAFE. `[ ... ]` appends the bytes'
+CRC-16/KERMIT, low byte first, the KM-bus telegram check; `{ ... }` appends
+their sum modulo 256, the P300 checksum over the bytes after the `41`. At
+most 32 bytes, the check bytes included.
+
 `unrestricted` needs `raw_queue_size`, and `unsafe_raw_writes` needs
 `unrestricted` (config errors). The layer is checked when the line arrives:
 `p300` on a P300 hub, `kw` on KW and P300, `gwg` on GWG. Entities stay on the
@@ -954,15 +1007,16 @@ checked `access:` model; nothing generic reaches a catalog.
 
 The engines gained one generic request each (`VS2Engine::request()` /
 `kwTelegram()`, `VS1Engine::telegram()`, `GWGEngine::telegram()`;
-THIRD_PARTY.md item 28); the existing reads and writes are those with fixed
+THIRD_PARTY.md item 28), and each an open one (`frame()`, items 37 and 38); the existing reads and writes are those with fixed
 codes and build the same bytes. A packet now records its frame length and
 whether a payload rides when it is built, instead of deriving both from the
 type byte later -- which is what lets a byte without a name go out whole.
 
 Fuzzing: `fuzz_raw_spec.cpp` (the line, round-tripped through its canonical
-form), `fuzz_raw_engines.cpp` (one operation against a fuzzed controller,
-every engine: exactly one completion, the promised answer shape, the engine
-idle afterwards) and `fuzz_parser_vs2.cpp` (each input also parsed as the
+form, frames included), `fuzz_gwg_session.cpp` and `fuzz_kw_session.cpp`
+(frames among a session's reads and writes), `fuzz_raw_engines.cpp` (one
+operation or frame against a fuzzed controller, every engine: exactly one
+completion, the promised answer shape, the engine idle afterwards) and `fuzz_parser_vs2.cpp` (each input also parsed as the
 answer to a raw request for its code). `tests/native/fuzz.sh raw_spec` /
 `raw_engines` / `parser_vs2` run the open-ended search.
 

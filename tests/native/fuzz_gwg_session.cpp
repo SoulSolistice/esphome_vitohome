@@ -13,10 +13,15 @@
 //                  bits 2-4: ENQ-to-send delay, kDelays[]
 //                  bits 5-7: response deadline, kDeadlines[]
 //   [1] ops        b % 6 + 1 operations follow, 5 bytes each:
-//         [0] kind     bits 0-2 access mode, bit 3 write, bit 4 16-bit address
-//         [1..2]       address (high byte ignored without bit 4)
-//         [3] length   bit 7 set: b & 0x7F (past MAX_PAYLOAD), else b % 8 + 1
-//         [4] value    first payload byte of a write, the rest count up
+//         [0] kind     bits 0-2 access mode, bit 3 write, bit 4 16-bit address;
+//                      bits 5 and 6 both set: an open frame (GWGEngine::frame(),
+//                      bit 3 ignored)
+//         [1..2]       address (high byte ignored without bit 4); for a frame
+//                      [1] is the answer length, b % 10 (0 collects), or with
+//                      bit 4 b itself
+//         [3] length   bit 7 set: b & 0x7F (past MAX_PAYLOAD), else b % 8 + 1;
+//                      for a frame its byte count
+//         [4] value    first payload byte of a write or frame, the rest count up
 //   then the device's script, as in fuzz_raw_engines.cpp:
 //     b & 0x80    let (b & 0x7F) * 10 ms pass
 //     else        feed the next (b + 1) bytes
@@ -41,7 +46,10 @@
 //       a telegram that received exactly its answer; an empty one is a
 //       retried burst, sent no later than ENQ_VALIDITY_MS after its sync;
 //   (7) an idle engine writes nothing to the line;
-//   (8) afterwards the engine is idle and takes the next request.
+//   (8) afterwards the engine is idle and takes the next request;
+//   (9) a frame is accepted exactly when its bytes fit the packet and its
+//       answer MAX_PAYLOAD, completes at address 0 with its answer length, or
+//       in collect mode with 1..MAX_PAYLOAD bytes.
 //
 // Same two-build arrangement as fuzz_parser_vs2.cpp; seeds in
 // fuzz_corpus_gwg_session.h.
@@ -91,6 +99,8 @@ constexpr int kMaxOps = 6;
 struct Op {
   GWGAccessMode mode;
   bool write;
+  bool frame;
+  uint8_t answer;  // a frame's answer length; 0 collects
   uint16_t address;
   uint8_t length;
   uint8_t payload[128];
@@ -133,7 +143,12 @@ void on_response(const uint8_t *data, uint8_t length, uint16_t address) {
   ++op.completions;
   oracle(address == op.address, "a response for another address");
   oracle(data != nullptr, "a response without data");
-  oracle(length == (op.write ? 1 : op.length), "a response of the wrong length");
+  if (op.frame) {
+    oracle(op.answer != 0 ? length == op.answer : length >= 1 && length <= optolink::MAX_PAYLOAD,
+           "a frame answer of the wrong length");
+  } else {
+    oracle(length == (op.write ? 1 : op.length), "a response of the wrong length");
+  }
   if (data != nullptr) {
     for (uint8_t i = 0; i < length; ++i)
       g_sink = g_sink + data[i];
@@ -165,7 +180,9 @@ void on_late(const GWGEngine::LateAnswer &late) {
   oracle(late.late_stored <= late.late.size() && late.late_stored <= late.late_count,
          "a late-answer report stores more than it saw");
   // An answer of exactly `expected` bytes completes; a longer one times out.
-  oracle(late.received != late.expected, "a late-answer report for a telegram that got its answer");
+  // Expected 0 is a collecting frame that got nothing.
+  oracle(late.expected == 0 || late.received != late.expected,
+         "a late-answer report for a telegram that got its answer");
   oracle(late.deadline_ms == g_s.deadline, "a late-answer report states another deadline");
   oracle(late.received != 0 || late.late_count != 0 || late.retried, "an empty late-answer report");
   oracle(!late.retried || late.enq_age_ms <= GWGEngine::ENQ_VALIDITY_MS, "a burst rode a sync older than the window");
@@ -177,7 +194,12 @@ void submit() {
   while (g_s.pending < 0 && g_s.next < g_s.count && !e.isBusy()) {
     Op &op = g_s.ops[g_s.next];
     const int index = g_s.next++;
-    if (op.write) {
+    if (op.frame) {
+      op.accepted = e.frame(op.payload, op.length, op.answer);
+      const bool fits =
+          op.length >= 1 && op.length <= optolink::PacketGWG::kMaxFrame && op.answer <= optolink::MAX_PAYLOAD;
+      oracle(op.accepted == fits, "a frame accepted or refused against its bounds");
+    } else if (op.write) {
       op.accepted = e.write(op.address, op.payload, op.length, op.mode);
       if (op.accepted) {
         oracle(optolink::gwgModeIsWritable(op.mode), "a write accepted in a mode without a write type");
@@ -212,8 +234,10 @@ void pump(FakeOptolink &io, int n) {
 
 void parse_op(const uint8_t *b, Op &op) {
   op.mode = static_cast<GWGAccessMode>(b[0] & 0x07);
-  op.write = (b[0] & 0x08) != 0;
-  op.address = static_cast<uint16_t>(((b[0] & 0x10) ? b[1] << 8 : 0) | b[2]);
+  op.frame = (b[0] & 0x60) == 0x60;
+  op.write = !op.frame && (b[0] & 0x08) != 0;
+  op.answer = (b[0] & 0x10) ? b[1] : static_cast<uint8_t>(b[1] % 10);
+  op.address = op.frame ? 0 : static_cast<uint16_t>(((b[0] & 0x10) ? b[1] << 8 : 0) | b[2]);
   op.length = (b[3] & 0x80) ? static_cast<uint8_t>(b[3] & 0x7F) : static_cast<uint8_t>(b[3] % 8 + 1);
   for (uint8_t i = 0; i < op.length; ++i)
     op.payload[i] = static_cast<uint8_t>(b[4] + i);

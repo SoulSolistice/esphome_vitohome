@@ -93,8 +93,7 @@ int main() {
 
   // --- (3) each access mode selects the documented TYPE byte ----------------
   // Table source: openv wiki, Protokoll-GWG (fetched 2026-08-24). Frame shape
-  // is otherwise identical: 01 <TYPE> <ADDR> <LEN> 04, except a KM-bus read's
-  // 01 <TYPE> <BUS> <ADDR> <LEN>.
+  // is otherwise identical: 01 <TYPE> <ADDR> <LEN> 04.
   struct Case {
     optolink::GWGAccessMode mode;
     uint8_t expected_type;
@@ -118,11 +117,8 @@ int main() {
     check(adapter.read(0x00F8, cell != 0 ? 1 : 2, c.mode), c.name);
     uart.feed({0x05});
     adapter.loop();
-    // A KM-bus read carries the bus (00 here) and no EOT (proof_gwg_kmbus.cpp).
-    const std::vector<uint8_t> want =
-        optolink::isGwgKmbusReadType(c.expected_type)
-            ? std::vector<uint8_t>{0x01, c.expected_type, 0x00, 0xF8, 0x02}
-            : std::vector<uint8_t>{0x01, c.expected_type, 0xF8, static_cast<uint8_t>(cell != 0 ? 0x01 : 0x02), 0x04};
+    const std::vector<uint8_t> want = {0x01, c.expected_type, 0xF8, static_cast<uint8_t>(cell != 0 ? 0x01 : 0x02),
+                                       0x04};
     check(uart.written() == want, "  frame matches table");
     if (cell == 1)
       uart.feed({0x20});

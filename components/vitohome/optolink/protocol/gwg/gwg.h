@@ -204,10 +204,9 @@ class GWGEngine {
   // watchdog grows with it (_requestTimeoutMs()).
   static constexpr uint32_t RESPONSE_TIMEOUT_MS = 250;
 
-  // Defaults of the other diagnostic switches (setters below).
+  // Defaults of the other two diagnostic switches (setters below).
   static constexpr bool DEFAULT_WRITE_EOT_BEFORE_PAYLOAD = false;
   static constexpr bool DEFAULT_BURST_OMITS_ENQ_ACK = true;
-  static constexpr bool DEFAULT_KMBUS_EOT = false;
 
   // How long after a TIMEOUT the engine keeps collecting bytes for the
   // late-answer report (see OnLateAnswerCallback). Above the largest response
@@ -376,6 +375,12 @@ class GWGEngine {
   // write (0xAD) of two bytes sends them as the cell's pair, unchecked. For the
   // raw lane (VitoHomeComponent::queue_raw_op()).
   bool telegram(uint8_t type, uint16_t address, uint8_t length, const uint8_t *data = nullptr);
+  // An open frame, for the raw lane (VitoHomeComponent::queue_raw_frame()):
+  // `bytes` exactly as given, on the device's next ENQ, never in a burst. The
+  // answer is `answerLength` bytes; with 0, whatever arrives until the line is
+  // quiet for the response deadline (at most MAX_PAYLOAD bytes kept). Delivered
+  // at address 0. Either way the next request waits for an ENQ.
+  bool frame(const uint8_t *bytes, uint8_t length, uint8_t answerLength);
 
   // True when the transaction that just completed was an EEPROM read in which
   // at least one address answered FF FF ("address not in use"). That pair is
@@ -406,10 +411,6 @@ class GWGEngine {
   // 01 TYPE ADDR LEN 04 <data> (true). Reads are the same under both.
   void setWriteEotBeforePayload(bool eotFirst) { _currentRequest.setEotBeforePayload(eotFirst); }
   bool writeEotBeforePayload() const { return _currentRequest.eotBeforePayload(); }
-  // KM-bus read layout: 01 TYPE BUS ADDR LEN (false, default) or with an EOT
-  // after LEN (true). The bus is the address's high byte.
-  void setKmbusEot(bool eot) { _currentRequest.setKmbusEot(eot); }
-  bool kmbusEot() const { return _currentRequest.kmbusEot(); }
   // Whether a burst-sent request omits the leading 0x01 (default true). That
   // byte acknowledges an ENQ, and a burst-sent request answers none; an
   // ENQ-paced request carries it either way.
@@ -516,6 +517,9 @@ class GWGEngine {
   // The last TIMEOUT fired while waiting for an ENQ (see
   // lastTimeoutWasUnsynced()).
   bool _timeoutUnsynced;
+  // An open frame is in flight (frame()): it waits for an ENQ, and with
+  // _currentLength 0 its answer ends when the line goes quiet.
+  bool _frame{false};
   bool _busy;
   bool _burstOmitsEnqAck{DEFAULT_BURST_OMITS_ENQ_ACK};
   uint32_t _responseTimeoutMs{RESPONSE_TIMEOUT_MS};
@@ -533,8 +537,12 @@ class GWGEngine {
   // True when a still-valid sync can carry another telegram (see
   // ENQ_VALIDITY_MS).
   bool _canBurst() const {
-    return BURST_ENABLED && !_burstDisabled && _syncValid && (_currentMillis - _lastSyncMillis) <= ENQ_VALIDITY_MS;
+    return BURST_ENABLED && !_burstDisabled && !_frame && _syncValid &&
+           (_currentMillis - _lastSyncMillis) <= ENQ_VALIDITY_MS;
   }
+
+  // An open frame whose answer ends on a quiet line (frame() with 0).
+  bool _collecting() const { return _frame && _currentLength == 0; }
 
   // REQUEST_TIMEOUT_MS, lengthened by however much a test raised the response
   // deadline above its default, so the ENQ wait it also covers is not eaten.
