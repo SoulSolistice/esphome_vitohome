@@ -1366,6 +1366,8 @@ def _final_validate(config):
         # they have not thought about.
         _readonly_access_domains = tuple(d for d in _ACCESS_DOMAINS if d not in _WRITE_DOMAINS)
         for domain, entity in _entities_for_hub(full, _readonly_access_domains, hub_id):
+            if CONF_ADDRESS not in entity:
+                continue  # hub-fed: connectivity, device_id, scan_result
             for key, access in _entity_access_slots(entity):
                 if access is None:
                     _LOGGER.warning(

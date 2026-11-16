@@ -9,6 +9,8 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 #include "packet_vs1.h"
 
+#include <cstring>
+
 namespace esphome::vitohome::optolink {
 
 PacketVS1::PacketVS1() : _buffer{} { reset(); }
@@ -62,6 +64,18 @@ bool PacketVS1::createTelegram(uint8_t type, uint16_t addr, uint8_t len, const u
   }
   _length = static_cast<uint8_t>(step);
   _hasPayload = data != nullptr;
+  return true;
+}
+
+bool PacketVS1::createFrame(const uint8_t *bytes, uint8_t len) {
+  reset();
+  if (bytes == nullptr || len == 0 || len > _buffer.size()) {
+    optolink_log_w("KW frame of %u bytes out of range", len);
+    return false;
+  }
+  std::memcpy(_buffer.data(), bytes, len);
+  _length = len;
+  _hasPayload = false;
   return true;
 }
 

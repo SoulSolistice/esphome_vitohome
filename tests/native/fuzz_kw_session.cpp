@@ -14,7 +14,12 @@
 //                      4 KW: telegram() with payload / P300: kwTelegram()
 //                        without payload,
 //                      5 P300: kwTelegram() with payload / KW: read,
-//                      6-7 read
+//                      6-7 read;
+//                      (b & 0xC7) == 0x46: an open frame (frame()) of
+//                      [1] bytes (bit 7 set: b & 0x7F, else b % 8 + 1),
+//                      counting up from [4], at address 0; bit 3 set: it
+//                      collects (answer length 0), else [3] is its answer
+//                      length
 //         [1..2]       address
 //         [3] length   bit 7 set: b & 0x7F (past the limits), else b % 8 + 1
 //         [4] value    the telegram type, and the first payload byte (the
@@ -35,7 +40,12 @@
 //       P300 -- and goes out no earlier than GFA_GAP_MS after it;
 //   (4) refusals follow the documented limits: a length above MAX_PAYLOAD, a
 //       KW detour of 0 bytes or past KW_MAX_PAYLOAD / KW_MAX_LENGTH;
-//   (5) afterwards the engine is idle and takes the next request.
+//   (5) afterwards the engine is idle and takes the next request;
+//   (6) an open frame is answered at address 0 with its answer length, or
+//       collecting with 1..its cap bytes; it is accepted only within its
+//       limits; on KW neither the frame nor the request after it is chained
+//       (a byte from the controller comes first); on P300 the next byte sent
+//       after it is the EOT that re-establishes the session.
 //
 // Same two-build arrangement as fuzz_parser_vs2.cpp; seeds in
 // fuzz_corpus_kw_session.h.
@@ -71,7 +81,7 @@ void oracle(bool ok, const char *what) {
 
 constexpr int kMaxOps = 6;
 
-enum class Kind : uint8_t { READ, WRITE, GFA, TELEGRAM, TELEGRAM_PAYLOAD, KW, KW_PAYLOAD, RPC };
+enum class Kind : uint8_t { READ, WRITE, GFA, TELEGRAM, TELEGRAM_PAYLOAD, KW, KW_PAYLOAD, RPC, FRAME };
 
 struct Op {
   Kind kind;
@@ -79,12 +89,15 @@ struct Op {
   uint8_t length;
   uint8_t type;
   uint8_t payload[128];
+  // FRAME: the frame's byte count (the bytes are `payload`); `length` is the
+  // answer length, 0 to collect.
+  uint8_t frame_len;
   bool accepted;
   int completions;
 };
 
 bool kw_shaped(Kind k, bool p300) {
-  return p300 ? (k == Kind::GFA || k == Kind::KW || k == Kind::KW_PAYLOAD) : k != Kind::RPC;
+  return p300 ? (k == Kind::GFA || k == Kind::KW || k == Kind::KW_PAYLOAD) : k != Kind::RPC && k != Kind::FRAME;
 }
 bool has_payload(Kind k) {
   return k == Kind::WRITE || k == Kind::TELEGRAM_PAYLOAD || k == Kind::KW_PAYLOAD || k == Kind::RPC;
@@ -114,6 +127,9 @@ struct Session {
   bool answered_kw = false;
   uint32_t answer_ms = 0;
   bool fed_since_answer = true;
+  // Oracle (6): the last completion was an open frame's.
+  bool after_frame = false;
+  bool eot_due = false;
 };
 Session g_s;
 volatile uint32_t g_sink = 0;
@@ -124,6 +140,16 @@ class Line {
   bool begin() { return true; }
   void end() {}
   std::size_t write(const uint8_t *d, uint8_t n) {
+    if (n > 0 && g_s.p300 && g_s.eot_due) {
+      oracle(d[0] == 0x04, "a P300 frame not followed by the EOT that resets the session");
+      g_s.eot_due = false;
+    }
+    // KW: a frame, and the request after one, wait for the controller's ENQ.
+    // The EOT the engine sends while it waits is no request.
+    const bool frame_pending = g_s.pending >= 0 && g_s.ops[g_s.pending].kind == Kind::FRAME;
+    if (n > 0 && !g_s.p300 && (frame_pending || g_s.after_frame) && !(n == 1 && d[0] == 0x04)) {
+      oracle(g_s.fed_since_answer, "an open frame, or the request after it, chained onto an answer");
+    }
     // A frame sent on a sync starts with ENQ_ACK, after the sync was read.
     if (n > 0 && d[0] == optolink::PacketVS1Type.GFA_READ && g_s.pending >= 0 &&
         sends_gfa_frame(g_s.ops[g_s.pending]) && !g_s.fed_since_answer) {
@@ -156,6 +182,8 @@ class Line {
 
 void finish(bool answered) {
   ++g_s.ops[g_s.pending].completions;
+  g_s.after_frame = g_s.ops[g_s.pending].kind == Kind::FRAME;
+  g_s.eot_due = g_s.after_frame && g_s.p300;
   g_s.answered = answered;
   g_s.answered_kw = answered && kw_shaped(g_s.ops[g_s.pending].kind, g_s.p300);
   g_s.answer_ms = optolink_millis();
@@ -172,7 +200,15 @@ void on_response(const uint8_t *data, uint8_t length, uint16_t address) {
     for (uint8_t i = 0; i < length; ++i)
       g_sink = g_sink + data[i];
   }
-  if (kw_shaped(op.kind, g_s.p300)) {
+  if (op.kind == Kind::FRAME) {
+    oracle(address == 0, "an open frame answered at an address");
+    if (op.length != 0) {
+      oracle(data != nullptr && length == op.length, "an open frame answered with the wrong length");
+    } else {
+      oracle(data != nullptr && length >= 1 && length <= optolink::MAX_PAYLOAD,
+             "a collecting frame answered with nothing or past its cap");
+    }
+  } else if (kw_shaped(op.kind, g_s.p300)) {
     oracle(address == op.address, "a KW answer for another address");
     if (has_payload(op.kind)) {
       oracle(data != nullptr && length == 1 && data[0] == 0x00, "a KW write answered by something other than 00");
@@ -203,6 +239,8 @@ bool submit_one(optolink::VS1Engine &e, const Op &op) {
       return e.telegram(op.type, op.address, op.length);
     case Kind::TELEGRAM_PAYLOAD:
       return e.telegram(op.type, op.address, op.length, op.payload);
+    case Kind::FRAME:
+      return e.frame(op.payload, op.frame_len, op.length);
     default:
       return e.read(op.address, op.length);
   }
@@ -220,6 +258,8 @@ bool submit_one(optolink::VS2Engine &e, const Op &op) {
       return e.kwTelegram(op.type, op.address, op.length);
     case Kind::KW_PAYLOAD:
       return e.kwTelegram(op.type, op.address, op.length, op.payload);
+    case Kind::FRAME:
+      return e.frame(op.payload, op.frame_len, op.length);
     default:
       return e.read(op.address, op.length);
   }
@@ -237,6 +277,10 @@ template<class E> void submit(E &e) {
       const uint8_t limit =
           op.kind == Kind::KW_PAYLOAD ? optolink::VS2Engine::KW_MAX_PAYLOAD : optolink::VS2Engine::KW_MAX_LENGTH;
       oracle(op.length != 0 && op.length <= limit, "a KW detour outside its length limits accepted");
+    }
+    if (op.kind == Kind::FRAME) {
+      const std::size_t frame_max = g_s.p300 ? optolink::VS2Engine::FRAME_MAX : optolink::PacketVS1::kMaxFrame;
+      oracle(op.frame_len != 0 && op.frame_len <= frame_max, "an open frame outside its byte limits accepted");
     }
     g_s.pending = index;
   }
@@ -290,6 +334,16 @@ void parse_op(const uint8_t *b, bool p300, Op &op) {
   op.type = b[4];
   for (uint8_t i = 0; i < op.length; ++i)
     op.payload[i] = static_cast<uint8_t>(b[4] + i);
+  op.frame_len = 0;
+  if ((b[0] & 0xC7) == 0x46) {
+    op.kind = Kind::FRAME;
+    op.address = 0;
+    op.frame_len = (b[1] & 0x80) ? static_cast<uint8_t>(b[1] & 0x7F) : static_cast<uint8_t>(b[1] % 8 + 1);
+    for (uint8_t i = 0; i < op.frame_len; ++i)
+      op.payload[i] = static_cast<uint8_t>(b[4] + i);
+    if (b[0] & 0x08)
+      op.length = 0;
+  }
   op.accepted = false;
   op.completions = 0;
 }

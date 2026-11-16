@@ -1,7 +1,8 @@
 // Fuzz target + deterministic replay runner for the engines' generic
 // telegrams: VS2Engine::request() and kwTelegram() (the KW detour),
 // VS1Engine::telegram(), GWGEngine::telegram() -- the paths queue_raw_op()
-// opens to any function code / type byte. The parsers have their own target
+// opens to any function code / type byte -- and the open frames, frame() on
+// every engine (queue_raw_frame()). The parsers have their own target
 // (fuzz_parser_vs2.cpp); this one drives whole transactions: one operation
 // against a scripted controller whose bytes and timing come from the input.
 //
@@ -11,7 +12,10 @@
 //   [1] code      the function code / type byte
 //   [2..3] address
 //   [4] length
-//   [5] flags     bit 0: a payload rides (its `length` bytes follow)
+//   [5] flags     bit 0: a payload rides (its `length` bytes follow);
+//                 high nibble 4: an open frame instead, the payload its bytes
+//                 and [1] its answer length (0: it collects), on the P300
+//                 engine for 0 and 1
 //   then the controller's script, a sequence of steps:
 //     b & 0x80    let (b & 0x7F) * 10 ms pass
 //     else        feed the next (b + 1) bytes
@@ -28,7 +32,10 @@
 //       refused;
 //   (3) afterwards the engine is idle and takes the next request;
 //   (4) a KW telegram with payload, native or over the detour, delivers only
-//       the acknowledgement 00 -- any other byte is an error.
+//       the acknowledgement 00 -- any other byte is an error;
+//   (5) an open frame is accepted only with 1..its engine's frame cap bytes
+//       and an answer length of at most MAX_PAYLOAD; it delivers that many
+//       bytes, or collecting 1..MAX_PAYLOAD.
 //
 // Same two-build arrangement as fuzz_parser_vs2.cpp; seeds in
 // fuzz_corpus_raw_engines.h.
@@ -69,6 +76,8 @@ uint8_t g_max_length = 0;
 // A KW telegram with payload (native or over the detour) is acknowledged with
 // 00; anything else is an error, never a delivered answer.
 bool g_ack_must_be_zero = false;
+// A collecting frame delivers at least one byte.
+bool g_collect = false;
 volatile uint32_t g_sink = 0;
 
 void on_response(const uint8_t *data, uint8_t length, uint16_t) {
@@ -80,6 +89,8 @@ void on_response(const uint8_t *data, uint8_t length, uint16_t) {
   if (data != nullptr && length > g_max_length)
     g_shape_ok = false;
   if (g_ack_must_be_zero && (data == nullptr || length != 1 || data[0] != 0x00))
+    g_shape_ok = false;
+  if (g_collect && (data == nullptr || length == 0))
     g_shape_ok = false;
   if (data != nullptr) {
     for (uint8_t i = 0; i < length; ++i)
@@ -134,6 +145,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
   const uint16_t address = static_cast<uint16_t>(data[2] << 8 | data[3]);
   const uint8_t length = data[4];
   const bool has_payload = (data[5] & 0x01) != 0;
+  const bool frame = (data[5] & 0xF0) == 0x40;
   std::size_t pos = 6;
   const uint8_t *payload = nullptr;
   if (has_payload) {
@@ -150,16 +162,25 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
   g_expect_length = 0;
   g_max_length = optolink::MAX_PAYLOAD;
   g_ack_must_be_zero = false;
+  g_collect = false;
   bool accepted = false;
   bool idle_after = false;
   bool next_taken = false;
 
   FakeOptolink io;
-  switch (engine) {
+  const std::size_t frame_max = engine == 2   ? optolink::PacketVS1::kMaxFrame
+                                : engine == 3 ? optolink::PacketGWG::kMaxFrame
+                                              : std::size_t{optolink::VS2Engine::FRAME_MAX};
+  if (frame) {
+    // The answer length is the code byte; a refused frame never completes.
+    g_expect_length = code;
+    g_collect = code == 0;
+  }
+  switch (frame ? (engine == 1 ? 0 : engine) : engine) {
     case 0: {
       auto *e = new optolink::VS2Engine(&io);
       wire(*e);
-      accepted = e->request(code, address, length, payload);
+      accepted = frame ? e->frame(payload, length, code) : e->request(code, address, length, payload);
       run_script(*e, io, script, script_len);
       settle(*e);
       idle_after = !e->isBusy();
@@ -187,9 +208,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
     case 2: {
       auto *e = new optolink::VS1Engine(&io);
       wire(*e);
-      g_expect_length = has_payload ? 1 : length;
-      g_ack_must_be_zero = has_payload;
-      accepted = e->telegram(code, address, length, payload);
+      if (!frame) {
+        g_expect_length = has_payload ? 1 : length;
+        g_ack_must_be_zero = has_payload;
+      }
+      accepted = frame ? e->frame(payload, length, code) : e->telegram(code, address, length, payload);
       run_script(*e, io, script, script_len);
       settle(*e);
       idle_after = !e->isBusy();
@@ -202,8 +225,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
       wire(*e);
       // An EEPROM read (0xAE) delivers its decoded values, `length` of them
       // like every other read; a write mode's ack is one byte.
-      g_expect_length = has_payload ? 1 : length;
-      accepted = e->telegram(code, address, length, payload);
+      if (!frame)
+        g_expect_length = has_payload ? 1 : length;
+      accepted = frame ? e->frame(payload, length, code) : e->telegram(code, address, length, payload);
       run_script(*e, io, script, script_len);
       settle(*e);
       idle_after = !e->isBusy();
@@ -218,8 +242,13 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
   } else {
     oracle(g_completions == 0, "a refused operation completed");
   }
-  if (payload == nullptr && length > g_max_length)
+  if (frame) {
+    if (accepted)
+      oracle(payload != nullptr && length != 0 && length <= frame_max && code <= optolink::MAX_PAYLOAD,
+             "an open frame outside its limits was accepted");
+  } else if (payload == nullptr && length > g_max_length) {
     oracle(!accepted, "a read longer than the answer can be was accepted");
+  }
   oracle(g_shape_ok, "a delivered answer of the wrong length");
   oracle(idle_after, "the engine is still busy after every timeout");
   oracle(next_taken, "the engine refuses the next request");

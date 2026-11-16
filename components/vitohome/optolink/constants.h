@@ -225,14 +225,6 @@ constexpr uint8_t gwgCellLength(GWGAccessMode mode) {
   }
 }
 
-// Whether a TYPE byte is a KM-bus read (KMBUS_RAM 0x33, KMBUS_EEPROM 0x43).
-// Its frame carries a bus address before the address: `01 TYPE BUS ADDR LEN`,
-// the 16-bit address's high byte the bus (issue #35, uwen70), plus an EOT when
-// GWGEngine::setKmbusEot() asks for one.
-constexpr bool isGwgKmbusReadType(uint8_t type) {
-  return type == gwgReadTypeByte(GWGAccessMode::KMBUS_RAM) || type == gwgReadTypeByte(GWGAccessMode::KMBUS_EEPROM);
-}
-
 // Whether a read TYPE byte belongs to a mode read one address per telegram
 // (gwgCellLength()).
 constexpr bool gwgReadTypeIsPerAddress(uint8_t type) {

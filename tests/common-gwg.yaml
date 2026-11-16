@@ -221,8 +221,8 @@ switch:
     update_interval: 3600s
 
 button:
-  # The generic raw operation on GWG: an unnamed TYPE byte, and a payload one
-  # (UNSAFE, sent only because unsafe_raw_writes is on).
+  # The generic raw operation on GWG: an unnamed TYPE byte, a payload one
+  # (UNSAFE, sent only because unsafe_raw_writes is on) and open frames.
   - platform: template
     name: "Test Raw Op"
     entity_category: diagnostic
@@ -231,3 +231,5 @@ button:
           id(vito).queue_raw_op("gwg r 31 05 1");
           const uint8_t p[] = {0x01};
           id(vito).queue_raw_op(esphome::vitohome::RawLayer::GWG, 0xC3, 0x00, 1, p);
+          id(vito).queue_raw_op("gwg f 01 43 [03 00 43 0A 01 01 01 01] 04 / 4");
+          id(vito).queue_raw_frame(std::vector<uint8_t>{0x01, 0x43, 0x01, 0x01, 0x04});

@@ -32,11 +32,10 @@ them have a BES. See [Identification](#identification).
 | Line | 4800 baud, 8E2 | Spec, HW |
 | Idle ENQ | `0x05`, every 749–2070 ms (median 1229) | HW #13 |
 | Read request | `01 TYPE ADDR LEN 04` after an ENQ; `TYPE ADDR LEN 04` inside a burst | HW #21 |
-| KM-bus read | `01 TYPE BUS ADDR LEN`, no EOT by default (`set_gwg_kmbus_eot()`) | owner of #35 |
 | Response | LEN raw bytes; `eeprom` a pair, `be` and `port` one byte, per address whatever LEN asks; no framing, checksum, address echo or error telegram | HW |
 | Answer time | 23–53 ms after the request | HW #21, #35 |
 | Answer deadline | 250 ms default (`set_gwg_response_timeout_ms()`, 50–2000 ms from a lambda) | design choice |
-| Address | one byte; anything above `0xFF` is rejected at config time. A raw KM-bus read takes `0xBBAA`: bus `BB`, address `AA` | source, §8d |
+| Address | one byte; anything above `0xFF` is rejected at config time | source, §8d |
 
 - **No error answer.** An address a mode does not serve answers `0xFF` (all
   bytes), not a refusal. A silent datapoint does not answer at all.
@@ -61,8 +60,8 @@ unrelated registers. The catalog's `access:` comes from Vitosoft's `FCRead`.
 | `xram` | `0xC5` | `0xC3` | answers (HW #35) |
 | `port` | `0x6E` | `0x6D` | answers one byte per address whatever LEN asks; `0x00`–`0x03` in use (HW #35) |
 | `be` | `0x9E` | `0x9D` | answers fast, one byte per address whatever LEN asks, but `0xFF` at every address tried (HW #21, #35) |
-| `kmbus_eeprom` | `0x43` | none | never answered `01 43 ADDR LEN 04` (HW #35); sent with bus `00` now, untested |
-| `kmbus_ram` | `0x33` | none | `01 33 10 00 04` answered `01 30 00 00` (owner of #35); no Vitosoft datapoint uses it |
+| `kmbus_eeprom` | `0x43` | none | never answers as `01 43 ADDR LEN 04`, not even late (HW #35); the frame is unsettled, see below |
+| `kmbus_ram` | `0x33` | none | no Vitosoft datapoint uses it; never sent |
 
 ### `eeprom`
 
@@ -97,32 +96,94 @@ unrelated registers. The catalog's `access:` comes from Vitosoft's `FCRead`.
 - So far no `be` read has returned data. A `be` write would go to a space
   nothing answers from.
 
-### KM-bus reads (`kmbus_eeprom`, `kmbus_ram`)
+### `kmbus_eeprom`
 
-- These reach devices on the VR20's KM-Bus, such as the LGM29 burner control.
-  On #35 all 54 `kmbus_eeprom` reads went unanswered, with no late bytes
-  either (late-answer report on, frames logged). They went out as
-  `01 43 ADDR LEN 04`.
-- The owner of #35 reports that a KM-bus read names the bus device first:
-  `01 33 10 00 04` reads four bytes from address `00` at bus `10`, answered
-  `01 30 00 00`. Read that way, the old frame asked bus `ADDR`, address
-  `LEN`, count `04`.
-- The engine now sends `01 TYPE BUS ADDR LEN`, the bus in the 16-bit
-  address's high byte. Catalog entities are one-byte addresses, so they go
-  to bus `00`; a raw read names the bus (`queue_raw_read(0x1001, 1,
-  GWGAccessMode::KMBUS_EEPROM)`, `gwg r 43 1001 1`). Inside a burst the
-  leading `01` is left off as for every read.
-- Open: whether the frame ends in an EOT (`set_gwg_kmbus_eot(true)` adds
-  one), which bus each device uses, and whether the reported frame was seen
-  on that unit or worked out. Every Vitosoft `KMBUS_EEPROM_READ` datapoint
-  carries `PrefixRead` `030000000101`, which the catalog generator ignores;
-  its meaning is not known.
-- [`example/vitohome-gwg-kmbus-probe.yaml`](../example/vitohome-gwg-kmbus-probe.yaml)
-  tests all three with buttons: A the frame layout, B a scan of buses `00`-`FF`,
-  C the Vitosoft datapoints on one bus.
+- These reach the LGM29 burner control over the VR20's KM-Bus. On #35 all 54
+  went unanswered, with no late bytes either (late-answer report on, frames
+  logged). The owner says the KM-Bus itself works (the pump answers there) and
+  suspects the LGM29 needs enabling.
 - Cost while silent: about one ENQ gap plus a 250 ms retry per read, so 54 of
   them overran a 60 s poll cycle until poll backoff set in (after three
   cycles).
+- vitohome sends the generic frame `01 43 ADDR LEN 04`. No source shows a
+  working KM-bus read over GWG, so that frame is a guess:
+  - vcontrold's `getkmaddr` command calls `GETKMDDR`, a macro that does not
+    exist. Its `getkmtestaddr`, like the test command of every other mode,
+    sends the generic frame with LEN `01`. vogod maps `KMBUS_EEPROM_READ` to
+    no operation. The other Optolink projects (sarnau, philippoo66, idstein)
+    only copy Vitosoft's function-code list.
+  - The `01 33 10 00 04` in #35 was deduced by its reporter, not captured.
+- The openv wiki ("KM-Bus") rests on bus captures and on the firmware of a
+  Vitotronic 200KW2, a Vitotrol 200A/300 and a 0-10 V function extension.
+  It likens the KM-bus to the M-Bus in its electrical layer and character
+  format (master modulates voltage, participants current, 1200 baud 8E1);
+  its telegrams are Viessmann's own. Vitosoft's `Virtual_MBUS` reads are the
+  meter bus, a different thing. All of this is the bus's own wire between
+  the controller and its participants, and the controller is always its
+  master: participants only answer it. vitohome never sees that wire. It
+  reaches the bus only through the controller, over Optolink at 4800 baud
+  8E2, so a KM-bus read is a GWG request the controller carries out. What
+  carries over is the telegram and the bus's speed.
+- Telegrams are `DK SK CMD LEN DSL SSK data CRC-lo CRC-hi`: destination
+  class, source class, command, the whole telegram's length, destination
+  slot, source subclass, and a CRC-16/KERMIT over everything before it. Every
+  master telegram on the page has SK `00` and SSK `01`. `31` reads one byte
+  and `33` N bytes, answered by `B1` and `B3`; a `B3` answer puts each byte's
+  address before it (`ADR0 DAT0 ADR1 DAT1 ...`). `43` and `C3` are in the
+  200KW2's command table, but neither the Vitotrol nor the function extension
+  uses them.
+- Each participant has a 4-byte ID (class, slot, two serial bytes) at
+  `F8..FB`, and the 200KW2 reads it from every class it knows about every five
+  minutes. The read for class `01` slot `01` is
+  `01 00 33 0A 01 01 F8 04 31 B4`.
+- At 1200 baud a byte (11 bits) takes 9.2 ms. A one-byte `33` read and its
+  answer are 20 bytes on the bus, about 180 ms, and the ID read 26 bytes,
+  about 240 ms, before any participant's turnaround. An answer the
+  controller relays from the bus therefore cannot come back in the 23-53 ms
+  GWG answers take, and hardly within the 250 ms deadline. An answer from the
+  controller's own memory can. After the deadline, bytes show in the
+  late-answer report until the next telegram goes out, and
+  `set_gwg_response_timeout_ms()` raises the deadline. On #35 the generic
+  `kmbus_eeprom` reads had no late bytes either.
+- The GWG TYPE bytes of the two KM-bus modes are bus commands: `kmbus_ram`
+  `0x33` is the `33` read and `kmbus_eeprom` `0x43` is the unexplained `43`.
+  A GWG read's `ADDR LEN` is also exactly a `33` telegram's data, `ADR N`.
+  That suggests the controller builds the bus telegram from the GWG frame
+  itself. Nothing confirms this yet.
+- Vitosoft gives a `PrefixRead` only to function codes that reach a device
+  behind the controller: KM-bus, K-bus (`KBUS_*`), Wilo pumps, M-Bus
+  meters, a market manager and remote procedure calls. There the prefix
+  appears to select the device or record, and the gateway does the bus
+  traffic. Of the 91 `KMBUS_EEPROM_READ` datapoints, the 90 of the burner
+  control (`GWG_FA_*`, `GWG_FA27_*`) all carry `03 00 00 00 01 01`; one
+  (`KBUS_Schalterblock`) has none. No datapoint uses `KMBUS_RAM_READ`.
+- Read as a telegram header, that prefix is DK `03`, SK `00`, CMD `00`, LEN
+  `00`, DSL `01` and SSK `01`. SK and SSK are the master's own fields, and
+  CMD and LEN would be the controller's to fill from the TYPE byte and the
+  length, though CMD `00` is also the bus's PING. So the prefix plausibly
+  names the participant, which the generic frame cannot. Where Vitosoft puts
+  it in the GWG frame is unknown. The 200KW2's classes are `01`, `04`, `11`
+  and `20`, with no `03`, but #35's controller is a different one. Its BES
+  shows `03` as its KM-bus configuration (burner control and a
+  speed-controlled pump); whether that relates to DK `03` is open.
+- To test that without firmware changes, the raw lane takes an open frame
+  (raw_op.h): `gwg f <bytes...> [/ <n>]` sends the bytes exactly as given and
+  collects the answer, and `[ ... ]` appends the CRC. Candidates, each for
+  address `01`, one byte:
+
+  | Frame | Idea |
+  |---|---|
+  | `01 43 01 01 04` | the generic frame (what the catalog sends) |
+  | `01 33 01 01 04` | the generic `kmbus_ram` frame, TYPE `33` the bus's read |
+  | `01 43 03 00 00 00 01 01 01 01 04` | the prefix naming the participant, then address and length |
+  | `01 43 03 00 00 00 01 01 01 04` | the prefix before the address, no length byte (#35's reporter, as given) |
+  | `01 43 [03 00 00 00 01 01 01] 04` | the same with a CRC (#35's reporter) |
+  | `01 43 [03 00 43 0A 01 01 01 01] 04` | a whole telegram, CRC `E2 86`; needs a controller that relays bytes unchanged |
+  | `01 43 [03 00 33 0A 01 01 01 01] 04` | the same with the bus's read command, CRC `E3 43` |
+
+  `example/vitohome-gwg-kmbus-probe.yaml` sends these and the same seven for
+  the ID at `F8`, with a 600 ms answer deadline for answers relayed over the
+  bus.
 
 ### Writes
 
@@ -257,6 +318,6 @@ The two families share every `physical`, `xram`, `port` and most `eeprom` and
 | Does #35's controller keep the BES or the BEM coding map? | Read `eeprom` `0x03`, `0x08`, `0x0A`, `0x0D`, `0x13`, `0x14`, `0x1C`, `0x21` with frames logged; compare BES codings (02), (03), (04) with the panel |
 | Is `xram` `0x88` big-endian? | Second Wasserdruck reading at another pressure |
 | Does any GWG unit serve `be`? | A unit with a BEM panel |
-| Which bus serves which KM-bus device, and does the read end in an EOT? | [`vitohome-gwg-kmbus-probe.yaml`](../example/vitohome-gwg-kmbus-probe.yaml), steps A-C |
+| How does a GWG unit frame a KM-bus read? | The candidates under `kmbus_eeprom`, with the KM-bus probe |
 | Does #35's unit need a gap between ENQ and request? | Raw reads with frames logged at `set_gwg_enq_send_delay_ms(0)`, `15` and `30`; compare answered vs unanswered `enq->send` |
 | Where does the write frame's `0x04` go? | A first `eeprom` write on a unit whose owner accepts the risk |

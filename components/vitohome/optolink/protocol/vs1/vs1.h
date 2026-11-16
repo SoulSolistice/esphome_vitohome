@@ -136,6 +136,13 @@ class VS1Engine {
   // lane sends any other type byte through it
   // (VitoHomeComponent::queue_raw_op()).
   bool telegram(uint8_t type, uint16_t address, uint8_t length, const uint8_t *data = nullptr);
+  // An open frame, for the raw lane (VitoHomeComponent::queue_raw_frame()):
+  // `bytes` exactly as given, on the device's next ENQ and never chained; the
+  // engine sends no ENQ_ACK of its own, so a leading 01 is the caller's. The
+  // answer is `answerLength` bytes; with 0, whatever arrives until the line
+  // is quiet for ANSWER_TIMEOUT_MS (at most kResponseBufferSize bytes kept).
+  // The next request waits for a fresh ENQ. Delivered at address 0.
+  bool frame(const uint8_t *bytes, uint8_t length, uint8_t answerLength);
 
   bool begin();
   void loop();
@@ -153,12 +160,16 @@ class VS1Engine {
   uint16_t _currentAddress;
   uint8_t _currentLength;
   bool _busy;
+  // An open frame is in flight (frame()).
+  bool _frame{false};
   PacketVS1 _currentRequest;
   std::array<uint8_t, kResponseBufferSize> _responseBuffer;
   OnResponseCallback _onResponseCallback;
   OnErrorCallback _onErrorCallback;
 
   inline void _setState(State state);
+  // An open frame whose answer ends on a quiet line (frame() with 0).
+  bool _collecting() const { return _frame && _currentLength == 0; }
 
   void _init();
   void _syncEnq();

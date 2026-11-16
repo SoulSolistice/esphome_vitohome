@@ -16,8 +16,20 @@
 #                  (0xA801, parameter = record index). Disabled by default:
 #                  a procedure that is not a reading RUNS at once.
 #   * RANGE SWEEP— scan a contiguous block from a Home Assistant action.
-#   * RAW OP     — any telegram of any layer, typed as one line (needs
-#                  `raw_access: unrestricted`, set below):
+#   * RAW OP     — one line, `<layer> <r|w|f> ...` (needs
+#                  `raw_access: unrestricted`, set below). The second field
+#                  says how much of the protocol applies:
+#                    r  a telegram without payload, inside the protocol:
+#                       the engine builds it (framing, length, checksum)
+#                       from code, address and length, and checks the
+#                       answer as that protocol's answer.
+#                    w  the same, carrying a payload.
+#                    f  an open frame, outside the protocol: the bytes go
+#                       out exactly as typed, nothing is added, and the
+#                       answer is neither parsed nor checked. Only when it
+#                       is sent and how long the answer is awaited follow
+#                       the link.
+#                  r and w, any layer (the code picks the function):
 #                    p300 r 05 1000 16     P300 function code 05, 16 bytes
 #                    kw r 7B 0800 2        a KW telegram (P300: the KW detour)
 #                    gwg r 31 05 1         a GWG TYPE byte
@@ -28,6 +40,13 @@
 #                  may change the controller -- physical / EEPROM writes, KW
 #                  GFA_WRITE / PROZESS_WRITE, payloads with unnamed codes --
 #                  also need `unsafe_raw_writes: true`, deliberately not set.
+#                  f, the link's layer only, always needs it too. `[ ]`
+#                  appends a CRC-16/KERMIT, `{ }` the P300 checksum, `/ n`
+#                  sets the answer length (without it: until the line is
+#                  quiet):
+#                    p300 f 41 {05 00 01 00 F8 02}
+#                    kw f 01 F7 00 F8 02 / 2
+#                    gwg f 01 43 [03 00 43 0A 01 01 01 01] 04 / 4
 #
 # GWG units: set `protocol: GWG` and pass the access mode as the last argument,
 # e.g. queue_raw_read(0x05, 1, vitohome::optolink::GWGAccessMode::EEPROM) or

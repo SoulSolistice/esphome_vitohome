@@ -81,7 +81,8 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // is ignored. OFFLINE follows LINK_OFFLINE_AFTER_ERRORS timeouts or lost
   // callbacks in a row, or a failed start-up check. Under GWG a timeout counts
   // only when the request never went out for want of an ENQ: a request the
-  // unit took and left unanswered is an address it does not serve.
+  // unit took and left unanswered is an address it does not serve. On KW and
+  // P300 an open frame's timeout does not count.
 #ifdef USE_BINARY_SENSOR
   // One static table from codegen (__init__.py, _emit_hub_sensor_tables).
   // Const pointers to sensors that get published.
@@ -176,10 +177,6 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // Whether a burst-sent request omits the leading 0x01 (default: omits).
   void set_gwg_burst_omits_enq_ack(bool omit);
   bool gwg_burst_omits_enq_ack() const { return this->gwg_burst_omits_enq_ack_; }
-  // Whether a KM-bus read (`kmbus_ram`, `kmbus_eeprom`; bus in the address's
-  // high byte) ends in an EOT after its count (default: it does not).
-  void set_gwg_kmbus_eot(bool eot);
-  bool gwg_kmbus_eot() const { return this->gwg_kmbus_eot_; }
   // Answer deadline, clamped to optolink::GWG_RESPONSE_TIMEOUT_{MIN,MAX}_MS
   // (50..2000) and logged; default 250 ms. For one-byte reads keep it under the
   // device's idle-ENQ gap (about 700 ms), or an idle ENQ reads as the value.
@@ -246,6 +243,19 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // `length` is the bytes asked for, or the size of `payload` when one is
   // given.
   bool queue_raw_op(RawLayer layer, uint8_t code, uint16_t address, uint8_t length, const uint8_t *payload = nullptr);
+  // An open frame in the link's protocol, for reverse engineering: `bytes`
+  // (1..32) go out exactly as given. On KW and GWG they answer the device's
+  // next ENQ, never chained or burst, so a leading 01 is the caller's; on P300
+  // they go out inside the session, which is re-established afterwards. The
+  // answer is `answer_length` bytes, or with 0 whatever arrives until the line
+  // is quiet (the engines' frame(); on P300 raw, the ACK included). Published
+  // like a raw read, at address 0. Spec form: "<layer> f <bytes...>
+  // [/ <length>]" (raw_op.h). Nothing checks what the bytes do, so it needs
+  // `raw_access: unrestricted` and `unsafe_raw_writes: true`.
+  bool queue_raw_frame(const uint8_t *bytes, std::size_t len, uint8_t answer_length = 0);
+  bool queue_raw_frame(const std::vector<uint8_t> &bytes, uint8_t answer_length = 0) {
+    return this->queue_raw_frame(bytes.data(), bytes.size(), answer_length);
+  }
 
  protected:
   // What has the bus: the one operation in flight, and whose it is. One value
@@ -378,9 +388,12 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // like send_read_(): busy, or never (a layer the protocol cannot reach).
   bool send_raw_op_(uint16_t address, uint8_t length, RawLayer layer, uint8_t code, const uint8_t *payload,
                     uint8_t payload_len);
-  // "read" / "gfa read" / "p300 05 read" ...: what the raw operation in
-  // flight (or being queued) is, for log and result lines.
-  static void raw_label_(char *out, std::size_t cap, bool is_write, AddressSpace space, RawLayer layer, uint8_t code);
+  // A queue_raw_frame() frame on the engine; false when it is busy or refuses.
+  bool send_raw_frame_(const uint8_t *bytes, uint8_t len, uint8_t answer_length);
+  // "read" / "gfa read" / "p300 05 read" / "kw frame" ...: what the raw
+  // operation in flight (or being queued) is, for log and result lines.
+  static void raw_label_(char *out, std::size_t cap, bool is_write, AddressSpace space, RawLayer layer, uint8_t code,
+                         bool frame = false);
 
   // The telegram for a read (or procedure call) or a write of `address` in
   // `space`. False when the engine does not take it: busy, or never (also for
@@ -564,7 +577,6 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // GWG diagnostics as last set; pushed to the engine at setup and on change.
   bool gwg_write_eot_before_payload_{optolink::GWGEngine::DEFAULT_WRITE_EOT_BEFORE_PAYLOAD};
   bool gwg_burst_omits_enq_ack_{optolink::GWGEngine::DEFAULT_BURST_OMITS_ENQ_ACK};
-  bool gwg_kmbus_eot_{optolink::GWGEngine::DEFAULT_KMBUS_EOT};
   uint32_t gwg_response_timeout_ms_{optolink::GWGEngine::RESPONSE_TIMEOUT_MS};
   uint32_t gwg_enq_send_delay_ms_{0};
 
@@ -599,7 +611,14 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
     // (`bytes` its payload when is_write). NONE (0) for every other one.
     RawLayer layer;
     uint8_t code;
+    // A queue_raw_frame() frame: `bytes` the frame, `length` the answer's
+    // (0: until the line is quiet).
+    bool frame;
   };
+
+  // Appends a checked operation to the lane; false, with a warning, when it is
+  // full or not allocated.
+  bool push_raw_(const RawOp &operation, const char *label);
 
   // Default raw_queue_size (0..1024, __init__.py). Each slot is sizeof(RawOp),
   // about 40 bytes on a 32-bit target, and a sweep-sized lane is a quarter of
@@ -619,6 +638,7 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   AddressSpace raw_space_{AddressSpace::OWN};
   RawLayer raw_layer_{RawLayer::NONE};
   uint8_t raw_code_{0};
+  bool raw_frame_{false};
   // The space of the last telegram dispatched; see the address-space affinity
   // in dispatch_next_().
   AddressSpace last_space_{AddressSpace::OWN};

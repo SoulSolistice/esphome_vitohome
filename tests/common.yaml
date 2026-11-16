@@ -69,8 +69,8 @@ vitohome:
   # Two slots: one per button, neither of which sweeps.
   raw_queue_size: 2
   # Compiles queue_raw_op()'s sending branch (-DVITOHOME_RAW_UNRESTRICTED);
-  # common-gwg.yaml adds unsafe_raw_writes, and the single-platform config the
-  # refusing default.
+  # common-gwg.yaml and the two ESP8266 configs (KW, P300) add
+  # unsafe_raw_writes, and the single-platform config the refusing default.
   raw_access: unrestricted
 
 sensor:
@@ -457,3 +457,7 @@ button:
       - lambda: |-
           id(vito).queue_raw_op("p300 r 05 1000 16");
           id(vito).queue_raw_op(esphome::vitohome::RawLayer::KW, 0x7B, 0x0800, 2);
+          // Sent as the link's frame where unsafe_raw_writes is on, refused
+          // elsewhere; the P300 one is refused on KW for its layer.
+          id(vito).queue_raw_frame(std::vector<uint8_t>{0x01, 0x43, 0x01, 0x01, 0x04});
+          id(vito).queue_raw_op("p300 f 41 {05 00 01 00 F8 02}");

@@ -46,6 +46,7 @@ bool GWGEngine::read(uint16_t address, uint8_t length, GWGAccessMode access) {
     _eepromUnserved = false;
     _timeoutUnsynced = false;
     _retryUnburst = false;
+    _frame = false;
     _busy = true;
     _requestTime = _currentMillis;
     optolink_log_i("reading packet OK");
@@ -74,6 +75,7 @@ bool GWGEngine::write(uint16_t address, const uint8_t *data, uint8_t length, GWG
     _eepromUnserved = false;
     _timeoutUnsynced = false;
     _retryUnburst = false;
+    _frame = false;
     _busy = true;
     _requestTime = _currentMillis;
     optolink_log_i("writing packet OK");
@@ -115,6 +117,7 @@ bool GWGEngine::telegram(uint8_t type, uint16_t address, uint8_t length, const u
     _eepromUnserved = false;
     _timeoutUnsynced = false;
     _retryUnburst = false;
+    _frame = false;
     _busy = true;
     _requestTime = _currentMillis;
     optolink_log_i("telegram 0x%02x OK", type);
@@ -122,6 +125,31 @@ bool GWGEngine::telegram(uint8_t type, uint16_t address, uint8_t length, const u
   }
   optolink_log_i("telegram 0x%02x not possible, packet creation error", type);
   return false;
+}
+
+bool GWGEngine::frame(const uint8_t *bytes, uint8_t length, uint8_t answerLength) {
+  if (_busy) {
+    return false;
+  }
+  if (answerLength > MAX_PAYLOAD) {
+    optolink_log_w("frame: %u answer bytes exceed %u", answerLength, MAX_PAYLOAD);
+    return false;
+  }
+  if (!_currentRequest.createFrame(bytes, length)) {
+    optolink_log_i("frame not possible, packet creation error");
+    return false;
+  }
+  _currentAddress = 0;
+  _currentLength = answerLength;
+  _perAddress = false;
+  _eepromUnserved = false;
+  _timeoutUnsynced = false;
+  _retryUnburst = false;
+  _frame = true;
+  _busy = true;
+  _requestTime = _currentMillis;
+  optolink_log_i("frame of %u bytes OK", length);
+  return true;
 }
 
 bool GWGEngine::begin() {
@@ -312,6 +340,16 @@ void GWGEngine::_receive() {
   // genuine response when the host stalls >250 ms; the alternative is
   // publishing a sync byte as a temperature.
   if (_currentMillis - _lastMillis > _responseTimeoutMs) {
+    if (_collecting() && _bytesTransferred != 0) {
+      // The quiet line ends an open frame's answer. The sync is as stale as
+      // after a timeout.
+      const uint8_t received = _bytesTransferred < MAX_PAYLOAD ? _bytesTransferred : MAX_PAYLOAD;
+      _bytesTransferred = 0;
+      _syncValid = false;
+      _setState(State::INIT);
+      _tryOnResponse(received);
+      return;
+    }
     // A burst-sent read gets one retry on a fresh ENQ before anything is
     // concluded (see BURST_FAILURES_BEFORE_FALLBACK).
     const bool retry = _sentInBurst && !_burstDisabled && !_currentRequest.hasPayload() && !_retryUnburst;
@@ -361,14 +399,15 @@ void GWGEngine::_receive() {
   // EEPROM, BE and PORT reads are answered per address, so _currentLength is
   // the cell's length there (gwgCellLength(), THIRD_PARTY.md #24).
   const uint8_t expected = _currentRequest.hasPayload() ? 1 : _currentLength;
-  if (_bytesTransferred == expected) {
+  if (!_collecting() && _bytesTransferred == expected) {
     _bytesTransferred = 0;  // VS1 parity; _init() also resets before SEND
     // A completed transaction is itself proof the device is listening, so it
     // re-opens the burst window -- this is what makes a chain of polls run
     // back-to-back instead of one per ENQ. Mirrors vogod, which re-stamps
-    // lastEnq at the end of every completed receive.
+    // lastEnq at the end of every completed receive. A frame does not: bytes
+    // past its answer length would complete the next poll.
     _lastSyncMillis = _currentMillis;
-    _syncValid = true;
+    _syncValid = !_frame;
     if (_sentInBurst)
       _burstFailures = 0;
     else if (_retryUnburst && !_burstDisabled)

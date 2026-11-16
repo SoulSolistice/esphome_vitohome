@@ -140,7 +140,10 @@ void VitoHomeComponent::setup() {
                    this->gwg_enq_send_delay_ms_);
         }
 #else
-        this->link_note_error_();
+        // Most open frames are candidates the controller does not answer; the
+        // ordinary reads around them carry the link's state.
+        if (this->in_flight_op_ != OpType::RAW || !this->raw_frame_)
+          this->link_note_error_();
 #endif
         break;
 
@@ -361,7 +364,6 @@ void VitoHomeComponent::apply_gwg_diagnostics_() {
     return;  // setup() applies them once the engine exists
   this->vito_->setWriteEotBeforePayload(this->gwg_write_eot_before_payload_);
   this->vito_->setBurstOmitsEnqAck(this->gwg_burst_omits_enq_ack_);
-  this->vito_->setKmbusEot(this->gwg_kmbus_eot_);
   this->vito_->setResponseTimeoutMs(this->gwg_response_timeout_ms_);
   this->vito_->setEnqSendDelayMs(this->gwg_enq_send_delay_ms_);
 #endif
@@ -380,12 +382,6 @@ void VitoHomeComponent::set_gwg_write_eot_before_payload(bool eot_first) {
 void VitoHomeComponent::set_gwg_burst_omits_enq_ack(bool omit) {
   this->gwg_burst_omits_enq_ack_ = omit;
   this->apply_gwg_diagnostics_();
-}
-
-void VitoHomeComponent::set_gwg_kmbus_eot(bool eot) {
-  this->gwg_kmbus_eot_ = eot;
-  this->apply_gwg_diagnostics_();
-  ESP_LOGI(TAG, "GWG KM-bus read layout: %s", eot ? "01 TYPE BUS ADDR LEN 04" : "01 TYPE BUS ADDR LEN");
 }
 
 void VitoHomeComponent::set_gwg_response_timeout_ms(uint32_t ms) {
@@ -844,6 +840,10 @@ bool VitoHomeComponent::send_raw_op_(uint16_t address, uint8_t length, RawLayer 
     default:
       return false;
   }
+}
+
+bool VitoHomeComponent::send_raw_frame_(const uint8_t *bytes, uint8_t len, uint8_t answer_length) {
+  return this->vito_->frame(bytes, len, answer_length);
 }
 
 // ---------------------------------------------------------------------------

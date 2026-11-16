@@ -25,6 +25,11 @@ uart:
 
 <<: !include common.yaml
 
-# `access: gfa` entities (KW and P300; GWG has no GFA read).
+# `access: gfa` entities (KW and P300; GWG has no GFA read). The second raw
+# gate compiles queue_raw_frame()'s sending branch with the KW engine; the
+# esp-idf KW config keeps the refusal.
 packages:
   gfa: !include common-gfa.yaml
+  unsafe_raw:
+    vitohome:
+      unsafe_raw_writes: true

@@ -38,6 +38,9 @@ class PacketVS1 {
  public:
   bool createPacket(uint8_t packetType, uint16_t addr, uint8_t len, const uint8_t *data = nullptr);
   bool createTelegram(uint8_t type, uint16_t addr, uint8_t len, const uint8_t *data = nullptr);
+  // `len` bytes exactly as given, nothing added: an open frame for the raw
+  // lane. Its answer is data, not an acknowledgement.
+  bool createFrame(const uint8_t *bytes, uint8_t len);
   uint8_t length() const;
   uint8_t packetType() const;
   // Whether the telegram carries `len` payload bytes (a write's shape): its

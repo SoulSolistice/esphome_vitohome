@@ -41,6 +41,7 @@ bool VS1Engine::telegram(uint8_t type, uint16_t address, uint8_t length, const u
   if (_currentRequest.createTelegram(type, address, length, data)) {
     _currentAddress = address;
     _currentLength = length;
+    _frame = false;
     _busy = true;
     _requestTime = _currentMillis;
     optolink_log_i("telegram 0x%02x OK", type);
@@ -48,6 +49,27 @@ bool VS1Engine::telegram(uint8_t type, uint16_t address, uint8_t length, const u
   }
   optolink_log_i("telegram 0x%02x not possible, packet creation error", type);
   return false;
+}
+
+bool VS1Engine::frame(const uint8_t *bytes, uint8_t length, uint8_t answerLength) {
+  if (_busy) {
+    return false;
+  }
+  if (answerLength > kResponseBufferSize) {
+    optolink_log_w("frame: %u answer bytes exceed %u", answerLength, static_cast<unsigned>(kResponseBufferSize));
+    return false;
+  }
+  if (!_currentRequest.createFrame(bytes, length)) {
+    optolink_log_i("frame not possible, packet creation error");
+    return false;
+  }
+  _currentAddress = 0;
+  _currentLength = answerLength;
+  _frame = true;
+  _busy = true;
+  _requestTime = _currentMillis;
+  optolink_log_i("frame of %u bytes OK", length);
+  return true;
 }
 
 bool VS1Engine::begin() {
@@ -125,7 +147,8 @@ void VS1Engine::_init() {
 // send ENQ_ACK and move to SEND; if longer, return to INIT
 void VS1Engine::_syncEnq() {
   if (_currentMillis - _lastMillis < ENQ_ACK_WINDOW_MS) {
-    if (_busy && _interface->write(&internals::ProtocolBytes.ENQ_ACK, 1) == 1) {
+    // An open frame answers the ENQ with its own first byte.
+    if (_busy && (_frame || _interface->write(&internals::ProtocolBytes.ENQ_ACK, 1) == 1)) {
       _setState(State::SEND);
       _send();  // speed up things
     }
@@ -152,6 +175,11 @@ void VS1Engine::_syncRecv() {
     _setState(State::INIT);
     return;
   }
+  // An open frame goes out on an ENQ of its own.
+  if (_busy && _frame) {
+    _setState(State::INIT);
+    return;
+  }
   if (_currentMillis - _lastMillis < CHAIN_WINDOW_MS) {
     // A GFA read waits GFA_GAP_MS after the last answer (see there); the guard
     // above keeps watching the line meanwhile.
@@ -173,6 +201,10 @@ void VS1Engine::_send() {
   if (_bytesTransferred == _currentRequest.length()) {
     _bytesTransferred = 0;
     _lastMillis = _currentMillis;
+    // A frame's ENQ wait may have used up most of the watchdog; its answer,
+    // up to a quiet ANSWER_TIMEOUT_MS, gets the whole of it.
+    if (_frame)
+      _requestTime = _currentMillis;
     _setState(State::RECEIVE);
   }
 }
@@ -185,6 +217,14 @@ void VS1Engine::_receive() {
   // silent ANSWER_TIMEOUT_MS before the first byte and between bytes; checked
   // before the drain so a waiting ENQ is left for _init().
   if (_currentMillis - _lastMillis > ANSWER_TIMEOUT_MS) {
+    if (_collecting() && _bytesTransferred != 0) {
+      // The quiet line ends an open frame's answer.
+      const uint8_t received = _bytesTransferred < kResponseBufferSize ? _bytesTransferred : kResponseBufferSize;
+      _bytesTransferred = 0;
+      _setState(State::INIT);
+      _tryOnResponse(received);
+      return;
+    }
     _bytesTransferred = 0;
     _setState(State::INIT);
     _tryOnError(OptolinkResult::TIMEOUT);
@@ -210,7 +250,7 @@ void VS1Engine::_receive() {
   // value. Generalised with telegram(): every telegram that carries a payload
   // (a write's shape) is answered with the one acknowledgement byte.
   const uint8_t expected = _currentRequest.hasPayload() ? 1 : _currentLength;
-  if (_bytesTransferred == expected) {
+  if (!_collecting() && _bytesTransferred == expected) {
     if (_currentRequest.hasPayload() && _responseBuffer[0] != 0x00) {
       // Anything but 0x00 is no acknowledgement -- the controller's ENQ, a
       // refusal -- so the write did not take. It used to be logged and
@@ -223,7 +263,8 @@ void VS1Engine::_receive() {
       return;
     }
     _bytesTransferred = 0;
-    _setState(State::SYNC_RECV);
+    // After an open frame the session is unknown: no chaining onto it.
+    _setState(_frame ? State::INIT : State::SYNC_RECV);
     _tryOnResponse(expected);
   }
 }
