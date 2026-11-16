@@ -427,3 +427,36 @@ def test_enum_text_sensor_plain_length_still_capped_at_four():
 def test_enum_text_sensor_byte_length_requires_byte_offset():
     with pytest.raises(cv.Invalid, match="byte_length requires byte_offset"):
         TEXT_SENSOR_SCHEMA(_enum_ts(length=2, byte_length=2))
+
+
+# --- schema: utf16 text_sensor width ------------------------------------------
+
+
+def _utf16_ts(**extra):
+    cfg = {"type": "utf16", "name": _name(), "address": 0x7360}
+    cfg.update(extra)
+    return cfg
+
+
+def test_utf16_text_sensor_accepts_even_widths():
+    assert TEXT_SENSOR_SCHEMA(_utf16_ts(length=40))["length"] == 40
+    cfg = TEXT_SENSOR_SCHEMA(_utf16_ts(length=42, byte_offset=2, byte_length=40))
+    assert cfg["byte_length"] == 40
+
+
+def test_utf16_text_sensor_rejects_odd_length():
+    # Without byte_offset, `length` is the field width; decode_utf16() takes
+    # whole code units only.
+    with pytest.raises(cv.Invalid, match="utf16 length must be even"):
+        TEXT_SENSOR_SCHEMA(_utf16_ts(length=5))
+
+
+def test_utf16_text_sensor_block_length_may_be_odd():
+    # With byte_offset, `length` is the block read; only the field is UTF-16.
+    cfg = TEXT_SENSOR_SCHEMA(_utf16_ts(length=43, byte_offset=2, byte_length=40))
+    assert cfg["length"] == 43
+
+
+def test_utf16_text_sensor_rejects_odd_byte_length():
+    with pytest.raises(cv.Invalid, match="must be even"):
+        TEXT_SENSOR_SCHEMA(_utf16_ts(length=42, byte_offset=2, byte_length=39))
