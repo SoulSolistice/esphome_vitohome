@@ -29,7 +29,7 @@
 #                  the last two hand the controller a whole bus telegram,
 #                  which only works if it relays bytes unchanged.
 #   B  send frame  the line in "KM-Bus Probe: Frame", for anything else,
-#                  e.g. another participant code or `/ 4` for a fixed answer
+#                  e.g. another bus class (DK) or `/ 4` for a fixed answer
 #                  length. Same syntax as the scanner's "Raw op".
 #
 # Each answer lands on "KM-Bus Probe: Result" and in the log
@@ -37,9 +37,9 @@
 # Every frame is logged (log_frames).
 #
 # The answer deadline is 600 ms instead of 250 ms: a read the controller
-# relays over the KM-bus (1200 baud) needs about 180-240 ms on the bus
-# alone. It stays below the idle-ENQ gap, but an answer that ends shortly
-# before an idle ENQ may show that ENQ as a trailing 05.
+# relays over the KM-bus (1200 baud) needs about 205-260 ms on the bus
+# alone (docs/kmbus.md). It stays below the idle-ENQ gap, but an answer
+# that ends shortly before an idle ENQ may show that ENQ as a trailing 05.
 #
 # These are untested bytes: if a framing is wrong, the controller may read
 # them as something else. That is why the hub needs

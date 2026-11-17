@@ -133,11 +133,19 @@ void VitoHomeComponent::setup() {
         } else if (this->vito_->lastSendWasEnqPaced()) {
           // The same two numbers as an answered telegram's `GWG timing:` line,
           // to tell a stale ENQ from a too-early answer to it.
-          ESP_LOGD(TAG,
-                   "GWG 0x%04X unanswered: enq age <=%" PRIu32 " ms, enq->send %" PRIu32 " ms (delay setting %" PRIu32
-                   " ms)",
-                   request_address, this->vito_->lastEnqAgeMs(), this->vito_->lastEnqToSendMs(),
-                   this->gwg_enq_send_delay_ms_);
+          if (this->gwg_enq_ack_gap_ms_ > 0) {
+            ESP_LOGD(TAG,
+                     "GWG 0x%04X unanswered: enq age <=%" PRIu32 " ms, enq->send %" PRIu32 " ms, 01->rest %" PRIu32
+                     " ms (delay setting %" PRIu32 " ms, gap setting %" PRIu32 " ms)",
+                     request_address, this->vito_->lastEnqAgeMs(), this->vito_->lastEnqToSendMs(),
+                     this->vito_->lastAckGapMs(), this->gwg_enq_send_delay_ms_, this->gwg_enq_ack_gap_ms_);
+          } else {
+            ESP_LOGD(TAG,
+                     "GWG 0x%04X unanswered: enq age <=%" PRIu32 " ms, enq->send %" PRIu32 " ms (delay setting %" PRIu32
+                     " ms)",
+                     request_address, this->vito_->lastEnqAgeMs(), this->vito_->lastEnqToSendMs(),
+                     this->gwg_enq_send_delay_ms_);
+          }
         }
 #else
         // Most open frames are candidates the controller does not answer; the
@@ -161,7 +169,12 @@ void VitoHomeComponent::setup() {
   // Timing of every answered read (GWGEngine::OnTimingCallback), at DEBUG on
   // the `vitohome` tag.
   this->vito_->onTiming([this](uint32_t enq_age_ms, uint32_t send_to_response_ms, uint16_t address) {
-    if (this->vito_->lastSendWasEnqPaced()) {
+    if (this->vito_->lastSendWasEnqPaced() && this->gwg_enq_ack_gap_ms_ > 0) {
+      ESP_LOGD(TAG,
+               "GWG timing: 0x%04X enq age <=%" PRIu32 " ms, enq->send %" PRIu32 " ms, 01->rest %" PRIu32
+               " ms, send->response %" PRIu32 " ms",
+               address, enq_age_ms, this->vito_->lastEnqToSendMs(), this->vito_->lastAckGapMs(), send_to_response_ms);
+    } else if (this->vito_->lastSendWasEnqPaced()) {
       ESP_LOGD(TAG,
                "GWG timing: 0x%04X enq age <=%" PRIu32 " ms, enq->send %" PRIu32 " ms, send->response %" PRIu32 " ms",
                address, enq_age_ms, this->vito_->lastEnqToSendMs(), send_to_response_ms);
@@ -265,7 +278,8 @@ void VitoHomeComponent::loop() {
 
 #ifdef VITOHOME_PROTOCOL_GWG
   // Hold the main loop awake only while a request waits out the ENQ-to-send
-  // delay (default 0: never). start()/stop() are no-ops when already in state.
+  // delay or the gap after the 0x01 (default 0: never). start()/stop() are
+  // no-ops when already in state.
   if (this->vito_->isHoldingEnq()) {
     this->gwg_hold_loop_.start();
   } else {
@@ -366,6 +380,7 @@ void VitoHomeComponent::apply_gwg_diagnostics_() {
   this->vito_->setBurstOmitsEnqAck(this->gwg_burst_omits_enq_ack_);
   this->vito_->setResponseTimeoutMs(this->gwg_response_timeout_ms_);
   this->vito_->setEnqSendDelayMs(this->gwg_enq_send_delay_ms_);
+  this->vito_->setEnqAckGapMs(this->gwg_enq_ack_gap_ms_);
 #endif
 }
 
@@ -406,6 +421,17 @@ void VitoHomeComponent::set_gwg_enq_send_delay_ms(uint32_t ms) {
     ESP_LOGW(TAG, "GWG ENQ-to-send delay %" PRIu32 " ms is out of range; using %" PRIu32 " ms", ms, clamped);
   } else {
     ESP_LOGI(TAG, "GWG ENQ-to-send delay set to %" PRIu32 " ms", clamped);
+  }
+}
+
+void VitoHomeComponent::set_gwg_enq_ack_gap_ms(uint32_t ms) {
+  const uint32_t clamped = std::min(ms, optolink::GWG_ENQ_ACK_GAP_MAX_MS);
+  this->gwg_enq_ack_gap_ms_ = clamped;
+  this->apply_gwg_diagnostics_();
+  if (clamped != ms) {
+    ESP_LOGW(TAG, "GWG gap after the 0x01 %" PRIu32 " ms is out of range; using %" PRIu32 " ms", ms, clamped);
+  } else {
+    ESP_LOGI(TAG, "GWG gap after the 0x01 set to %" PRIu32 " ms", clamped);
   }
 }
 
@@ -715,6 +741,9 @@ void VitoHomeComponent::dump_config() {
 #ifdef VITOHOME_PROTOCOL_GWG
   if (this->gwg_enq_send_delay_ms_ > 0) {
     ESP_LOGCONFIG(TAG, "  GWG ENQ-to-send delay: %" PRIu32 " ms", this->gwg_enq_send_delay_ms_);
+  }
+  if (this->gwg_enq_ack_gap_ms_ > 0) {
+    ESP_LOGCONFIG(TAG, "  GWG gap after the 0x01: %" PRIu32 " ms", this->gwg_enq_ack_gap_ms_);
   }
 #endif
 

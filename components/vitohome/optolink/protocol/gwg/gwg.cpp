@@ -175,6 +175,9 @@ void GWGEngine::loop() {
     case State::HOLD:
       _hold();
       break;
+    case State::ACK_GAP:
+      _ackGap();
+      break;
     case State::SEND:
       _send();
       break;
@@ -225,6 +228,7 @@ void GWGEngine::_init() {
       _enqSeenMillis = optolink_millis();
       _lastSendEnqPaced = true;
       _stampEnqToSend = true;
+      _ackGapMillis = 0;
       if (_enqSendDelayMs > 0) {
         // Diagnostic ENQ-to-send delay (setEnqSendDelayMs()): wait in HOLD
         // instead of answering in this pass.
@@ -306,12 +310,34 @@ void GWGEngine::_hold() {
   _send();
 }
 
+// Gap after the 0x01 (setEnqAckGapMs()). Like _hold(): a fresh
+// optolink_millis(), and bytes arriving meanwhile are not the answer.
+void GWGEngine::_ackGap() {
+  while (_interface->available())
+    _interface->read();
+  const uint32_t elapsed = optolink_millis() - _ackSentMillis;
+  if (elapsed < _enqAckGapMs)
+    return;
+  _ackGapMillis = elapsed;
+  _setState(State::SEND);
+  _send();
+}
+
 void GWGEngine::_send() {
-  _bytesTransferred +=
-      _interface->write(&_currentRequest[_bytesTransferred], _currentRequest.length() - _bytesTransferred);
+  // With a gap set, a frame sent on an ENQ goes out as its 0x01 alone, and the
+  // rest from ACK_GAP.
+  const bool ackAlone = _enqAckGapMs > 0 && _lastSendEnqPaced && _bytesTransferred == 0 &&
+                        _currentRequest.length() > 1 && _currentRequest[0] == internals::ProtocolBytes.ENQ_ACK;
+  _bytesTransferred += _interface->write(&_currentRequest[_bytesTransferred],
+                                         ackAlone ? 1 : _currentRequest.length() - _bytesTransferred);
   if (_stampEnqToSend) {
     _stampEnqToSend = false;
     _enqToSendMillis = optolink_millis() - _enqSeenMillis;
+  }
+  if (ackAlone && _bytesTransferred == 1) {
+    _ackSentMillis = optolink_millis();
+    _setState(State::ACK_GAP);
+    return;
   }
   if (_bytesTransferred == _currentRequest.length()) {
     _bytesTransferred = 0;

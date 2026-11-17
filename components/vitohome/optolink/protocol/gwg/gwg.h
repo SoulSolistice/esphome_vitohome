@@ -425,6 +425,13 @@ class GWGEngine {
   // range-checked here; the hub clamps it to GWG_ENQ_SEND_DELAY_MAX_MS.
   void setEnqSendDelayMs(uint32_t ms) { _enqSendDelayMs = ms; }
   uint32_t enqSendDelayMs() const { return _enqSendDelayMs; }
+  // Ms between the 0x01 that acknowledges an ENQ and the rest of the request
+  // (default 0: one write). Applies to every frame sent on an ENQ that starts
+  // with 0x01, open frames included, after any enqSendDelayMs(). A burst-sent
+  // request carries no 0x01 and does not wait. Not range-checked here; the hub
+  // clamps it to GWG_ENQ_ACK_GAP_MAX_MS.
+  void setEnqAckGapMs(uint32_t ms) { _enqAckGapMs = ms; }
+  uint32_t enqAckGapMs() const { return _enqAckGapMs; }
 
   // ENQ-to-send measurement (issue #35, see setEnqSendDelayMs()). For the last
   // request sent on an ENQ: the ms from reading the ENQ out of the UART buffer
@@ -440,10 +447,14 @@ class GWGEngine {
   // Same validity as lastEnqToSendMs().
   uint32_t lastEnqAgeMs() const { return _enqAgeMillis; }
   bool lastSendWasEnqPaced() const { return _lastSendEnqPaced; }
-  // True while a request waits out enqSendDelayMs() after an ENQ. The hub
-  // keeps the main loop running continuously meanwhile, so the delay is not
+  // Ms from writing the 0x01 to writing the rest of the frame, for the last
+  // request sent on an ENQ; 0 when it went out in one write. Same validity as
+  // lastEnqToSendMs().
+  uint32_t lastAckGapMs() const { return _ackGapMillis; }
+  // True while a request waits out enqSendDelayMs() or enqAckGapMs(). The hub
+  // keeps the main loop running continuously meanwhile, so neither is
   // stretched by ESPHome's idle sleep.
-  bool isHoldingEnq() const { return _state == State::HOLD; }
+  bool isHoldingEnq() const { return _state == State::HOLD || _state == State::ACK_GAP; }
 
   bool begin();
   void loop();
@@ -453,8 +464,9 @@ class GWGEngine {
 
  private:
   // HOLD: an ENQ was read and the request waits out _enqSendDelayMs before
-  // SEND. Appended last so the numbers _setState() logs for the others stay.
-  enum class State { INIT, SEND, RECEIVE, UNDEFINED, HOLD } _state;
+  // SEND. ACK_GAP: the 0x01 is out and the rest waits out _enqAckGapMs.
+  // Appended last so the numbers _setState() logs for the others stay.
+  enum class State { INIT, SEND, RECEIVE, UNDEFINED, HOLD, ACK_GAP } _state;
   uint32_t _currentMillis;
   uint32_t _lastMillis;
   uint32_t _requestTime;
@@ -478,6 +490,10 @@ class GWGEngine {
   uint32_t _enqToSendMillis;
   bool _lastSendEnqPaced;
   bool _stampEnqToSend;
+  // Gap after the 0x01 (see lastAckGapMs()): when the 0x01 was written, and
+  // the measured gap.
+  uint32_t _ackSentMillis{0};
+  uint32_t _ackGapMillis{0};
   // Burst bookkeeping (see ENQ_VALIDITY_MS). _lastSyncMillis is stamped only
   // where the device demonstrably let us talk: an ENQ we actually used to
   // send, and the completion of a transaction. It is invalidated on any error,
@@ -524,6 +540,7 @@ class GWGEngine {
   bool _burstOmitsEnqAck{DEFAULT_BURST_OMITS_ENQ_ACK};
   uint32_t _responseTimeoutMs{RESPONSE_TIMEOUT_MS};
   uint32_t _enqSendDelayMs{0};
+  uint32_t _enqAckGapMs{0};
   PacketGWG _currentRequest;
   std::array<uint8_t, kResponseBufferSize> _responseBuffer;
   OnResponseCallback _onResponseCallback;
@@ -553,6 +570,7 @@ class GWGEngine {
 
   void _init();
   void _hold();
+  void _ackGap();
   void _send();
   void _receive();
 

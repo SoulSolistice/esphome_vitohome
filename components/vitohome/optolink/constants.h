@@ -185,6 +185,11 @@ inline constexpr uint32_t GWG_RESPONSE_TIMEOUT_MAX_MS = 2000;
 // idle-ENQ gap seen (749 ms).
 inline constexpr uint32_t GWG_ENQ_SEND_DELAY_MAX_MS = 100;
 
+// Upper bound of a GWG gap after the 0x01 set at run time
+// (VitoHomeComponent::set_gwg_enq_ack_gap_ms()); with the delay above it stays
+// under the shortest idle-ENQ gap.
+inline constexpr uint32_t GWG_ENQ_ACK_GAP_MAX_MS = 100;
+
 constexpr uint8_t gwgWriteTypeByte(GWGAccessMode mode) {
   switch (mode) {
     case GWGAccessMode::VIRTUAL:

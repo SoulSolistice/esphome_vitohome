@@ -60,8 +60,8 @@ unrelated registers. The catalog's `access:` comes from Vitosoft's `FCRead`.
 | `xram` | `0xC5` | `0xC3` | answers (HW #35) |
 | `port` | `0x6E` | `0x6D` | answers one byte per address whatever LEN asks; `0x00`–`0x03` in use (HW #35) |
 | `be` | `0x9E` | `0x9D` | answers fast, one byte per address whatever LEN asks, but `0xFF` at every address tried (HW #21, #35) |
-| `kmbus_eeprom` | `0x43` | none | never answers as `01 43 ADDR LEN 04`, not even late (HW #35); the frame is unsettled, see below |
-| `kmbus_ram` | `0x33` | none | no Vitosoft datapoint uses it; never sent |
+| `kmbus_eeprom` | `0x43` | none | never answers, in seven framings, not even late (HW #35); the frame is unsettled, see below |
+| `kmbus_ram` | `0x33` | none | no Vitosoft datapoint uses it; `01 33 ADDR LEN 04` never answers (HW #35) |
 
 ### `eeprom`
 
@@ -113,6 +113,7 @@ unrelated registers. The catalog's `access:` comes from Vitosoft's `FCRead`.
     no operation. The other Optolink projects (sarnau, philippoo66, idstein)
     only copy Vitosoft's function-code list.
   - The `01 33 10 00 04` in #35 was deduced by its reporter, not captured.
+- The bus itself, with sources: [kmbus.md](kmbus.md).
 - The openv wiki ("KM-Bus") rests on bus captures and on the firmware of a
   Vitotronic 200KW2, a Vitotrol 200A/300 and a 0-10 V function extension.
   It likens the KM-bus to the M-Bus in its electrical layer and character
@@ -132,13 +133,13 @@ unrelated registers. The catalog's `access:` comes from Vitosoft's `FCRead`.
   address before it (`ADR0 DAT0 ADR1 DAT1 ...`). `43` and `C3` are in the
   200KW2's command table, but neither the Vitotrol nor the function extension
   uses them.
-- Each participant has a 4-byte ID (class, slot, two serial bytes) at
+- Each participant has a 4-byte ID (class, device type, two serial bytes) at
   `F8..FB`, and the 200KW2 reads it from every class it knows about every five
   minutes. The read for class `01` slot `01` is
   `01 00 33 0A 01 01 F8 04 31 B4`.
 - At 1200 baud a byte (11 bits) takes 9.2 ms. A one-byte `33` read and its
-  answer are 20 bytes on the bus, about 180 ms, and the ID read 26 bytes,
-  about 240 ms, before any participant's turnaround. An answer the
+  answer take 205 ms on the bus, the ID read 260 ms (captured, kmbus.md
+  "Timing"). An answer the
   controller relays from the bus therefore cannot come back in the 23-53 ms
   GWG answers take, and hardly within the 250 ms deadline. An answer from the
   controller's own memory can. After the deadline, bytes show in the
@@ -162,10 +163,9 @@ unrelated registers. The catalog's `access:` comes from Vitosoft's `FCRead`.
   CMD and LEN would be the controller's to fill from the TYPE byte and the
   length, though CMD `00` is also the bus's PING. So the prefix plausibly
   names the participant, which the generic frame cannot. Where Vitosoft puts
-  it in the GWG frame is unknown. The 200KW2's classes are `01`, `04`, `11`
-  and `20`, with no `03`, but #35's controller is a different one. Its BES
-  shows `03` as its KM-bus configuration (burner control and a
-  speed-controlled pump); whether that relates to DK `03` is open.
+  it in the GWG frame is unknown. No capture shows class `03`, but none is
+  from a GWG controller. The `03` #35's BES shows is a participant code
+  (burner control unit and a speed-controlled pump), not a bus class.
 - To test that without firmware changes, the raw lane takes an open frame
   (raw_op.h): `gwg f <bytes...> [/ <n>]` sends the bytes exactly as given and
   collects the answer, and `[ ... ]` appends the CRC. Candidates, each for
@@ -183,7 +183,8 @@ unrelated registers. The catalog's `access:` comes from Vitosoft's `FCRead`.
 
   `example/vitohome-gwg-kmbus-probe.yaml` sends these and the same seven for
   the ID at `F8`, with a 600 ms answer deadline for answers relayed over the
-  bus.
+  bus. On #35 (SW `0x1E`) none of the 14 was answered, not even late (HW,
+  2026-11-16).
 
 ### Writes
 
@@ -308,8 +309,17 @@ The two families share every `physical`, `xram`, `port` and most `eeprom` and
   lambda (0 to 100 ms) holds an ENQ-paced request that long first; burst-sent
   requests do not wait. The DEBUG `GWG timing:` line shows `enq age` and the
   measured `enq->send` for each answered read, and `GWG 0x.. unanswered:`
-  shows the same two for each unanswered one. #35's reporter waits 30-35 ms in
-  their own firmware. Not yet tested on hardware.
+  shows the same two for each unanswered one. On #35 it made no difference:
+  from 0 to 100 ms, unanswered stretches came and went alike (HW, 2026-11-13).
+- **Gap after the `0x01` (diagnostic, off by default).** The delay above moves
+  the whole frame, its `0x01` included. `id(vito).set_gwg_enq_ack_gap_ms(30)`
+  from a lambda (0 to 100 ms) sends the `0x01` on the ENQ, or after the delay,
+  and the rest of the frame that much later. Open frames that start with
+  `0x01` get the gap too; burst-sent requests carry no `0x01` and do not wait.
+  Both DEBUG lines then add the measured `01->rest`. #35's reporter's own
+  firmware sends the `0x01` at once and the rest one loop pass later, about
+  30-35 ms. On #35 every unanswered read was the first frame after an ENQ,
+  none a burst frame (HW, 2026-11-13). Not yet tested on hardware.
 
 ## Open questions
 
@@ -319,5 +329,5 @@ The two families share every `physical`, `xram`, `port` and most `eeprom` and
 | Is `xram` `0x88` big-endian? | Second Wasserdruck reading at another pressure |
 | Does any GWG unit serve `be`? | A unit with a BEM panel |
 | How does a GWG unit frame a KM-bus read? | The candidates under `kmbus_eeprom`, with the KM-bus probe |
-| Does #35's unit need a gap between ENQ and request? | Raw reads with frames logged at `set_gwg_enq_send_delay_ms(0)`, `15` and `30`; compare answered vs unanswered `enq->send` |
+| Does #35's unit need a gap after the `0x01`? | A read every 5 s with frames logged, `set_gwg_enq_ack_gap_ms(0)` and `30` alternating over the same hour; compare the unanswered reads of each |
 | Where does the write frame's `0x04` go? | A first `eeprom` write on a unit whose owner accepts the risk |

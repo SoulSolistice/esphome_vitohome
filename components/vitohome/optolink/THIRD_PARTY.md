@@ -825,7 +825,7 @@ These are intentional divergences from upstream `edc059a7`:
     `lastSendWasEnqPaced()` report the measured gap; the hub logs it on the
     DEBUG `GWG timing:` line and for each unanswered ENQ-paced request.
     Motivation: #35's reporter waits 30-35 ms after the 0x05 in their own
-    firmware. Not yet tested on hardware. Proof:
+    firmware. On #35 it made no difference (0-100 ms, 2026-11-13). Proof:
     `proof_gwg_enq_send_delay.cpp`.
 
 34. **GWG diagnostic switches are engine members (structural, no wire
@@ -902,7 +902,23 @@ These are intentional divergences from upstream `edc059a7`:
     `proof_kw_frame.cpp`, `proof_p300_frame.cpp`, `fuzz_kw_session.cpp` (6),
     `fuzz_raw_engines.cpp` (5).
 
-Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37 and 38 (when called) are the only intentional changes to on-wire/runtime
+39. **GWG gap after the 0x01 (diagnostic, default off, issue #35).** A
+    request sent on an ENQ goes out in one write, its 0x01 included, so the
+    delay of item 33 moves the 0x01 with it. `GWGEngine::setEnqAckGapMs()`,
+    set from a lambda through `VitoHomeComponent::set_gwg_enq_ack_gap_ms()`
+    (0..100 ms), writes the 0x01 alone and holds the rest in a new `ACK_GAP`
+    state until that many ms later; bytes arriving meanwhile are dropped.
+    It applies to every frame sent on an ENQ whose first byte is 0x01, open
+    frames included, and counts after item 33's delay. A burst-sent request
+    carries no 0x01 and does not wait. At the default 0 the engine takes the
+    same path as before, byte for byte. `lastAckGapMs()` reports the measured
+    gap; the hub logs it on the DEBUG `GWG timing:` line and for each
+    unanswered ENQ-paced request while a gap is set. Motivation: #35's
+    reporter's own firmware writes the 0x01 at once and the rest one loop
+    pass later. Not yet tested on hardware. Proof:
+    `proof_gwg_enq_ack_gap.cpp`.
+
+Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called) and 39 (when its gap is set) are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16 are structural (no behavior change from any call
 site that exists -- item 16 alters bytes only on a RESPONSE-construction path
 nothing exercises); item 17 changes only construction-failure handling

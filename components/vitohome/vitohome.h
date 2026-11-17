@@ -194,6 +194,17 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   void set_gwg_enq_send_delay_ms(uint32_t ms);
   uint32_t gwg_enq_send_delay_ms() const { return this->gwg_enq_send_delay_ms_; }
 
+  // Ms between the 0x01 that answers the device's ENQ and the rest of the
+  // request, clamped to 0..optolink::GWG_ENQ_ACK_GAP_MAX_MS (100) and logged;
+  // default 0, one write. Counts after the ENQ-to-send delay; burst-sent
+  // requests carry no 0x01 and do not wait. Open frames that start with 0x01
+  // get it too. The DEBUG `GWG timing:` and `GWG ... unanswered` lines state
+  // the measured gap.
+  //
+  //   id(vito).set_gwg_enq_ack_gap_ms(30);
+  void set_gwg_enq_ack_gap_ms(uint32_t ms);
+  uint32_t gwg_enq_ack_gap_ms() const { return this->gwg_enq_ack_gap_ms_; }
+
   // True once the GWG engine has stopped bursting
   // (GWGEngine::BURST_FAILURES_BEFORE_FALLBACK), until reboot. A burst A/B test
   // checks it first: after the fallback every request waits for a fresh ENQ
@@ -569,9 +580,9 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   int ident_f0_{-1};
   bool gwg_burst_disabled_{false};  // see gwg_burst_disabled()
 #ifdef VITOHOME_PROTOCOL_GWG
-  // Keeps the main loop from idling while the GWG engine holds an ENQ for
-  // its ENQ-to-send delay (see GWGEngine::isHoldingEnq()); otherwise the delay
-  // would overrun by up to one loop interval.
+  // Keeps the main loop from idling while the GWG engine waits out its
+  // ENQ-to-send delay or the gap after the 0x01 (GWGEngine::isHoldingEnq());
+  // otherwise either would overrun by up to one loop interval.
   HighFrequencyLoopRequester gwg_hold_loop_;
 #endif
   // GWG diagnostics as last set; pushed to the engine at setup and on change.
@@ -579,6 +590,7 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   bool gwg_burst_omits_enq_ack_{optolink::GWGEngine::DEFAULT_BURST_OMITS_ENQ_ACK};
   uint32_t gwg_response_timeout_ms_{optolink::GWGEngine::RESPONSE_TIMEOUT_MS};
   uint32_t gwg_enq_send_delay_ms_{0};
+  uint32_t gwg_enq_ack_gap_ms_{0};
 
   // --- raw scan console lane -------------------------------------------------
   //

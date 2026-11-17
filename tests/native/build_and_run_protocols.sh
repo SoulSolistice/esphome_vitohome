@@ -114,6 +114,10 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTO
   proof_gwg_enq_send_delay.cpp "${SRCS[@]}" -o gwg_enq_send_delay
 ./gwg_enq_send_delay
 
+echo "== GWG gap after the 0x01: default 0, the 0x01 alone, burst unaffected (THIRD_PARTY.md #39) =="
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO"   proof_gwg_enq_ack_gap.cpp "${SRCS[@]}" -o gwg_enq_ack_gap
+./gwg_enq_ack_gap
+
 echo "== GWG write access modes (EEPROM/BE; KMBUS refused) =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
   proof_gwg_write_access.cpp "${SRCS[@]}" -o gwg_write_access
