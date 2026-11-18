@@ -291,6 +291,10 @@ void VS2Engine::_idle() {
       return;
     }
     if (!keepalive) {
+      // Nothing on the line before a telegram can be its answer: a byte left
+      // over would be read as the device's ACK or the start of its frame.
+      while (_interface->available())
+        _interface->read();
       // The whole telegram in this pass: a host loop that sleeps between
       // passes (ESPHome: about 16 ms) would otherwise add one per state.
       _setState(State::SENDSTART);
@@ -350,6 +354,19 @@ void VS2Engine::_receive() {
     _lastMillis = _currentMillis;
     internals::ParserResult result = _parser.parse(_interface->read());
     if (result == internals::ParserResult::COMPLETE) {
+      const PacketVS2 &answer = _parser.packet();
+      const FunctionCode fc = answer.functionCode();
+      if (answer.packetType() == PacketType::RESPONSE && fc == _currentPacket.functionCode() &&
+          (fc == FunctionCode::READ || fc == FunctionCode::WRITE) && answer.address() != _currentPacket.address()) {
+        // The answer to an earlier telegram: the stream is a frame behind, and
+        // every later request would get its predecessor's answer. RESET drains
+        // the line and syncs again.
+        optolink_log_w("response address 0x%04x does not match the request's 0x%04x",
+                       static_cast<unsigned>(answer.address()), static_cast<unsigned>(_currentPacket.address()));
+        _setState(State::RESET);
+        _tryOnError(OptolinkResult::ERROR);
+        return;
+      }
       // Frame-type guard vs. upstream (THIRD_PARTY.md #9): upstream delivered
       // ANY complete frame -- including a device ERROR frame (PacketType 0x03)
       // -- through the response callback, so an error frame's payload was
@@ -400,8 +417,6 @@ void VS2Engine::_receiveAck() {
   if (_interface->write(&internals::ProtocolBytes.ACK, 1) == 1) {
     _lastMillis = _currentMillis;
     _setState(State::IDLE);
-    // A request queued by the answer's callback follows the ACK in this pass.
-    _idle();
   }
 }
 
