@@ -328,14 +328,16 @@ void GWGEngine::_send() {
   // rest from ACK_GAP.
   const bool ackAlone = _enqAckGapMs > 0 && _lastSendEnqPaced && _bytesTransferred == 0 &&
                         _currentRequest.length() > 1 && _currentRequest[0] == internals::ProtocolBytes.ENQ_ACK;
+  // Taken before the write, which may log after handing the bytes over.
+  const uint32_t writeMillis = optolink_millis();
   _bytesTransferred += _interface->write(&_currentRequest[_bytesTransferred],
                                          ackAlone ? 1 : _currentRequest.length() - _bytesTransferred);
   if (_stampEnqToSend) {
     _stampEnqToSend = false;
-    _enqToSendMillis = optolink_millis() - _enqSeenMillis;
+    _enqToSendMillis = writeMillis - _enqSeenMillis;
   }
   if (ackAlone && _bytesTransferred == 1) {
-    _ackSentMillis = optolink_millis();
+    _ackSentMillis = writeMillis;
     _setState(State::ACK_GAP);
     return;
   }

@@ -83,6 +83,9 @@ class ESPHomeUARTInterface {
   std::size_t write(const uint8_t *data, uint8_t length) {
     if (dev_ == nullptr || data == nullptr || length == 0)
       return 0;
+    // The bytes first: a log line in front of them would delay them by as long
+    // as the logger takes to reach its consumers.
+    dev_->write_array(data, length);
 #ifdef VITOHOME_LOG_FRAMES
     // Traffic in the other direction closes the pending frame, so the log reads
     // as a strict request/response alternation.
@@ -90,7 +93,6 @@ class ESPHomeUARTInterface {
     for (uint8_t i = 0; i < length; i++)
       this->note_tx_(data[i]);
 #endif
-    dev_->write_array(data, length);
     return length;  // ESPHome's write_array does not signal partial writes
   }
 

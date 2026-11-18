@@ -822,10 +822,12 @@ These are intentional divergences from upstream `edc059a7`:
     after the ENQ was read; bytes arriving meanwhile are dropped. A
     burst-sent request does not wait. At the default 0 the engine takes the
     same path as before, byte for byte. `lastEnqToSendMs()` /
-    `lastSendWasEnqPaced()` report the measured gap; the hub logs it on the
-    DEBUG `GWG timing:` line and for each unanswered ENQ-paced request.
-    Motivation: #35's reporter waits 30-35 ms after the 0x05 in their own
-    firmware. On #35 it made no difference (0-100 ms, 2026-11-13). Proof:
+    `lastSendWasEnqPaced()` report the measured gap, up to the write that
+    sends the frame's first byte; the hub logs it on the DEBUG `GWG timing:`
+    line and for each unanswered ENQ-paced request. Motivation: #35's
+    unanswered reads were all sent on an ENQ. On #35, reads sent 25 ms or
+    more after the ENQ went unanswered far less often than those sent within
+    10 ms (2026-11-13 to 2026-11-17, not alternating). Proof:
     `proof_gwg_enq_send_delay.cpp`.
 
 34. **GWG diagnostic switches are engine members (structural, no wire
@@ -915,8 +917,8 @@ These are intentional divergences from upstream `edc059a7`:
     gap; the hub logs it on the DEBUG `GWG timing:` line and for each
     unanswered ENQ-paced request while a gap is set. Motivation: #35's
     reporter's own firmware writes the 0x01 at once and the rest one loop
-    pass later. Not yet tested on hardware. Proof:
-    `proof_gwg_enq_ack_gap.cpp`.
+    pass later. On #35 a 30 ms gap made no difference (alternating per read,
+    2026-11-17). Proof: `proof_gwg_enq_ack_gap.cpp`.
 
 Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called) and 39 (when its gap is set) are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16 are structural (no behavior change from any call

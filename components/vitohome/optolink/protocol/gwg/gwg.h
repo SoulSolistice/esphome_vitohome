@@ -436,11 +436,10 @@ class GWGEngine {
   // ENQ-to-send measurement (issue #35, see setEnqSendDelayMs()). For the last
   // request sent on an ENQ: the ms from reading the ENQ out of the UART buffer
   // to handing the frame's first byte to the interface. Taken with a fresh
-  // optolink_millis() after the write, so it includes whatever write() itself
-  // spends first (with frame logging on, the `<<< 05` log line). 0 means the
-  // same millisecond. lastSendWasEnqPaced() is false for a burst-sent request,
-  // whose value is then meaningless. Valid inside onResponse/onTiming/onError
-  // for the transaction just finished; reset by the next telegram sent.
+  // optolink_millis() right before the write. 0 means the same millisecond.
+  // lastSendWasEnqPaced() is false for a burst-sent request, whose value is
+  // then meaningless. Valid inside onResponse/onTiming/onError for the
+  // transaction just finished; reset by the next telegram sent.
   uint32_t lastEnqToSendMs() const { return _enqToSendMillis; }
   // Upper bound on how long the ENQ sat in the UART buffer before it was read:
   // the loop gap of the pass that read it (the `enq age` of OnTimingCallback).
@@ -485,7 +484,7 @@ class GWGEngine {
   uint32_t _sendCompleteMillis;
   // ENQ-to-send (see lastEnqToSendMs()). _enqSeenMillis is a fresh
   // optolink_millis() taken when the ENQ is read; _stampEnqToSend asks _send()
-  // to measure after its first write.
+  // to measure at its first write.
   uint32_t _enqSeenMillis;
   uint32_t _enqToSendMillis;
   bool _lastSendEnqPaced;

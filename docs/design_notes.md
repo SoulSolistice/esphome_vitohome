@@ -2610,7 +2610,10 @@ The adapter can reconstruct the boundaries and needs no delimiter.
 `vito_uart_interface.h` then logs one line per telegram under the
 `vitohome.frames` tag. **Both directions are buffered**, and each is flushed on
 the first of: traffic in the opposite direction, an inter-byte gap over 30 ms, or
-a full buffer.
+a full buffer. A write hands its bytes to the UART before it logs anything, so
+no log line delays a telegram. With the line logged ahead of the bytes, #35
+measured 3-6 ms from reading the ENQ to sending (ESP32-S2, log streamed over
+WiFi).
 
 Buffering TX is not optional, though the first cut assumed otherwise ("one
 `write()` == one telegram, on every protocol"). That holds for VS1/KW and GWG and

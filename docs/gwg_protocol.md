@@ -309,17 +309,23 @@ The two families share every `physical`, `xram`, `port` and most `eeprom` and
   lambda (0 to 100 ms) holds an ENQ-paced request that long first; burst-sent
   requests do not wait. The DEBUG `GWG timing:` line shows `enq age` and the
   measured `enq->send` for each answered read, and `GWG 0x.. unanswered:`
-  shows the same two for each unanswered one. On #35 it made no difference:
-  from 0 to 100 ms, unanswered stretches came and went alike (HW, 2026-11-13).
+  shows the same two for each unanswered one. `enq->send` runs to the write
+  that sends the frame's first byte; the frame log writes its lines after
+  that write. On #35, reads sent 25 ms or more after the ENQ went unanswered
+  4 times in 439, all identification reads right after an ESP boot; reads
+  sent within 10 ms went unanswered 236 times in 1,882, in stretches (HW,
+  2026-11-13 to 2026-11-17). The two settings ran at different times, not
+  alternating.
 - **Gap after the `0x01` (diagnostic, off by default).** The delay above moves
   the whole frame, its `0x01` included. `id(vito).set_gwg_enq_ack_gap_ms(30)`
   from a lambda (0 to 100 ms) sends the `0x01` on the ENQ, or after the delay,
   and the rest of the frame that much later. Open frames that start with
   `0x01` get the gap too; burst-sent requests carry no `0x01` and do not wait.
   Both DEBUG lines then add the measured `01->rest`. #35's reporter's own
-  firmware sends the `0x01` at once and the rest one loop pass later, about
-  30-35 ms. On #35 every unanswered read was the first frame after an ENQ,
-  none a burst frame (HW, 2026-11-13). Not yet tested on hardware.
+  firmware sends the `0x01` at once and the rest one or two loop passes
+  later. On #35 a gap of 30 ms made no difference: alternating per read, 85
+  of 550 reads went unanswered at 30 ms and 86 of 550 at 0 ms (HW,
+  2026-11-17).
 
 ## Open questions
 
@@ -329,5 +335,5 @@ The two families share every `physical`, `xram`, `port` and most `eeprom` and
 | Is `xram` `0x88` big-endian? | Second Wasserdruck reading at another pressure |
 | Does any GWG unit serve `be`? | A unit with a BEM panel |
 | How does a GWG unit frame a KM-bus read? | The candidates under `kmbus_eeprom`, with the KM-bus probe |
-| Does #35's unit need a gap after the `0x01`? | A read every 5 s with frames logged, `set_gwg_enq_ack_gap_ms(0)` and `30` alternating over the same hour; compare the unanswered reads of each |
+| Does #35's unit answer more reads with an ENQ-to-send delay? | A read every 5 s with frames logged, `set_gwg_enq_send_delay_ms(0)` and `30` alternating for 2 h, the first 20 min after boot not counted; compare the unanswered reads of each |
 | Where does the write frame's `0x04` go? | A first `eeprom` write on a unit whose owner accepts the risk |
