@@ -278,6 +278,8 @@ void VS2Engine::_initAck() {
 }
 
 void VS2Engine::_idle() {
+  // send INIT every KEEPALIVE_INTERVAL_MS to keep communication alive
+  const bool keepalive = _currentMillis - _lastMillis > KEEPALIVE_INTERVAL_MS;
   if (_busy) {
     // A KW telegram leaves P300 for KW (see kwTelegram()).
     if (_kw) {
@@ -288,10 +290,15 @@ void VS2Engine::_idle() {
       _setState(State::FRAME_SEND);
       return;
     }
-    _setState(State::SENDSTART);
+    if (!keepalive) {
+      // The whole telegram in this pass: a host loop that sleeps between
+      // passes (ESPHome: about 16 ms) would otherwise add one per state.
+      _setState(State::SENDSTART);
+      _sendStart();
+      return;
+    }
   }
-  // send INIT every KEEPALIVE_INTERVAL_MS to keep communication alive
-  if (_currentMillis - _lastMillis > KEEPALIVE_INTERVAL_MS) {
+  if (keepalive) {
     _setState(State::INIT);
   }
 }
@@ -300,9 +307,11 @@ void VS2Engine::_sendStart() {
   if (_interface->write(&internals::ProtocolBytes.PACKETSTART, 1) == 1) {
     _lastMillis = _currentMillis;
     _setState(State::SENDPACKET);
+    _sendPacket();
   }
 }
 
+// A partial write stays in its state and resumes on the next loop().
 void VS2Engine::_sendPacket() {
   _bytesTransferred +=
       _interface->write(&_currentPacket[_bytesTransferred], _currentPacket.length() - _bytesTransferred);
@@ -310,6 +319,7 @@ void VS2Engine::_sendPacket() {
     _bytesTransferred = 0;
     _lastMillis = _currentMillis;
     _setState(State::SEND_CRC);
+    _sendCRC();
   }
 }
 
@@ -390,6 +400,8 @@ void VS2Engine::_receiveAck() {
   if (_interface->write(&internals::ProtocolBytes.ACK, 1) == 1) {
     _lastMillis = _currentMillis;
     _setState(State::IDLE);
+    // A request queued by the answer's callback follows the ACK in this pass.
+    _idle();
   }
 }
 
