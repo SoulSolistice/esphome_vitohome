@@ -1566,8 +1566,14 @@ async def to_code(config):
     optolink_dir = component_dir / "optolink"
     if CORE.using_toolchain_esp_idf:
         esp32.add_idf_component(name="optolink", path=str(optolink_dir))
+    elif CORE.using_toolchain_platformio:
+        # PlatformIO strips "file://" and opens the rest as a path, so a
+        # Windows path must follow directly ("file:///C:/..." is invalid there).
+        cg.add_library("optolink", None, f"file://{optolink_dir}")
     else:
-        cg.add_library("optolink", None, optolink_dir.as_uri())
+        # The native toolchains' library resolver (native ESP8266) needs an
+        # empty host: "file://C:\..." is rejected, "file:///C:/..." resolves.
+        cg.add_library("optolink", None, "file:///" + optolink_dir.as_posix().lstrip("/"))
     # as_posix(): on a Windows host str(Path) yields backslashes, which
     # PlatformIO/SCons mangles inside build_flags, so the include path is lost
     # and every `#include "optolink/optolink.h"` fails. Forward slashes are
