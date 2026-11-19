@@ -15,6 +15,7 @@ i2c:
   scl: GPIO5
 
 uart:
+  - id: !remove uart_optolink
   - id: uart_optolink
     rx_pin: GPIO13
     tx_pin: GPIO15
@@ -23,13 +24,12 @@ uart:
     parity: EVEN
     stop_bits: 2
 
-<<: !include common.yaml
-
 # `access: gfa` entities (KW and P300; GWG has no GFA read). The second raw
 # gate compiles queue_raw_frame()'s sending branch with the KW engine; the
 # esp-idf KW config keeps the refusal.
 packages:
   gfa: !include common-gfa.yaml
+  common: !include common.yaml
   unsafe_raw:
     vitohome:
       unsafe_raw_writes: true

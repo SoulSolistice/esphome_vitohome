@@ -3,9 +3,10 @@
 # PINS
 # ----
 # common.yaml's pins are ESP32 pins (GPIO16/17/21/22), several of which do not
-# exist on an ESP8266. The i2c: and uart: keys below override the merged ones
-# (explicit keys win over a `<<:` merge), so common.yaml stays the single
-# source of entity coverage while this file only swaps the wiring.
+# exist on an ESP8266. The i2c: key below overrides the one of the common.yaml
+# package, and the uart: entry replaces the package's through `!remove` (a
+# list entry with the same id would be a duplicate). common.yaml stays the
+# single source of entity coverage while this file only swaps the wiring.
 
 substitutions:
   name: vitohome-test-esp8266
@@ -21,6 +22,7 @@ i2c:
   scl: GPIO5
 
 uart:
+  - id: !remove uart_optolink
   - id: uart_optolink
     rx_pin: GPIO13
     tx_pin: GPIO15
@@ -29,11 +31,10 @@ uart:
     parity: EVEN
     stop_bits: 2
 
-<<: !include common.yaml
-
 # The second raw gate compiles queue_raw_frame()'s sending branch with the
 # P300 engine; the esp32 P300 configs keep the refusal.
 packages:
+  common: !include common.yaml
   unsafe_raw:
     vitohome:
       unsafe_raw_writes: true

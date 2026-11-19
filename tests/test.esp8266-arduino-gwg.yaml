@@ -1,5 +1,5 @@
-# GWG on ESP8266. Uses common-gwg.yaml (single-byte GWG addresses); the uart:
-# key below swaps its ESP32 pins for ESP8266 ones, as in
+# GWG on ESP8266. Uses common-gwg.yaml (single-byte GWG addresses) as a
+# package; the uart: key below swaps its ESP32 pins for ESP8266 ones, as in
 # test.esp8266-arduino.yaml. Compile gate: the GWG engine through the ESP8266
 # toolchain, whose millis() branch and heap budget no ESP32 build reaches.
 substitutions:
@@ -12,6 +12,7 @@ esp8266:
   board: d1_mini
 
 uart:
+  - id: !remove uart_optolink
   - id: uart_optolink
     rx_pin: GPIO13
     tx_pin: GPIO15
@@ -20,4 +21,5 @@ uart:
     parity: EVEN
     stop_bits: 2
 
-<<: !include common-gwg.yaml
+packages:
+  common: !include common-gwg.yaml
