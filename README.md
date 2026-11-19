@@ -138,9 +138,10 @@ provides several things you would otherwise have to build by hand:
   `queue_raw_gfa_read` reads the burner control; with `raw_access: unrestricted`,
   `queue_raw_op` sends any telegram of any layer, e.g. `p300 r 05 1000 16`, and
   with `unsafe_raw_writes` an open frame in the link's protocol, e.g.
-  `gwg f 01 43 01 01 04`) and sweep address ranges — useful for identifying
-  datapoints on an unknown unit. These interactive operations preempt normal
-  polling so the console feels immediate.
+  `gwg f 01 43 01 01 04`, also with its timing, e.g.
+  `gwg f 01 ~30 AE 16 01 04 / 2`) and sweep address ranges — useful for
+  identifying datapoints on an unknown unit. These interactive operations
+  preempt normal polling so the console feels immediate.
 - **Boot-time device identification.** The hub reads the controller
   identification (`0xF8`–`0xFB`) once at start-up and logs the family, HW and
   SW index; the result is pushed to any `device_id` text sensor.
@@ -266,7 +267,7 @@ vitohome:
   #                         # / physical writes, GFA_WRITE, a GWG EEPROM pair
   #                         # as given, unnamed codes with payload, open GWG
   #                         # frames). Both off by default.
-  # raw_queue_size: 0       # scan-console lane slots (~40 B each, reserved once
+  # raw_queue_size: 0       # scan-console lane slots (~52 B each, reserved once
   #                         # at boot). Default 0: the scan console is a debug
   #                         # tool, so it is opt-in and costs nothing unless
   #                         # used. Set it only if you call queue_raw_read /

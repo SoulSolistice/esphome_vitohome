@@ -10,7 +10,8 @@
 //
 //   <layer> r <code> <address> <length>      a telegram without payload
 //   <layer> w <code> <address> <bytes...>    a telegram carrying payload
-//   <layer> f <bytes...> [/ <length>]        an open frame
+//   <layer> f [@now] <bytes | ~ms...> [/ <length> | / p300]
+//                                            an open frame
 //
 //   layer    p300 (vs2), kw (vs1), gwg
 //   code     hex: the P300 function code (1..1F, the low five bits of the
@@ -33,6 +34,20 @@
 // first: the KM-bus telegram check (openv wiki, KM-Bus). Bytes between `{`
 // and `}` are followed by their sum modulo 256: the P300 checksum, over the
 // bytes after the 41. At most 32 bytes, the check bytes included.
+//
+// A timed frame goes to the script runner (raw_script.h) instead of the
+// engine, which is parked meanwhile and resyncs afterwards:
+//   ~ms      wait 1..255 ms before the next byte, counted from the previous
+//            write, or from the ENQ (KW, GWG) or the start (P300) for a
+//            leading one; at most RAW_SCRIPT_WAITS_MAX, never two in a row,
+//            never last, never inside [ ] or { }
+//   @now     KW, GWG: send at once instead of on the device's next ENQ
+//   / p300   P300: the answer is the device's ACK and a frame, its checksum
+//            checked
+//
+//   gwg f ~30 01 AE 16 01 04 / 2      30 ms after the ENQ, then the frame
+//   gwg f 01 ~30 AE 16 01 04 / 2      the 01 on the ENQ, the rest 30 ms later
+//   p300 f 41 {05 00 01 00 F8 02} / p300
 //
 //   p300 r 05 1000 16      EEPROM read, 16 bytes at 0x1000
 //   kw r 7B 0800 2         PROZESS_READ (over P300: the KW detour)
@@ -70,6 +85,8 @@ enum class RawLayer : uint8_t { NONE = 0, P300, KW, GWG };
 enum class RawClass : uint8_t { READ, PROBE, WRITE, UNSAFE };
 
 inline constexpr std::size_t RAW_OP_PAYLOAD_MAX = 32;
+inline constexpr uint8_t RAW_SCRIPT_WAITS_MAX = 4;
+inline constexpr uint8_t RAW_SCRIPT_WAIT_MAX_MS = 255;
 
 struct RawSpec {
   RawLayer layer;
@@ -84,7 +101,16 @@ struct RawSpec {
   bool frame;
   uint8_t frame_len;
   uint8_t payload[RAW_OP_PAYLOAD_MAX];
+  // A timed frame: wait_ms[i] ms before payload[wait_at[i]]; @now; / p300.
+  uint8_t waits;
+  uint8_t wait_at[RAW_SCRIPT_WAITS_MAX];
+  uint8_t wait_ms[RAW_SCRIPT_WAITS_MAX];
+  bool now;
+  bool answer_p300;
 };
+
+// Whether a frame goes to the script runner rather than the engine.
+inline bool raw_frame_timed(uint8_t waits, bool now, bool answer_p300) { return waits != 0 || now || answer_p300; }
 
 // CRC-16/KERMIT (poly 0x1021 reflected, init 0): the KM-bus telegram check.
 inline uint16_t km_crc16(const uint8_t *data, std::size_t len) {
@@ -255,11 +281,59 @@ inline bool parse_raw_frame(const char *p, RawSpec &out, const char *&error, uin
   std::size_t group_from = 0;
   char group = 0;  // '[' or '{' while one is open
   bool answer = false;
+  bool first = true;
   while (next_token(p, tok, len)) {
+    if (token_is(tok, len, "@now")) {
+      if (!first) {
+        error = "@now: right after f";
+        return false;
+      }
+      if (out.layer == RawLayer::P300) {
+        error = "@now: kw and gwg only; a p300 frame goes out in the session";
+        return false;
+      }
+      out.now = true;
+      first = false;
+      continue;
+    }
+    first = false;
+    if (len != 0 && tok[0] == '~') {
+      unsigned long value = 0;
+      if (group != 0) {
+        error = "wait: not inside [ ] or { }";
+        return false;
+      }
+      if (!parse_dec(tok + 1, len - 1, RAW_SCRIPT_WAIT_MAX_MS, value) || value == 0) {
+        error = "wait: ~ and 1..255 ms";
+        return false;
+      }
+      if (out.waits == RAW_SCRIPT_WAITS_MAX) {
+        error = "wait: at most 4";
+        return false;
+      }
+      if (out.waits != 0 && out.wait_at[out.waits - 1] == n) {
+        error = "wait: two in a row";
+        return false;
+      }
+      out.wait_at[out.waits] = static_cast<uint8_t>(n);
+      out.wait_ms[out.waits] = static_cast<uint8_t>(value);
+      ++out.waits;
+      continue;
+    }
     if (len == 1 && tok[0] == '/') {
       unsigned long value = 0;
-      if (!next_token(p, tok, len) || !parse_dec(tok, len, read_max, value)) {
-        error = "length: decimal after /, at most the read cap";
+      const bool more = next_token(p, tok, len);
+      if (more && token_is(tok, len, "p300")) {
+        if (out.layer != RawLayer::P300) {
+          error = "length: / p300 on a p300 frame only";
+          return false;
+        }
+        out.answer_p300 = true;
+        answer = true;
+        break;
+      }
+      if (!more || !parse_dec(tok, len, read_max, value)) {
+        error = "length: decimal or p300 after /, at most the read cap";
         return false;
       }
       out.length = static_cast<uint8_t>(value);
@@ -327,6 +401,10 @@ inline bool parse_raw_frame(const char *p, RawSpec &out, const char *&error, uin
   }
   if (n == 0) {
     error = "bytes: at least one";
+    return false;
+  }
+  if (out.waits != 0 && out.wait_at[out.waits - 1] == n) {
+    error = "wait: nothing after it to send";
     return false;
   }
   if (answer && next_token(p, tok, len)) {

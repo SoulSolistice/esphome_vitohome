@@ -112,6 +112,8 @@ bool VitoHomeComponent::queue_raw_op(const char *spec) {
                raw_layer_name(parsed.layer), PROTOCOL_NAME);
       return false;
     }
+    if (raw_frame_timed(parsed.waits, parsed.now, parsed.answer_p300))
+      return this->queue_raw_script_(parsed);
     return this->queue_raw_frame(parsed.payload, parsed.frame_len, parsed.length);
   }
   return this->queue_raw_op(parsed.layer, parsed.code, parsed.address, parsed.length,
@@ -190,6 +192,92 @@ bool VitoHomeComponent::queue_raw_frame(const uint8_t *bytes, std::size_t len, u
   operation.layer = link_layer();
   operation.frame = true;
   return this->push_raw_(operation, label);
+#endif
+}
+
+bool VitoHomeComponent::queue_raw_script_(const RawSpec &spec) {
+#ifndef VITOHOME_RAW_SCRIPT
+  ESP_LOGW(TAG, "queue_raw_op: a timed frame needs raw_access: unrestricted and unsafe_raw_writes: true on the "
+                "vitohome hub");
+  (void) spec;
+  return false;
+#else
+  if (spec.frame_len > RAW_WRITE_MAX || spec.length > RAW_READ_MAX) {
+    ESP_LOGW(TAG, "queue_raw_op: timed frame of %u bytes, answer %u: out of range", spec.frame_len, spec.length);
+    return false;
+  }
+  char label[24];
+  raw_label_(label, sizeof(label), false, AddressSpace::OWN, spec.layer, 0, true);
+  ESP_LOGW(TAG, "queue_raw_op: sending unsafe timed %s of %u bytes; the engine pauses for it", label, spec.frame_len);
+  RawOp operation{};
+  operation.length = spec.length;
+  operation.bytes_len = spec.frame_len;
+  std::memcpy(operation.bytes, spec.payload, spec.frame_len);
+  operation.layer = spec.layer;
+  operation.frame = true;
+  operation.waits = spec.waits;
+  std::memcpy(operation.wait_at, spec.wait_at, sizeof(operation.wait_at));
+  std::memcpy(operation.wait_ms, spec.wait_ms, sizeof(operation.wait_ms));
+  operation.now = spec.now;
+  operation.answer_p300 = spec.answer_p300;
+  return this->push_raw_(operation, label);
+#endif
+}
+
+void VitoHomeComponent::raw_script_start_(const RawOp &operation) {
+#ifdef VITOHOME_RAW_SCRIPT
+  RawSpec spec{};
+  spec.layer = operation.layer;
+  spec.frame = true;
+  spec.frame_len = operation.bytes_len;
+  std::memcpy(spec.payload, operation.bytes, operation.bytes_len);
+  spec.length = operation.length;
+  spec.waits = operation.waits;
+  std::memcpy(spec.wait_at, operation.wait_at, sizeof(spec.wait_at));
+  std::memcpy(spec.wait_ms, operation.wait_ms, sizeof(spec.wait_ms));
+  spec.now = operation.now;
+  spec.answer_p300 = operation.answer_p300;
+  this->raw_script_.start(spec, this->raw_script_timing_());
+  this->raw_script_hold_.start();
+#else
+  (void) operation;
+#endif
+}
+
+RawScriptTiming VitoHomeComponent::raw_script_timing_() const {
+  // The engines' own answer deadlines; the ENQ wait as long as KW's after an
+  // EOT, the whole script well inside the hub's watchdog.
+#if defined(VITOHOME_PROTOCOL_GWG)
+  const uint32_t quiet = this->gwg_response_timeout_ms_;
+#elif defined(VITOHOME_PROTOCOL_KW)
+  const uint32_t quiet = optolink::VS1Engine::ANSWER_TIMEOUT_MS;
+#else
+  const uint32_t quiet = optolink::VS2Engine::FRAME_QUIET_MS;
+#endif
+  static_assert(RAW_SCRIPT_DEADLINE_MS < IN_FLIGHT_WATCHDOG_MS, "a script must end before the hub's watchdog");
+  return RawScriptTiming{RAW_SCRIPT_ENQ_TIMEOUT_MS, quiet, RAW_SCRIPT_DEADLINE_MS};
+}
+
+void VitoHomeComponent::raw_script_loop_() {
+#ifdef VITOHOME_RAW_SCRIPT
+  if (!this->raw_script_.loop())
+    return;
+  this->raw_script_hold_.stop();
+  char line[256];
+  format_raw_script(this->raw_script_.spec(), this->raw_script_.result(), this->raw_script_timing_(), line,
+                    sizeof(line));
+  if (this->raw_script_.result().status == RawScriptStatus::OK) {
+    ESP_LOGI(TAG, "Raw: %s", line);
+  } else {
+    ESP_LOGW(TAG, "Raw: %s", line);
+  }
+  this->raw_publish_(line);
+  this->raw_script_.clear();
+  // A fresh start resyncs the link: P300 from its reset, KW and GWG on the
+  // device's next ENQ.
+  this->vito_->begin();
+  VitoEntityBase *entity = nullptr;
+  (void) this->take_in_flight_(entity);
 #endif
 }
 
@@ -361,6 +449,20 @@ void VitoHomeComponent::dispatch_raw_front_() {
   this->raw_layer_ = operation.layer;
   this->raw_code_ = operation.code;
   this->raw_frame_ = operation.frame;
+
+#ifdef VITOHOME_RAW_SCRIPT
+  if (operation.frame && raw_frame_timed(operation.waits, operation.now, operation.answer_p300)) {
+    // The runner takes the port from an idle engine, which is not looped until
+    // the script ends.
+    if (this->vito_->isBusy())
+      return;
+    this->raw_queue_.drop_front();
+    this->raw_write_len_ = 0;
+    this->raw_script_start_(operation);
+    this->set_in_flight_(OpType::RAW);
+    return;
+  }
+#endif
 
   // A queue_raw_op() operation names its layer and code. Otherwise the space
   // picks the telegram (send_read_ / send_write_): a GWG access mode, a

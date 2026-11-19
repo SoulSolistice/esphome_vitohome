@@ -21,11 +21,17 @@
 #include "optolink/optolink.h"
 #include "protocol_select.h"
 #include "raw_op.h"
+#include "raw_script.h"
 #include "response_view.h"
 #include "ring_buffer.h"
 #include "vito_clock.h"
 #include "vito_entity.h"
 #include "vito_uart_interface.h"
+
+// Timed open frames (raw_script.h) need the same opt-ins as an open frame.
+#if defined(VITOHOME_RAW_UNRESTRICTED) && defined(VITOHOME_RAW_UNSAFE_WRITES)
+#define VITOHOME_RAW_SCRIPT
+#endif
 
 namespace esphome {
 
@@ -249,6 +255,11 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // the KW detour), gwg on a GWG hub. Published like a raw read, with the
   // controller's error code when a P300 error frame answers. Refused with a
   // warning otherwise; returns whether it was queued.
+  //
+  // A timed frame ("gwg f 01 ~30 AE 16 01 04 / 2": `~ms`, `@now`, `/ p300`)
+  // runs on the script runner (raw_script.h) with the engine parked, which
+  // resyncs afterwards. It needs the open frame's opt-ins and does not count
+  // toward link health. Its result line names the times it went out.
   bool queue_raw_op(const char *spec);
   bool queue_raw_op(const std::string &spec) { return this->queue_raw_op(spec.c_str()); }
   // `length` is the bytes asked for, or the size of `payload` when one is
@@ -401,6 +412,10 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
                     uint8_t payload_len);
   // A queue_raw_frame() frame on the engine; false when it is busy or refuses.
   bool send_raw_frame_(const uint8_t *bytes, uint8_t len, uint8_t answer_length);
+  // A timed frame (raw_script.h): queued like an open frame, run with the
+  // engine parked.
+  bool queue_raw_script_(const RawSpec &spec);
+  void raw_script_loop_();
   // "read" / "gfa read" / "p300 05 read" / "kw frame" ...: what the raw
   // operation in flight (or being queued) is, for log and result lines.
   static void raw_label_(char *out, std::size_t cap, bool is_write, AddressSpace space, RawLayer layer, uint8_t code,
@@ -416,6 +431,12 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
  private:
   ESPHomeUARTInterface iface_;
+#ifdef VITOHOME_RAW_SCRIPT
+  RawScript<ESPHomeUARTInterface> raw_script_{&this->iface_};
+  // Keeps the main loop from idling while a script runs, so its waits are not
+  // stretched by a loop interval.
+  HighFrequencyLoopRequester raw_script_hold_;
+#endif
 
   // Selected at build time; all three engines have the same read/write calls
   // and callbacks, response(data, length, address) and
@@ -626,20 +647,29 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
     // A queue_raw_frame() frame: `bytes` the frame, `length` the answer's
     // (0: until the line is quiet).
     bool frame;
+    // A timed frame (RawSpec's fields of the same names).
+    uint8_t waits;
+    uint8_t wait_at[RAW_SCRIPT_WAITS_MAX];
+    uint8_t wait_ms[RAW_SCRIPT_WAITS_MAX];
+    bool now;
+    bool answer_p300;
   };
+
+  // Takes the bus for a timed frame at the head of the raw lane.
+  void raw_script_start_(const RawOp &operation);
 
   // Appends a checked operation to the lane; false, with a warning, when it is
   // full or not allocated.
   bool push_raw_(const RawOp &operation, const char *label);
 
   // Default raw_queue_size (0..1024, __init__.py). Each slot is sizeof(RawOp),
-  // about 40 bytes on a 32-bit target, and a sweep-sized lane is a quarter of
+  // about 52 bytes on a 32-bit target, and a sweep-sized lane is a third of
   // an ESP8266's heap, so only configs that scan allocate one. An operation
   // queued on no lane is refused with a warning naming the option.
   //
   // Size it to the largest burst: 1 for a button's queue_raw_read(), the
   // sweep's count for a range sweep (example/vitohome-scanner-raw.yaml: 256,
-  // about 9.7 KiB). Codegen cannot derive it: lambdas fill the lane, and the
+  // about 13 KiB). Codegen cannot derive it: lambdas fill the lane, and the
   // sweep's count is a Home Assistant action parameter.
   static constexpr std::size_t RAW_QUEUE_DEFAULT = 0;
   std::size_t raw_queue_capacity_{RAW_QUEUE_DEFAULT};
@@ -675,6 +705,12 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   // For a callback the engine lost; the engines time out sooner.
   static constexpr uint32_t IN_FLIGHT_WATCHDOG_MS = 10000;
+
+  // A timed frame: the wait for the device's ENQ (KW sends one about every
+  // 2 s, GWG every 0.75 to 2.1 s) and the whole script.
+  static constexpr uint32_t RAW_SCRIPT_ENQ_TIMEOUT_MS = 3000;
+  static constexpr uint32_t RAW_SCRIPT_DEADLINE_MS = 6000;
+  RawScriptTiming raw_script_timing_() const;
 
   // Start-up check: no answer within max(PROTOCOL_VERIFY_MIN_MS, 3 * hub
   // interval) logs an error, publishes the link offline and sets the error

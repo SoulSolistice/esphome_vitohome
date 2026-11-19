@@ -19,7 +19,9 @@
 //   (5) an open frame (`<layer> f`) has a layer, 1..RAW_OP_PAYLOAD_MAX bytes
 //       and no code, address or payload flag, and an answer of at most the
 //       cap; its canonical form spells the bytes out, `[ ]` and `{ }` check
-//       bytes included.
+//       bytes included;
+//   (6) a timed frame's waits, @now and / p300 are where the grammar allows
+//       them, and its canonical form keeps them.
 
 #include <cstdio>
 #include <cstdlib>
@@ -54,7 +56,9 @@ bool same(const RawSpec &a, const RawSpec &b) {
     return false;
   if (a.frame)
     return a.layer == b.layer && a.frame_len == b.frame_len && a.length == b.length &&
-           std::memcmp(a.payload, b.payload, a.frame_len) == 0;
+           std::memcmp(a.payload, b.payload, a.frame_len) == 0 && a.waits == b.waits &&
+           std::memcmp(a.wait_at, b.wait_at, a.waits) == 0 && std::memcmp(a.wait_ms, b.wait_ms, a.waits) == 0 &&
+           a.now == b.now && a.answer_p300 == b.answer_p300;
   if (a.layer != b.layer || a.code != b.code || a.address != b.address || a.length != b.length ||
       a.has_payload != b.has_payload)
     return false;
@@ -86,12 +90,33 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
     oracle(spec.frame_len >= 1 && spec.frame_len <= RAW_OP_PAYLOAD_MAX, "frame length out of range");
     oracle(spec.code == 0 && spec.address == 0 && !spec.has_payload, "a frame with telegram fields");
     oracle(spec.length <= kReadMax, "frame answer above the cap");
+    // (6) a timed frame: at most RAW_SCRIPT_WAITS_MAX waits of 1..255 ms, each
+    // before a byte and after the previous one, none last; @now on KW/GWG
+    // only; / p300 on P300 only, with no length.
+    oracle(spec.waits <= RAW_SCRIPT_WAITS_MAX, "too many waits");
+    for (uint8_t w = 0; w < spec.waits && w < RAW_SCRIPT_WAITS_MAX; ++w) {
+      oracle(spec.wait_ms[w] >= 1, "a wait of 0 ms");
+      oracle(spec.wait_at[w] < spec.frame_len, "a wait with nothing after it");
+      oracle(w == 0 || spec.wait_at[w] > spec.wait_at[w - 1], "two waits in a row or out of order");
+    }
+    oracle(!spec.now || spec.layer != RawLayer::P300, "@now on p300");
+    oracle(!spec.answer_p300 || (spec.layer == RawLayer::P300 && spec.length == 0), "/ p300 off p300 or with a length");
     char line[256];
-    int n = std::snprintf(line, sizeof(line), "%s f", raw_layer_name(spec.layer));
-    for (uint8_t i = 0; i < spec.frame_len && n > 0 && n < static_cast<int>(sizeof(line)); ++i)
-      n += std::snprintf(line + n, sizeof(line) - n, " %02X", spec.payload[i]);
-    if (n > 0 && n < static_cast<int>(sizeof(line)))
-      std::snprintf(line + n, sizeof(line) - n, " / %u", spec.length);
+    int n = std::snprintf(line, sizeof(line), "%s f%s", raw_layer_name(spec.layer), spec.now ? " @now" : "");
+    uint8_t w = 0;
+    for (uint8_t i = 0; i < spec.frame_len && n > 0 && n < static_cast<int>(sizeof(line)); ++i) {
+      if (w < spec.waits && spec.wait_at[w] == i)
+        n += std::snprintf(line + n, sizeof(line) - n, " ~%u", spec.wait_ms[w++]);
+      if (n > 0 && n < static_cast<int>(sizeof(line)))
+        n += std::snprintf(line + n, sizeof(line) - n, " %02X", spec.payload[i]);
+    }
+    if (n > 0 && n < static_cast<int>(sizeof(line))) {
+      if (spec.answer_p300) {
+        std::snprintf(line + n, sizeof(line) - n, " / p300");
+      } else {
+        std::snprintf(line + n, sizeof(line) - n, " / %u", spec.length);
+      }
+    }
     RawSpec again;
     const char *error2 = nullptr;
     const bool ok2 = parse_raw_spec(line, again, error2, kReadMax);

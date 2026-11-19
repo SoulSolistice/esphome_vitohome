@@ -140,6 +140,10 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}"   -I"$ROOT" -I"$OPTO" pro
 ./proof_raw_op
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}"   -I"$ROOT" -I"$OPTO" fuzz_raw_spec.cpp -o fuzz_raw_spec
 ./fuzz_raw_spec
+# raw_script.h: the runner of a timed open frame, on a scripted port and the
+# frozen host clock.
+g++ -std=c++17 -Wall -Wextra -Werror -Wformat=2 "${SAN_FLAGS[@]}" -I"$ROOT" -I"$OPTO" proof_raw_script.cpp -o proof_raw_script
+./proof_raw_script
 
 # decode.h fuzz corpus, the same two-build arrangement over the other half of
 # the path: payload->text, where the fixed char buffers and the hand-rolled

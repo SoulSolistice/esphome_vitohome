@@ -274,7 +274,16 @@ void VitoHomeComponent::loop() {
   if (this->vito_ == nullptr || this->is_failed())
     return;
 
+#ifdef VITOHOME_RAW_SCRIPT
+  // A timed raw frame owns the port; the engine is parked meanwhile.
+  if (this->raw_script_.active()) {
+    this->raw_script_loop_();
+  } else {
+    this->vito_->loop();
+  }
+#else
   this->vito_->loop();
+#endif
 
 #ifdef VITOHOME_PROTOCOL_GWG
   // Hold the main loop awake only while a request waits out the ENQ-to-send
@@ -438,6 +447,10 @@ void VitoHomeComponent::set_gwg_enq_ack_gap_ms(uint32_t ms) {
 void VitoHomeComponent::dispatch_next_() {
   if (this->in_flight_op_ != OpType::NONE)
     return;
+#ifdef VITOHOME_RAW_SCRIPT
+  if (this->raw_script_.active())
+    return;
+#endif
 
   // A merged read-modify-write goes out before anything else: nothing may use
   // the bus between its read and its write (rmw_pending_, vitohome.h).

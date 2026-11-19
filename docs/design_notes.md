@@ -1018,6 +1018,60 @@ CRC-16/KERMIT, low byte first, the KM-bus telegram check; `{ ... }` appends
 their sum modulo 256, the P300 checksum over the bytes after the `41`. At
 most 32 bytes, the check bytes included.
 
+#### Timed frames
+
+A frame with `~ms`, `@now` or `/ p300` is timed. It tests a timing
+hypothesis without new firmware, as #35's A/B/C test needed two engine
+setters for:
+
+```
+gwg f 01 AE 16 01 04 / 2          A: everything on the ENQ (an untimed frame)
+gwg f ~30 01 AE 16 01 04 / 2      B: 30 ms after the ENQ, then the frame
+gwg f 01 ~30 AE 16 01 04 / 2      C: the 01 on the ENQ, the rest 30 ms later
+kw f @now 01 F7 00 F8 02 / 2      KW without waiting for an ENQ
+p300 f 41 {05 00 01 00 F8 02} / p300
+                                  the answer as ACK and frame, checksum checked
+```
+
+- `~ms` (1..255) waits before the next byte, counted from the previous write.
+  A leading one counts from the ENQ (KW, GWG) or from the start (P300,
+  `@now`). At most four per frame; never two in a row, last, or inside
+  `[ ]` / `{ }`.
+- `@now` (KW, GWG) sends at once instead of on the device's next ENQ.
+- `/ p300` (P300) reads the answer as the device's ACK (or NACK) and one
+  frame, and checks its checksum. Without it the answer is raw, as for an
+  untimed frame.
+
+A timed frame does not go to the engine. The script runner (`raw_script.h`,
+framework-free, `proof_raw_script.cpp`) takes the port from an idle engine,
+which the hub stops looping until the script ends:
+
+1. On KW and GWG it waits up to 3 s for the ENQ, and other bytes meanwhile
+   are counted. A frame with no leading wait goes out in the pass that read
+   the ENQ, as the engines answer one.
+2. It writes the frame in segments at their times. The hub keeps the main
+   loop awake meanwhile, so a wait is not stretched by a loop interval.
+   Bytes that arrive before the last write are not the answer; they are
+   counted and shown.
+3. It collects the answer: `n` bytes, or until the line is quiet. The silence
+   allowed is the engine's: GWG its response deadline, KW 1000 ms, P300
+   500 ms. The silence check runs before the drain, as in the engines. The
+   whole script ends after 6 s, inside the hub's 10 s watchdog.
+4. The hub restarts the engine (`begin()`), which resyncs: P300 from its
+   RESET, KW and GWG on the next ENQ, and GWG without a burst window left
+   over from before.
+
+The result line has the spec, when each segment went out and when the answer
+came:
+
+```
+gwg f 01 ~30 AE 16 01 04 / 2: ENQ after 812 ms, sent 01 +0 ms, AE 16 01 04 +31 ms; answer +38 ms: E9 16
+```
+
+The times are read from the clock in the loop pass that wrote or read the
+bytes, so they are as exact as the loop, not the wire. A timed frame has the
+open frame's gates and, like it, does not count toward link health.
+
 `unrestricted` needs `raw_queue_size`, and `unsafe_raw_writes` needs
 `unrestricted` (config errors). The layer is checked when the line arrives:
 `p300` on a P300 hub, `kw` on KW and P300, `gwg` on GWG. Entities stay on the
@@ -1197,7 +1251,7 @@ to **0**: a debug tool should not tax every config, and on an ESP8266 (~40 KiB
 heap) a sweep-sized lane is a quarter of the budget. Scanning is opt-in — size
 `raw_queue_size` to the largest burst intended (1–2 for one-off
 `queue_raw_read()` presses; `example/vitohome-scanner-raw.yaml` uses 256,
-~9.7 KiB, for its RANGE SWEEP). An enqueue against an unallocated lane is
+~13 KiB, for its RANGE SWEEP). An enqueue against an unallocated lane is
 rejected with a warning naming the option, so the failure is loud.
 
 That depth **cannot be derived from the config**: the lane is driven through

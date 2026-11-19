@@ -156,7 +156,7 @@ vitohome:
   # anything past capacity is dropped with a "raw queue full (n/n); dropping
   # read 0x...." warning.
   #
-  # 256 slots x sizeof(RawOp) (40 B) = 10 KiB. That is the price of sweeping,
+  # 256 slots x sizeof(RawOp) (52 B) = 13 KiB. That is the price of sweeping,
   # which is why it is opt-in here rather than charged to every config. Size it
   # to the largest `count` you intend to sweep; the schema allows up to 1024.
   raw_queue_size: 256

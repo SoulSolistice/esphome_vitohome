@@ -10,6 +10,8 @@
 //      PROBE.
 //   E) open frames (`<layer> f`): bytes, `[ ]` with CRC-16/KERMIT, `{ }` with
 //      the P300 sum, `/ n`, on every layer.
+//   F) timed frames: `~ms` waits, `@now`, `/ p300`, and every misplaced one
+//      refused.
 //
 // Built by build_and_run.sh.
 
@@ -235,6 +237,45 @@ int main() {
     }
   }
   check(payload_never_read, "D: a payload is never READ or PROBE, any layer, any code");
+
+  // --- F: timed frames ----------------------------------------------------
+  check(parse("gwg f ~30 01 AE 16 01 04 / 2", s) && s.frame && s.frame_len == 5 && s.waits == 1 && s.wait_at[0] == 0 &&
+            s.wait_ms[0] == 30 && s.length == 2 && !s.now && !s.answer_p300,
+        "F: gwg f ~30 01 AE 16 01 04 / 2, a leading wait");
+  check(parse("gwg f 01 ~30 AE 16 01 04 / 2", s) && s.waits == 1 && s.wait_at[0] == 1 && s.wait_ms[0] == 30,
+        "F: gwg f 01 ~30 AE ..., a wait after the 01");
+  check(parse("kw f @now 01 ~20 F7 00 ~10 F8 02 / 2", s) && s.now && s.waits == 2 && s.wait_at[1] == 3 &&
+            s.wait_ms[1] == 10 && s.frame_len == 5,
+        "F: kw f @now with two waits");
+  check(parse("gwg f @NOW 01 CB 6F 01 04", s) && s.now && s.waits == 0 && s.length == 0, "F: @NOW in capitals");
+  check(parse("p300 f ~10 41 {05 00 01 00 F8 02} / p300", s) && s.answer_p300 && s.length == 0 && s.frame_len == 8 &&
+            s.wait_at[0] == 0,
+        "F: p300 f ~10 41 {...} / p300");
+  check(parse("p300 f 41 {05 00 01 00 F8 02} / P300", s) && s.answer_p300, "F: / P300 in capitals");
+  check(parse("gwg f 01 ~255 CB 6F 01 04", s) && s.wait_ms[0] == 255, "F: ~255 is the longest wait");
+  check(parse("gwg f 01 ~1 CB ~2 6F ~3 01 ~4 04", s) && s.waits == 4, "F: four waits");
+  check(raw_frame_timed(1, false, false) && raw_frame_timed(0, true, false) && raw_frame_timed(0, false, true) &&
+            !raw_frame_timed(0, false, false),
+        "F: a frame is timed by a wait, @now or / p300");
+  check(parse("gwg f 01 CB 6F 01 04 / 1", s) && !raw_frame_timed(s.waits, s.now, s.answer_p300),
+        "F: a plain frame stays on the engine");
+  check(refused("gwg f 01 ~0 CB", "wait:"), "F: ~0 refused");
+  check(refused("gwg f 01 ~256 CB", "wait:"), "F: ~256 refused");
+  check(refused("gwg f 01 ~ CB", "wait:"), "F: ~ without a number refused");
+  check(refused("gwg f 01 ~3x CB", "wait:"), "F: ~3x refused");
+  check(refused("gwg f 01 ~10 ~20 CB", "wait:"), "F: two waits in a row refused");
+  check(refused("gwg f 01 CB ~10", "wait:"), "F: a wait at the end refused");
+  check(refused("gwg f 01 CB ~10 / 1", "wait:"), "F: a wait before the length refused");
+  check(refused("gwg f 01 ~1 CB ~2 6F ~3 01 ~4 04 ~5 05", "wait:"), "F: a fifth wait refused");
+  check(refused("p300 f 41 {05 ~10 00 01 00 F8 02}", "wait:"), "F: a wait inside { } refused");
+  check(refused("gwg f [01 ~10 43] 04", "wait:"), "F: a wait inside [ ] refused");
+  check(refused("gwg f 01 @now CB", "@now:"), "F: @now after a byte refused");
+  check(refused("gwg f ~10 @now 01", "@now:"), "F: @now after a wait refused");
+  check(refused("p300 f @now 41 {05 00 01 00 F8 02}", "@now:"), "F: @now on p300 refused");
+  check(refused("gwg f 01 CB 6F 01 04 / p300", "length:"), "F: / p300 on gwg refused");
+  check(refused("kw f 01 F7 00 F8 02 / p300", "length:"), "F: / p300 on kw refused");
+  check(refused("p300 f 41 {05 00 01 00 F8 02} / p300 2", "trailing"), "F: a field after / p300 refused");
+  check(refused("gwg f ~10", "bytes:"), "F: a wait alone has no bytes");
 
   std::printf("raw op: %d failure(s)\n", g_fail);
   return g_fail == 0 ? 0 : 1;
