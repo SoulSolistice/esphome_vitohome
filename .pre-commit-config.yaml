@@ -48,6 +48,14 @@ repos:
   # CI runs the same check on every push via the `compile` job.
   - repo: local
     hooks:
+      # EntityBase::get_name() is deprecated since ESPHome 2026.11 and goes in
+      # 2027.5.0. Log lines use LOG_STR_ARG(get_log_name()); a value needs
+      # get_name_to(buffer) or name_equals().
+      - id: no-entity-get-name
+        name: no EntityBase::get_name()
+        language: pygrep
+        entry: '\bget_name\(\)'
+        files: ^components/vitohome/.*\.(h|cpp)$
       - id: esphome-config
         name: esphome config (schema validation)
         entry: esphome config

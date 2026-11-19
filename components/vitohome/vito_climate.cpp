@@ -42,7 +42,7 @@ void VitoClimateChannel::handle_write_response(const ResponseView & /*response*/
 
 void VitoClimateChannel::handle_write_error(optolink::OptolinkResult error) {
   // Nothing was published for the request, so there is nothing to undo.
-  ESP_LOGW(TAG, "%s: %s write failed (%s); state unchanged", this->parent_->get_name().c_str(),
+  ESP_LOGW(TAG, "%s: %s write failed (%s); state unchanged", LOG_STR_ARG(this->parent_->get_log_name()),
            this->kind_ == SETPOINT ? "setpoint" : "mode", optolink::errorToString(error));
 }
 
@@ -134,11 +134,11 @@ void VitoClimate::control(const climate::ClimateCall &call) {
   if (call.get_target_temperature().has_value()) {
     const float t = *call.get_target_temperature();
     if (std::isnan(t)) {
-      ESP_LOGW(TAG, "%s: target temperature is not a number; nothing written", this->get_name().c_str());
+      ESP_LOGW(TAG, "%s: target temperature is not a number; nothing written", LOG_STR_ARG(this->get_log_name()));
     } else {
       const uint8_t byte = setpoint_byte(t, this->setpoint_min_, this->setpoint_max_);
       if (!this->setpoint_.write_byte(byte)) {
-        ESP_LOGE(TAG, "%s: setpoint write could not be queued", this->get_name().c_str());
+        ESP_LOGE(TAG, "%s: setpoint write could not be queued", LOG_STR_ARG(this->get_log_name()));
       }
     }
   }
@@ -154,13 +154,13 @@ void VitoClimate::control(const climate::ClimateCall &call) {
     }
     if (p != nullptr) {
       if (!this->mode_.write_byte(p->write_value)) {
-        ESP_LOGE(TAG, "%s: mode write could not be queued", this->get_name().c_str());
+        ESP_LOGE(TAG, "%s: mode write could not be queued", LOG_STR_ARG(this->get_log_name()));
       }
     } else if (call.has_custom_preset() || call.get_mode().has_value()) {
       // A mode or preset the table cannot express (an OFF tap without an
       // OFF preset): there is no byte to write, so say why nothing happens.
       ESP_LOGW(TAG, "%s: no preset matches the requested mode/preset; nothing written (add a preset row for it)",
-               this->get_name().c_str());
+               LOG_STR_ARG(this->get_log_name()));
     }
   }
 }
@@ -187,19 +187,19 @@ void VitoClimate::on_mode_written(uint8_t write_value) {
 
 void VitoClimate::on_setpoint_read(const ResponseView &response) {
   if (response.data == nullptr || response.data_length < 1) {
-    ESP_LOGW(TAG, "%s: setpoint response too short", this->get_name().c_str());
+    ESP_LOGW(TAG, "%s: setpoint response too short", LOG_STR_ARG(this->get_log_name()));
     return;
   }
   this->target_temperature = static_cast<float>(response.data[0]);
   this->setpoint_known_ = true;
-  ESP_LOGD(TAG, "%s setpoint = %u degC", this->get_name().c_str(), response.data[0]);
+  ESP_LOGD(TAG, "%s setpoint = %u degC", LOG_STR_ARG(this->get_log_name()), response.data[0]);
   if (this->ready_())
     this->publish_state();
 }
 
 void VitoClimate::on_mode_read(const ResponseView &response) {
   if (response.data == nullptr || response.data_length < 1) {
-    ESP_LOGW(TAG, "%s: mode response too short", this->get_name().c_str());
+    ESP_LOGW(TAG, "%s: mode response too short", LOG_STR_ARG(this->get_log_name()));
     return;
   }
   const uint8_t byte = response.data[0];
@@ -210,7 +210,7 @@ void VitoClimate::on_mode_read(const ResponseView &response) {
         this->set_custom_preset_(p.name);
         this->mode = p.mode;
         this->mode_known_ = true;
-        ESP_LOGD(TAG, "%s mode = '%s' (read 0x%02X)", this->get_name().c_str(), p.name, byte);
+        ESP_LOGD(TAG, "%s mode = '%s' (read 0x%02X)", LOG_STR_ARG(this->get_log_name()), p.name, byte);
         if (this->ready_())
           this->publish_state();
         return;
@@ -233,10 +233,10 @@ void VitoClimate::on_mode_read(const ResponseView &response) {
     this->clear_custom_preset_();
     if (this->ready_())
       this->publish_state();
-    ESP_LOGW(TAG, "%s: device mode 0x%02X is not in any preset's read set; preset cleared%s", this->get_name().c_str(),
-             byte, first ? ", climate mode unconfirmed" : "");
+    ESP_LOGW(TAG, "%s: device mode 0x%02X is not in any preset's read set; preset cleared%s",
+             LOG_STR_ARG(this->get_log_name()), byte, first ? ", climate mode unconfirmed" : "");
   } else {
-    ESP_LOGD(TAG, "%s: device mode 0x%02X still unmapped", this->get_name().c_str(), byte);
+    ESP_LOGD(TAG, "%s: device mode 0x%02X still unmapped", LOG_STR_ARG(this->get_log_name()), byte);
   }
 }
 
@@ -244,7 +244,7 @@ void VitoClimate::dump_config() {
   ESP_LOGCONFIG(TAG,
                 "Climate '%s'\n"
                 "  Setpoint address: 0x%04X  range: %d..%d degC",
-                this->get_name().c_str(), this->setpoint_.get_datapoint().address(), this->setpoint_min_,
+                LOG_STR_ARG(this->get_log_name()), this->setpoint_.get_datapoint().address(), this->setpoint_min_,
                 this->setpoint_max_);
   if (this->has_mode_) {
     ESP_LOGCONFIG(TAG, "  Mode read 0x%04X  write 0x%04X  presets: %u", this->mode_.get_datapoint().address(),
