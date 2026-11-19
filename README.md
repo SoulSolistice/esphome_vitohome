@@ -202,8 +202,11 @@ the selected entities as YAML.
 
 ## What you need
 
-- ESPHome 2026.9.0 or newer. An older release stops at the import with a
-  message that says so.
+- ESPHome 2026.11.0 or newer. An older release stops at the import with a
+  message that says so. On an ESP8266, 2026.10 and 2026.11 keep entity names,
+  log tags and select options in flash instead of RAM, which leaves more heap
+  for the catalog. On any board, OTA falls back to UDP over a lossy link,
+  which helps with Wi-Fi in a boiler room.
 - An ESP32-class board.
 - An Optolink read/write head, placed over the optical interface on the
   Viessmann unit and wired to the board's UART. See

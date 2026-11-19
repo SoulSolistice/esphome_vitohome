@@ -33,7 +33,7 @@ esphome:
   name:           ${device_name}
   friendly_name:  ${friendly_name}
   comment:        ${device_description}
-  min_version:    2025.12.0
+  min_version:    2026.11.0
   project:
     name: ${project_name}
     ## Version follows the deployed firmware ref: one source of truth. Because

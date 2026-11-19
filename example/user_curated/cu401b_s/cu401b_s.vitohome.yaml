@@ -11,7 +11,7 @@ substitutions:
 esphome:
   name: ${device_name}
   friendly_name: ${friendly_name}
-  min_version: 2026.9.1
+  min_version: 2026.11.0
 
 esp32:
   variant: esp32s3

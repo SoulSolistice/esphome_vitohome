@@ -51,7 +51,7 @@ import esphome.final_validate as fv
 # release of it). Checked at import, before any schema below touches a newer
 # API, so an older ESPHome names the cause instead of failing on a missing
 # attribute.
-MIN_ESPHOME_VERSION = "2026.9.0"
+MIN_ESPHOME_VERSION = "2026.11.0"
 
 
 def _release(version):

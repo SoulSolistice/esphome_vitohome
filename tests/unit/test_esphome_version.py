@@ -37,5 +37,5 @@ def test_readme_names_the_minimum():
 
 def test_release_ignores_the_suffix():
     # A dev or beta build of the minimum satisfies it.
-    assert vitohome._release("2026.9.0-dev") == (2026, 9, 0)
-    assert vitohome._release("2026.9.0b1") == (2026, 9, 0)
+    assert vitohome._release("2026.11.0-dev") == (2026, 11, 0)
+    assert vitohome._release("2026.11.0b1") == (2026, 11, 0)
