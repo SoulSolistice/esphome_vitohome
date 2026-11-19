@@ -1,6 +1,8 @@
 name: Upstream canary
 
-# Early-warning compile against the MOVING ESPHome `beta` and `dev` channels.
+# Early-warning compile against the MOVING ESPHome `stable`, `beta` and `dev`
+# channels. `stable` is the latest release, which ci.yml's pin lags until it
+# is bumped.
 # Deliberately separate from ci.yml and NOT a required status check:
 #   - upstream `dev` does not change per-PR, so running it on every push would
 #     waste CI minutes and couple your green checks to upstream flakiness;
@@ -34,8 +36,9 @@ jobs:
         # channel axis stresses upstream ESPHome's codegen + toolchain
         # integration, which is protocol-independent. P300 is the validated
         # protocol, so probe with it. `dev` = max lead time; `beta` = imminent
-        # release. `esphome-spec` is passed UNQUOTED to `pip install` on purpose
-        # so the shell splits it into separate arguments.
+        # release; `stable` = what an unpinned user installs today.
+        # `esphome-spec` is passed UNQUOTED to `pip install` on purpose so the
+        # shell splits it into separate arguments.
         include:
           - config: test.esp32-idf.yaml
             channel: dev
@@ -49,6 +52,12 @@ jobs:
           - config: test.esp32-arduino.yaml
             channel: beta
             esphome-spec: "--pre esphome"
+          - config: test.esp32-idf.yaml
+            channel: stable
+            esphome-spec: "--no-cache-dir esphome"
+          - config: test.esp32-arduino.yaml
+            channel: stable
+            esphome-spec: "--no-cache-dir esphome"
     steps:
       - uses: actions/checkout@v7
 
@@ -98,10 +107,10 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
-          body="Nightly canary compile against ESPHome beta/dev failed. "
-          body+="It does NOT affect the pinned build your users get -- it is an "
-          body+="early warning that an upcoming ESPHome release may break the "
-          body+="component. Latest run: ${RUN_URL}"
+          body="Nightly canary compile against ESPHome stable/beta/dev failed. "
+          body+="It does NOT affect the pinned build CI gates -- it is an "
+          body+="early warning that the latest or an upcoming ESPHome release "
+          body+="breaks the component. Latest run: ${RUN_URL}"
           # De-dupe via exact title match (env.TITLE avoids shell-quoting pain).
           num=$(gh issue list --state open --json number,title \
                   --jq 'map(select(.title == env.TITLE)) | .[0].number // empty')
