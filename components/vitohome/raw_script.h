@@ -20,6 +20,7 @@ namespace esphome::vitohome {
 
 inline constexpr uint8_t RAW_SCRIPT_ANSWER_MAX = 64;
 inline constexpr uint8_t RAW_SCRIPT_DROPPED_MAX = 8;
+inline constexpr uint8_t RAW_SCRIPT_ENQ = 0x05;  // the device's sync byte (KW, GWG)
 
 enum class RawScriptStatus : uint8_t { OK, NO_ENQ, TIMEOUT, NACK, CHECKSUM, MALFORMED };
 
@@ -127,7 +128,7 @@ template<class Port> class RawScript {
 
   bool wait_enq_(uint32_t now) {
     while (this->port_->available()) {
-      if (this->port_->read() == ENQ) {
+      if (this->port_->read() == RAW_SCRIPT_ENQ) {
         // The frame goes out in this pass, as the engines answer an ENQ.
         this->origin_ms_ = optolink_millis();
         this->mark_ms_ = this->origin_ms_;
@@ -244,7 +245,6 @@ template<class Port> class RawScript {
     return this->finish_(sum_ok ? RawScriptStatus::OK : RawScriptStatus::CHECKSUM);
   }
 
-  static constexpr uint8_t ENQ = 0x05;
   static constexpr uint8_t ACK = 0x06;
   static constexpr uint8_t NACK = 0x15;
   static constexpr uint8_t PACKET_START = 0x41;
@@ -319,8 +319,13 @@ inline void format_raw_script(const RawSpec &spec, const RawScriptResult &r, con
       raw_append_hex(out, cap, n, &spec.payload[r.sent_from[s]], static_cast<std::size_t>(end - r.sent_from[s]));
       raw_appendf(out, cap, n, " +%u ms%s", static_cast<unsigned>(r.sent_at_ms[s]), s + 1 < r.segments ? "," : ";");
     }
+    // KW, GWG: a lone 05 on an unfinished answer is the device's next ENQ.
+    const bool enq_only = spec.layer != RawLayer::P300 && r.status != RawScriptStatus::OK && r.answer_total == 1 &&
+                          r.answer[0] == RAW_SCRIPT_ENQ;
     if (r.answer_total == 0) {
       raw_appendf(out, cap, n, " no answer");
+    } else if (enq_only) {
+      raw_appendf(out, cap, n, " no answer, ENQ +%u ms", static_cast<unsigned>(r.answer_after_ms));
     } else {
       raw_appendf(out, cap, n, " answer +%u ms:", static_cast<unsigned>(r.answer_after_ms));
       raw_append_hex(out, cap, n, r.answer, r.answer_len);

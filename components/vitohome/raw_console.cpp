@@ -224,8 +224,7 @@ bool VitoHomeComponent::queue_raw_script_(const RawSpec &spec) {
 #endif
 }
 
-void VitoHomeComponent::raw_script_start_(const RawOp &operation) {
-#ifdef VITOHOME_RAW_SCRIPT
+RawSpec VitoHomeComponent::raw_frame_spec_(const RawOp &operation) {
   RawSpec spec{};
   spec.layer = operation.layer;
   spec.frame = true;
@@ -237,7 +236,22 @@ void VitoHomeComponent::raw_script_start_(const RawOp &operation) {
   std::memcpy(spec.wait_ms, operation.wait_ms, sizeof(spec.wait_ms));
   spec.now = operation.now;
   spec.answer_p300 = operation.answer_p300;
-  this->raw_script_.start(spec, this->raw_script_timing_());
+  return spec;
+}
+
+void VitoHomeComponent::raw_describe_(const RawOp &operation, const char *label, char *out, std::size_t cap) {
+  if (operation.frame) {
+    std::size_t n = 0;
+    out[0] = '\0';
+    format_raw_frame_spec(raw_frame_spec_(operation), out, cap, n);
+  } else {
+    snprintf(out, cap, "%s 0x%04X len %u", label, operation.address, operation.length);
+  }
+}
+
+void VitoHomeComponent::raw_script_start_(const RawOp &operation) {
+#ifdef VITOHOME_RAW_SCRIPT
+  this->raw_script_.start(raw_frame_spec_(operation), this->raw_script_timing_());
   this->raw_script_hold_.start();
 #else
   (void) operation;
@@ -338,21 +352,22 @@ bool VitoHomeComponent::push_raw_(const RawOp &operation, const char *label) {
   // push_back() decides; a full() check first would race another producer. An
   // unallocated lane is the default, and the warning is the only sign of it,
   // so it names the option.
+  char described[160];
+  raw_describe_(operation, label, described, sizeof(described));
   if (!this->raw_queue_.push_back(operation)) {
     if (this->raw_queue_.capacity() == 0) {
       ESP_LOGW(TAG,
-               "raw lane not allocated; dropping %s 0x%04X. Set raw_queue_size on the vitohome hub to use the "
-               "scan console.",
-               label, operation.address);
+               "raw lane not allocated; dropping %s. Set raw_queue_size on the vitohome hub to use the scan console.",
+               described);
     } else {
-      ESP_LOGW(TAG, "raw queue full (%zu/%zu); dropping %s 0x%04X. Raise raw_queue_size for larger sweeps.",
-               this->raw_queue_.size(), this->raw_queue_.capacity(), label, operation.address);
+      ESP_LOGW(TAG, "raw queue full (%zu/%zu); dropping %s. Raise raw_queue_size for larger sweeps.",
+               this->raw_queue_.size(), this->raw_queue_.capacity(), described);
     }
 
     return false;
   }
 
-  ESP_LOGD(TAG, "Queued raw %s 0x%04X len %u", label, operation.address, operation.length);
+  ESP_LOGD(TAG, "Queued raw %s", described);
   return true;
 }
 
@@ -486,8 +501,9 @@ void VitoHomeComponent::dispatch_raw_front_() {
     // the watchdog.
     if (this->vito_->isBusy())
       return;
-    ESP_LOGE(TAG, "Engine refused raw %s 0x%04X len %u (permanent); dropping", label, operation.address,
-             operation.length);
+    char described[160];
+    raw_describe_(operation, label, described, sizeof(described));
+    ESP_LOGE(TAG, "Engine refused raw %s (permanent); dropping", described);
     this->raw_queue_.drop_front();
     this->raw_handle_error_(optolink::OptolinkResult::ERROR);
     return;

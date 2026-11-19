@@ -658,6 +658,12 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // Takes the bus for a timed frame at the head of the raw lane.
   void raw_script_start_(const RawOp &operation);
 
+  // A frame operation as the spec it came from.
+  static RawSpec raw_frame_spec_(const RawOp &operation);
+  // How the log names an operation: a frame by its spec, any other by label,
+  // address and length.
+  static void raw_describe_(const RawOp &operation, const char *label, char *out, std::size_t cap);
+
   // Appends a checked operation to the lane; false, with a warning, when it is
   // full or not allocated.
   bool push_raw_(const RawOp &operation, const char *label);
@@ -706,10 +712,12 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // For a callback the engine lost; the engines time out sooner.
   static constexpr uint32_t IN_FLIGHT_WATCHDOG_MS = 10000;
 
-  // A timed frame: the wait for the device's ENQ (KW sends one about every
-  // 2 s, GWG every 0.75 to 2.1 s) and the whole script.
-  static constexpr uint32_t RAW_SCRIPT_ENQ_TIMEOUT_MS = 3000;
-  static constexpr uint32_t RAW_SCRIPT_DEADLINE_MS = 6000;
+  // A timed frame: the wait for the device's ENQ and the whole script. A
+  // VScotHO1_72 on KW sent its ENQ within 2.2 s when idle, and 2.97 s after
+  // an EOT; GWG sends one every 0.75 to 2.1 s. The deadline covers the ENQ
+  // wait, four waits of 255 ms and KW's 1 s answer timeout.
+  static constexpr uint32_t RAW_SCRIPT_ENQ_TIMEOUT_MS = 4000;
+  static constexpr uint32_t RAW_SCRIPT_DEADLINE_MS = 8000;
   RawScriptTiming raw_script_timing_() const;
 
   // Start-up check: no answer within max(PROTOCOL_VERIFY_MIN_MS, 3 * hub

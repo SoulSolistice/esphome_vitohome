@@ -1046,7 +1046,7 @@ A timed frame does not go to the engine. The script runner (`raw_script.h`,
 framework-free, `proof_raw_script.cpp`) takes the port from an idle engine,
 which the hub stops looping until the script ends:
 
-1. On KW and GWG it waits up to 3 s for the ENQ, and other bytes meanwhile
+1. On KW and GWG it waits up to 4 s for the ENQ, and other bytes meanwhile
    are counted. A frame with no leading wait goes out in the pass that read
    the ENQ, as the engines answer one.
 2. It writes the frame in segments at their times. The hub keeps the main
@@ -1056,10 +1056,11 @@ which the hub stops looping until the script ends:
 3. It collects the answer: `n` bytes, or until the line is quiet. The silence
    allowed is the engine's: GWG its response deadline, KW 1000 ms, P300
    500 ms. The silence check runs before the drain, as in the engines. The
-   whole script ends after 6 s, inside the hub's 10 s watchdog.
+   whole script ends after 8 s, inside the hub's 10 s watchdog.
 4. The hub restarts the engine (`begin()`), which resyncs: P300 from its
    RESET, KW and GWG on the next ENQ, and GWG without a burst window left
-   over from before.
+   over from before. KW counts its EOT timer from the restart: an EOT at
+   once made a VScotHO1_72 send its next ENQ only 2.97 s later.
 
 The result line has the spec, when each segment went out and when the answer
 came:
@@ -1068,8 +1069,10 @@ came:
 gwg f 01 ~30 AE 16 01 04 / 2: ENQ after 812 ms, sent 01 +0 ms, AE 16 01 04 +31 ms; answer +38 ms: E9 16
 ```
 
-The times are read from the clock in the loop pass that wrote or read the
-bytes, so they are as exact as the loop, not the wire. A timed frame has the
+On KW and GWG a lone 05 on an unfinished answer is the device's next ENQ,
+shown as `no answer, ENQ +78 ms`. The times are read from the clock in the
+loop pass that wrote or read the bytes, so they are as exact as the loop, not
+the wire. A timed frame has the
 open frame's gates and, like it, does not count toward link health.
 `vitohome.raw_op` queues any spec from an automation, without a lambda:
 
@@ -1078,6 +1081,26 @@ on_press:
   - vitohome.raw_op:
       spec: "gwg f 01 ~30 AE 16 01 04 / 2"
 ```
+
+Every result is logged and published to the `scan_result` sensor. Home
+Assistant gets them through the API, which sends at most one state per entity
+per `batch_delay` (100 ms by default): results closer together arrive as the
+last one. The log and an `on_value` automation on the device see each.
+
+Measured on a VScotHO1_72 (2026-11-19, `patches-stage-r/timed-frames-test.yaml`,
+reads of 00F8/4):
+
+| Link | Pause | Answered | Refused |
+|---|---|---|---|
+| KW | ENQ to the 01 | up to 200 ms | 255 ms: no answer |
+| KW | the 01 to the telegram | up to 255 ms | -- |
+| KW | `@now`, outside the ENQ | never | the device sends its next ENQ |
+| P300 | the 41 to the rest | up to 200 ms | 255 ms: NACK |
+| P300 | before the checksum | up to 255 ms | -- |
+| P300 | three of 100 ms in one telegram | yes | -- |
+
+The answer came 11 to 39 ms after the last byte. The KW engine answers an
+ENQ within `ENQ_ACK_WINDOW_MS` (50 ms), well inside the device's limit.
 
 `unrestricted` needs `raw_queue_size`, and `unsafe_raw_writes` needs
 `unrestricted` (config errors). The layer is checked when the line arrives:

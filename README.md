@@ -142,7 +142,9 @@ provides several things you would otherwise have to build by hand:
   `gwg f 01 ~30 AE 16 01 04 / 2`) and sweep address ranges — useful for
   identifying datapoints on an unknown unit. The `vitohome.raw_op` action
   queues a spec from an automation. These interactive operations preempt
-  normal polling so the console feels immediate.
+  normal polling so the console feels immediate. Results less than 100 ms
+  apart reach Home Assistant as the last one (the API's `batch_delay`); the
+  log has each.
 - **Boot-time device identification.** The hub reads the controller
   identification (`0xF8`–`0xFB`) once at start-up and logs the family, HW and
   SW index; the result is pushed to any `device_id` text sensor.

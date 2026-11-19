@@ -317,6 +317,30 @@ int main() {
     format_raw_script(script.spec(), script.result(), kGwg, line, sizeof(line));
     check(std::strcmp(line, "gwg f ~5 01 CB 6F 01 04 / 1: no ENQ within 3000 ms") == 0, "F: the line without an ENQ");
 
+    // The device ignores a 01 outside its ENQ and sends the next ENQ: no answer.
+    script.start(spec_of("kw f @now 01 F7 00 F8 04 / 4"), kKw);
+    script.loop();
+    advance(78);
+    port.feed({0x05});
+    script.loop();
+    advance(1001);
+    script.loop();
+    format_raw_script(script.spec(), script.result(), kKw, line, sizeof(line));
+    const char *want_enq = "kw f @now 01 F7 00 F8 04 / 4: sent 01 F7 00 F8 04 +0 ms; no answer, ENQ +78 ms -- timeout";
+    check(std::strcmp(line, want_enq) == 0, "F: a lone ENQ after the frame is no answer");
+    if (std::strcmp(line, want_enq) != 0)
+      std::printf("    got:  %s\n    want: %s\n", line, want_enq);
+
+    // A 05 that completes the answer asked for stays the answer.
+    script.start(spec_of("kw f @now 01 F7 00 F8 01 / 1"), kKw);
+    script.loop();
+    advance(20);
+    port.feed({0x05});
+    script.loop();
+    format_raw_script(script.spec(), script.result(), kKw, line, sizeof(line));
+    check(std::strstr(line, "answer +20 ms: 05") != nullptr && std::strstr(line, "--") == nullptr,
+          "F: a complete one-byte answer 05 stays the answer");
+
     char small[16];
     format_raw_script(script.spec(), script.result(), kGwg, small, sizeof(small));
     check(std::strlen(small) == sizeof(small) - 1, "F: a short buffer is filled and terminated");
