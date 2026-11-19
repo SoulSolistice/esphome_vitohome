@@ -157,6 +157,11 @@ bool GWGEngine::begin() {
     return false;
   // A request submitted before the next loop() takes its watchdog from now.
   _currentMillis = optolink_millis();
+  // A restart (the hub's, after a raw script had the port) knows nothing of
+  // the device's ENQ cadence: no burst until the next ENQ, and a late-answer
+  // report still open is closed.
+  _syncValid = false;
+  _closeLateWatch();
   _setState(State::INIT);
   return _interface->begin();
 }
