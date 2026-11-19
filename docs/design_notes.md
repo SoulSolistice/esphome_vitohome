@@ -1071,6 +1071,13 @@ gwg f 01 ~30 AE 16 01 04 / 2: ENQ after 812 ms, sent 01 +0 ms, AE 16 01 04 +31 m
 The times are read from the clock in the loop pass that wrote or read the
 bytes, so they are as exact as the loop, not the wire. A timed frame has the
 open frame's gates and, like it, does not count toward link health.
+`vitohome.raw_op` queues any spec from an automation, without a lambda:
+
+```yaml
+on_press:
+  - vitohome.raw_op:
+      spec: "gwg f 01 ~30 AE 16 01 04 / 2"
+```
 
 `unrestricted` needs `raw_queue_size`, and `unsafe_raw_writes` needs
 `unrestricted` (config errors). The layer is checked when the line arrives:

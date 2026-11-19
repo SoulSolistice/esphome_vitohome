@@ -246,3 +246,12 @@ button:
           id(vito).queue_raw_op(esphome::vitohome::RawLayer::GWG, 0xC3, 0x00, 1, p);
           id(vito).queue_raw_op("gwg f 01 43 [03 00 43 0A 01 01 01 01] 04 / 4");
           id(vito).queue_raw_frame(std::vector<uint8_t>{0x01, 0x43, 0x01, 0x01, 0x04});
+  # The #35 test C as a timed frame, from the action.
+  - platform: template
+    name: "Test Raw Op Action"
+    entity_category: diagnostic
+    on_press:
+      - vitohome.raw_op:
+          spec: "gwg f 01 ~30 AE 16 01 04 / 2"
+      - vitohome.raw_op:
+          spec: "gwg f @now ~5 01 CB 6F 01 04 / 1"

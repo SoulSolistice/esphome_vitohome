@@ -471,3 +471,15 @@ button:
           // elsewhere; the P300 one is refused on KW for its layer.
           id(vito).queue_raw_frame(std::vector<uint8_t>{0x01, 0x43, 0x01, 0x01, 0x04});
           id(vito).queue_raw_op("p300 f 41 {05 00 01 00 F8 02}");
+  # vitohome.raw_op: the action with a constant spec and with a lambda. The
+  # timed frame runs on the script runner where the hub has both raw
+  # opt-ins, and is refused elsewhere.
+  - platform: template
+    name: "Test Raw Op Action"
+    entity_category: diagnostic
+    on_press:
+      - vitohome.raw_op:
+          spec: "p300 f ~10 41 {05 00 01 00 F8 02} / p300"
+      - vitohome.raw_op:
+          id: vito
+          spec: !lambda 'return std::string("kw r 7B 0800 2");'

@@ -27,6 +27,7 @@ import logging
 import math
 from pathlib import Path
 
+from esphome import automation
 import esphome.codegen as cg
 from esphome.components import esp32, time as time_, uart
 from esphome.components.const import CONF_STOP_BITS
@@ -95,6 +96,8 @@ CONF_RAW_QUEUE_SIZE = "raw_queue_size"
 # switch adds the operations that may change the controller (RawClass UNSAFE).
 CONF_RAW_ACCESS = "raw_access"
 CONF_UNSAFE_RAW_WRITES = "unsafe_raw_writes"
+# vitohome.raw_op: one raw operation from a spec line (raw_op.h).
+CONF_SPEC = "spec"
 RAW_ACCESS_STANDARD = "standard"
 RAW_ACCESS_UNRESTRICTED = "unrestricted"
 
@@ -373,6 +376,20 @@ VitoOption = vitohome_ns.struct("VitoOption")
 VitoClimatePreset = vitohome_ns.struct("VitoClimatePreset")
 
 VitoHomeComponent = vitohome_ns.class_("VitoHomeComponent", cg.PollingComponent, uart.UARTDevice)
+
+# vitohome.raw_op: queue_raw_op() from an automation, the spec a constant or a
+# lambda. The hub's raw_access / unsafe_raw_writes decide at run time, as for
+# a lambda's call.
+automation.register_apply_action(
+    "vitohome.raw_op",
+    cv.Schema(
+        {
+            cv.GenerateID(): cv.use_id(VitoHomeComponent),
+            cv.Required(CONF_SPEC): cv.templatable(cv.string_strict),
+        }
+    ),
+    automation.ApplyField(CONF_SPEC, "queue_raw_op", cg.std_string),
+)
 
 # Selectable protocols. P300 (VS2) and KW (VS1) are confirmed on hardware. GWG
 # builds through the same engine template; its reads are confirmed, of its

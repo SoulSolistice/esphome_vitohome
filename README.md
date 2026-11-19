@@ -140,8 +140,9 @@ provides several things you would otherwise have to build by hand:
   with `unsafe_raw_writes` an open frame in the link's protocol, e.g.
   `gwg f 01 43 01 01 04`, also with its timing, e.g.
   `gwg f 01 ~30 AE 16 01 04 / 2`) and sweep address ranges — useful for
-  identifying datapoints on an unknown unit. These interactive operations
-  preempt normal polling so the console feels immediate.
+  identifying datapoints on an unknown unit. The `vitohome.raw_op` action
+  queues a spec from an automation. These interactive operations preempt
+  normal polling so the console feels immediate.
 - **Boot-time device identification.** The hub reads the controller
   identification (`0xF8`–`0xFB`) once at start-up and logs the family, HW and
   SW index; the result is pushed to any `device_id` text sensor.
