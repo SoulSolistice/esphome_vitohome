@@ -81,6 +81,8 @@ bool VS1Engine::begin() {
     while (_interface->available()) {
       _interface->read();  // clear rx buffer
     }
+    // The EOT is due ENQ_RESET_INTERVAL_MS after this start, not at once.
+    _lastMillis = optolink_millis();
     _setState(State::INIT);
     return true;
   }

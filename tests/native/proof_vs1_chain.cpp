@@ -27,6 +27,8 @@
 //       where _receive() would read it as its payload;
 //   (6) begin() reads the clock: a request submitted right after it, before
 //       the next loop(), takes its watchdog from then.
+//   (7) begin() restarts the wait for an ENQ: no EOT before a full
+//       ENQ_RESET_INTERVAL_MS.
 //
 // Built with -DVITOHOME_PROTOCOL_KW by build_and_run_protocols.sh.
 //
@@ -175,6 +177,18 @@ int main() {
   uart.feed({0x20});
   pump(adapter);
   check(g_responses == before_restart + 1 && g_errors == 0, "  and answered");
+  // --- (7) begin() restarts the wait for an ENQ ------------------------------
+  // The hub calls begin() after a timed frame, which held the port longer than
+  // ENQ_RESET_INTERVAL_MS. An EOT at once would restart the device's ENQ
+  // cycle: on a VScotHO1_72 the next ENQ then came 2.97 s later.
+  uart.clear_written();
+  optolink::optolink_test_clock_advance(optolink::VS1Engine::ENQ_RESET_INTERVAL_MS + 500);
+  adapter.begin();
+  pump(adapter);
+  check(uart.written().empty(), "begin(): no EOT right after a restart");
+  optolink::optolink_test_clock_advance(optolink::VS1Engine::ENQ_RESET_INTERVAL_MS + 1);
+  pump(adapter);
+  check(uart.written() == std::vector<uint8_t>{0x04}, "  the EOT once no ENQ came for ENQ_RESET_INTERVAL_MS");
 
   std::printf("vs1 chaining: %d failure(s)\n", failures);
   return failures == 0 ? 0 : 1;
