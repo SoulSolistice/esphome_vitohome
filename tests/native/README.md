@@ -99,10 +99,16 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
 - `fuzz_kw_session.cpp` — the same over KW sessions, on a KW link
   (`VS1Engine`) and over the P300 engine's KW detour. Seeds in
   `fuzz_corpus_kw_session.h`.
-- `fuzz_diff_engines.cpp` — the three engine harnesses against the
-  reference engines (`reference/`), compared pass by pass; `diff_hooks.h` is
-  what each harness reports. Boundary seeds in `fuzz_corpus_diff.h`; see "The
+- `fuzz_diff_engines.cpp` — the engine harnesses against the reference
+  engines (`reference/`), compared pass by pass; `diff_hooks.h` is what each
+  harness reports. Boundary seeds in `fuzz_corpus_diff.h`; see "The
   differential target" below.
+- `sim/` — device simulators: a Vitotronic in KW and P300
+  (`sim_vitotronic.h`) and a GWG controller (`sim_gwg.h`) on a shared port
+  (`sim_port.h`). `proof_sim.cpp` runs each engine against its simulator,
+  quirks included; `proof_sim_traces.cpp` replays real frame logs
+  (`sim/trace_*.h`, from `sim/import_frames.py`) against the simulators.
+  See "Device simulators" below.
 - `fuzz.sh` — campaign driver (clang/libFuzzer), one target or all of them
   in turn. Not a gate, not run by CI.
 - `build_and_run_wsl.sh` — Windows-only convenience wrapper. Mirrors the two
@@ -298,6 +304,39 @@ The seeds sample time coarsely: after the script, the harnesses move in
 that boundary (`diff_kw_gfa_gap_edge` catches `GFA_GAP_MS` 25 → 26) or where a
 campaign finds one. `fuzz.sh diff_engines` runs one, seeded with all four
 corpora.
+
+### Device simulators
+
+A simulator is a controller behind the port: it sends its ENQs, parses each
+telegram and answers from its memory, on the host test clock. A test states
+what the device is, not which bytes arrive when. `SimVitotronic` is KW and,
+on 16 00 00, P300 (the KW detour drops back to KW with an EOT); `SimGwg`
+has the access modes, EEPROM pairs and the burst window. Quirks (`Quirks` in
+`sim_port.h`) are the field findings as switches: answer delay and byte gap,
+the ENQ window, refused chains, extra or missing answer bytes, the P300 ACK
+swallowed, dead phases, one telegram in N ignored.
+
+The defaults come from frame logs: the VScotHO1_72's P300 logs and timed
+frames, and #35's GWG logs. Each default names its measurement in the
+config struct.
+
+`proof_sim_traces.cpp` checks the simulators against those logs. It replays
+a trace as the engine: each `>>>` line goes to the simulator, which must send
+the logged `<<<` bytes before it. The simulator's memory is seeded from each
+logged answer, and a request the log shows unanswered is ignored, so the
+check is the protocol: ACKs, framing, lengths, checksums, EEPROM pairs, the
+ENQs in between. Times are not compared; the frame log merges bytes within
+30 ms. The P300 trace found the error frame's DL byte (the code's length,
+not the request's), its 125 ms pause after `41 LL`, and the `06` the device
+gives an EOT while that frame is unacknowledged.
+
+To add a trace:
+
+```
+python sim/import_frames.py LOG NAME --source "what the log is" [--start 04] [--lines N] > sim/trace_NAME.h
+```
+
+It keeps bytes and times only. Add a replay for it in `proof_sim_traces.cpp`.
 
 **Running a campaign.**
 

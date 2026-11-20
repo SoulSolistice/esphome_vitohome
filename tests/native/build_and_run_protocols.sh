@@ -84,6 +84,16 @@ echo "== KW sessions, native and over the P300 detour: fuzz corpus (fuzz.sh kw_s
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO"   fuzz_kw_session.cpp "${SRCS[@]}" -o fuzz_kw_session
 ./fuzz_kw_session
 
+echo "== the engines against the device simulators (sim/) =="
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
+  proof_sim.cpp "${SRCS[@]}" -o proof_sim
+./proof_sim
+
+echo "== the simulators against real frame logs (sim/trace_*.h) =="
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
+  proof_sim_traces.cpp -o proof_sim_traces
+./proof_sim_traces
+
 echo "== differential: live engines against the reference copy (fuzz_diff_engines.cpp) =="
 # Each session harness twice, once per side; the reference engines are the
 # frozen copy in reference/ (README.md there).
