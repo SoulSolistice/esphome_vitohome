@@ -1126,14 +1126,10 @@ CONFIG_SCHEMA = cv.All(
 # constraints therefore have to be checked once the whole config is known.
 _ADDRESS_DOMAINS = ("sensor", "binary_sensor", "text_sensor", "number", "select", "switch", "text", "event", "climate")
 
-# GWG addresses a SINGLE BYTE. Source-confirmed in the vendored engine:
-# PacketGWG::createPacket() REJECTS any address above 0xFF -- a guard
-# inherited verbatim from upstream VitoWiFi @ edc059a7 (source-confirmed
-# there too; an earlier comment here claimed upstream silently truncated,
-# which was wrong). Corroborated by
-# vcontrold, whose GWG device (ID 2053, "V200WB2 ID=2053 Protokoll:GWG_VBEM")
-# overrides every command onto single-byte addresses (0x63, 0xF8, 0x22, 0x01,
-# 0x17) rather than the 16-bit ones used on KW/P300.
+# GWG addresses a single byte: the GWG codec (gwg_encode()) refuses any
+# address above 0xFF, as upstream VitoWiFi does. vcontrold's GWG device (ID
+# 2053, "V200WB2 ID=2053 Protokoll:GWG_VBEM") uses single-byte addresses too
+# (0x63, 0xF8, 0x22, 0x01, 0x17), where KW and P300 use 16-bit ones.
 # Consequence: a catalog generated for a P300/KW device -- 16-bit Vitosoft
 # addresses -- is meaningless under `protocol: GWG`. (A catalog generated for a
 # Vitosoft GWG_* device token is NOT: those tables are already 8-bit, 4066 of
@@ -1289,7 +1285,7 @@ def _final_validate(config):
         # (GWG_Uhrzeit_Wochentag~0x0074, _Stunde~0x0075, _Minute~0x0076), which
         # is a different read/write shape entirely -- not something
         # clock_address can point at. And the default 0x088E is over GWG's
-        # 8-bit address space, so PacketGWG::createPacket() rejects it on every
+        # 8-bit address space, so the GWG codec rejects it on every
         # single attempt.
         #
         # Without this check the feature is not broken-and-obvious, it is
@@ -1352,7 +1348,7 @@ def _final_validate(config):
                     )
 
         # An EEPROM write carries one cell's complement pair per frame, and the
-        # engine refuses a wider one (PacketGWG::createTelegram()). A text
+        # engine refuses a wider one (gwg_encode()). A text
         # entity has no `length`: it always writes a whole day program.
         for domain, entity in _entities_for_hub(full, _WRITE_DOMAINS, hub_id):
             if str(entity.get(CONF_ACCESS)) != "eeprom":

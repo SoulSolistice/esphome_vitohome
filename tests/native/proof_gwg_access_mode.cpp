@@ -128,15 +128,15 @@ int main() {
     uart.clear_written();
   }
 
-  // --- (3) PacketGWG still rejects unknown TYPE bytes ------------------------
-  // Direct test of the tightened check in packet_gwg.cpp: it now accepts 8
-  // read types instead of 1, but must still reject everything else (an
-  // arbitrary byte that is neither a known read type nor WRITE).
+  // --- (3) a read or write by access mode takes only the known TYPE bytes ---
+  // gwg_encode_mode(), which read() and write() use: the eight read types and
+  // the six write types, nothing else.
   {
-    optolink::PacketGWG pkt;
-    check(!pkt.createPacket(0x99, 0xF8, 2, nullptr), "unknown TYPE byte (0x99) still rejected");
+    optolink::Telegram telegram{};
+    check(!optolink::gwg_encode_mode(0x99, 0xF8, 2, nullptr, false, telegram), "unknown TYPE byte (0x99) rejected");
     const uint8_t write_byte = 0x01;
-    check(pkt.createPacket(optolink::PacketGWGType.WRITE, 0xF8, 1, &write_byte), "WRITE (0xC8) still accepted");
+    check(optolink::gwg_encode_mode(optolink::PacketGWGType.WRITE, 0xF8, 1, &write_byte, false, telegram),
+          "WRITE (0xC8) accepted");
   }
 
   // --- (1/2) timing instrument: fires on read, reports plausible deltas -----

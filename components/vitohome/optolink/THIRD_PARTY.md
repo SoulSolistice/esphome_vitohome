@@ -946,10 +946,25 @@ These are intentional divergences from upstream `edc059a7`:
     the end of every chain. The EOT still ends a lingering P300 session, a
     second later. Proof: `proof_vs1_chain.cpp` (7).
 
+42. **The packet classes became codecs (structural, no wire change).**
+    `PacketVS1`, `PacketVS2`, `ParserVS2` and `PacketGWG`, with their files,
+    are gone. Their rules live in header-only codecs beside the component:
+    `optolink_codec_kw.h` (`kw_encode()`), `optolink_codec_p300.h`
+    (`p300_encode()`, `P300Parser`, `P300Frame`) and `optolink_codec_gwg.h`
+    (`gwg_encode()`, `gwg_encode_mode()`, `gwg_eeprom_pair()`, the access-mode
+    tables), with `frame_encode()` and `Telegram` in `optolink_types.h`. The
+    engines keep their state machines and build from the codecs; the GWG
+    engine puts the `01` in front of the codec's telegram as the packet did.
+    The items above name the old classes. `PacketVS2`'s RESPONSE construction
+    (item 16) had no engine caller and is not carried over, nor its proof.
+    Proof: `proof_codec_equality.cpp` against the classes kept in
+    `tests/native/reference/` (7.4 million cases), and the differential
+    target, live engines against the reference ones.
+
 Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called), 39 (when its gap is set), 40 and 41 are the only intentional changes to on-wire/runtime
-protocol behavior; items 13-16 are structural (no behavior change from any call
-site that exists -- item 16 alters bytes only on a RESPONSE-construction path
-nothing exercises); item 17 changes only construction-failure handling
+protocol behavior; items 13-16 and 42 are structural (no behavior change from any call
+site that exists -- item 16 altered bytes only on a RESPONSE-construction path
+nothing exercised, now removed); item 17 changes only construction-failure handling
 (abort -> fail-soft), not protocol or normal-path behavior; item 20 is a
 read-only diagnostic that emits nothing, items 25 and 31 are additive
 accessors that change no delivered byte, and item 34 moves state without

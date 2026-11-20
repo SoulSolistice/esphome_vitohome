@@ -1372,7 +1372,7 @@ that fits none (a clock never set) or an unreadable clock falls back to
 GWG is not served by that option, because its clock is a different *shape*, not
 a different address — so `_final_validate` rejects `time_id` under `protocol:
 GWG` outright. (The default 0x088E is over GWG's 8-bit space anyway, and
-`PacketGWG::createPacket()` rejects it — loudly, once per sync interval, hours
+the GWG codec (`gwg_encode()`) rejects it — loudly, once per sync interval, hours
 apart, which is exactly the kind of quiet breakage a config-time error is for.)
 
 **The XML is not a complete authority here, and the option is shaped around
@@ -2145,7 +2145,7 @@ they carry an inline payload.
 Source-confirmed, and it invalidates every generated catalog under
 `protocol: GWG`.
 
-`PacketGWG::createPacket()` carries one address byte and **rejects** any
+The GWG codec (`gwg_encode()`) carries one address byte and **rejects** any
 address above `0xFF` — a guard inherited verbatim from upstream `edc059a7`
 (the `addr & 0xFF` serialisation below the guard is unreachable for an
 over-range address). An earlier revision of this section claimed the high byte
@@ -2779,7 +2779,7 @@ carried them and roughly seventeen did not — including *every* engine proof in
 access-mode work. That is the code that consumes bytes off a noisy optical
 link, where garbled RX is the normal case rather than the exceptional one, and
 it is where both memory-safety defects this project has found actually lived
-(the zero-payload OOB write in `parser_vs2.cpp`, and THIRD_PARTY.md #16's
+(the zero-payload OOB write in the P300 parser, and THIRD_PARTY.md #16's
 RESPONSE payload guards). Both were caught by someone hand-writing the single
 input that trips them; neither would have needed to be thought of if the
 proofs around them had been instrumented. The flag set lives in one exported
@@ -2894,7 +2894,7 @@ Two limits worth re-stating because they are recurring footguns:
 
 ### 10b. Fuzzing, and why it is split across two builds
 
-`ParserVS2::parse()` is the one function here that is a byte-at-a-time state
+`P300Parser::parse()` is the one function here that is a byte-at-a-time state
 machine driven directly by untrusted input, and the input is untrusted in the
 ordinary sense rather than the adversarial one: a noisy optical head produces
 garbled framing as normal operation. It is also the only code in the tree with
@@ -2952,13 +2952,13 @@ Two things that came out of building it are worth keeping:
   bytes before the buffer. It is now computed from `payloadLength()`, and
   `proof_vs2_rpc.cpp` case F pins the same frame through the engine.
 - **What the coverage says.** A gcov build replayed over a campaign corpus
-  reaches **100% of `parser_vs2.cpp`'s 42 branches** (measured before the RPC
+  reaches **100% of the parser's 42 branches** (measured before the RPC
   answer branch existed; the two RPC seeds cover it, no campaign has been run
   since) (95.2% taken at least
   once) and 90.4% of its lines, and libFuzzer's edge count plateaus at 80 —
   the parser is small enough that the search saturates it, so a long campaign
   is not buying much beyond a short one. Two things account for the uncovered
-  remainder, and neither is a gap in the corpus. `ParserVS2::reset()` is
+  remainder, and neither is a gap in the corpus. `P300Parser::reset()` is
   engine-driven rather than byte-driven and is covered by
   `proof_vs2_guards.cpp` (#10). The `!_packet.setLength(b)` branch was
   unreachable while `kMaxFrame` was 256; since the buffers are sized from

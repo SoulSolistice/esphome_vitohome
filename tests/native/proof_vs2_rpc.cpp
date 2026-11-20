@@ -23,7 +23,7 @@
 #include "optolink/optolink.h"
 
 namespace optolink = esphome::vitohome::optolink;
-using optolink::internals::ParserResult;
+using optolink::P300Parse;
 
 static int g_fail = 0;
 static void check(bool ok, const char *what) {
@@ -116,11 +116,11 @@ int main() {
 
     std::vector<uint8_t> bad = frame(counted);
     bad.back() = static_cast<uint8_t>(bad.back() + 1);
-    auto *parser = new optolink::internals::ParserVS2();
-    ParserResult res = ParserResult::CONTINUE;
+    auto *parser = new optolink::P300Parser();
+    P300Parse res = P300Parse::CONTINUE;
     for (uint8_t b : bad)
       res = parser->parse(b);
-    check(res == ParserResult::CS_ERROR, "C: that shape with a wrong checksum is refused");
+    check(res == P300Parse::CS_ERROR, "C: that shape with a wrong checksum is refused");
     delete parser;
   }
 
@@ -135,17 +135,13 @@ int main() {
 
   // E: reads and writes keep their guards.
   {
-    optolink::PacketVS2 packet;
-    check(!packet.createPacket(optolink::PacketType::REQUEST, optolink::FunctionCode::READ, 0, 0x0800, 0),
-          "E: a zero-length READ is still refused");
-    check(!packet.createPacket(optolink::PacketType::REQUEST, optolink::FunctionCode::WRITE, 0, 0x2301, 1, nullptr),
-          "E: a WRITE without data is still refused");
+    optolink::Telegram t{};
+    check(!optolink::p300_encode(0x01, 0x0800, 0, nullptr, t), "E: a zero-length READ is still refused");
+    check(!optolink::p300_encode(0x02, 0x2301, 1, nullptr, t), "E: a WRITE without data is still refused");
     const uint8_t param[] = {0x00, 0x01};
-    check(packet.createPacket(optolink::PacketType::REQUEST, optolink::FunctionCode::RPC, 0, 0xA043, 2, param),
-          "E: a two-byte RPC is built");
-    // Stored: the length byte (0x07) and the seven bytes it counts.
-    check(packet.length() == 8 && packet.dataLength() == 2 && packet.payloadLength() == 2,
-          "E: its frame counts the parameter");
+    check(optolink::p300_encode(0x07, 0xA043, 2, param, t), "E: a two-byte RPC is built");
+    // 41, LL 07 and the seven bytes it counts, the checksum; DL is 2.
+    check(t.length == 10 && t.bytes[1] == 0x07 && t.bytes[6] == 2, "E: its frame counts the parameter");
   }
 
   // F: the longest answer, MAX_PAYLOAD bytes, completes; one byte more fails

@@ -52,7 +52,7 @@ bool VS2Engine::request(uint8_t function, uint16_t address, uint8_t length, cons
     optolink_log_w("function 0x%02x: %u bytes exceed %u", function, length, MAX_PAYLOAD);
     return false;
   }
-  if (_currentPacket.createPacket(PacketType::REQUEST, static_cast<FunctionCode>(function), 0, address, length, data)) {
+  if (p300_encode(function, address, length, data, _currentPacket)) {
     _currentAddress = address;
     _currentLength = length;
     _busy = true;
@@ -60,7 +60,7 @@ bool VS2Engine::request(uint8_t function, uint16_t address, uint8_t length, cons
     _kw = false;
     _frame = false;
     _errorPayloadLength = 0;
-    _parser.expectFunction(function);
+    _parser.expect_function(function);
     optolink_log_i("function 0x%02x packet OK", function);
     return true;
   }
@@ -319,9 +319,10 @@ void VS2Engine::_sendStart() {
 
 // A partial write stays in its state and resumes on the next loop().
 void VS2Engine::_sendPacket() {
-  _bytesTransferred +=
-      _interface->write(&_currentPacket[_bytesTransferred], _currentPacket.length() - _bytesTransferred);
-  if (_bytesTransferred == _currentPacket.length()) {
+  // LL .. the last payload byte: the telegram without its 41 and checksum.
+  const uint8_t body = static_cast<uint8_t>(_currentPacket.length - 2);
+  _bytesTransferred += _interface->write(&_currentPacket.bytes[1 + _bytesTransferred], body - _bytesTransferred);
+  if (_bytesTransferred == body) {
     _bytesTransferred = 0;
     _lastMillis = _currentMillis;
     _setState(State::SEND_CRC);
@@ -330,7 +331,7 @@ void VS2Engine::_sendPacket() {
 }
 
 void VS2Engine::_sendCRC() {
-  uint8_t crc = _currentPacket.checksum();
+  const uint8_t crc = _currentPacket.bytes[_currentPacket.length - 1];
   if (_interface->write(&crc, 1) == 1) {
     _lastMillis = _currentMillis;
     _setState(State::SEND_ACK);
@@ -354,59 +355,46 @@ void VS2Engine::_sendAck() {
 void VS2Engine::_receive() {
   while (_interface->available()) {
     _lastMillis = _currentMillis;
-    internals::ParserResult result = _parser.parse(_interface->read());
-    if (result == internals::ParserResult::COMPLETE) {
-      const PacketVS2 &answer = _parser.packet();
-      const FunctionCode fc = answer.functionCode();
-      if (answer.packetType() == PacketType::RESPONSE && fc == _currentPacket.functionCode() &&
-          (fc == FunctionCode::READ || fc == FunctionCode::WRITE) && answer.address() != _currentPacket.address()) {
+    const P300Parse result = _parser.parse(_interface->read());
+    if (result == P300Parse::COMPLETE) {
+      const P300Frame &answer = _parser.frame();
+      const uint8_t fc = answer.function_code();
+      const bool read_or_write =
+          fc == static_cast<uint8_t>(FunctionCode::READ) || fc == static_cast<uint8_t>(FunctionCode::WRITE);
+      if (answer.packet_type() == PacketType::RESPONSE && fc == p300_function(_currentPacket) && read_or_write &&
+          answer.address() != p300_address(_currentPacket)) {
         // The answer to an earlier telegram: the stream is a frame behind, and
         // every later request would get its predecessor's answer. RESET drains
         // the line and syncs again.
         optolink_log_w("response address 0x%04x does not match the request's 0x%04x",
-                       static_cast<unsigned>(answer.address()), static_cast<unsigned>(_currentPacket.address()));
+                       static_cast<unsigned>(answer.address()), static_cast<unsigned>(p300_address(_currentPacket)));
         _setState(State::RESET);
         _tryOnError(OptolinkResult::ERROR);
         return;
       }
-      // Frame-type guard vs. upstream (THIRD_PARTY.md #9): upstream delivered
-      // ANY complete frame -- including a device ERROR frame (PacketType 0x03)
-      // -- through the response callback, so an error frame's payload was
-      // decoded and published as data. The link-layer choreography is
-      // unchanged (the frame is still ACKed via RECEIVE_ACK); only a
-      // non-RESPONSE type is now routed to the error callback instead, as
-      // DEVICE_ERROR: the frame is complete and checksum-valid, so the peer
-      // demonstrably answered -- distinct from the malformed-traffic ERROR
-      // below, which proves nothing about the link (see constants.h).
+      // Every complete frame is ACKed. A response is the answer; one to another
+      // function code (a write's acknowledgement for a read, a stale frame) is
+      // ERROR; any other type, the error frame, is DEVICE_ERROR with its
+      // payload, the device's error code, kept (THIRD_PARTY.md items 9, 28).
       _setState(State::RECEIVE_ACK);
-      if (_parser.packet().packetType() == PacketType::RESPONSE &&
-          _parser.packet().functionCode() != _currentPacket.functionCode()) {
-        // An answer to another function code -- a write's acknowledgement
-        // arriving for a read, a stale frame -- is not this request's answer
-        // (upstream delivered it, as a read with no data and the frame's
-        // DataLength; found by fuzz_raw_engines). Malformed for this request,
-        // though a valid frame, so it is ACKed and reported as ERROR.
-        optolink_log_w("response function code 0x%02x does not match the request's 0x%02x",
-                       static_cast<unsigned>(_parser.packet().functionCode()),
-                       static_cast<unsigned>(_currentPacket.functionCode()));
+      if (answer.packet_type() == PacketType::RESPONSE && fc != p300_function(_currentPacket)) {
+        optolink_log_w("response function code 0x%02x does not match the request's 0x%02x", static_cast<unsigned>(fc),
+                       static_cast<unsigned>(p300_function(_currentPacket)));
         _tryOnError(OptolinkResult::ERROR);
-      } else if (_parser.packet().packetType() == PacketType::RESPONSE) {
+      } else if (answer.packet_type() == PacketType::RESPONSE) {
         _tryOnResponse();
       } else {
-        optolink_log_w("packet type 0x%02x is not a response", static_cast<unsigned>(_parser.packet().packetType()));
-        // Keep the frame's payload -- the controller's error code -- for
-        // errorPayload().
-        const PacketVS2 &packet = _parser.packet();
-        _errorPayloadLength = packet.payloadLength() < ERROR_PAYLOAD_MAX ? packet.payloadLength() : ERROR_PAYLOAD_MAX;
-        std::memcpy(_errorPayload, packet.payload(), _errorPayloadLength);
+        optolink_log_w("packet type 0x%02x is not a response", static_cast<unsigned>(answer.packet_type()));
+        _errorPayloadLength = answer.payload_length() < ERROR_PAYLOAD_MAX ? answer.payload_length() : ERROR_PAYLOAD_MAX;
+        std::memcpy(_errorPayload, answer.payload(), _errorPayloadLength);
         _tryOnError(OptolinkResult::DEVICE_ERROR);
       }
       return;
-    } else if (result == internals::ParserResult::CS_ERROR) {
+    } else if (result == P300Parse::CS_ERROR) {
       _setState(State::RESET);
       _tryOnError(OptolinkResult::CRC);
       return;
-    } else if (result == internals::ParserResult::ERROR) {
+    } else if (result == P300Parse::ERROR) {
       _setState(State::RESET);
       _tryOnError(OptolinkResult::ERROR);
       return;
@@ -462,14 +450,11 @@ void VS2Engine::_kwStart(bool enqAck) {
   uint8_t n = 0;
   if (enqAck)
     _kwFrame[n++] = internals::ProtocolBytes.ENQ_ACK;
-  _kwFrame[n++] = _kwType;
-  _kwFrame[n++] = static_cast<uint8_t>(_currentAddress >> 8);
-  _kwFrame[n++] = static_cast<uint8_t>(_currentAddress & 0xFF);
-  _kwFrame[n++] = _currentLength;
-  if (_kwHasPayload) {
-    std::memcpy(&_kwFrame[n], _kwPayload, _currentLength);
-    n += _currentLength;
-  }
+  // kwTelegram() checked the length, so the telegram can be built.
+  Telegram telegram;
+  kw_encode(_kwType, _currentAddress, _currentLength, _kwHasPayload ? _kwPayload : nullptr, telegram);
+  std::memcpy(&_kwFrame[n], telegram.bytes, telegram.length);
+  n = static_cast<uint8_t>(n + telegram.length);
   _kwFrameLen = n;
   _bytesTransferred = 0;
   _requestTime = _currentMillis;
@@ -590,18 +575,15 @@ void VS2Engine::_frameReceive() {
 
 void VS2Engine::_tryOnResponse() {
   if (_onResponseCallback) {
-    // Surface the payload and the address ECHOED in the response frame (not
-    // the request's) so the caller's response-address match is a real
-    // wire-level check on P300. A write ack has data()==nullptr by design but
-    // a non-zero dataLength(); the caller must guard on data() before reading.
-    // An RPC answer is as long as its frame says (see ParserVS2), and so is
-    // the answer to a function code without a frame shape of its own
-    // (request()).
-    const PacketVS2 &packet = _parser.packet();
-    const FunctionCode fc = packet.functionCode();
-    const bool sized_by_frame = fc != FunctionCode::READ && fc != FunctionCode::WRITE;
-    const uint8_t length = sized_by_frame ? packet.payloadLength() : packet.dataLength();
-    _onResponseCallback(packet.data(), length, packet.address());
+    // The address the frame echoes, so the caller's address match checks the
+    // wire. A write's acknowledgement has no data but a DL; a procedure call's
+    // answer, and that of an unnamed code, is as long as its frame.
+    const P300Frame &frame = _parser.frame();
+    const uint8_t fc = frame.function_code();
+    const bool sized_by_frame =
+        fc != static_cast<uint8_t>(FunctionCode::READ) && fc != static_cast<uint8_t>(FunctionCode::WRITE);
+    const uint8_t length = sized_by_frame ? frame.payload_length() : frame.data_length();
+    _onResponseCallback(frame.data(), length, frame.address());
   }
   _busy = false;
 }

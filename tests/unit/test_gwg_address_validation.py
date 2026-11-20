@@ -1,6 +1,6 @@
 """Regression tests for the GWG 8-bit-address final validation.
 
-GWG addresses a single byte: ``PacketGWG::createPacket()`` rejects any address
+GWG addresses a single byte: the GWG codec (``gwg_encode()``) rejects any address
 above 0xFF, and a rejected request never leaves the hub's dispatch lane -- one
 such entity at the front of the read or write queue stalls that lane (and
 everything queued behind it) permanently. ``_final_validate`` therefore hard

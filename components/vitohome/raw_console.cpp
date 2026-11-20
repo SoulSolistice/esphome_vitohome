@@ -496,7 +496,7 @@ void VitoHomeComponent::dispatch_raw_front_() {
 
   if (!dispatched) {
     // Busy is transient. A permanent refusal, such as a 16-bit address on GWG
-    // (PacketGWG takes 0x00..0xFF), is dropped: kept at the head, it would stop
+    // (the GWG codec takes 0x00..0xFF), is dropped: kept at the head, it would stop
     // all bus traffic, since this lane goes first, with nothing in flight for
     // the watchdog.
     if (this->vito_->isBusy())

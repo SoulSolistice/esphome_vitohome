@@ -39,12 +39,8 @@ read -r -a SAN_FLAGS <<<"$SAN"
 SRCS=(
   "$OPTO/constants.cpp"
   "$OPTO/protocol/vs2/vs2.cpp"
-  "$OPTO/protocol/vs2/parser_vs2.cpp"
-  "$OPTO/protocol/vs2/packet_vs2.cpp"
   "$OPTO/protocol/vs1/vs1.cpp"
-  "$OPTO/protocol/vs1/packet_vs1.cpp"
   "$OPTO/protocol/gwg/gwg.cpp"
-  "$OPTO/protocol/gwg/packet_gwg.cpp"
 )
 
 echo "== protocol engine: compile + link for each protocol =="
@@ -125,6 +121,12 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OP
   fuzz_diff_engines.cpp "${DIFF_OBJS[@]}" "${SRCS[@]}" "${REF_SRCS[@]}" -o fuzz_diff_engines
 rm -f "${DIFF_OBJS[@]}"
 ./fuzz_diff_engines
+
+echo "== the codecs against the packet classes they replace (reference/) =="
+g++ -std=c++17 -O1 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
+  proof_codec_equality.cpp "$REF/constants.cpp" "$REF/protocol/vs1/packet_vs1.cpp" "$REF/protocol/vs2/packet_vs2.cpp" \
+  "$REF/protocol/vs2/parser_vs2.cpp" "$REF/protocol/gwg/packet_gwg.cpp" -o proof_codec_equality
+./proof_codec_equality
 
 echo "== GWG read/write completion (THIRD_PARTY.md #8 fix) =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \

@@ -1,6 +1,6 @@
-// Fuzz target + deterministic replay runner for ParserVS2.
+// Fuzz target + deterministic replay runner for P300Parser.
 //
-// WHY THIS FILE EXISTS. ParserVS2::parse() is a byte-at-a-time state machine
+// WHY THIS FILE EXISTS. P300Parser::parse() is a byte-at-a-time state machine
 // fed straight from the UART, i.e. from a noisy optical link where garbled RX
 // is the ordinary case rather than an attack. It is also the only place in
 // this codebase with a known history of memory-safety defects: the
@@ -12,7 +12,7 @@
 //
 // TWO BUILDS, ONE SOURCE.
 //
-//   replay (CI)     g++ ... fuzz_parser_vs2.cpp -> walks the committed seed
+//   replay (CI)     g++ ... fuzz_optolink_codec_p300.h -> walks the committed seed
 //                   corpus in fuzz_corpus_vs2.h plus any files named on the
 //                   command line. Deterministic, sub-second, needs no clang.
 //                   This is the gate.
@@ -41,15 +41,14 @@
 #include <cstring>
 
 #include "fuzz_corpus_vs2.h"
-#include "optolink/protocol/vs2/packet_vs2.h"
-#include "optolink/protocol/vs2/parser_vs2.h"
+#include "optolink_codec_p300.h"
 
 namespace optolink = esphome::vitohome::optolink;
-using optolink::PacketVS2;
+using optolink::P300Frame;
 using optolink::PacketType;
 using optolink::FunctionCode;
-using optolink::internals::ParserResult;
-using optolink::internals::ParserVS2;
+using optolink::P300Parse;
+using optolink::P300Parser;
 
 namespace {
 
@@ -101,7 +100,7 @@ constexpr uint8_t kProbePayload[] = {0xDE, 0xAD};
 // STARTBYTE, never build a new frame that swallows the probe that follows.
 constexpr int kDrainBytes = 260;
 
-void check_complete_frame(const PacketVS2 &p, uint8_t checksum_byte) {
+void check_complete_frame(const P300Frame &p, uint8_t checksum_byte) {
   // (1) The parser completed on a checksum it agrees with. Near-tautological
   // against the implementation, but it is the property that must survive any
   // future rework of the CHECKSUM step: COMPLETE means verified, always.
@@ -126,7 +125,7 @@ void check_complete_frame(const PacketVS2 &p, uint8_t checksum_byte) {
   // of a 256-byte buffer. Today nothing can: REQUEST never reaches a consumer.
   // Relax the RESPONSE guard and it does. kSeed_read_request_len255 is that
   // frame, which is why the assertions below are not made for it.
-  if (p.packetType() != PacketType::RESPONSE)
+  if (p.packet_type() != PacketType::RESPONSE)
     return;
 
   if (p.data() != nullptr) {
@@ -135,13 +134,14 @@ void check_complete_frame(const PacketVS2 &p, uint8_t checksum_byte) {
     // (payloadLength()) -- the parser keeps an RPC answer's DataLength as
     // received and does not trust it (THIRD_PARTY.md #26) -- and for the
     // answer to any other function code a raw request asked for
-    // (ParserVS2::expectFunction()), sized the same way.
-    const bool by_frame = p.functionCode() != FunctionCode::READ && p.functionCode() != FunctionCode::WRITE;
-    const std::size_t delivered = by_frame ? p.payloadLength() : p.dataLength();
+    // (P300Parser::expect_function()), sized the same way.
+    const bool by_frame = p.function_code() != static_cast<uint8_t>(FunctionCode::READ) &&
+                          p.function_code() != static_cast<uint8_t>(FunctionCode::WRITE);
+    const std::size_t delivered = by_frame ? p.payload_length() : p.data_length();
 
     // (2) A delivered payload lies wholly inside the packet buffer. The
     // payload starts at index 6, so this is the bound a consumer relies on.
-    oracle(6u + delivered <= PacketVS2::kMaxFrame, "delivered payload extends past the packet buffer");
+    oracle(6u + delivered <= optolink::P300_FRAME_MAX, "delivered payload extends past the packet buffer");
 
     // (3) ... and it is exactly the payload the frame carries. For every frame
     // but an RPC answer that is the structural invariant behind (2):
@@ -149,10 +149,10 @@ void check_complete_frame(const PacketVS2 &p, uint8_t checksum_byte) {
     // any frame where it and the frame length disagree. It is compared against
     // payloadLength() (_buffer[0] - 5), not length() - 6: length() is uint8_t
     // arithmetic and wraps to 0 at a length byte of 255 -- the trap
-    // packet_vs2.cpp documents -- which an RPC answer may legitimately carry.
-    oracle(delivered == p.payloadLength(), "delivered length disagrees with the frame's payload");
+    // optolink_codec_p300.h documents -- which an RPC answer may legitimately carry.
+    oracle(delivered == p.payload_length(), "delivered length disagrees with the frame's payload");
     if (!by_frame)
-      oracle(static_cast<int>(p.dataLength()) == static_cast<int>(p.length()) - 6,
+      oracle(static_cast<int>(p.data_length()) == static_cast<int>(p.length()) - 6,
              "delivered dataLength() disagrees with the frame length");
   }
 }
@@ -168,26 +168,26 @@ void check_complete_frame(const PacketVS2 &p, uint8_t checksum_byte) {
 namespace {
 
 // An ERROR frame's payload is the controller's error code, sized by the frame
-// (ParserVS2, PAYLOADLENGTH); VS2Engine::_receive() copies up to
+// (P300Parser, PAYLOADLENGTH); VS2Engine::_receive() copies up to
 // ERROR_PAYLOAD_MAX bytes of it from payload(). It must lie inside the buffer.
-void check_error_frame(const PacketVS2 &p) {
-  if (p.packetType() != PacketType::ERROR)
+void check_error_frame(const P300Frame &p) {
+  if (p.packet_type() != PacketType::ERROR)
     return;
-  oracle(6u + p.payloadLength() <= PacketVS2::kMaxFrame, "error payload extends past the packet buffer");
+  oracle(6u + p.payload_length() <= optolink::P300_FRAME_MAX, "error payload extends past the packet buffer");
 }
 
 void run_once(const uint8_t *data, std::size_t size, uint8_t expect) {
   // Heap-allocated so ASan surrounds the packet buffer with redzones; a
   // stack or static parser would make an out-of-bounds index far more likely
   // to land in adjacent valid memory and go unreported.
-  auto *parser = new ParserVS2();
-  parser->expectFunction(expect);
+  auto *parser = new P300Parser();
+  parser->expect_function(expect);
 
   for (std::size_t i = 0; i < size; ++i) {
     const uint8_t b = data[i];
-    if (parser->parse(b) == ParserResult::COMPLETE) {
-      check_complete_frame(parser->packet(), b);
-      check_error_frame(parser->packet());
+    if (parser->parse(b) == P300Parse::COMPLETE) {
+      check_complete_frame(parser->frame(), b);
+      check_error_frame(parser->frame());
     }
   }
 
@@ -200,20 +200,20 @@ void run_once(const uint8_t *data, std::size_t size, uint8_t expect) {
   // guard, and it would not trip a sanitizer.
   for (int i = 0; i < kDrainBytes; ++i) {
     const uint8_t z = 0x00;
-    if (parser->parse(z) == ParserResult::COMPLETE)
-      check_complete_frame(parser->packet(), z);
+    if (parser->parse(z) == P300Parse::COMPLETE)
+      check_complete_frame(parser->frame(), z);
   }
-  ParserResult r = ParserResult::CONTINUE;
+  P300Parse r = P300Parse::CONTINUE;
   for (uint8_t b : kProbeFrame)
     r = parser->parse(b);
-  oracle(r == ParserResult::COMPLETE, "parser did not resynchronise: a valid frame failed to complete");
+  oracle(r == P300Parse::COMPLETE, "parser did not resynchronise: a valid frame failed to complete");
 
   // Completing SOMETHING is not resynchronising. Check the packet is the probe
   // -- address, payload length and payload bytes -- so a stale frame finishing
   // on a coincidental checksum match cannot pass for a recovered parser.
-  if (r == ParserResult::COMPLETE) {
-    const PacketVS2 &p = parser->packet();
-    bool is_probe = p.address() == kProbeAddress && p.dataLength() == sizeof(kProbePayload) && p.data() != nullptr;
+  if (r == P300Parse::COMPLETE) {
+    const P300Frame &p = parser->frame();
+    bool is_probe = p.address() == kProbeAddress && p.data_length() == sizeof(kProbePayload) && p.data() != nullptr;
     if (is_probe)
       is_probe = std::memcmp(p.data(), kProbePayload, sizeof(kProbePayload)) == 0;
     oracle(is_probe, "resynchronised into the wrong frame: COMPLETE did not surface the probe");

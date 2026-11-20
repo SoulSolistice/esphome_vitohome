@@ -84,6 +84,11 @@ void oracle(bool ok, const char *what) {
 #endif
 }
 
+// The frame caps, built from MAX_PAYLOAD so they hold for the live engines
+// (KW_FRAME_MAX, GWG_FRAME_MAX) and the reference copy alike.
+constexpr std::size_t kKwFrameMax = 4 + optolink::MAX_PAYLOAD;
+constexpr std::size_t kGwgFrameMax = 5 + optolink::MAX_PAYLOAD;
+
 int g_completions = 0;
 bool g_shape_ok = true;
 uint8_t g_expect_length = 0;  // 0: any length up to g_max_length
@@ -201,8 +206,8 @@ extern "C" int FUZZ_ENTRY(const uint8_t *data, std::size_t size) {
 
   FakeOptolink io;
   g_io = &io;
-  const std::size_t frame_max = engine == 2   ? optolink::PacketVS1::kMaxFrame
-                                : engine == 3 ? optolink::PacketGWG::kMaxFrame
+  const std::size_t frame_max = engine == 2   ? kKwFrameMax
+                                : engine == 3 ? kGwgFrameMax
                                               : std::size_t{optolink::VS2Engine::FRAME_MAX};
   if (frame) {
     // The answer length is the code byte; a refused frame never completes.

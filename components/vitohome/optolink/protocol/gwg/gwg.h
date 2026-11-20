@@ -69,7 +69,7 @@ with setters, not process-wide globals. See THIRD_PARTY.md #34.
 #include "../../helpers.h"
 #include "../../interface/generic_interface.h"
 #include "../../logging.h"
-#include "packet_gwg.h"
+#include "optolink_codec_gwg.h"
 
 namespace esphome::vitohome::optolink {
 
@@ -285,7 +285,7 @@ class GWGEngine {
   // OptolinkResult::CRC rather than delivering a guess -- except FF FF, which
   // uwen70 documents as "address not in use" and is delivered as 0xFF, the
   // same answer every other GWG mode gives for an unserved address. An EEPROM
-  // write carries the pair too (PacketGWG::createTelegram()).
+  // write carries the pair too (gwg_eeprom_pair()).
   static constexpr uint8_t kEepromPairLength = 2;
 
   // Active sync poke. Off: INIT waits for the device's ENQ (0x05). On, INIT
@@ -410,8 +410,8 @@ class GWGEngine {
   //
   // Write frame layout: 01 TYPE ADDR LEN <data> 04 (false, default) or
   // 01 TYPE ADDR LEN 04 <data> (true). Reads are the same under both.
-  void setWriteEotBeforePayload(bool eotFirst) { _currentRequest.setEotBeforePayload(eotFirst); }
-  bool writeEotBeforePayload() const { return _currentRequest.eotBeforePayload(); }
+  void setWriteEotBeforePayload(bool eotFirst) { _eotBeforePayload = eotFirst; }
+  bool writeEotBeforePayload() const { return _eotBeforePayload; }
   // Whether a burst-sent request omits the leading 0x01 (default true). That
   // byte acknowledges an ENQ, and a burst-sent request answers none; an
   // ENQ-paced request carries it either way.
@@ -541,7 +541,13 @@ class GWGEngine {
   uint32_t _responseTimeoutMs{RESPONSE_TIMEOUT_MS};
   uint32_t _enqSendDelayMs{0};
   uint32_t _enqAckGapMs{0};
-  PacketGWG _currentRequest;
+  // What goes on the line: the 01 that answers an ENQ (a burst skips it, see
+  // _init()) and the codec's telegram, or an open frame as given.
+  Telegram _currentRequest;
+  bool _eotBeforePayload{DEFAULT_WRITE_EOT_BEFORE_PAYLOAD};
+  // Takes `telegram` with the 01 in front when `built`; clears the request
+  // otherwise. Returns `built`.
+  bool _setRequest(bool built, const Telegram &telegram);
   std::array<uint8_t, kResponseBufferSize> _responseBuffer;
   OnResponseCallback _onResponseCallback;
   OnErrorCallback _onErrorCallback;

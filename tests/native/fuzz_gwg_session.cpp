@@ -111,6 +111,11 @@ constexpr uint32_t kDeadlines[8] = {GWGEngine::RESPONSE_TIMEOUT_MS,
                                     optolink::GWG_RESPONSE_TIMEOUT_MAX_MS};
 constexpr int kMaxOps = 6;
 
+// The frame caps, built from MAX_PAYLOAD so they hold for the live engines
+// (KW_FRAME_MAX, GWG_FRAME_MAX) and the reference copy alike.
+constexpr std::size_t kKwFrameMax = 4 + optolink::MAX_PAYLOAD;
+constexpr std::size_t kGwgFrameMax = 5 + optolink::MAX_PAYLOAD;
+
 struct Op {
   GWGAccessMode mode;
   bool write;
@@ -243,8 +248,7 @@ void submit() {
     const int index = g_s.next++;
     if (op.frame) {
       op.accepted = e.frame(op.payload, op.length, op.answer);
-      const bool fits =
-          op.length >= 1 && op.length <= optolink::PacketGWG::kMaxFrame && op.answer <= optolink::MAX_PAYLOAD;
+      const bool fits = op.length >= 1 && op.length <= kGwgFrameMax && op.answer <= optolink::MAX_PAYLOAD;
       oracle(op.accepted == fits, "a frame accepted or refused against its bounds");
     } else if (op.write) {
       op.accepted = e.write(op.address, op.payload, op.length, op.mode);

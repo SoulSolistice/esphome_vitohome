@@ -125,11 +125,13 @@ int main() {
   // --- (6) guards --------------------------------------------------------------
   check(adapter.read(0x0800, 2), "read accepted");
   check(!adapter.gfaRead(0x4050, 1), "gfa read refused while a request is in flight");
-  optolink::PacketVS1 packet;
-  check(!packet.createPacket(optolink::PacketVS1Type.GFA_READ, 0x4050, 0), "zero-length gfa read refused");
-  check(packet.createPacket(optolink::PacketVS1Type.GFA_READ, 0x4050, 1) && packet.length() == 4,
+  optolink::Telegram telegram{};
+  check(!optolink::kw_encode(optolink::PacketVS1Type.GFA_READ, 0x4050, 0, nullptr, telegram),
+        "zero-length gfa read refused");
+  check(optolink::kw_encode(optolink::PacketVS1Type.GFA_READ, 0x4050, 1, nullptr, telegram) && telegram.length == 4,
         "gfa read frame is 4 bytes");
-  check(!packet.createPacket(0x68, 0x4050, 1), "any other type is still refused");
+  check(optolink::kw_encode(0x68, 0x4050, 1, nullptr, telegram) && telegram.bytes[0] == 0x68,
+        "any other type is built as given (telegram())");
   check(g_errors == 0, "no errors anywhere in the run");
 
   std::printf("vs1 gfa read: %d failure(s)\n", failures);

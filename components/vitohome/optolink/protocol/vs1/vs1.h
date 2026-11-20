@@ -26,7 +26,7 @@ THIRD_PARTY.md), so the wrapper mark_failed()s instead of the firmware aborting.
 #include "../../helpers.h"
 #include "../../interface/generic_interface.h"
 #include "../../logging.h"
-#include "packet_vs1.h"
+#include "optolink_codec_kw.h"
 
 namespace esphome::vitohome::optolink {
 
@@ -169,7 +169,7 @@ class VS1Engine {
   bool _busy;
   // An open frame is in flight (frame()).
   bool _frame{false};
-  PacketVS1 _currentRequest;
+  Telegram _currentRequest;
   std::array<uint8_t, kResponseBufferSize> _responseBuffer;
   OnResponseCallback _onResponseCallback;
   OnErrorCallback _onErrorCallback;

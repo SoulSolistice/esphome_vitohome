@@ -26,7 +26,7 @@ void VitoSensor::dump_config() {
 void VitoSensor::handle_response(const ResponseView &response) {
   // vitohome decodes the raw payload itself (decode.h; design_notes.md SS1).
   // A WRITE frame can arrive with data == nullptr and a non-zero length
-  // (PacketVS2::data()).
+  // (P300Frame::data()).
   if (response.data == nullptr) {
     ESP_LOGW(TAG, "%s: null response payload", this->datapoint_.name());
     return;

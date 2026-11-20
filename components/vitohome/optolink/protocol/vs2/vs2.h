@@ -25,7 +25,8 @@ THIRD_PARTY.md), so the wrapper mark_failed()s instead of the firmware aborting.
 #include "../../helpers.h"
 #include "../../interface/generic_interface.h"
 #include "../../logging.h"
-#include "parser_vs2.h"
+#include "optolink_codec_kw.h"
+#include "optolink_codec_p300.h"
 
 namespace esphome::vitohome::optolink {
 
@@ -180,14 +181,14 @@ class VS2Engine {
   uint32_t _requestTime;
   uint8_t _bytesTransferred;
   internals::SerialInterface *_interface;
-  internals::ParserVS2 _parser;
+  P300Parser _parser;
   // In-flight request context (no Datapoint): the address is echoed back to
   // the caller, the length is retained for symmetry with the byte-oriented
   // engines, and _busy is the single-in-flight guard.
   uint16_t _currentAddress;
   uint8_t _currentLength;
   bool _busy;
-  PacketVS2 _currentPacket;
+  Telegram _currentPacket;
   // A KW telegram in flight (kwTelegram()): its type, payload and frame,
   // with the ENQ_ACK in front when it opens the KW session, and its answer.
   bool _kw{false};

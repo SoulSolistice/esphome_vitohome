@@ -62,6 +62,6 @@ def test_generator_limit_matches_the_component(name):
 
 
 def test_every_limit_fits_the_engine_buffers():
-    max_payload = _cpp_constant("optolink/constants.h", "MAX_PAYLOAD")
+    max_payload = _cpp_constant("optolink_types.h", "MAX_PAYLOAD")
     for value in (MAX_P300_READ_LENGTH, MAX_TEXT_BLOCK_LENGTH, MAX_RMW_BLOCK, RPC_PREFIX_MAX):
         assert value <= max_payload

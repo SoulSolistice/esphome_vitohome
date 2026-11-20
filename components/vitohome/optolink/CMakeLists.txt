@@ -40,12 +40,8 @@ idf_component_register(
         "constants.cpp"
         "datapoint/converter.cpp"
         "datapoint/datapoint.cpp"
-        "protocol/vs1/packet_vs1.cpp"
         "protocol/vs1/vs1.cpp"
-        "protocol/vs2/packet_vs2.cpp"
-        "protocol/vs2/parser_vs2.cpp"
         "protocol/vs2/vs2.cpp"
         "protocol/gwg/gwg.cpp"
-        "protocol/gwg/packet_gwg.cpp"
     INCLUDE_DIRS ".."
 )

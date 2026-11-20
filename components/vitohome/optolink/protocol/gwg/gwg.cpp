@@ -9,6 +9,8 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 #include "gwg.h"
 
+#include <cstring>
+
 #include <utility>
 
 namespace esphome::vitohome::optolink {
@@ -36,7 +38,10 @@ bool GWGEngine::read(uint16_t address, uint8_t length, GWGAccessMode access) {
     optolink_log_i("reading not possible, length out of range for a per-address read");
     return false;
   }
-  if (_currentRequest.createPacket(gwgReadTypeByte(access), address, cell != 0 ? 1 : length)) {
+  Telegram telegram;
+  if (_setRequest(gwg_encode_mode(gwgReadTypeByte(access), address, cell != 0 ? 1 : length, nullptr, _eotBeforePayload,
+                                  telegram),
+                  telegram)) {
     _currentAddress = address;
     _currentLength = cell != 0 ? cell : length;
     _perAddress = cell != 0;
@@ -68,7 +73,9 @@ bool GWGEngine::write(uint16_t address, const uint8_t *data, uint8_t length, GWG
     optolink_log_w("GWG access mode has no write telegram type");
     return false;
   }
-  if (_currentRequest.createPacket(gwgWriteTypeByte(access), address, length, data)) {
+  Telegram telegram;
+  if (_setRequest(gwg_encode_mode(gwgWriteTypeByte(access), address, length, data, _eotBeforePayload, telegram),
+                  telegram)) {
     _currentAddress = address;
     _currentLength = length;
     _perAddress = false;  // a write is one frame in every mode
@@ -108,8 +115,10 @@ bool GWGEngine::telegram(uint8_t type, uint16_t address, uint8_t length, const u
     optolink_log_w("telegram 0x%02x: %u bytes exceed %u", type, length, MAX_PAYLOAD);
     return false;
   }
-  const bool built = eeprom_pair ? _currentRequest.createEepromPair(address, data[0], data[1])
-                                 : _currentRequest.createTelegram(type, address, length, data);
+  Telegram telegram;
+  const bool built = _setRequest(eeprom_pair ? gwg_eeprom_pair(address, data[0], data[1], telegram)
+                                             : gwg_encode(type, address, length, data, _eotBeforePayload, telegram),
+                                 telegram);
   if (built) {
     _currentAddress = address;
     _currentLength = length;
@@ -135,7 +144,7 @@ bool GWGEngine::frame(const uint8_t *bytes, uint8_t length, uint8_t answerLength
     optolink_log_w("frame: %u answer bytes exceed %u", answerLength, MAX_PAYLOAD);
     return false;
   }
-  if (!_currentRequest.createFrame(bytes, length)) {
+  if (!frame_encode(bytes, length, GWG_FRAME_MAX, _currentRequest)) {
     optolink_log_i("frame not possible, packet creation error");
     return false;
   }
@@ -213,6 +222,19 @@ void GWGEngine::end() {
 }
 
 bool GWGEngine::isBusy() const { return _busy; }
+
+bool GWGEngine::_setRequest(bool built, const Telegram &telegram) {
+  if (!built) {
+    _currentRequest.length = 0;
+    _currentRequest.has_payload = false;
+    return false;
+  }
+  _currentRequest.bytes[0] = internals::ProtocolBytes.ENQ_ACK;
+  std::memcpy(&_currentRequest.bytes[1], telegram.bytes, telegram.length);
+  _currentRequest.length = static_cast<uint8_t>(telegram.length + 1);
+  _currentRequest.has_payload = telegram.has_payload;
+  return true;
+}
 
 void GWGEngine::_setState(State state) {
   optolink_log_i("state %i --> %i", static_cast<std::underlying_type<State>::type>(_state),
@@ -333,12 +355,12 @@ void GWGEngine::_ackGap() {
 void GWGEngine::_send() {
   // With a gap set, a frame sent on an ENQ goes out as its 0x01 alone, and the
   // rest from ACK_GAP.
-  const bool ackAlone = _enqAckGapMs > 0 && _lastSendEnqPaced && _bytesTransferred == 0 &&
-                        _currentRequest.length() > 1 && _currentRequest[0] == internals::ProtocolBytes.ENQ_ACK;
+  const bool ackAlone = _enqAckGapMs > 0 && _lastSendEnqPaced && _bytesTransferred == 0 && _currentRequest.length > 1 &&
+                        _currentRequest.bytes[0] == internals::ProtocolBytes.ENQ_ACK;
   // Taken before the write, which may log after handing the bytes over.
   const uint32_t writeMillis = optolink_millis();
-  _bytesTransferred += _interface->write(&_currentRequest[_bytesTransferred],
-                                         ackAlone ? 1 : _currentRequest.length() - _bytesTransferred);
+  _bytesTransferred += _interface->write(&_currentRequest.bytes[_bytesTransferred],
+                                         ackAlone ? 1 : _currentRequest.length - _bytesTransferred);
   if (_stampEnqToSend) {
     _stampEnqToSend = false;
     _enqToSendMillis = writeMillis - _enqSeenMillis;
@@ -348,7 +370,7 @@ void GWGEngine::_send() {
     _setState(State::ACK_GAP);
     return;
   }
-  if (_bytesTransferred == _currentRequest.length()) {
+  if (_bytesTransferred == _currentRequest.length) {
     _bytesTransferred = 0;
     _lastMillis = _currentMillis;
     _sendCompleteMillis = _currentMillis;  // timing instrument (see OnTimingCallback)
@@ -387,7 +409,7 @@ void GWGEngine::_receive() {
     }
     // A burst-sent read gets one retry on a fresh ENQ before anything is
     // concluded (see BURST_FAILURES_BEFORE_FALLBACK).
-    const bool retry = _sentInBurst && !_burstDisabled && !_currentRequest.hasPayload() && !_retryUnburst;
+    const bool retry = _sentInBurst && !_burstDisabled && !_currentRequest.has_payload && !_retryUnburst;
     // Drop whatever is buffered along with the transaction. Every byte in there
     // predates the deadline, so a stale ENQ left behind would be picked up by
     // _init() as a fresh sync byte and burn the next request on a window that
@@ -433,7 +455,7 @@ void GWGEngine::_receive() {
   // against the request frame's length instead.
   // EEPROM, BE and PORT reads are answered per address, so _currentLength is
   // the cell's length there (gwgCellLength(), THIRD_PARTY.md #24).
-  const uint8_t expected = _currentRequest.hasPayload() ? 1 : _currentLength;
+  const uint8_t expected = _currentRequest.has_payload ? 1 : _currentLength;
   if (!_collecting() && _bytesTransferred == expected) {
     _bytesTransferred = 0;  // VS1 parity; _init() also resets before SEND
     // A completed transaction is itself proof the device is listening, so it
@@ -474,7 +496,10 @@ void GWGEngine::_receive() {
         // ENQ; the request watchdog is re-armed per telegram, because a long
         // run under strict one-telegram-per-ENQ would otherwise exceed
         // REQUEST_TIMEOUT_MS by design.
-        _currentRequest.createPacket(gwgReadTypeByte(_runMode), _currentAddress + _runIndex, 1);
+        Telegram telegram;
+        _setRequest(gwg_encode_mode(gwgReadTypeByte(_runMode), static_cast<uint16_t>(_currentAddress + _runIndex), 1,
+                                    nullptr, _eotBeforePayload, telegram),
+                    telegram);
         _requestTime = _currentMillis;
         return;
       }
@@ -483,7 +508,7 @@ void GWGEngine::_receive() {
     // Writes are out of scope -- GWG write framing remains model-derived
     // (THIRD_PARTY.md #8) and this instrument was motivated by, and only
     // validated against, the read path's ENQ-misread capture.
-    if (_onTimingCallback && !_currentRequest.hasPayload()) {
+    if (_onTimingCallback && !_currentRequest.has_payload) {
       _onTimingCallback(_enqAgeMillis, _currentMillis - _sendCompleteMillis, _currentAddress);
     }
     _tryOnResponse(_perAddress ? _runLength : expected);
@@ -512,7 +537,7 @@ void GWGEngine::_openLateWatch(bool retried) {
   _late = LateAnswer{};
   _late.address = _currentAddress;
   _late.received = _bytesTransferred;
-  _late.expected = _currentRequest.hasPayload() ? 1 : _currentLength;
+  _late.expected = _currentRequest.has_payload ? 1 : _currentLength;
   _late.deadline_ms = _responseTimeoutMs;
   _late.enq_age_ms = _enqAgeMillis;
   _late.retried = retried;

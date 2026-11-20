@@ -51,21 +51,17 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" \
   test_vs2_transaction.cpp \
   "$OPTO/constants.cpp" \
   "$OPTO/protocol/vs2/vs2.cpp" \
-  "$OPTO/protocol/vs2/parser_vs2.cpp" \
-  "$OPTO/protocol/vs2/packet_vs2.cpp" \
   -o vs2_transaction_harness
 # Engine debug logging is compiled out on host (logging.h is gated on
 # VITOHOME_DEBUG_OPTOLINK && ESP_PLATFORM), so stdout is the harness only.
 ./vs2_transaction_harness
 
-# Parser regression: a zero-payload VS2 frame must not walk past the packet
-# buffer (inherited upstream OOB, fixed in parser_vs2.cpp). Built under
-# AddressSanitizer/UBSan so the pre-fix code would trap here.
+# Parser regression: a zero-payload P300 frame must not walk past the frame
+# buffer (P300Parser, optolink_codec_p300.h). Built under AddressSanitizer and
+# UBSan, so an out-of-bounds write traps.
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" \
   -I"$ROOT" -I"$OPTO" \
   proof_vs2_zero_payload.cpp \
-  "$OPTO/protocol/vs2/parser_vs2.cpp" \
-  "$OPTO/protocol/vs2/packet_vs2.cpp" \
   "$OPTO/constants.cpp" \
   -o proof_vs2_zero_payload
 ./proof_vs2_zero_payload
@@ -73,20 +69,8 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" \
 # Remote procedure call (P300 function code 0x07): the parameter rides in the
 # request, the answer is as long as its frame says, and reads/writes keep their
 # guards. Through the engine, so the wire bytes are checked as well as the parse.
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}"   -I"$ROOT" -I"$OPTO"   proof_vs2_rpc.cpp   "$OPTO/constants.cpp"   "$OPTO/protocol/vs2/vs2.cpp"   "$OPTO/protocol/vs2/parser_vs2.cpp"   "$OPTO/protocol/vs2/packet_vs2.cpp"   -o proof_vs2_rpc
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}"   -I"$ROOT" -I"$OPTO"   proof_vs2_rpc.cpp   "$OPTO/constants.cpp"   "$OPTO/protocol/vs2/vs2.cpp"   -o proof_vs2_rpc
 ./proof_vs2_rpc
-
-# Packet regression: RESPONSE-type frames must hit the same payload guards as
-# writes (null-data, len > 250, buffer sizing). Pre-fix, a RESPONSE with len
-# 251-255 wrote past the 256-byte packet array and a null data pointer was
-# dereferenced -- both latent (engines only build REQUESTs) but ASan-trappable.
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" \
-  -I"$OPTO" \
-  proof_packet_vs2_response.cpp \
-  "$OPTO/protocol/vs2/packet_vs2.cpp" \
-  "$OPTO/constants.cpp" \
-  -o proof_packet_vs2_response
-./proof_packet_vs2_response
 
 # Decode proof: multi-byte field extraction from a wide block read (the
 # P300-portable pattern gen_catalog emits for interior fields).
@@ -119,7 +103,7 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" \
   -I"$ROOT" proof_ring_buffer.cpp -o proof_ring_buffer
 ./proof_ring_buffer
 
-# VS2 parser fuzz corpus, replayed deterministically. Same source file the
+# P300 parser fuzz corpus, replayed deterministically. Same source file the
 # libFuzzer target is built from (fuzz.sh), minus the fuzzer driver: here it
 # walks the committed seeds in fuzz_corpus_vs2.h, so the oracles CI enforces
 # and the oracles a campaign enforces cannot drift apart. Sub-second, no clang
@@ -127,8 +111,6 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" \
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" \
   -I"$ROOT" -I"$OPTO" \
   fuzz_parser_vs2.cpp \
-  "$OPTO/protocol/vs2/parser_vs2.cpp" \
-  "$OPTO/protocol/vs2/packet_vs2.cpp" \
   "$OPTO/constants.cpp" \
   -o fuzz_parser_vs2
 ./fuzz_parser_vs2

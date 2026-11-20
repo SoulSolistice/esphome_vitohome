@@ -7,7 +7,7 @@
 // snprintf truncation clamps -- `char out[64]` in vito_text.cpp, `char
 // buf[160]` and `char buf[80]` in vito_text_sensor.cpp, `char buffer[208]` in
 // vitohome.cpp. Every one of those caps is a constant a human worked out. The
-// ParserVS2 target covers wire->payload; this covers payload->text, which is
+// P300 parser target covers wire->payload; this covers payload->text, which is
 // the other half of the path and the half with the pointer arithmetic.
 //
 // It also covers the one input in this codebase that originates with a PERSON

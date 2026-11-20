@@ -97,6 +97,11 @@ void oracle(bool ok, const char *what) {
 
 constexpr int kMaxOps = 6;
 
+// The frame caps, built from MAX_PAYLOAD so they hold for the live engines
+// (KW_FRAME_MAX, GWG_FRAME_MAX) and the reference copy alike.
+constexpr std::size_t kKwFrameMax = 4 + optolink::MAX_PAYLOAD;
+constexpr std::size_t kGwgFrameMax = 5 + optolink::MAX_PAYLOAD;
+
 enum class Kind : uint8_t { READ, WRITE, GFA, TELEGRAM, TELEGRAM_PAYLOAD, KW, KW_PAYLOAD, RPC, FRAME };
 
 struct Op {
@@ -304,7 +309,7 @@ template<class E> void submit(E &e) {
       oracle(op.length != 0 && op.length <= limit, "a KW detour outside its length limits accepted");
     }
     if (op.kind == Kind::FRAME) {
-      const std::size_t frame_max = g_s.p300 ? optolink::VS2Engine::FRAME_MAX : optolink::PacketVS1::kMaxFrame;
+      const std::size_t frame_max = g_s.p300 ? optolink::VS2Engine::FRAME_MAX : kKwFrameMax;
       oracle(op.frame_len != 0 && op.frame_len <= frame_max, "an open frame outside its byte limits accepted");
     }
     g_s.pending = index;

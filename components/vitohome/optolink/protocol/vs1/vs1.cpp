@@ -38,7 +38,7 @@ bool VS1Engine::telegram(uint8_t type, uint16_t address, uint8_t length, const u
     optolink_log_w("telegram 0x%02x: %u bytes exceed %u", type, length, static_cast<unsigned>(kResponseBufferSize));
     return false;
   }
-  if (_currentRequest.createTelegram(type, address, length, data)) {
+  if (kw_encode(type, address, length, data, _currentRequest)) {
     _currentAddress = address;
     _currentLength = length;
     _frame = false;
@@ -59,7 +59,7 @@ bool VS1Engine::frame(const uint8_t *bytes, uint8_t length, uint8_t answerLength
     optolink_log_w("frame: %u answer bytes exceed %u", answerLength, static_cast<unsigned>(kResponseBufferSize));
     return false;
   }
-  if (!_currentRequest.createFrame(bytes, length)) {
+  if (!frame_encode(bytes, length, KW_FRAME_MAX, _currentRequest)) {
     optolink_log_i("frame not possible, packet creation error");
     return false;
   }
@@ -186,7 +186,7 @@ void VS1Engine::_syncRecv() {
   if (_currentMillis - _lastMillis < CHAIN_WINDOW_MS) {
     // A GFA read waits GFA_GAP_MS after the last answer (see there); the guard
     // above keeps watching the line meanwhile.
-    if (_busy && _currentRequest.packetType() == PacketVS1Type.GFA_READ && _currentMillis - _lastMillis < GFA_GAP_MS) {
+    if (_busy && _currentRequest.bytes[0] == PacketVS1Type.GFA_READ && _currentMillis - _lastMillis < GFA_GAP_MS) {
       return;
     }
     if (_busy) {
@@ -200,8 +200,8 @@ void VS1Engine::_syncRecv() {
 // send request and move to RECEIVE
 void VS1Engine::_send() {
   _bytesTransferred +=
-      _interface->write(&_currentRequest[_bytesTransferred], _currentRequest.length() - _bytesTransferred);
-  if (_bytesTransferred == _currentRequest.length()) {
+      _interface->write(&_currentRequest.bytes[_bytesTransferred], _currentRequest.length - _bytesTransferred);
+  if (_bytesTransferred == _currentRequest.length) {
     _bytesTransferred = 0;
     _lastMillis = _currentMillis;
     // A frame's ENQ wait may have used up most of the watchdog; its answer,
@@ -252,9 +252,9 @@ void VS1Engine::_receive() {
   // ("RECV 1 SR") also reads exactly one byte and does not validate its
   // value. Generalised with telegram(): every telegram that carries a payload
   // (a write's shape) is answered with the one acknowledgement byte.
-  const uint8_t expected = _currentRequest.hasPayload() ? 1 : _currentLength;
+  const uint8_t expected = _currentRequest.has_payload ? 1 : _currentLength;
   if (!_collecting() && _bytesTransferred == expected) {
-    if (_currentRequest.hasPayload() && _responseBuffer[0] != 0x00) {
+    if (_currentRequest.has_payload && _responseBuffer[0] != 0x00) {
       // Anything but 0x00 is no acknowledgement -- the controller's ENQ, a
       // refusal -- so the write did not take. It used to be logged and
       // reported as success. The session is unknown after it: back to INIT

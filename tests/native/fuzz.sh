@@ -35,7 +35,7 @@
 # is kept in $FUZZ_DIR/<target>/log/.
 #
 # TARGETS
-#   parser_vs2   ParserVS2::parse() -- the wire->payload state machine.
+#   parser_vs2   P300Parser::parse() -- the wire->payload state machine.
 #                Saturates fast: the committed seeds already reach the coverage
 #                ceiling at INITED, so a long campaign here buys little.
 #   decode       the buffer-writing helpers in decode.h -- payload->text, plus
@@ -111,7 +111,7 @@ case "$TARGET" in
   parser_vs2)
     SRC="fuzz_parser_vs2.cpp"
     HEADER="fuzz_corpus_vs2.h"
-    EXTRA=("$OPTO/protocol/vs2/parser_vs2.cpp" "$OPTO/protocol/vs2/packet_vs2.cpp" "$OPTO/constants.cpp")
+    EXTRA=("$OPTO/constants.cpp")
     ;;
   decode)
     SRC="fuzz_decode.cpp"
@@ -131,27 +131,22 @@ case "$TARGET" in
   raw_engines)
     SRC="fuzz_raw_engines.cpp"
     HEADER="fuzz_corpus_raw_engines.h"
-    EXTRA=("$OPTO/constants.cpp" "$OPTO/protocol/vs2/vs2.cpp" "$OPTO/protocol/vs2/parser_vs2.cpp"
-      "$OPTO/protocol/vs2/packet_vs2.cpp" "$OPTO/protocol/vs1/vs1.cpp" "$OPTO/protocol/vs1/packet_vs1.cpp"
-      "$OPTO/protocol/gwg/gwg.cpp" "$OPTO/protocol/gwg/packet_gwg.cpp")
+    EXTRA=("$OPTO/constants.cpp" "$OPTO/protocol/vs2/vs2.cpp" "$OPTO/protocol/vs1/vs1.cpp" "$OPTO/protocol/gwg/gwg.cpp")
     ;;
   gwg_session)
     SRC="fuzz_gwg_session.cpp"
     HEADER="fuzz_corpus_gwg_session.h"
-    EXTRA=("$OPTO/constants.cpp" "$OPTO/protocol/gwg/gwg.cpp" "$OPTO/protocol/gwg/packet_gwg.cpp")
+    EXTRA=("$OPTO/constants.cpp" "$OPTO/protocol/gwg/gwg.cpp")
     ;;
   kw_session)
     SRC="fuzz_kw_session.cpp"
     HEADER="fuzz_corpus_kw_session.h"
-    EXTRA=("$OPTO/constants.cpp" "$OPTO/protocol/vs2/vs2.cpp" "$OPTO/protocol/vs2/parser_vs2.cpp"
-      "$OPTO/protocol/vs2/packet_vs2.cpp" "$OPTO/protocol/vs1/vs1.cpp" "$OPTO/protocol/vs1/packet_vs1.cpp")
+    EXTRA=("$OPTO/constants.cpp" "$OPTO/protocol/vs2/vs2.cpp" "$OPTO/protocol/vs1/vs1.cpp")
     ;;
   sim_session)
     SRC="fuzz_sim_session.cpp"
     HEADER="fuzz_corpus_sim_session.h"
-    EXTRA=("$OPTO/constants.cpp" "$OPTO/protocol/vs2/vs2.cpp" "$OPTO/protocol/vs2/parser_vs2.cpp"
-      "$OPTO/protocol/vs2/packet_vs2.cpp" "$OPTO/protocol/vs1/vs1.cpp" "$OPTO/protocol/vs1/packet_vs1.cpp"
-      "$OPTO/protocol/gwg/gwg.cpp" "$OPTO/protocol/gwg/packet_gwg.cpp")
+    EXTRA=("$OPTO/constants.cpp" "$OPTO/protocol/vs2/vs2.cpp" "$OPTO/protocol/vs1/vs1.cpp" "$OPTO/protocol/gwg/gwg.cpp")
     ;;
   diff_engines)
     # Each session harness built twice as a side (diff_hooks.h), against the
@@ -159,12 +154,10 @@ case "$TARGET" in
     SRC="fuzz_diff_engines.cpp"
     HEADER="fuzz_corpus_diff.h"
     REF="reference/optolink"
-    EXTRA=()
-    for d in "$OPTO" "$REF"; do
-      EXTRA+=("$d/constants.cpp" "$d/protocol/vs2/vs2.cpp" "$d/protocol/vs2/parser_vs2.cpp"
-        "$d/protocol/vs2/packet_vs2.cpp" "$d/protocol/vs1/vs1.cpp" "$d/protocol/vs1/packet_vs1.cpp"
-        "$d/protocol/gwg/gwg.cpp" "$d/protocol/gwg/packet_gwg.cpp")
-    done
+    EXTRA=("$OPTO/constants.cpp" "$OPTO/protocol/vs2/vs2.cpp" "$OPTO/protocol/vs1/vs1.cpp" "$OPTO/protocol/gwg/gwg.cpp")
+    EXTRA+=("$REF/constants.cpp" "$REF/protocol/vs2/vs2.cpp" "$REF/protocol/vs2/parser_vs2.cpp"
+      "$REF/protocol/vs2/packet_vs2.cpp" "$REF/protocol/vs1/vs1.cpp" "$REF/protocol/vs1/packet_vs1.cpp"
+      "$REF/protocol/gwg/gwg.cpp" "$REF/protocol/gwg/packet_gwg.cpp")
     DIFF_SIDES=(kw_session gwg_session raw_engines sim_session)
     # The harness corpora seed it too, each led by its harness byte.
     SEED_HEADERS=("fuzz_corpus_kw_session.h=0" "fuzz_corpus_gwg_session.h=1" "fuzz_corpus_raw_engines.h=2"
@@ -173,7 +166,7 @@ case "$TARGET" in
   *)
     echo "usage: [KEEP_GOING=1] bash fuzz.sh <target|all> [seconds] [workers]" >&2
     echo "targets:" >&2
-    echo "  parser_vs2   ParserVS2::parse() -- wire to payload" >&2
+    echo "  parser_vs2   P300Parser::parse() -- wire to payload" >&2
     echo "  decode       decode.h buffer writers -- payload to text" >&2
     echo "  field        decode.h field extraction and scaling -- payload to value and back" >&2
     echo "  raw_spec     raw_op.h spec parser -- a typed line to an operation" >&2

@@ -18,23 +18,22 @@
 //      involvement; that byte still lands inside the buffer).
 //   B) header + stray bytes: pre-fix, the SECOND stray byte performs the OOB
 //      write, so under -fsanitize=address this run traps: an out-of-bounds
-//      WRITE inside ParserVS2::parse (the report class -- SEGV,
+//      WRITE inside P300Parser::parse (the report class -- SEGV,
 //      heap-use-after-free or heap-buffer-overflow -- depends on what the
 //      stray index happens to land in). Post-fix the parser is waiting in
 //      CHECKSUM: the first stray byte is a checksum mismatch (CS_ERROR +
 //      reset) and the rest are ignored as invalid start bytes.
 //
-// Build (from tests/native): compile this TU together with parser_vs2.cpp,
-// packet_vs2.cpp and constants.cpp under -fsanitize=address,undefined with
-// -I../../components/vitohome and -I../../components/vitohome/optolink. See
-// build_and_run.sh, which runs it as part of the native lane.
+// Build (from tests/native): with constants.cpp, under
+// -fsanitize=address,undefined, -I../../components/vitohome and
+// -I../../components/vitohome/optolink. build_and_run.sh runs it.
 
 #include <cstdio>
 
-#include "optolink/protocol/vs2/parser_vs2.h"
+#include "optolink_codec_p300.h"
 
 namespace optolink = esphome::vitohome::optolink;
-using optolink::internals::ParserResult;
+using optolink::P300Parse;
 
 static int g_fail = 0;
 static void check(bool ok, const char *what) {
@@ -54,37 +53,37 @@ int main() {
   std::printf("== VS2 parser zero-payload frame (OOB regression) ==\n");
 
   // --- Scenario A: valid frame (header + checksum) completes cleanly. ---
-  auto *parser = new optolink::internals::ParserVS2();
-  ParserResult r = ParserResult::CONTINUE;
+  auto *parser = new optolink::P300Parser();
+  P300Parse r = P300Parse::CONTINUE;
   for (uint8_t b : kHeader)
     r = parser->parse(b);
 
   // After the payload-length byte the parser must be waiting for the
   // CHECKSUM, not consuming phantom payload bytes.
-  check(r == ParserResult::CONTINUE, "A: zero-payload header does not over-complete");
+  check(r == P300Parse::CONTINUE, "A: zero-payload header does not over-complete");
 
   // Feed the checksum: the sum of the stored bytes _packet[0..5] =
   // 0x05 + 0x01 + 0x01 + 0x08 + 0x00 + 0x00 = 0x0F.
   r = parser->parse(0x0F);
-  check(r == ParserResult::COMPLETE, "A: completes on checksum (no phantom payload)");
-  check(parser->packet().dataLength() == 0, "A: surfaced payload length is 0");
+  check(r == P300Parse::COMPLETE, "A: completes on checksum (no phantom payload)");
+  check(parser->frame().data_length() == 0, "A: surfaced payload length is 0");
   delete parser;
 
   // --- Scenario B: stray bytes after the zero-length payload. ---
   // Pre-fix this is where the OOB write happened: stray byte #1 landed at
   // index 6 (in bounds) and stray byte #2 at index 6 + 0 - 255 = -249 -- ASan
-  // traps the out-of-bounds WRITE inside ParserVS2::parse. Post-fix the parser
+  // traps the out-of-bounds WRITE inside P300Parser::parse. Post-fix the parser
   // is in CHECKSUM: byte #1 is a checksum mismatch (CS_ERROR, reset to
   // STARTBYTE) and bytes #2/#3 are ignored as invalid start bytes.
-  parser = new optolink::internals::ParserVS2();
+  parser = new optolink::P300Parser();
   for (uint8_t b : kHeader)
     parser->parse(b);
   r = parser->parse(0xAA);  // pre-fix: phantom payload #1 | post-fix: CS mismatch
-  check(r == ParserResult::CS_ERROR, "B: stray byte is a checksum error, not payload");
+  check(r == P300Parse::CS_ERROR, "B: stray byte is a checksum error, not payload");
   r = parser->parse(0xBB);  // pre-fix: the OOB write (ASan SEGV) | post-fix: ignored
-  check(r == ParserResult::CONTINUE, "B: parser reset, stray byte ignored");
+  check(r == P300Parse::CONTINUE, "B: parser reset, stray byte ignored");
   r = parser->parse(0xCC);
-  check(r == ParserResult::CONTINUE, "B: still waiting for a real start byte");
+  check(r == P300Parse::CONTINUE, "B: still waiting for a real start byte");
   delete parser;
 
   std::printf("vs2 zero-payload proof: %d failure(s)\n", g_fail);

@@ -321,23 +321,21 @@ void frame_limit_cases() {
   for (unsigned i = 0; i < sizeof(data); ++i)
     data[i] = static_cast<uint8_t>(i);
 
-  optolink::PacketVS2 p300;
-  const uint8_t max_req = optolink::PacketVS2::MAX_REQUEST_PAYLOAD;
-  check(p300.createPacket(optolink::PacketType::REQUEST, optolink::FunctionCode::WRITE, 0, 0x2000, max_req, data) &&
-            p300.length() == 6 + max_req,
-        "P300: a MAX_PAYLOAD request payload");
-  check(!p300.createPacket(optolink::PacketType::REQUEST, optolink::FunctionCode::WRITE, 0, 0x2000, max_req + 1, data),
-        "P300: one byte more refused");
-
   const uint8_t max = optolink::MAX_PAYLOAD;
-  optolink::PacketVS1 kw;
-  check(kw.createTelegram(0xF4, 0x2000, max, data) && kw.length() == 4 + max, "KW: MAX_PAYLOAD payload bytes");
-  check(!kw.createTelegram(0xF4, 0x2000, max + 1, data), "KW: one byte more refused");
-  check(kw.createTelegram(0xF7, 0x2000, 255) && kw.length() == 4, "KW: a read is a 4-byte frame whatever its length");
+  optolink::Telegram t{};
+  // 41, LL .. the payload (6 + max), the checksum.
+  check(optolink::p300_encode(0x02, 0x2000, max, data, t) && t.length == 8 + max,
+        "P300: a MAX_PAYLOAD request payload");
+  check(!optolink::p300_encode(0x02, 0x2000, max + 1, data, t), "P300: one byte more refused");
 
-  optolink::PacketGWG gwg;
-  check(gwg.createTelegram(0x99, 0x10, max, data) && gwg.length() == 5 + max, "GWG: MAX_PAYLOAD payload bytes");
-  check(!gwg.createTelegram(0x99, 0x10, max + 1, data), "GWG: one byte more refused");
+  check(optolink::kw_encode(0xF4, 0x2000, max, data, t) && t.length == 4 + max, "KW: MAX_PAYLOAD payload bytes");
+  check(!optolink::kw_encode(0xF4, 0x2000, max + 1, data, t), "KW: one byte more refused");
+  check(optolink::kw_encode(0xF7, 0x2000, 255, nullptr, t) && t.length == 4,
+        "KW: a read is a 4-byte frame whatever its length");
+
+  // The engine puts the 01 in front, so its frame is 5 + max.
+  check(optolink::gwg_encode(0x99, 0x10, max, data, false, t) && t.length == 4 + max, "GWG: MAX_PAYLOAD payload bytes");
+  check(!optolink::gwg_encode(0x99, 0x10, max + 1, data, false, t), "GWG: one byte more refused");
 
   FakeOptolink io;
   optolink::VS2Engine vs2(&io);

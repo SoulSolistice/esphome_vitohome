@@ -172,7 +172,7 @@ int main() {
         "its answer is delivered past the first watchdog deadline");
 
   // --- (9) argument checks --------------------------------------------------
-  std::vector<uint8_t> long_frame(optolink::PacketVS1::kMaxFrame + 1, 0x01);
+  std::vector<uint8_t> long_frame(optolink::KW_FRAME_MAX + 1, 0x01);
   check(!engine.frame(nullptr, 3, 1), "null bytes refused");
   check(!engine.frame(read.data(), 0, 1), "zero bytes refused");
   check(!engine.frame(long_frame.data(), static_cast<uint8_t>(long_frame.size()), 1), "longer than the buffer refused");

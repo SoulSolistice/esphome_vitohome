@@ -56,14 +56,14 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
   `scripts/clang_tidy.sh` analyses the hub headers that build without ESPHome.
 - `test_vs2_transaction.cpp` — data-driven runner: handshake into IDLE, then per
   vector replay request + chunked response and assert wire + payload.
-- `proof_packet_vs2_response.cpp` — ASan/UBSan regression for
-  `PacketVS2::createPacket`'s RESPONSE payload guards (null-data, `len > 250`,
-  buffer sizing): pre-fix, a RESPONSE with len 251–255 wrote past the packet
-  array and a null data pointer was dereferenced (see THIRD_PARTY.md #16).
+- `proof_codec_equality.cpp` — the codecs (`optolink_codec_*.h`) against
+  the packet classes they replaced, kept in `reference/`: every TYPE byte or
+  function code, every length, boundary addresses, with and without payload,
+  both GWG EOT positions; the P300 parser byte by byte on generated streams.
 - `build_and_run.sh` — host compile + run. Optional `$1` is the component root
   containing `optolink/` (default `../../components/vitohome`); it compiles the
   P300 translation units (`constants`, `datapoint/*`, `protocol/vs2/*`).
-- `fuzz_parser_vs2.cpp` — fuzz target for `ParserVS2::parse()`, in two builds
+- `fuzz_parser_vs2.cpp` — fuzz target for `P300Parser::parse()`, in two builds
   from one source: a deterministic corpus replay (g++, run by CI) and a
   libFuzzer target (clang, run by hand). Carries the oracles.
 - `fuzz_corpus_vs2.h` — its seed corpus, as byte arrays with a stated reason
@@ -122,11 +122,12 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
 
 ## Fuzzing
 
-`ParserVS2::parse()` is a byte-at-a-time state machine fed straight off the
-optical link, where garbled RX is routine rather than exceptional, and it is
-the one place in this tree with a history of memory-safety defects — the
-zero-payload out-of-bounds write (THIRD_PARTY.md #12) and, in the packet it
-fills, the RESPONSE payload guards (#16). Both were found by someone writing
+`P300Parser::parse()` (`optolink_codec_p300.h`) is a byte-at-a-time state
+machine fed straight off the optical link, where garbled RX is routine rather
+than exceptional, and it is the one place in this tree with a history of
+memory-safety defects — the zero-payload out-of-bounds write (THIRD_PARTY.md
+#12) and, in the packet class it filled then, the RESPONSE payload guards
+(#16). Both were found by someone writing
 down the single input that trips them. Fuzzing covers the inputs nobody thought
 of.
 
@@ -169,7 +170,7 @@ consumer inside the packet buffer, which is recorded nowhere else.
 **Both oracle classes were negative-controlled**, because an oracle that never
 fires is indistinguishable from one that cannot:
 
-- reverting the zero-payload fix in `parser_vs2.cpp` makes the corpus trap
+- reverting the zero-payload fix in the parser makes the corpus trap
   under ASan (`heap-use-after-free`, exit 1);
 - removing the `CHECKSUM` step's reset-to-`STARTBYTE` wedges the parser, and
   oracle (4) reports it against the `bad_checksum` seed.
@@ -181,13 +182,12 @@ the oracle passed and the wedge went unseen. A probe that cannot be
 impersonated by stale state, plus an identity check on what completed, is the
 difference between that oracle working and merely appearing to.
 
-**Coverage.** A gcov build replayed over a campaign corpus reaches 100% of
-`parser_vs2.cpp`'s 42 branches (95.2% taken at least once) and 90.4% of lines;
-libFuzzer's edge count plateaus at 80, so the search saturates this parser
-quickly. The uncovered remainder is `ParserVS2::reset()`, which is
-engine-driven and covered by `proof_vs2_guards.cpp`. (These figures predate
-the `MAX_PAYLOAD` buffers; the `!_packet.setLength(b)` branch they list as
-unreachable now fires on a length byte above `kMaxFrame - 1`.)
+**Coverage.** A gcov build replayed over a campaign corpus reached 100% of
+the parser's 42 branches (95.2% taken at least once) and 90.4% of lines, when
+it was `parser_vs2.cpp`; the state machine moved unchanged into the codec
+(`proof_codec_equality.cpp`). libFuzzer's edge count plateaus at 80, so the
+search saturates this parser quickly. The uncovered remainder is `reset()`,
+which is engine-driven and covered by `proof_vs2_guards.cpp`.
 
 ### The `decode` target
 
@@ -395,10 +395,10 @@ convenience — it does not count as passing the gate.
    had to be fully qualified. After de-branding the engine is
    `esphome::vitohome::optolink::OptolinkEngine<P300>`, so the collision is gone; the
    harness just aliases the namespace.
-2. **`PacketVS2` was non-copyable** (deleted copy-assign — owned a `malloc` buffer).
-   The §1c `std::array` swap restored copyability. The callback still extracts the
-   payload there, because `data()` points into engine-owned storage valid only for the
-   duration of the callback.
+2. **The P300 packet was non-copyable** (deleted copy-assign — owned a `malloc`
+   buffer); its successor, `P300Frame`, holds a `std::array`. The callback still
+   extracts the payload there, because `data()` points into engine-owned storage valid
+   only for the duration of the callback.
 
    The enduring finding is a real null-deref hazard: for a write-ack, `data()` returns
    `nullptr` by design but `dataLength()` still returns the echoed length, so a naive
@@ -421,7 +421,7 @@ actual P300 engine, not just `decode.h`):
 ```
 
 The script exits non-zero on any vector failure. It compiles only the P300 path —
-`constants` / `datapoint/*` / `protocol/vs2/{vs2,parser_vs2,packet_vs2}` — since the
+`constants` / `datapoint/*` / `protocol/vs2/vs2` and the header-only codecs — since the
 VS1/GWG translation units are deferred protocols these vectors do not reference.
 
 ## Extending

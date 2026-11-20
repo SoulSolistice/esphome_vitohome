@@ -2,7 +2,7 @@
 // lanes rely on (vitohome.cpp dispatch_next_ / dispatch_raw_front_).
 //
 // read()/write() returning false is overloaded. A read/write of a 16-bit
-// address on GWG is a PERMANENT createPacket() rejection (PacketGWG rejects
+// address on GWG is a PERMANENT rejection (the GWG codec refuses
 // addr > 0xFF): read() returns false AND isBusy() stays false, and nothing is
 // written to the wire, so a false return means "will never work", not "retry".
 // A refusal while a transaction is in flight is TRANSIENT: read() returns
@@ -39,7 +39,7 @@ int main() {
       failures++;
   };
 
-  // --- PERMANENT: a 16-bit address is rejected by createPacket() -----------
+  // --- PERMANENT: a 16-bit address is rejected by the codec ---------------
   check(!adapter.read(0x0800, 2), "read(0x0800,2) refused (addr > 0xFF)");
   check(!adapter.isBusy(), "engine NOT busy after permanent refusal");
   check(uart.written().empty(), "nothing written to the wire on refusal");
