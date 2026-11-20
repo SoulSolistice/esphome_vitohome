@@ -1,0 +1,289 @@
+/*
+Copyright (c) 2023 Bert Melis. All rights reserved.
+
+This work is licensed under the terms of the MIT license.
+For a copy, see <https://opensource.org/licenses/MIT> or the LICENSE file.
+
+Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
+*/
+
+#include "vs1.h"
+
+#include <utility>
+
+namespace esphome::vitohome::optolink_ref {
+
+VS1Engine::~VS1Engine() { delete _interface; }
+
+void VS1Engine::onResponse(OnResponseCallback callback) { _onResponseCallback = std::move(callback); }
+void VS1Engine::onError(OnErrorCallback callback) { _onErrorCallback = std::move(callback); }
+
+bool VS1Engine::read(uint16_t address, uint8_t length) { return telegram(PacketVS1Type.READ, address, length); }
+
+bool VS1Engine::gfaRead(uint16_t address, uint8_t length) { return telegram(PacketVS1Type.GFA_READ, address, length); }
+
+bool VS1Engine::write(uint16_t address, const uint8_t *data, uint8_t length) {
+  if (data == nullptr)
+    return false;
+  return telegram(PacketVS1Type.WRITE, address, length, data);
+}
+
+bool VS1Engine::telegram(uint8_t type, uint16_t address, uint8_t length, const uint8_t *data) {
+  if (_busy) {
+    return false;
+  }
+  // A read's answer must fit _responseBuffer; a write is answered with one
+  // byte.
+  if (data == nullptr && length > kResponseBufferSize) {
+    optolink_log_w("telegram 0x%02x: %u bytes exceed %u", type, length, static_cast<unsigned>(kResponseBufferSize));
+    return false;
+  }
+  if (_currentRequest.createTelegram(type, address, length, data)) {
+    _currentAddress = address;
+    _currentLength = length;
+    _frame = false;
+    _busy = true;
+    _requestTime = _currentMillis;
+    optolink_log_i("telegram 0x%02x OK", type);
+    return true;
+  }
+  optolink_log_i("telegram 0x%02x not possible, packet creation error", type);
+  return false;
+}
+
+bool VS1Engine::frame(const uint8_t *bytes, uint8_t length, uint8_t answerLength) {
+  if (_busy) {
+    return false;
+  }
+  if (answerLength > kResponseBufferSize) {
+    optolink_log_w("frame: %u answer bytes exceed %u", answerLength, static_cast<unsigned>(kResponseBufferSize));
+    return false;
+  }
+  if (!_currentRequest.createFrame(bytes, length)) {
+    optolink_log_i("frame not possible, packet creation error");
+    return false;
+  }
+  _currentAddress = 0;
+  _currentLength = answerLength;
+  _frame = true;
+  _busy = true;
+  _requestTime = _currentMillis;
+  optolink_log_i("frame of %u bytes OK", length);
+  return true;
+}
+
+bool VS1Engine::begin() {
+  if (_interface == nullptr)
+    return false;
+  // A request submitted before the next loop() takes its watchdog from now.
+  _currentMillis = optolink_millis();
+  if (_interface->begin()) {
+    while (_interface->available()) {
+      _interface->read();  // clear rx buffer
+    }
+    // The EOT is due ENQ_RESET_INTERVAL_MS after this start, not at once.
+    _lastMillis = optolink_millis();
+    _setState(State::INIT);
+    return true;
+  }
+  return false;
+}
+
+void VS1Engine::loop() {
+  _currentMillis = optolink_millis();
+  switch (_state) {
+    case State::INIT:
+      _init();
+      break;
+    case State::SYNC_ENQ:
+      _syncEnq();
+      break;
+    case State::SYNC_RECV:
+      _syncRecv();
+      break;
+    case State::SEND:
+      _send();
+      break;
+    case State::RECEIVE:
+      _receive();
+      break;
+    case State::UNDEFINED:
+      // begin() not yet called
+      break;
+  }
+  if (_busy && _currentMillis - _requestTime > REQUEST_TIMEOUT_MS) {
+    _bytesTransferred = 0;
+    _setState(State::INIT);
+    _tryOnError(OptolinkResult::TIMEOUT);
+  }
+}
+
+void VS1Engine::end() {
+  _interface->end();
+  _setState(State::UNDEFINED);
+  _busy = false;
+}
+
+bool VS1Engine::isBusy() const { return _busy; }
+
+void VS1Engine::_setState(State state) {
+  optolink_log_i("state %i --> %i", static_cast<std::underlying_type<State>::type>(_state),
+                 static_cast<std::underlying_type<State>::type>(state));
+  _state = state;
+}
+
+// wait for ENQ or reset connection if ENQ is not coming
+void VS1Engine::_init() {
+  if (_interface->available()) {
+    if (_interface->read() == internals::ProtocolBytes.ENQ) {
+      _lastMillis = _currentMillis;
+      _setState(State::SYNC_ENQ);
+    }
+  } else {
+    if (_currentMillis - _lastMillis > ENQ_RESET_INTERVAL_MS) {
+      _lastMillis = _currentMillis;
+      _interface->write(&internals::ProtocolBytes.EOT, 1);
+    }
+  }
+}
+
+// if we want to send something within ENQ_ACK_WINDOW_MS of receiving the ENQ,
+// send ENQ_ACK and move to SEND; if longer, return to INIT
+void VS1Engine::_syncEnq() {
+  if (_currentMillis - _lastMillis < ENQ_ACK_WINDOW_MS) {
+    // An open frame answers the ENQ with its own first byte.
+    if (_busy && (_frame || _interface->write(&internals::ProtocolBytes.ENQ_ACK, 1) == 1)) {
+      _setState(State::SEND);
+      _send();  // speed up things
+    }
+  } else {
+    _setState(State::INIT);
+  }
+}
+
+// Chain the next telegram onto the sync we already have, if one is queued
+// within CHAIN_WINDOW_MS of the last answer; otherwise go back to waiting for
+// an ENQ. Hardware-confirmed: a VScotHO1_72 answers a median of 29 telegrams
+// (max 49) off a single ENQ, a whole 60 s poll cycle in ~2.15 s.
+void VS1Engine::_syncRecv() {
+  // A byte has arrived since the last answer -- on an idle KW bus that is the
+  // device's next ENQ. Never chain across it: with the request going out while
+  // that byte still sat in the buffer, _receive() would read it as the new
+  // request's payload. Hand control to INIT, which consumes it as the sync it
+  // actually is.
+  //
+  // The guard also bounds CHAIN_WINDOW_MS in practice: the window can only be
+  // ridden while the device has NOT spoken since the last answer.
+  if (_interface->available()) {
+    _setState(State::INIT);
+    return;
+  }
+  // An open frame goes out on an ENQ of its own.
+  if (_busy && _frame) {
+    _setState(State::INIT);
+    return;
+  }
+  if (_currentMillis - _lastMillis < CHAIN_WINDOW_MS) {
+    // A GFA read waits GFA_GAP_MS after the last answer (see there); the guard
+    // above keeps watching the line meanwhile.
+    if (_busy && _currentRequest.packetType() == PacketVS1Type.GFA_READ && _currentMillis - _lastMillis < GFA_GAP_MS) {
+      return;
+    }
+    if (_busy) {
+      _setState(State::SEND);
+    }
+  } else {
+    _setState(State::INIT);
+  }
+}
+
+// send request and move to RECEIVE
+void VS1Engine::_send() {
+  _bytesTransferred +=
+      _interface->write(&_currentRequest[_bytesTransferred], _currentRequest.length() - _bytesTransferred);
+  if (_bytesTransferred == _currentRequest.length()) {
+    _bytesTransferred = 0;
+    _lastMillis = _currentMillis;
+    // A frame's ENQ wait may have used up most of the watchdog; its answer,
+    // up to a quiet ANSWER_TIMEOUT_MS, gets the whole of it.
+    if (_frame)
+      _requestTime = _currentMillis;
+    _setState(State::RECEIVE);
+  }
+}
+
+// wait for data to receive
+// when done, move to SYNC_RECV
+void VS1Engine::_receive() {
+  // A telegram the controller ignores gets no answer, and the controller's
+  // next ENQ (about 2 s later) must not be taken for data. The line may stay
+  // silent ANSWER_TIMEOUT_MS before the first byte and between bytes; checked
+  // before the drain so a waiting ENQ is left for _init().
+  if (_currentMillis - _lastMillis > ANSWER_TIMEOUT_MS) {
+    if (_collecting() && _bytesTransferred != 0) {
+      // The quiet line ends an open frame's answer.
+      const uint8_t received = _bytesTransferred < kResponseBufferSize ? _bytesTransferred : kResponseBufferSize;
+      _bytesTransferred = 0;
+      _setState(State::INIT);
+      _tryOnResponse(received);
+      return;
+    }
+    _bytesTransferred = 0;
+    _setState(State::INIT);
+    _tryOnError(OptolinkResult::TIMEOUT);
+    return;
+  }
+  while (_interface->available()) {
+    const uint8_t byte = _interface->read();
+    // A device that sends more than asked fails the count below and times out.
+    if (_bytesTransferred < kResponseBufferSize)
+      _responseBuffer[_bytesTransferred] = byte;
+    if (_bytesTransferred < 0xFF)
+      ++_bytesTransferred;
+    _lastMillis = _currentMillis;
+  }
+  // Write-completion fix vs. upstream (THIRD_PARTY.md #11): upstream waited
+  // for _currentDatapoint.length() response bytes after a WRITE too, but the
+  // device acks a KW write (0xF4) with a SINGLE 0x00 byte -- hardware-
+  // confirmed on a VScotHO1_72 (0x20CB): the 8-byte clock write got its 0x00
+  // ack ~125 ms after the frame, then upstream's check waited for 8 bytes and
+  // timed out. The coincidence len == 1 for the common 1-byte writes
+  // (Betriebsart, setpoints) is what masked this. vcontrold's KW setaddr
+  // ("RECV 1 SR") also reads exactly one byte and does not validate its
+  // value. Generalised with telegram(): every telegram that carries a payload
+  // (a write's shape) is answered with the one acknowledgement byte.
+  const uint8_t expected = _currentRequest.hasPayload() ? 1 : _currentLength;
+  if (!_collecting() && _bytesTransferred == expected) {
+    if (_currentRequest.hasPayload() && _responseBuffer[0] != 0x00) {
+      // Anything but 0x00 is no acknowledgement -- the controller's ENQ, a
+      // refusal -- so the write did not take. It used to be logged and
+      // reported as success. The session is unknown after it: back to INIT
+      // for a fresh sync.
+      optolink_log_w("write ack byte 0x%02x (expected 0x00)", static_cast<unsigned>(_responseBuffer[0]));
+      _bytesTransferred = 0;
+      _setState(State::INIT);
+      _tryOnError(OptolinkResult::DEVICE_ERROR);
+      return;
+    }
+    _bytesTransferred = 0;
+    // After an open frame the session is unknown: no chaining onto it.
+    _setState(_frame ? State::INIT : State::SYNC_RECV);
+    _tryOnResponse(expected);
+  }
+}
+
+void VS1Engine::_tryOnResponse(uint8_t length) {
+  if (_onResponseCallback) {
+    _onResponseCallback(_responseBuffer.data(), length, _currentAddress);
+  }
+  _busy = false;
+}
+
+void VS1Engine::_tryOnError(OptolinkResult result) {
+  if (_onErrorCallback) {
+    _onErrorCallback(result, _currentAddress);
+  }
+  _busy = false;
+}
+
+}  // namespace esphome::vitohome::optolink_ref

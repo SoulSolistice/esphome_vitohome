@@ -1,0 +1,559 @@
+/*
+Copyright (c) 2023 Bert Melis. All rights reserved.
+
+This work is licensed under the terms of the MIT license.
+For a copy, see <https://opensource.org/licenses/MIT> or the LICENSE file.
+
+Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
+*/
+
+#include "gwg.h"
+
+#include <utility>
+
+namespace esphome::vitohome::optolink_ref {
+
+GWGEngine::~GWGEngine() { delete _interface; }
+
+void GWGEngine::onResponse(OnResponseCallback callback) { _onResponseCallback = std::move(callback); }
+void GWGEngine::onError(OnErrorCallback callback) { _onErrorCallback = std::move(callback); }
+void GWGEngine::onTiming(OnTimingCallback callback) { _onTimingCallback = std::move(callback); }
+void GWGEngine::onBurstFallback(OnBurstFallbackCallback callback) { _onBurstFallbackCallback = std::move(callback); }
+void GWGEngine::onLateAnswer(OnLateAnswerCallback callback) { _onLateAnswerCallback = std::move(callback); }
+
+bool GWGEngine::read(uint16_t address, uint8_t length, GWGAccessMode access) {
+  if (_busy) {
+    return false;
+  }
+  if (length > MAX_PAYLOAD) {
+    optolink_log_w("reading not possible, %u bytes exceed %u", length, MAX_PAYLOAD);
+    return false;
+  }
+  // EEPROM, BE and PORT are read one address at a time (gwgCellLength()), so
+  // the whole run must stay inside GWG's 1-byte address space.
+  const uint8_t cell = gwgCellLength(access);
+  if (cell != 0 && (length == 0 || address + length - 1 > 0xFF)) {
+    optolink_log_i("reading not possible, length out of range for a per-address read");
+    return false;
+  }
+  if (_currentRequest.createPacket(gwgReadTypeByte(access), address, cell != 0 ? 1 : length)) {
+    _currentAddress = address;
+    _currentLength = cell != 0 ? cell : length;
+    _perAddress = cell != 0;
+    _runMode = access;
+    _runLength = cell != 0 ? length : 0;
+    _runIndex = 0;
+    _eepromUnserved = false;
+    _timeoutUnsynced = false;
+    _retryUnburst = false;
+    _frame = false;
+    _busy = true;
+    _requestTime = _currentMillis;
+    optolink_log_i("reading packet OK");
+    return true;
+  }
+  optolink_log_i("reading not possible, packet creation error");
+  return false;
+}
+
+bool GWGEngine::write(uint16_t address, const uint8_t *data, uint8_t length, GWGAccessMode access) {
+  if (_busy) {
+    return false;
+  }
+  // The KMBUS modes have no write TYPE byte in the wiki table, so a write in
+  // one of them is not expressible rather than merely unverified. Refuse it
+  // here (permanent rejection, same shape as an out-of-range address) instead
+  // of silently falling back to a different mode.
+  if (!gwgModeIsWritable(access)) {
+    optolink_log_w("GWG access mode has no write telegram type");
+    return false;
+  }
+  if (_currentRequest.createPacket(gwgWriteTypeByte(access), address, length, data)) {
+    _currentAddress = address;
+    _currentLength = length;
+    _perAddress = false;  // a write is one frame in every mode
+    _eepromUnserved = false;
+    _timeoutUnsynced = false;
+    _retryUnburst = false;
+    _frame = false;
+    _busy = true;
+    _requestTime = _currentMillis;
+    optolink_log_i("writing packet OK");
+    return true;
+  }
+  optolink_log_i("writing not possible, packet creation error");
+  return false;
+}
+
+bool GWGEngine::telegram(uint8_t type, uint16_t address, uint8_t length, const uint8_t *data) {
+  if (_busy) {
+    return false;
+  }
+  // An EEPROM write of two bytes is the cell's pair as given, `01 AD ADDR B0 B1
+  // 04`: nothing computed or checked, so it can store a pair every read
+  // rejects. Raw lane only; write() takes one value byte per cell.
+  const bool eeprom_pair = data != nullptr && length == 2 && type == gwgWriteTypeByte(GWGAccessMode::EEPROM);
+  // Any other TYPE byte of the access-mode table keeps its mode's handling: an
+  // EEPROM, BE or PORT read still goes one address per telegram.
+  for (uint8_t m = 0; !eeprom_pair && m <= static_cast<uint8_t>(GWGAccessMode::KMBUS_EEPROM); ++m) {
+    const auto mode = static_cast<GWGAccessMode>(m);
+    if (data == nullptr && type == gwgReadTypeByte(mode))
+      return read(address, length, mode);
+    if (data != nullptr && gwgModeIsWritable(mode) && type == gwgWriteTypeByte(mode))
+      return write(address, data, length, mode);
+  }
+  // A read's answer must fit _responseBuffer; a write is answered with one
+  // byte.
+  if (data == nullptr && length > MAX_PAYLOAD) {
+    optolink_log_w("telegram 0x%02x: %u bytes exceed %u", type, length, MAX_PAYLOAD);
+    return false;
+  }
+  const bool built = eeprom_pair ? _currentRequest.createEepromPair(address, data[0], data[1])
+                                 : _currentRequest.createTelegram(type, address, length, data);
+  if (built) {
+    _currentAddress = address;
+    _currentLength = length;
+    _perAddress = false;
+    _eepromUnserved = false;
+    _timeoutUnsynced = false;
+    _retryUnburst = false;
+    _frame = false;
+    _busy = true;
+    _requestTime = _currentMillis;
+    optolink_log_i("telegram 0x%02x OK", type);
+    return true;
+  }
+  optolink_log_i("telegram 0x%02x not possible, packet creation error", type);
+  return false;
+}
+
+bool GWGEngine::frame(const uint8_t *bytes, uint8_t length, uint8_t answerLength) {
+  if (_busy) {
+    return false;
+  }
+  if (answerLength > MAX_PAYLOAD) {
+    optolink_log_w("frame: %u answer bytes exceed %u", answerLength, MAX_PAYLOAD);
+    return false;
+  }
+  if (!_currentRequest.createFrame(bytes, length)) {
+    optolink_log_i("frame not possible, packet creation error");
+    return false;
+  }
+  _currentAddress = 0;
+  _currentLength = answerLength;
+  _perAddress = false;
+  _eepromUnserved = false;
+  _timeoutUnsynced = false;
+  _retryUnburst = false;
+  _frame = true;
+  _busy = true;
+  _requestTime = _currentMillis;
+  optolink_log_i("frame of %u bytes OK", length);
+  return true;
+}
+
+bool GWGEngine::begin() {
+  if (_interface == nullptr)
+    return false;
+  // A request submitted before the next loop() takes its watchdog from now.
+  _currentMillis = optolink_millis();
+  // A restart (the hub's, after a raw script had the port) knows nothing of
+  // the device's ENQ cadence: no burst until the next ENQ, and a late-answer
+  // report still open is closed.
+  _syncValid = false;
+  _closeLateWatch();
+  _setState(State::INIT);
+  return _interface->begin();
+}
+
+void GWGEngine::loop() {
+  // Host-stall measure, feeding the timing instrument (see OnTimingCallback).
+  // The device's ENQ is read out of a buffer, so its true arrival time is not
+  // observable; the gap since the previous iteration is an upper bound on how
+  // stale an ENQ consumed this iteration can be, and it is the quantity that
+  // actually decides whether the KW-family sync window is being kept.
+  const uint32_t previousLoopMillis = _currentMillis;
+  _currentMillis = optolink_millis();
+  _loopGapMillis = _currentMillis - previousLoopMillis;
+  switch (_state) {
+    case State::INIT:
+      _init();
+      break;
+    case State::HOLD:
+      _hold();
+      break;
+    case State::ACK_GAP:
+      _ackGap();
+      break;
+    case State::SEND:
+      _send();
+      break;
+    case State::RECEIVE:
+      _receive();
+      break;
+    case State::UNDEFINED:
+      // begin() not yet called
+      break;
+  }
+  if (_busy && _currentMillis - _requestTime > _requestTimeoutMs()) {
+    // Still in INIT: no ENQ came for this request (or for its retry), so it
+    // never went out. See lastTimeoutWasUnsynced().
+    _timeoutUnsynced = _state == State::INIT;
+    _setState(State::INIT);
+    _tryOnError(OptolinkResult::TIMEOUT);
+  }
+  if (_lateWatch && _currentMillis - _lateSendMillis > LATE_WATCH_MS)
+    _closeLateWatch();
+}
+
+void GWGEngine::end() {
+  _interface->end();
+  _setState(State::UNDEFINED);
+  _busy = false;
+}
+
+bool GWGEngine::isBusy() const { return _busy; }
+
+void GWGEngine::_setState(State state) {
+  optolink_log_i("state %i --> %i", static_cast<std::underlying_type<State>::type>(_state),
+                 static_cast<std::underlying_type<State>::type>(state));
+  _state = state;
+}
+
+void GWGEngine::_init() {
+  if (_interface->available()) {
+    const uint8_t byte = _interface->read();
+    if (byte == internals::ProtocolBytes.ENQ && _busy) {
+      // The next telegram goes out on this ENQ; anything arriving from here on
+      // belongs to it, not to the late-answer report.
+      _closeLateWatch();
+      _bytesTransferred = 0;
+      _enqAgeMillis = _loopGapMillis;    // timing instrument (see OnTimingCallback)
+      _lastSyncMillis = _currentMillis;  // burst window opens (see ENQ_VALIDITY_MS)
+      _syncValid = true;
+      _sentInBurst = false;
+      _enqSeenMillis = optolink_millis();
+      _lastSendEnqPaced = true;
+      _stampEnqToSend = true;
+      _ackGapMillis = 0;
+      if (_enqSendDelayMs > 0) {
+        // Diagnostic ENQ-to-send delay (setEnqSendDelayMs()): wait in HOLD
+        // instead of answering in this pass.
+        _setState(State::HOLD);
+        _hold();  // a delay already elapsed (long host stall) sends at once
+        return;
+      }
+      _setState(State::SEND);
+      // Fall through into _send() rather than waiting for the next loop()
+      // iteration (divergence from upstream). The KW-family master has to
+      // answer the device's ENQ inside a short window; deferring the write by a
+      // whole component loop spends that budget on unrelated work. On the
+      // hardware capture that motivated RESPONSE_TIMEOUT_MS the unanswered
+      // requests clustered at the start of the poll cycle, where ESPHome's 60 s
+      // entity publishes and the API state flush lengthen the loop - exactly
+      // when this extra iteration costs the most. _send() is idempotent with
+      // respect to state (it advances to RECEIVE only once the whole frame is
+      // out), so calling it here is equivalent to the deferred call, minus the
+      // latency. Cross-validated against dannerph/esphome_vitoconnect, whose
+      // _idle() does the same thing with the same rationale stated explicitly.
+      _send();
+      return;
+    }
+    // A byte was consumed but it was not a usable ENQ (line noise, or a
+    // straggler while idle). Stop here rather than falling through: more bytes
+    // may still be buffered, and the burst path below must only ever run on a
+    // genuinely empty interface. A straggler after a TIMEOUT may be the late
+    // answer to it, so it goes to the late-answer report.
+    if (byte != internals::ProtocolBytes.ENQ)
+      _noteLateByte(byte);
+    return;
+  }
+  // Burst (see ENQ_VALIDITY_MS): nothing is buffered, but a sync we already
+  // earned is still inside its window, so send without waiting for the next
+  // ENQ. Reached only when the interface has NO bytes pending -- a real ENQ
+  // always wins, and no buffered byte can be mistaken for the response, so
+  // this needs no drain. It is also what bounds the window in practice: it can
+  // only be ridden while the device has not spoken since the last answer.
+  if (_busy && _canBurst()) {
+    // Frame byte 0 is ENQ_ACK (0x01). With _burstOmitsEnqAck it is the
+    // acknowledgement of the device's ENQ rather than part of the request, so
+    // a burst-sent request -- which answers no ENQ -- must not carry it.
+    // Starting the transfer index at 1 skips it; _send() indexes the frame by
+    // _bytesTransferred and completes at length(), so it needs no change and
+    // stays re-entrant across loop iterations on a partial write.
+    _closeLateWatch();
+    _bytesTransferred = _burstOmitsEnqAck ? 1 : 0;
+    _enqAgeMillis = _currentMillis - _lastSyncMillis;  // age of the sync we are riding
+    _sentInBurst = true;
+    _lastSendEnqPaced = false;
+    _stampEnqToSend = false;
+    _setState(State::SEND);
+    _send();
+    return;
+  }
+  if constexpr (SEND_ENQ_POKE) {
+    // Active sync (opt-in, see SEND_ENQ_POKE): nudge the device with an EOT
+    // (0x04) while waiting for its ENQ (0x05). Mirrors vcontrold's GWG sync
+    // (SEND 04; WAIT 05) and the VS1 EOT fallback. The default build discards
+    // this branch, so passive-wait behaviour is unchanged.
+    if (_busy && (_currentMillis - _lastMillis) > ENQ_POKE_INTERVAL_MS) {
+      _interface->write(&internals::ProtocolBytes.EOT, 1);
+      _lastMillis = _currentMillis;
+    }
+  }
+}
+
+// Diagnostic ENQ-to-send delay (setEnqSendDelayMs()). Fresh
+// optolink_millis(), not the per-loop snapshot: the delay is shorter than an
+// idle ESPHome loop interval. Nothing is expected from the device while we
+// hold its ENQ; anything that does arrive is not the answer to this request,
+// so it is dropped here rather than read as one in RECEIVE.
+void GWGEngine::_hold() {
+  while (_interface->available())
+    _interface->read();
+  if (optolink_millis() - _enqSeenMillis < _enqSendDelayMs)
+    return;
+  _setState(State::SEND);
+  _send();
+}
+
+// Gap after the 0x01 (setEnqAckGapMs()). Like _hold(): a fresh
+// optolink_millis(), and bytes arriving meanwhile are not the answer.
+void GWGEngine::_ackGap() {
+  while (_interface->available())
+    _interface->read();
+  const uint32_t elapsed = optolink_millis() - _ackSentMillis;
+  if (elapsed < _enqAckGapMs)
+    return;
+  _ackGapMillis = elapsed;
+  _setState(State::SEND);
+  _send();
+}
+
+void GWGEngine::_send() {
+  // With a gap set, a frame sent on an ENQ goes out as its 0x01 alone, and the
+  // rest from ACK_GAP.
+  const bool ackAlone = _enqAckGapMs > 0 && _lastSendEnqPaced && _bytesTransferred == 0 &&
+                        _currentRequest.length() > 1 && _currentRequest[0] == internals::ProtocolBytes.ENQ_ACK;
+  // Taken before the write, which may log after handing the bytes over.
+  const uint32_t writeMillis = optolink_millis();
+  _bytesTransferred += _interface->write(&_currentRequest[_bytesTransferred],
+                                         ackAlone ? 1 : _currentRequest.length() - _bytesTransferred);
+  if (_stampEnqToSend) {
+    _stampEnqToSend = false;
+    _enqToSendMillis = writeMillis - _enqSeenMillis;
+  }
+  if (ackAlone && _bytesTransferred == 1) {
+    _ackSentMillis = writeMillis;
+    _setState(State::ACK_GAP);
+    return;
+  }
+  if (_bytesTransferred == _currentRequest.length()) {
+    _bytesTransferred = 0;
+    _lastMillis = _currentMillis;
+    _sendCompleteMillis = _currentMillis;  // timing instrument (see OnTimingCallback)
+    _setState(State::RECEIVE);
+  }
+}
+
+void GWGEngine::_receive() {
+  // Wire-activity deadline (see GWGEngine::RESPONSE_TIMEOUT_MS). This MUST run
+  // before the drain below, not after it.
+  //
+  // The drain sets _lastMillis on every byte it consumes, so a check placed
+  // after it can never fire in an iteration that read anything -- and
+  // _currentMillis is sampled once per loop(), so bytes that arrived during a
+  // long host stall are still "fresh" by the time we look at them. On an ESP32
+  // the UART RX FIFO holds the device's idle ENQ across such a stall: drained
+  // first, it completes a 1-byte read with 0x05 as the payload, which is
+  // exactly the misread this deadline exists to stop, in exactly the long-loop
+  // conditions (60 s entity publishes, API state flush) the hardware capture
+  // blamed. Checking first means anything still buffered past the deadline is
+  // treated as stale, which is the only safe direction: GWG carries no framing
+  // and no arrival timestamps, so a buffered 0x05 and a buffered genuine
+  // datapoint of value 0x05 are indistinguishable. The cost is a discarded
+  // genuine response when the host stalls >250 ms; the alternative is
+  // publishing a sync byte as a temperature.
+  if (_currentMillis - _lastMillis > _responseTimeoutMs) {
+    if (_collecting() && _bytesTransferred != 0) {
+      // The quiet line ends an open frame's answer. The sync is as stale as
+      // after a timeout.
+      const uint8_t received = _bytesTransferred < MAX_PAYLOAD ? _bytesTransferred : MAX_PAYLOAD;
+      _bytesTransferred = 0;
+      _syncValid = false;
+      _setState(State::INIT);
+      _tryOnResponse(received);
+      return;
+    }
+    // A burst-sent read gets one retry on a fresh ENQ before anything is
+    // concluded (see BURST_FAILURES_BEFORE_FALLBACK).
+    const bool retry = _sentInBurst && !_burstDisabled && !_currentRequest.hasPayload() && !_retryUnburst;
+    // Drop whatever is buffered along with the transaction. Every byte in there
+    // predates the deadline, so a stale ENQ left behind would be picked up by
+    // _init() as a fresh sync byte and burn the next request on a window that
+    // has already closed. The late-answer report keeps a copy first.
+    _openLateWatch(retry);
+    while (_interface->available())
+      _noteLateByte(_interface->read());
+    _bytesTransferred = 0;
+    // Out of sync: we no longer know where the device's ENQ cadence is, so the
+    // next request waits for a real one rather than riding a stale window.
+    _syncValid = false;
+    _setState(State::INIT);
+    if (retry) {
+      // Same telegram, still in flight: INIT waits for the device's ENQ (the
+      // sync is gone, so it cannot burst) and sends it again with the 0x01.
+      // The request watchdog restarts, as for each EEPROM sub-read.
+      _retryUnburst = true;
+      _requestTime = _currentMillis;
+      return;
+    }
+    if (_sentInBurst && !_burstDisabled)
+      _noteBurstFailure();  // a write: not retried, counts as before
+    _tryOnError(OptolinkResult::TIMEOUT);
+    return;
+  }
+  // A per-address read's answer lands after the value bytes already collected
+  // (gwgCellLength()); every other read starts at 0.
+  const std::size_t base = _perAddress ? _runIndex : 0;
+  while (_interface->available()) {
+    const uint8_t byte = _interface->read();
+    // Never index past the buffer: a device that keeps talking past the
+    // expected count simply fails the length match below and times out.
+    if (base + _bytesTransferred < kResponseBufferSize)
+      _responseBuffer[base + _bytesTransferred] = byte;
+    if (_bytesTransferred < 0xFF)
+      ++_bytesTransferred;
+    _lastMillis = _currentMillis;
+  }
+  // A read is answered with exactly the bytes asked for (vcontrold GWG getaddr:
+  // "SEND 01 CB $addr $hexlen 04; RECV $len"), a write with one ack byte, the
+  // KW-family convention: an EEPROM write answers 00 on hardware, the other
+  // write types are unconfirmed (THIRD_PARTY.md #8, #32). Upstream compared
+  // against the request frame's length instead.
+  // EEPROM, BE and PORT reads are answered per address, so _currentLength is
+  // the cell's length there (gwgCellLength(), THIRD_PARTY.md #24).
+  const uint8_t expected = _currentRequest.hasPayload() ? 1 : _currentLength;
+  if (!_collecting() && _bytesTransferred == expected) {
+    _bytesTransferred = 0;  // VS1 parity; _init() also resets before SEND
+    // A completed transaction is itself proof the device is listening, so it
+    // re-opens the burst window -- this is what makes a chain of polls run
+    // back-to-back instead of one per ENQ. Mirrors vogod, which re-stamps
+    // lastEnq at the end of every completed receive. A frame does not: bytes
+    // past its answer length would complete the next poll.
+    _lastSyncMillis = _currentMillis;
+    _syncValid = !_frame;
+    if (_sentInBurst)
+      _burstFailures = 0;
+    else if (_retryUnburst && !_burstDisabled)
+      _noteBurstFailure();  // unanswered when burst-sent, answered on an ENQ
+    _retryUnburst = false;
+    _setState(State::INIT);
+    if (_perAddress) {
+      if (_runMode == GWGAccessMode::EEPROM) {
+        const uint8_t complement = _responseBuffer[_runIndex];
+        const uint8_t value = _responseBuffer[_runIndex + 1];
+        // FF FF is the one non-complementary pair accepted: uwen70 reads it as
+        // "address not in use", the EEPROM form of the 0xFF every other GWG
+        // mode returns for an unserved address. Passing it on as 0xFF keeps the
+        // hub's all-0xFF warning (gwg_note_all_ff_) working for EEPROM too.
+        const bool unserved = complement == 0xFF && value == 0xFF;
+        if (!unserved && static_cast<uint8_t>(complement + value) != 0xFF) {
+          optolink_log_w("GWG EEPROM pair %02X %02X does not sum to 0xFF", complement, value);
+          _tryOnError(OptolinkResult::CRC);
+          return;
+        }
+        if (unserved)
+          _eepromUnserved = true;  // still delivered as 0xFF; see lastReadHadUnservedEeprom()
+        _responseBuffer[_runIndex] = value;
+      }
+      ++_runIndex;
+      if (_runIndex < _runLength) {
+        // Next address, same transaction. The completion just above re-opened
+        // the burst window, so this normally goes out without waiting for an
+        // ENQ; the request watchdog is re-armed per telegram, because a long
+        // run under strict one-telegram-per-ENQ would otherwise exceed
+        // REQUEST_TIMEOUT_MS by design.
+        _currentRequest.createPacket(gwgReadTypeByte(_runMode), _currentAddress + _runIndex, 1);
+        _requestTime = _currentMillis;
+        return;
+      }
+    }
+    // Timing instrument (2026-08-24, see OnTimingCallback): reads only.
+    // Writes are out of scope -- GWG write framing remains model-derived
+    // (THIRD_PARTY.md #8) and this instrument was motivated by, and only
+    // validated against, the read path's ENQ-misread capture.
+    if (_onTimingCallback && !_currentRequest.hasPayload()) {
+      _onTimingCallback(_enqAgeMillis, _currentMillis - _sendCompleteMillis, _currentAddress);
+    }
+    _tryOnResponse(_perAddress ? _runLength : expected);
+  }
+}
+
+void GWGEngine::_noteBurstFailure() {
+  if (++_burstFailures < BURST_FAILURES_BEFORE_FALLBACK)
+    return;
+  _burstDisabled = true;
+  optolink_log_w("GWG burst disabled: %u consecutive burst-sent requests went unanswered; "
+                 "falling back to one telegram per ENQ",
+                 static_cast<unsigned>(_burstFailures));
+  // The log above is compiled out in every normal build (see
+  // OnBurstFallbackCallback); the callback is what the operator actually
+  // sees. Fires once -- _burstDisabled is latched just above, and every
+  // caller checks it first.
+  if (_onBurstFallbackCallback)
+    _onBurstFallbackCallback(_burstFailures);
+}
+
+void GWGEngine::_openLateWatch(bool retried) {
+  _closeLateWatch();  // a report still open belongs to an earlier telegram
+  _lateWatch = true;
+  _lateSendMillis = _sendCompleteMillis;
+  _late = LateAnswer{};
+  _late.address = _currentAddress;
+  _late.received = _bytesTransferred;
+  _late.expected = _currentRequest.hasPayload() ? 1 : _currentLength;
+  _late.deadline_ms = _responseTimeoutMs;
+  _late.enq_age_ms = _enqAgeMillis;
+  _late.retried = retried;
+}
+
+void GWGEngine::_noteLateByte(uint8_t byte) {
+  if (!_lateWatch)
+    return;
+  if (_late.late_count == 0)
+    _late.first_late_ms = _currentMillis - _lateSendMillis;
+  if (_late.late_stored < _late.late.size())
+    _late.late[_late.late_stored++] = byte;
+  if (_late.late_count < 0xFF)
+    ++_late.late_count;
+}
+
+void GWGEngine::_closeLateWatch() {
+  if (!_lateWatch)
+    return;
+  _lateWatch = false;
+  if ((_late.received != 0 || _late.late_count != 0 || _late.retried) && _onLateAnswerCallback)
+    _onLateAnswerCallback(_late);
+}
+
+void GWGEngine::_tryOnResponse(uint8_t length) {
+  if (_onResponseCallback) {
+    _onResponseCallback(_responseBuffer.data(), length, _currentAddress);
+  }
+  // Bugfix vs. upstream: clear the in-flight state after a successful response,
+  // matching VS1/VS2. Without this, GWG refuses every read/write after the
+  // first success (one-shot). See THIRD_PARTY.md.
+  _busy = false;
+  _retryUnburst = false;
+}
+
+void GWGEngine::_tryOnError(OptolinkResult result) {
+  _retryUnburst = false;
+  if (_onErrorCallback) {
+    _onErrorCallback(result, _currentAddress);
+  }
+  _busy = false;
+}
+
+}  // namespace esphome::vitohome::optolink_ref
