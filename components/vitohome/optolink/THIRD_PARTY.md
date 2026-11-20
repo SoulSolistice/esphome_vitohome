@@ -81,7 +81,8 @@ These are intentional divergences from upstream `edc059a7`:
    `static constexpr` members, per engine (values byte-identical to
    upstream): VS2 `REQUEST_TIMEOUT_MS=4000`, `HANDSHAKE_RETRY_MS=3000`,
    `KEEPALIVE_INTERVAL_MS=3000`; VS1 `REQUEST_TIMEOUT_MS=4000`,
-   `ENQ_RESET_INTERVAL_MS=3000`, `ENQ_ACK_WINDOW_MS=50` (see item 22); GWG
+   `ENQ_RESET_INTERVAL_MS=3000` (4000 since item 41), `ENQ_ACK_WINDOW_MS=50`
+   (see item 22); GWG
    `REQUEST_TIMEOUT_MS=3000` (deliberately distinct from VS2/VS1).
 
 7. **GWG one-shot bugfix (behavioral divergence).** Upstream
@@ -934,8 +935,18 @@ These are intentional divergences from upstream `edc059a7`:
     submitted before the next `loop()` takes its watchdog from then and not
     from the last pass. Proof: `proof_vs1_chain.cpp` (6),
     `proof_gwg_burst.cpp` (12).
+41. **A restart starts afresh; KW's EOT waits 4 s (behavioral divergence).**
+    The hub calls `begin()` after a timed frame (raw_script.h), which held
+    the port with the engine parked. Upstream's `begin()` kept the engines'
+    timers. GWG's now drops the burst window, so the next request waits
+    for an ENQ instead of riding a stale sync. VS1's restarts the INIT
+    timer, so no EOT goes out at once. `ENQ_RESET_INTERVAL_MS` is 4000
+    instead of 3000: a VScotHO1_72 sends its next ENQ 2968-2984 ms after
+    its last answer (2026-11-19), which left the EOT racing that ENQ at
+    the end of every chain. The EOT still ends a lingering P300 session, a
+    second later. Proof: `proof_vs1_chain.cpp` (7).
 
-Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called), 39 (when its gap is set) and 40 are the only intentional changes to on-wire/runtime
+Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called), 39 (when its gap is set), 40 and 41 are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16 are structural (no behavior change from any call
 site that exists -- item 16 alters bytes only on a RESPONSE-construction path
 nothing exercises); item 17 changes only construction-failure handling

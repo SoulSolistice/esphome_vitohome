@@ -37,10 +37,13 @@ class VS1Engine {
   typedef std::function<void(const uint8_t *data, uint8_t length, uint16_t address)> OnResponseCallback;
   typedef std::function<void(OptolinkResult error, uint16_t address)> OnErrorCallback;
 
-  // Named timeouts (ms). Values byte-identical to the previous inline
-  // literals; kept per-engine (do not unify across protocols).
-  static constexpr uint32_t REQUEST_TIMEOUT_MS = 4000;     // per-request response watchdog
-  static constexpr uint32_t ENQ_RESET_INTERVAL_MS = 3000;  // reset/EOT when no ENQ (Vitotronic on VS2)
+  // Named timeouts (ms), kept per engine (do not unify across protocols).
+  static constexpr uint32_t REQUEST_TIMEOUT_MS = 4000;  // per-request response watchdog
+  // ENQ_RESET_INTERVAL_MS: how long INIT waits for an ENQ, from the last
+  // answer byte or begin(), before it sends an EOT to end a P300 session
+  // the device may still be in. A VScotHO1_72 sends its next ENQ 2968-2984 ms
+  // after its last answer, so the interval stays well above that.
+  static constexpr uint32_t ENQ_RESET_INTERVAL_MS = 4000;
   // Two windows, deliberately separate. They used to be one 50 ms
   // SYNC_WINDOW_MS serving both, which conflated a protocol requirement with a
   // throughput policy and pinned the second to the first.

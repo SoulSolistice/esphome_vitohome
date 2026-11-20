@@ -140,7 +140,7 @@ void VS1Engine::_init() {
       _setState(State::SYNC_ENQ);
     }
   } else {
-    if (_currentMillis - _lastMillis > ENQ_RESET_INTERVAL_MS) {  // reset should Vitotronic be connected with VS2
+    if (_currentMillis - _lastMillis > ENQ_RESET_INTERVAL_MS) {
       _lastMillis = _currentMillis;
       _interface->write(&internals::ProtocolBytes.EOT, 1);
     }
