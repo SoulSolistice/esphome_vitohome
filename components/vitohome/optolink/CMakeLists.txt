@@ -13,8 +13,8 @@
 # SRCS is listed explicitly rather than globbed, deliberately kept in the
 # same shape as library.json's srcFilter so the two are easy to diff against
 # each other by eye. If a source file is ever added under a *new*
-# subdirectory (not root, datapoint/, protocol/vs1/, protocol/vs2/, or
-# protocol/gwg/), both this list and library.json's srcFilter need a new line
+# subdirectory (not root, datapoint/, protocol/vs2/ or protocol/gwg/),
+# both this list and library.json's srcFilter need a new line
 # -- neither one discovers new subdirectories automatically.
 #
 # INCLUDE_DIRS is ".." (components/vitohome/, this component's parent), not
@@ -40,7 +40,6 @@ idf_component_register(
         "constants.cpp"
         "datapoint/converter.cpp"
         "datapoint/datapoint.cpp"
-        "protocol/vs1/vs1.cpp"
         "protocol/vs2/vs2.cpp"
         "protocol/gwg/gwg.cpp"
     INCLUDE_DIRS ".."

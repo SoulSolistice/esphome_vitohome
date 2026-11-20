@@ -4,7 +4,7 @@
 // later proofs and the differential target build on, so this pins both: the
 // engines as they are, and the simulators as models of the units we know.
 //
-//   K  KW: VS1Engine and SimVitotronic in KW
+//   K  KW: the KW exchange and SimVitotronic in KW
 //   P  P300: VS2Engine and SimVitotronic, the KW detour included
 //   G  GWG: GWGEngine and SimGwg
 //
@@ -14,7 +14,9 @@
 #include <cstring>
 #include <vector>
 
+#include "kw_calls.h"
 #include "optolink/optolink.h"
+#include "optolink_kw.h"
 #include "sim/sim_gwg.h"
 #include "sim/sim_vitotronic.h"
 
@@ -42,16 +44,18 @@ struct Outcome {
 };
 
 template<class E> void wire(E &e, Outcome &o) {
-  e.onResponse([&o](const uint8_t *data, uint8_t length, uint16_t address) {
-    ++o.responses;
-    o.data.assign(data, data != nullptr ? data + length : data);
-    o.address = address;
-  });
-  e.onError([&o](OptolinkResult result, uint16_t address) {
-    ++o.errors;
-    o.error = result;
-    o.address = address;
-  });
+  kw_calls::wire(
+      e,
+      [&o](const uint8_t *data, uint8_t length, uint16_t address) {
+        ++o.responses;
+        o.data.assign(data, data != nullptr ? data + length : data);
+        o.address = address;
+      },
+      [&o](OptolinkResult result, uint16_t address) {
+        ++o.errors;
+        o.error = result;
+        o.address = address;
+      });
   e.begin();
 }
 
@@ -99,17 +103,17 @@ void kw() {
   std::printf("-- K: KW --\n");
   {
     sim::SimVitotronic dev(kw_only());
-    optolink::VS1Engine e(&dev);
+    optolink::KwExchange<sim::SimVitotronic> e(&dev);
     Outcome o;
     wire(e, o);
-    e.read(0x00F8, 4);
+    kw_calls::read(e, 0x00F8, 4);
     finish(e, o, 5000);
     check(o.responses == 1 && bytes_are(o.data, {0x20, 0xCB, 0x03, 0x51}), "K1: the ident on the first ENQ");
     check(contains(dev.written(), {0x01, 0xF7, 0x00, 0xF8, 0x04}), "K1: sent as 01 F7 00 F8 04");
 
     const uint32_t enqs = dev.enq_count();
     for (uint16_t a : {0x5525, 0x0810, 0x55D3}) {
-      e.read(a, 2);
+      kw_calls::read(e, a, 2);
       finish(e, o, 5000);
     }
     check(o.responses == 4 && dev.enq_count() == enqs, "K2: three reads chained on that one ENQ");
@@ -117,14 +121,14 @@ void kw() {
           "K2: a chained telegram carries no 01");
 
     const uint8_t value[2] = {0x12, 0x34};
-    e.write(0x2306, value, 2);
+    kw_calls::write(e, 0x2306, value, 2);
     finish(e, o, 5000);
-    e.read(0x2306, 2);
+    kw_calls::read(e, 0x2306, 2);
     finish(e, o, 5000);
     check(o.responses == 6 && bytes_are(o.data, {0x12, 0x34}), "K3: a write, read back");
 
     dev.gfa.set(0x4050, 0x24);
-    e.gfaRead(0x4050, 1);
+    kw_calls::gfa_read(e, 0x4050, 1);
     finish(e, o, 5000);
     check(o.responses == 7 && bytes_are(o.data, {0x24}), "K4: a GFA read answers from the burner control");
   }
@@ -132,30 +136,31 @@ void kw() {
     sim::VitotronicConfig c = kw_only();
     c.quirks.refuse_chain = true;
     sim::SimVitotronic dev(c);
-    optolink::VS1Engine e(&dev);
+    optolink::KwExchange<sim::SimVitotronic> e(&dev);
     Outcome o;
     wire(e, o);
-    e.read(0x00F8, 4);
+    kw_calls::read(e, 0x00F8, 4);
     finish(e, o, 5000);
-    // VS1Engine has no fallback for a refused chain, unlike GWG's burst: the
+    // The KW link has no fallback for a refused chain, unlike GWG's burst: the
     // chained read times out, and the read after it waits for an ENQ.
-    e.read(0x5525, 2);
+    kw_calls::read(e, 0x5525, 2);
     finish(e, o, 10000);
     check(o.errors == 1 && o.error == OptolinkResult::TIMEOUT, "K5: refuse_chain: a chained read times out");
-    e.read(0x5525, 2);
+    kw_calls::read(e, 0x5525, 2);
     finish(e, o, 10000);
     check(o.responses == 2 && dev.enq_count() == 2, "K5:   the next read goes out on the next ENQ");
   }
   {
     sim::VitotronicConfig c = kw_only();
-    c.quirks.answer_delay_ms = optolink::VS1Engine::ANSWER_TIMEOUT_MS + 200;
+    c.quirks.answer_delay_ms = optolink::KW_LINK_PARAMS.answer_timeout_ms + 200;
     sim::SimVitotronic dev(c);
-    optolink::VS1Engine e(&dev);
+    optolink::KwExchange<sim::SimVitotronic> e(&dev);
     Outcome o;
     wire(e, o);
-    e.read(0x00F8, 4);
+    kw_calls::read(e, 0x00F8, 4);
     finish(e, o, 8000);
-    check(o.errors == 1 && o.error == OptolinkResult::TIMEOUT, "K6: an answer later than ANSWER_TIMEOUT_MS times out");
+    check(o.errors == 1 && o.error == OptolinkResult::TIMEOUT,
+          "K6: an answer later than the answer deadline times out");
   }
   {
     // #35's finding B as a model: the 01 must follow the ENQ within 5 ms, and
@@ -163,30 +168,30 @@ void kw() {
     sim::VitotronicConfig c = kw_only();
     c.quirks.enq_window_ms = 5;
     sim::SimVitotronic dev(c);
-    optolink::VS1Engine e(&dev);
+    optolink::KwExchange<sim::SimVitotronic> e(&dev);
     Outcome o;
     wire(e, o);
-    e.read(0x00F8, 4);
+    kw_calls::read(e, 0x00F8, 4);
     optolink::optolink_test_clock_advance(c.enq_first_ms + 7);
     finish(e, o, 3000);
     check(o.errors == 1 && o.error == OptolinkResult::TIMEOUT && dev.answered() == 0,
           "K7: enq_window_ms: a 01 sent 7 ms after the ENQ is ignored");
   }
   {
-    // A dead phase longer than the engine's EOT interval: it sends an EOT and
+    // A dead phase longer than the link's EOT interval: it sends an EOT and
     // gets the ident once the device is back.
     sim::VitotronicConfig c = kw_only();
     c.quirks.dead_period_ms = 60000;
-    c.quirks.dead_ms = optolink::VS1Engine::ENQ_RESET_INTERVAL_MS + 2000;
+    c.quirks.dead_ms = optolink::KW_LINK_PARAMS.eot_interval_ms + 2000;
     sim::SimVitotronic dev(c);
-    optolink::VS1Engine e(&dev);
+    optolink::KwExchange<sim::SimVitotronic> e(&dev);
     Outcome o;
     wire(e, o);
-    e.read(0x00F8, 4);
+    kw_calls::read(e, 0x00F8, 4);
     finish(e, o, 7000, 10);
     check(o.errors == 1, "K8: a dead phase: the read times out first");
-    check(contains(dev.written(), {0x04}), "K8:   and the engine sends an EOT while no ENQ comes");
-    e.read(0x00F8, 4);
+    check(contains(dev.written(), {0x04}), "K8:   and the link sends an EOT while no ENQ comes");
+    kw_calls::read(e, 0x00F8, 4);
     finish(e, o, 5000);
     check(o.responses == 1 && bytes_are(o.data, {0x20, 0xCB, 0x03, 0x51}), "K8:   once the device is back it answers");
   }

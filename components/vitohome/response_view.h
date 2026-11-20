@@ -4,10 +4,8 @@
 
 namespace esphome::vitohome {
 
-// Protocol-agnostic view of a decoded response payload. The hub builds one of
-// these in its engine onResponse registration (all three engines deliver the
-// same (data, length, address) callback), so the entities never depend on the
-// engine callback shape.
+// Protocol-agnostic view of a decoded response payload, built from the
+// engine's Result, so the entities never depend on the engine.
 struct ResponseView {
   const uint8_t *data;
   uint8_t data_length;
@@ -17,6 +15,8 @@ struct ResponseView {
   // request's address -- the hub's address match degenerates to a tautology
   // there.
   uint16_t address;
+  // GWG: an EEPROM cell answered FF FF (not in use), delivered as FF.
+  bool unserved_eeprom;
 };
 
 }  // namespace esphome::vitohome

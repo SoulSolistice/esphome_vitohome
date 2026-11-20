@@ -1,8 +1,8 @@
 // Fuzz target + deterministic replay runner for the engines' generic
-// telegrams: VS2Engine::request() and kwTelegram() (the KW detour),
-// VS1Engine::telegram(), GWGEngine::telegram() -- the paths queue_raw_op()
-// opens to any function code / type byte -- and the open frames, frame() on
-// every engine (queue_raw_frame()). The parsers have their own target
+// telegrams: VS2Engine::request() and kwTelegram() (the KW detour), a KW
+// request on the KW exchange, GWGEngine::telegram() -- the paths queue_raw_op()
+// opens to any function code / type byte -- and the open frames on every
+// engine (queue_raw_frame()). The parsers have their own target
 // (fuzz_parser_vs2.cpp); this one drives whole transactions: one operation
 // against a scripted controller whose bytes and timing come from the input.
 //

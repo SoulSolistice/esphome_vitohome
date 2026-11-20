@@ -338,8 +338,11 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   void schedule_due_entities_();
 
+  // The engine's result for the operation in flight: link health, then
+  // on_response_() or on_error_().
+  void on_result_(const optolink::Result &result);
   void on_response_(const ResponseView &response, uint16_t request_address);
-  void on_error_(optolink::OptolinkResult error, uint16_t request_address);
+  void on_error_(const optolink::Result &result);
   // Poll backoff bookkeeping (poll_backoff_interval() in poll_schedule.h): a
   // poll read of `entity` timed out, or it answered.
   void note_poll_timeout_(VitoEntityBase *entity);
@@ -396,7 +399,8 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   // --- raw scan console -----------------------------------------------------
   void raw_handle_response_(const ResponseView &response);
-  void raw_handle_error_(optolink::OptolinkResult error);
+  // `code`: the device's error code (a P300 error frame's payload).
+  void raw_handle_error_(optolink::OptolinkResult error, const uint8_t *code = nullptr, uint8_t code_length = 0);
   void raw_publish_(const char *line);
 
   // Every raw operation is queued here. bytes/bytes_len is the write payload or
@@ -422,7 +426,7 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   // The telegram for a read (or procedure call) or a write of `address` in
   // `space`. False when the engine does not take it: busy, or never (also for
-  // a space the protocol lacks); the callers tell them apart with isBusy().
+  // a space the protocol lacks); the callers tell them apart with busy().
   bool send_read_(uint16_t address, uint8_t length, AddressSpace space, const uint8_t *parameter = nullptr,
                   uint8_t parameter_len = 0);
   bool send_write_(uint16_t address, const uint8_t *data, uint8_t length, AddressSpace space,
@@ -437,11 +441,9 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   HighFrequencyLoopRequester raw_script_hold_;
 #endif
 
-  // Selected at build time; all three engines have the same read/write calls
-  // and callbacks, response(data, length, address) and
-  // error(result, request_address). Built with the component, on iface_
-  // above, which outlives it.
-  optolink::OptolinkEngine<SelectedProtocol> vito_{&this->iface_};
+  // The selected protocol's exchange (protocol_select.h): submit() a
+  // Request, one Result per request. On iface_ above, which outlives it.
+  SelectedEngine<ESPHomeUARTInterface> vito_{&this->iface_};
 
   // Set by the first answer of the selected protocol, a NACK or device error
   // frame included.
@@ -600,12 +602,10 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // absent (error frame on P300, FF FF on KW). Uninterpreted on the device.
   int ident_f0_{-1};
   bool gwg_burst_disabled_{false};  // see gwg_burst_disabled()
-#ifdef VITOHOME_PROTOCOL_GWG
-  // Keeps the main loop from idling while the GWG engine waits out its
-  // ENQ-to-send delay or the gap after the 0x01 (GWGEngine::isHoldingEnq());
-  // otherwise either would overrun by up to one loop interval.
-  HighFrequencyLoopRequester gwg_hold_loop_;
-#endif
+  // Keeps the main loop from idling while the engine holds a write back
+  // (wants_fast_loop(): GWG's ENQ-to-send delay, the gap after the 0x01),
+  // which would otherwise overrun by up to one loop interval.
+  HighFrequencyLoopRequester fast_loop_;
   // GWG diagnostics as last set; pushed to the engine at setup and on change.
   bool gwg_write_eot_before_payload_{optolink::GWGEngine::DEFAULT_WRITE_EOT_BEFORE_PAYLOAD};
   bool gwg_burst_omits_enq_ack_{optolink::GWGEngine::DEFAULT_BURST_OMITS_ENQ_ACK};

@@ -12,7 +12,6 @@
             "+<*.cpp>",
             "+<datapoint/*.cpp>",
             "+<protocol/vs2/*.cpp>",
-            "+<protocol/vs1/*.cpp>",
             "+<protocol/gwg/*.cpp>"
         ]
     }

@@ -10,14 +10,14 @@ namespace esphome::vitohome {
 
 // Where a datapoint lives, and so which telegram reads (and writes) it -- the
 // YAML `access:` of an entity, Vitosoft's FCRead of its row. One per entity
-// (VitoEntityBase::space()) and per raw-lane operation (RawOp::space); the hub's
-// send_read_() / send_write_() (vitohome.cpp) are the only places it becomes a
-// telegram, and the only places that know which engine call that is.
+// (VitoEntityBase::space()) and per raw-lane operation (RawOp::space).
+// read_request() / write_request() below are the only places it becomes a
+// telegram.
 //
 // Adding an access function means: an enumerator here, its rows in
 // space_available() / space_writable() / space_name() (and
 // space_has_switch_cost() if reaching it costs a protocol switch), its branch
-// in send_read_() / send_write_(), and its YAML value in ACCESS_SPACES
+// in read_request() / write_request(), and its YAML value in ACCESS_SPACES
 // (__init__.py). Nothing else in the hub dispatches on it.
 enum class AddressSpace : uint8_t {
   // The protocol's own read and write: KW F7/F4, P300 function codes 01/02, GWG
@@ -160,6 +160,64 @@ constexpr AddressSpace space_from_gwg(optolink::GWGAccessMode mode) {
     default:
       return AddressSpace::OWN;
   }
+}
+
+// The request that reads `length` bytes at `address` in `space`; an `access:
+// rpc` read sends its `parameter`. False when the protocol has no telegram for
+// the space.
+inline bool read_request(AddressSpace space, uint16_t address, uint8_t length, const uint8_t *parameter,
+                         uint8_t parameter_len, optolink::Request &out) {
+  if (!space_available(space))
+    return false;
+  switch (space) {
+    case AddressSpace::RPC:
+      if (parameter_len != 0 && parameter == nullptr)
+        return false;
+      out = optolink::make_request(optolink::Lane::P300, static_cast<uint8_t>(optolink::FunctionCode::RPC), address,
+                                   parameter_len, parameter_len != 0 ? parameter : nullptr);
+      return true;
+    case AddressSpace::GFA:
+      // Over P300 a KW request is the detour.
+      out = optolink::make_request(optolink::Lane::KW, optolink::PacketVS1Type.GFA_READ, address, length, nullptr);
+      return true;
+    default:
+      break;
+  }
+  if (IS_KW) {
+    out = optolink::make_request(optolink::Lane::KW, optolink::PacketVS1Type.READ, address, length, nullptr);
+  } else if (IS_GWG) {
+    out = optolink::make_request(optolink::Lane::GWG, optolink::gwgReadTypeByte(gwg_mode(space)), address, length,
+                                 nullptr);
+  } else {
+    out = optolink::make_request(optolink::Lane::P300, static_cast<uint8_t>(optolink::FunctionCode::READ), address,
+                                 length, nullptr);
+  }
+  return true;
+}
+
+// The request that writes `length` bytes of `data` at `address` in `space`. An
+// action button's `access: rpc` sends its call with `parameter` instead. False
+// when the space has no write telegram, without data, and for a GWG EEPROM
+// write of other than one cell.
+inline bool write_request(AddressSpace space, uint16_t address, const uint8_t *data, uint8_t length,
+                          const uint8_t *parameter, uint8_t parameter_len, optolink::Request &out) {
+  if (space == AddressSpace::RPC)
+    return read_request(space, address, 0, parameter, parameter_len, out);
+  if (!space_writable(space) || data == nullptr)
+    return false;
+  if (IS_KW) {
+    out = optolink::make_request(optolink::Lane::KW, optolink::PacketVS1Type.WRITE, address, length, data);
+  } else if (IS_GWG) {
+    // The GWG lane sends a two-byte EEPROM write as the pair given.
+    if (space == AddressSpace::GWG_EEPROM && length != 1)
+      return false;
+    out =
+        optolink::make_request(optolink::Lane::GWG, optolink::gwgWriteTypeByte(gwg_mode(space)), address, length, data);
+  } else {
+    out = optolink::make_request(optolink::Lane::P300, static_cast<uint8_t>(optolink::FunctionCode::WRITE), address,
+                                 length, data);
+  }
+  return true;
 }
 
 // For logs: the YAML `access:` value ("" for OWN).

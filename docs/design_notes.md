@@ -128,12 +128,13 @@ signedness rules.
   `VITOHOME_PROTOCOL_*` flag from the `protocol:` option (no flag → P300, the
   default and only hardware-exercised path). `protocol_select.h` resolves this
   to `SelectedProtocol = optolink::P300 | KW | GWG`.
-- **The hub is protocol-agnostic by construction.** All three engines speak
-  one byte-mover API — `read(address, length)` / `write(address, data, length)`
-  and callbacks delivering `(data, length, address)` — so the hub drives
-  `OptolinkEngine<SelectedProtocol>` directly and wraps each response in a
-  single `ResponseView { data, data_length, address }` (`response_view.h`);
-  the entities never see the engine callback shape. On P300 the `address`
+- **The hub is protocol-agnostic by construction.** Every operation becomes
+  one `Request` (`read_request()` / `write_request()` in `address_space.h`
+  for an entity's space) for `SelectedEngine` (`protocol_select.h`): the KW
+  exchange (`optolink_kw.h`), or the P300 or GWG engine behind its adapter
+  (`optolink_adapter.h`). One `Result` comes back per request; the hub wraps
+  an answer in a `ResponseView { data, data_length, address, unserved_eeprom }`
+  (`response_view.h`), so the entities never see the engine. On P300 the `address`
   field is the one **echoed in the response frame itself** (the device echoes
   it on read responses and write acks alike — hardware-confirmed by the
   transaction-harness fixtures), so the hub's response-address match is a live
@@ -245,8 +246,8 @@ Every implementation that has actually run on hardware does something looser:
   end of every completed transaction, so a queue runs back-to-back.
 - **dannerph** has an explicit burst mode: it ACKs the `0x05` once, then sends
   further requests in the burst without a new sync.
-- **This engine's own VS1** already does it: `VS1Engine::_syncRecv()` re-sends
-  within `CHAIN_WINDOW_MS` with no fresh ENQ. GWG was the odd one out.
+- **This project's KW link** already does it: `EnqLink` chains the next
+  telegram within its chain window with no fresh ENQ. GWG was the odd one out.
 
 **KW bursting is hardware-confirmed** (2026-08-24 capture, VScotHO1_72 `0x20CB`
 HW 03 SW 51, ESP32-C3, 56 entities). The device answers a long chain off a
@@ -753,7 +754,7 @@ So `0x6B` reaches a different space (FF versus the value at the same address),
 P80 there equals the Vitotronic's own copy, and repeated reads agree. The 0x6B
 reads took 56-90 ms against mostly 13-41 ms for 0xF7, which fits the Vitotronic
 forwarding each one (inference). Every 0x6B telegram in that session went out
-25 ms after the previous answer; `VS1Engine::GFA_GAP_MS` keeps that pause for a
+25 ms after the previous answer; `KW_GFA_GAP_MS` (`optolink_codec_kw.h`) keeps that pause for a
 chained GFA read, since it has never been tried without. A GFA read that opens a
 chain goes out on the ENQ like any read.
 
@@ -816,7 +817,7 @@ ACK), and entering P300 on an idle ENQ without EOT (about 1 s slower).
 nothing comes back, and the controller offers its next ENQ about 2.25 s later
 (2026-10-28). Read as data, that `05` would be a one-byte answer. Both KW
 paths therefore allow the line to stay silent at most 1 s while an answer is
-due (`VS2Engine::KW_ANSWER_TIMEOUT_MS`, `VS1Engine::ANSWER_TIMEOUT_MS`;
+due (`VS2Engine::KW_ANSWER_TIMEOUT_MS`, `KW_LINK_PARAMS.answer_timeout_ms`;
 answers take 13-140 ms), checked before the bytes are drained, and report
 TIMEOUT. A KW telegram queued while the link returns to P300 goes out on the
 ENQ that return waits for, instead of after a P300 handshake the detour would

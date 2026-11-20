@@ -13,7 +13,7 @@
 //     E) any type byte goes out on the ENQ, the answer is <len> raw bytes;
 //     F) a telegram with payload carries it and completes on one ack byte;
 //        it chains without the GFA pause;
-//   KW (VS1Engine::telegram()):
+//   KW (a Lane::KW request on the KW exchange):
 //     G) any type byte, <len> bytes back; with payload, one ack byte;
 //   GWG (GWGEngine::telegram()):
 //     H) an unnamed TYPE byte: 01 TYPE ADDR LEN 04, <len> bytes back; with
@@ -28,7 +28,9 @@
 #include <vector>
 
 #include "fake_optolink.h"
+#include "kw_calls.h"
 #include "optolink/optolink.h"
+#include "optolink_kw.h"
 
 namespace optolink = esphome::vitohome::optolink;
 using Bytes = std::vector<uint8_t>;
@@ -53,15 +55,17 @@ template<class E> void pump(E &e, int n = 8) {
 }
 
 template<class E> void hook(E &e) {
-  e.onResponse([](const uint8_t *d, uint8_t len, uint16_t address) {
-    ++g_responses;
-    g_payload.assign(d, d + len);
-    g_address = address;
-  });
-  e.onError([](optolink::OptolinkResult r, uint16_t) {
-    ++g_errors;
-    g_last_error = r;
-  });
+  kw_calls::wire(
+      e,
+      [](const uint8_t *d, uint8_t len, uint16_t address) {
+        ++g_responses;
+        g_payload.assign(d, d + len);
+        g_address = address;
+      },
+      [](optolink::OptolinkResult r, uint16_t) {
+        ++g_errors;
+        g_last_error = r;
+      });
 }
 
 // A P300 frame with its checksum: the sum of every byte after 0x41.
@@ -218,13 +222,13 @@ void p300_cases() {
 void kw_cases() {
   std::printf("-- KW --\n");
   FakeOptolink io;
-  optolink::VS1Engine e(&io);
+  optolink::KwExchange<FakeOptolink> e(&io);
   hook(e);
   e.begin();
 
   // --- G ------------------------------------------------------------------
   int responses = g_responses;
-  check(e.telegram(0x7B, 0x0800, 2), "G: telegram(7B, 0800, 2) accepted");
+  check(kw_calls::telegram(e, 0x7B, 0x0800, 2), "G: telegram(7B, 0800, 2) accepted");
   io.feed({0x05});
   pump(e);
   check(io.written() == Bytes({0x01, 0x7B, 0x08, 0x00, 0x02}), "G: 01 7B 08 00 02");
@@ -235,26 +239,26 @@ void kw_cases() {
 
   responses = g_responses;
   const uint8_t data[] = {0x01};
-  check(e.telegram(0x68, 0x4050, 1, data), "G: telegram(68, 4050, 01) accepted");
+  check(kw_calls::telegram(e, 0x68, 0x4050, 1, data), "G: telegram(68, 4050, 01) accepted");
   pump(e);
   check(io.written() == Bytes({0x68, 0x40, 0x50, 0x01, 0x01}), "G: 68 40 50 01 01 chained");
   io.clear_written();
   io.feed({0x00});
   pump(e);
   check(g_responses == responses + 1 && g_payload == Bytes({0x00}), "G: completes on the one ack byte");
-  check(!e.telegram(0x7B, 0x0800, 0), "G: zero length refused");
+  check(!kw_calls::telegram(e, 0x7B, 0x0800, 0), "G: zero length refused");
 
   // An ignored telegram: the controller's next ENQ, already waiting when the
   // deadline is checked, is not a one-byte answer.
   responses = g_responses;
   const int errors = g_errors;
-  check(e.telegram(0x7B, 0x0800, 1), "G: telegram(7B, 0800, 1) accepted");
+  check(kw_calls::telegram(e, 0x7B, 0x0800, 1), "G: telegram(7B, 0800, 1) accepted");
   pump(e);
   check(io.written() == Bytes({0x7B, 0x08, 0x00, 0x01}), "G: 7B 08 00 01 chained");
   io.clear_written();
-  optolink::optolink_test_clock_advance(optolink::VS1Engine::ANSWER_TIMEOUT_MS);
+  optolink::optolink_test_clock_advance(optolink::KW_LINK_PARAMS.answer_timeout_ms);
   pump(e);
-  check(g_errors == errors, "G: no error at ANSWER_TIMEOUT_MS");
+  check(g_errors == errors, "G: no error at the answer deadline");
   io.feed({0x05});
   optolink::optolink_test_clock_advance(1);
   pump(e);
@@ -262,11 +266,11 @@ void kw_cases() {
         "G: the ENQ that follows is no answer: TIMEOUT");
   // That ENQ is then the sync for the next telegram; an answer just inside
   // the deadline is delivered.
-  check(e.telegram(0x7B, 0x0800, 1), "G: next telegram accepted");
+  check(kw_calls::telegram(e, 0x7B, 0x0800, 1), "G: next telegram accepted");
   pump(e);
   check(io.written() == Bytes({0x01, 0x7B, 0x08, 0x00, 0x01}), "G: 01 7B 08 00 01 on that ENQ");
   io.clear_written();
-  optolink::optolink_test_clock_advance(optolink::VS1Engine::ANSWER_TIMEOUT_MS);
+  optolink::optolink_test_clock_advance(optolink::KW_LINK_PARAMS.answer_timeout_ms);
   io.feed({0x12});
   pump(e);
   check(g_responses == responses + 1 && g_payload == Bytes({0x12}), "G: an answer at the deadline is delivered");
@@ -341,8 +345,8 @@ void frame_limit_cases() {
   optolink::VS2Engine vs2(&io);
   check(!vs2.read(0x2000, max + 1) && !vs2.request(0x05, 0x2000, max + 1), "P300: a read of MAX_PAYLOAD + 1 refused");
   check(vs2.read(0x2000, max), "P300: a read of MAX_PAYLOAD accepted");
-  optolink::VS1Engine vs1(&io);
-  check(!vs1.read(0x2000, max + 1) && vs1.read(0x2000, max), "KW: the same limit");
+  optolink::KwExchange<FakeOptolink> kw(&io);
+  check(!kw_calls::read(kw, 0x2000, max + 1) && kw_calls::read(kw, 0x2000, max), "KW: the same limit");
   optolink::GWGEngine gwg_engine(&io);
   check(!gwg_engine.read(0x10, max + 1) && gwg_engine.read(0x10, max), "GWG: the same limit");
 }

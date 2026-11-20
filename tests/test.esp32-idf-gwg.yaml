@@ -1,9 +1,7 @@
-# GWG protocol on esp-idf. GWG is build-time selectable through ProtocolAdapter;
-# its reads are confirmed on hardware, of its writes only EEPROM writes
-# (docs/gwg_protocol.md).
-# This job is a compile gate (codegen + the
-# OptolinkEngine<GWG>/GWGEngine instantiation + the GWG branch of
-# ProtocolAdapter through the real ESPHome+PlatformIO build), not a wire test.
+# GWG protocol on esp-idf. Its reads are confirmed on hardware, of its writes
+# only EEPROM writes (docs/gwg_protocol.md).
+# This job is a compile gate (codegen and the GWG engine behind its adapter
+# through the real ESPHome+PlatformIO build), not a wire test.
 # identify_device is on (the default for every protocol): GWG reads 0xF8..0xFB
 # in the virtual access mode, hardware-confirmed on issue #21's unit.
 #

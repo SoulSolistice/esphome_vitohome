@@ -10,8 +10,8 @@
 # `protocol: GWG` since the wrapper was written.
 #
 # The addresses below are taken from vcontrold's GWG device overrides. This is
-# a CODEGEN gate (OptolinkEngine<GWG> + the GWG branch of ProtocolAdapter), not
-# a wire test. What GWG units do on hardware is in docs/gwg_protocol.md.
+# a codegen gate (the GWG engine behind its adapter), not a wire test. What
+# GWG units do on hardware is in docs/gwg_protocol.md.
 
 esphome:
   name: ${name}

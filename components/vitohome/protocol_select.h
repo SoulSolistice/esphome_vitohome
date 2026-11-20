@@ -1,35 +1,39 @@
 #pragma once
 
 #include "optolink/optolink.h"
+#include "optolink_adapter.h"
+#include "optolink_kw.h"
 
 namespace esphome::vitohome {
 
 // Compile-time protocol selection. The ESPHome codegen (__init__.py) emits
 // exactly one VITOHOME_PROTOCOL_* build flag from the `protocol:` option; the
-// default (no flag) is P300, the only protocol exercised on hardware.
+// default (no flag) is P300. This header is the single place the flags are
+// interpreted.
 //
-// All three engines share one byte-mover API (read/write on address/length
-// primitives, callbacks delivering (data, length, address)), so the hub drives
-// OptolinkEngine<SelectedProtocol> directly -- there is no adapter layer. This
-// header is the single place the VITOHOME_PROTOCOL_* flags are interpreted.
+// SelectedEngine<Port> is the selected protocol's exchange: submit() a
+// Request, one Result per request (optolink_exchange.h). KW runs on its own;
+// P300 and GWG on their old engines behind optolink_adapter.h.
 #if defined(VITOHOME_PROTOCOL_KW)
 using SelectedProtocol = optolink::KW;
+template<class Port> using SelectedEngine = optolink::KwExchange<Port>;
 inline constexpr const char *PROTOCOL_NAME = "KW (VS1)";
 // KW and P300 read the burner control (the KW telegram 0x6B, Vitosoft's
-// GFA_READ) through gfaRead(); GWG has no such telegram. Guards every call to
-// it.
+// GFA_READ); GWG has no such telegram. Guards every use of it.
 #define VITOHOME_HAS_GFA
 #elif defined(VITOHOME_PROTOCOL_GWG)
 using SelectedProtocol = optolink::GWG;
+template<class Port> using SelectedEngine = optolink::GwgAdapter<Port>;
 inline constexpr const char *PROTOCOL_NAME = "GWG";
 #else
 using SelectedProtocol = optolink::P300;
+template<class Port> using SelectedEngine = optolink::P300Adapter<Port>;
 inline constexpr const char *PROTOCOL_NAME = "P300 (VS2)";
-// Only P300 has a remote procedure call telegram (function code 0x07);
-// VS2Engine::rpc() exists on that engine alone. Guards every call to it.
+// Only P300 has a remote procedure call telegram (function code 0x07).
+// Guards every use of it.
 #define VITOHOME_HAS_RPC
 // See the KW branch. A P300 controller refuses 0x6B as a function code, so
-// VS2Engine::gfaRead() drops the link to KW for the telegram.
+// the engine detours to KW for the telegram.
 #define VITOHOME_HAS_GFA
 #endif
 

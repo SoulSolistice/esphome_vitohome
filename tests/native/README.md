@@ -56,6 +56,15 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
   `scripts/clang_tidy.sh` analyses the hub headers that build without ESPHome.
 - `test_vs2_transaction.cpp` — data-driven runner: handshake into IDLE, then per
   vector replay request + chunked response and assert wire + payload.
+- `proof_hub_requests.cpp` — the hub's requests (`read_request()`,
+  `write_request()`) on its engine (`SelectedEngine`), once per protocol.
+  On P300 and GWG the adapter and the old engine called as the hub called it
+  run side by side on one clock: same refusals, same bytes, same results,
+  the getters the hub used to read included, and each case's named outcome.
+  On KW each request equals the one `kw_calls.h` sends.
+- `proof_kw_chain.cpp`, `proof_kw_gfa.cpp`, `proof_kw_write.cpp`,
+  `proof_kw_frame.cpp` — the KW exchange: chaining and its two windows, the
+  GFA read and its pause, the write acknowledgement, open frames.
 - `proof_codec_equality.cpp` — the codecs (`optolink_codec_*.h`) against
   the packet classes they replaced, kept in `reference/`: every TYPE byte or
   function code, every length, boundary addresses, with and without payload,
@@ -97,7 +106,7 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
   to six reads and writes in any access mode against a scripted device. Its
   seeds are in `fuzz_corpus_gwg_session.h`; see "The session targets" below.
 - `fuzz_kw_session.cpp` — the same over KW sessions, on a KW link
-  (`VS1Engine`) and over the P300 engine's KW detour. Seeds in
+  (the KW exchange) and over the P300 engine's KW detour. Seeds in
   `fuzz_corpus_kw_session.h`.
 - `fuzz_diff_engines.cpp` — the engine harnesses against the reference
   engines (`reference/`), compared pass by pass; `diff_hooks.h` is what each
@@ -402,8 +411,8 @@ convenience — it does not count as passing the gate.
 ## Three things the original build surfaced (now resolved in-tree)
 
 1. **Namespace once collided with the class name.** Upstream `VitoWiFi::VitoWiFi<VS2>`
-   had to be fully qualified. After de-branding the engine is
-   `esphome::vitohome::optolink::OptolinkEngine<P300>`, so the collision is gone; the
+   had to be fully qualified. After de-branding the P300 engine is
+   `esphome::vitohome::optolink::VS2Engine`, so the collision is gone; the
    harness just aliases the namespace.
 2. **The P300 packet was non-copyable** (deleted copy-assign — owned a `malloc`
    buffer); its successor, `P300Frame`, holds a `std::array`. The callback still

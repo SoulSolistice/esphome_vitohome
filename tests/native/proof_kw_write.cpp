@@ -1,26 +1,23 @@
-// Proves KW/VS1 WRITE completion against the vendored engine, mirroring the
-// 2026-07-02 live capture from a VScotHO1_72 (0x20CB) that exposed the bug:
+// KW write completion on the KW exchange, after a capture from a VScotHO1_72
+// (0x20CB) of 2026-07-02:
 //
 //   >>> 01:F7:08:8E:08                          (clock read, 8 bytes)
 //   <<< 20:26:07:02:04:18:19:37                 (device time)
 //   >>> F4:08:8E:08:20:26:07:02:04:18:19:35     (clock write, chained)
 //   <<< 00                                      (single ack byte, ~125 ms)
-//   [W] System-time sync: write 0x088E failed (timeout)   <-- the bug
 //
-// Upstream completed a WRITE on `_currentDatapoint.length()` received bytes
-// (8 here), but the device acks a KW write with ONE 0x00 byte, so every
-// multi-byte KW write timed out despite the device applying it. Masked for
-// the common 1-byte writes where the two conventions coincide.
-// THIRD_PARTY.md #11. Built with -DVITOHOME_PROTOCOL_KW.
+// The device acknowledges a KW write with one byte, 00 when it took it,
+// whatever the write's length (THIRD_PARTY.md #11).
 #include <cstdio>
 #include <cstring>
 #include <vector>
 
 #include "fake_optolink.h"
-#include "protocol_select.h"
+#include "kw_calls.h"
+#include "optolink_kw.h"
 
 using namespace esphome::vitohome;
-using Engine = optolink::OptolinkEngine<SelectedProtocol>;
+using Engine = optolink::KwExchange<FakeOptolink>;
 
 namespace {
 int g_responses = 0;
@@ -29,9 +26,9 @@ uint8_t g_last_len = 0;
 uint8_t g_last_payload[8] = {0};
 }  // namespace
 
-static void pump(Engine &a, int n = 8) {
+static void pump(Engine &kw, int n = 8) {
   for (int i = 0; i < n; ++i)
-    a.loop();
+    kw.loop();
 }
 
 static bool ends_with(const std::vector<uint8_t> &hay, const std::vector<uint8_t> &tail) {
@@ -42,16 +39,18 @@ static bool ends_with(const std::vector<uint8_t> &hay, const std::vector<uint8_t
 
 int main() {
   FakeOptolink uart;
-  Engine adapter(&uart);  // VS1Engine under -DVITOHOME_PROTOCOL_KW
-  adapter.onResponse([](const uint8_t *data, uint8_t length, uint16_t) {
-    g_responses++;
-    g_last_len = length;
-    if (data != nullptr && length <= sizeof(g_last_payload)) {
-      std::memcpy(g_last_payload, data, length);
+  Engine kw(&uart);
+  kw.on_result([](const optolink::Result &r) {
+    if (r.status != optolink::OptolinkResult::OK) {
+      g_errors++;
+      return;
     }
+    g_responses++;
+    g_last_len = r.length;
+    if (r.data != nullptr && r.length <= sizeof(g_last_payload))
+      std::memcpy(g_last_payload, r.data, r.length);
   });
-  adapter.onError([](optolink::OptolinkResult, uint16_t) { g_errors++; });
-  adapter.begin();
+  kw.begin();
 
   int failures = 0;
   auto check = [&failures](bool ok, const char *what) {
@@ -62,42 +61,42 @@ int main() {
 
   // --- the capture's clock write: 8 BCD bytes to 0x088E ---------------------
   const uint8_t bcd[8] = {0x20, 0x26, 0x07, 0x02, 0x04, 0x18, 0x19, 0x35};
-  check(adapter.write(0x088E, bcd, 8), "write accepted");
+  check(kw_calls::write(kw, 0x088E, bcd, 8), "write accepted");
   uart.feed({0x05});  // device ENQ
-  pump(adapter);
+  pump(kw);
   const std::vector<uint8_t> frame = {0xF4, 0x08, 0x8E, 0x08, 0x20, 0x26, 0x07, 0x02, 0x04, 0x18, 0x19, 0x35};
   check(ends_with(uart.written(), frame), "wire frame ends with F4 08 8E 08 + BCD");
   uart.clear_written();
   uart.feed({0x00});  // the single ack byte from the capture
-  pump(adapter);
+  pump(kw);
   check(g_responses == 1 && g_errors == 0, "write completed on single 0x00 ack");
   check(g_last_len == 1, "ack surfaced with length 1");
-  check(!adapter.isBusy(), "engine idle after write ack");
+  check(!kw.busy(), "engine idle after write ack");
 
   // --- chained read afterwards (stay-synced, as in the capture) -------------
-  check(adapter.read(0x5525, 2), "chained read accepted");
-  pump(adapter);
+  check(kw_calls::read(kw, 0x5525, 2), "chained read accepted");
+  pump(kw);
   check(ends_with(uart.written(), {0xF7, 0x55, 0x25, 0x02}), "read frame = F7 55 25 02");
   uart.feed({0x54, 0x01});  // 0x0154 = 340 -> 34.0 degC, as captured
-  pump(adapter);
+  pump(kw);
   check(g_responses == 2 && g_errors == 0, "chained read completed");
   check(g_last_len == 2 && g_last_payload[0] == 0x54 && g_last_payload[1] == 0x01, "payload = 54 01");
 
   // --- a write answered with anything but 00 did not take -------------------
   const uint8_t one[1] = {0x03};
-  check(adapter.write(0x2301, one, 1), "write accepted");
-  pump(adapter);
+  check(kw_calls::write(kw, 0x2301, one, 1), "write accepted");
+  pump(kw);
   uart.clear_written();
   uart.feed({0x05});  // the controller's ENQ where the ack belongs
-  pump(adapter);
+  pump(kw);
   check(g_responses == 2 && g_errors == 1, "non-zero ack is an error, not a response");
-  check(!adapter.isBusy(), "engine idle after it");
+  check(!kw.busy(), "engine idle after it");
   // The session restarts on the next ENQ.
-  check(adapter.read(0x5525, 2), "next read accepted");
+  check(kw_calls::read(kw, 0x5525, 2), "next read accepted");
   uart.feed({0x05});
-  pump(adapter);
+  pump(kw);
   check(ends_with(uart.written(), {0x01, 0xF7, 0x55, 0x25, 0x02}), "it goes out on a fresh ENQ (01 F7 ...)");
 
-  std::printf("vs1 write-ack completion: %d failure(s)\n", failures);
+  std::printf("kw write-ack completion: %d failure(s)\n", failures);
   return failures == 0 ? 0 : 1;
 }

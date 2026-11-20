@@ -19,7 +19,6 @@ OPTO="$COMP/optolink"
 ENGINE=(
   "$OPTO/constants.cpp"
   "$OPTO/protocol/vs2/vs2.cpp"
-  "$OPTO/protocol/vs1/vs1.cpp"
   "$OPTO/protocol/gwg/gwg.cpp"
 )
 FLAGS=(-std=c++17 -I"$COMP" -I"$OPTO")

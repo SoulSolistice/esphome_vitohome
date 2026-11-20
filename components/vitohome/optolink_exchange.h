@@ -41,6 +41,9 @@ template<class Codec, class Link> class Exchange {
     link_.release();
   }
   bool busy() const { return link_.pending(); }
+  // Whether a write waits on the clock, so the main loop must not idle: never
+  // on this link.
+  bool wants_fast_loop() const { return false; }
 
   bool submit(const Request &request) {
     if (link_.pending())
@@ -94,8 +97,14 @@ template<class Codec, class Link> class Exchange {
 
  private:
   void deliver_(OptolinkResult status, const uint8_t *data, uint8_t length) {
-    if (on_result_)
-      on_result_(Result{status, address_, data, length});
+    if (on_result_) {
+      Result result{};
+      result.status = status;
+      result.address = address_;
+      result.data = data;
+      result.length = length;
+      on_result_(result);
+    }
     link_.release();
   }
 

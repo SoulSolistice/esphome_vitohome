@@ -972,8 +972,20 @@ These are intentional divergences from upstream `edc059a7`:
     `optolink_clock.h`. Proof: the differential target, live engines against
     the reference ones, which keep the old interface.
 
+44. **`VS1Engine` removed (structural, no wire change).** `protocol/vs1/`
+    is gone. KW runs on the project's own `optolink_kw.h` (the KW codec, the
+    ENQ link, the exchange), which reproduces `VS1Engine` pass by pass.
+    The hub submits one `Request` and receives one `Result` per operation;
+    the P300 and GWG engines take that interface through
+    `optolink_adapter.h`, and their `last...()` getters and
+    `errorPayload()` became `Result` fields. The KW proofs are now
+    `proof_kw_*.cpp`; the items above still name the old files. Proof: the
+    differential target, the KW stack against the reference `VS1Engine`
+    (153 seeds), and `proof_hub_requests.cpp`, the adapters against the
+    engine calls they replace.
+
 Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called), 39 (when its gap is set), 40 and 41 are the only intentional changes to on-wire/runtime
-protocol behavior; items 13-16, 42 and 43 are structural (no behavior change from any call
+protocol behavior; items 13-16, 42, 43 and 44 are structural (no behavior change from any call
 site that exists -- item 16 altered bytes only on a RESPONSE-construction path
 nothing exercised, now removed); item 17 changes only construction-failure handling
 (abort -> fail-soft), not protocol or normal-path behavior; item 20 is a

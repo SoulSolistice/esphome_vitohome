@@ -22,16 +22,11 @@ P300 / KW / GWG and a small trait that maps each tag to its engine class.
 #include "datapoint/converter.h"
 #include "datapoint/datapoint.h"
 #include "protocol/gwg/gwg.h"
-#include "protocol/vs1/vs1.h"
 #include "protocol/vs2/vs2.h"
 
 namespace esphome::vitohome::optolink {
 
-// Protocol selector tag types. These supersede the VS2/VS1/GWG tag names
-// introduced in 111805f: P300 and KW are the protocol's own domain names
-// (P300 == the VS2 wire protocol, KW == the VS1 wire protocol), and using
-// them frees the VS2/VS1 identifiers for the engine classes. GWG keeps its
-// spelling as a tag but is now distinct from the GWGEngine class.
+// Protocol tags: P300 is the VS2 wire protocol, KW the VS1 one.
 struct P300 {};
 struct KW {};
 struct GWG {};
@@ -41,17 +36,14 @@ template<class PROTOCOLVERSION> struct ProtocolEngine;
 template<> struct ProtocolEngine<P300> {
   using type = optolink::VS2Engine;
 };
-template<> struct ProtocolEngine<KW> {
-  using type = optolink::VS1Engine;
-};
 template<> struct ProtocolEngine<GWG> {
   using type = optolink::GWGEngine;
 };
 }  // namespace internals
 
-// OptolinkEngine<P300> is a drop-in for the former VitoWiFi::VitoWiFi<VS2>.
-// The protocol tag selects the concrete engine; the constructor takes the
-// port pointer (optolink_port.h).
+// The P300 and GWG engines by protocol tag; the constructor takes the port
+// pointer (optolink_port.h). KW runs on optolink_kw.h, and the hub on
+// protocol_select.h's Engine.
 template<class PROTOCOLVERSION> using OptolinkEngine = typename internals::ProtocolEngine<PROTOCOLVERSION>::type;
 
 }  // namespace esphome::vitohome::optolink

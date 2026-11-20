@@ -1,13 +1,14 @@
 // Fuzz target + deterministic replay runner for KW sessions: up to six
-// operations sent back to back on a KW link (VS1Engine) or on a P300 link that
-// detours to KW for KW telegrams and GFA reads (VS2Engine), against a scripted
-// controller whose bytes and timing come from the input. fuzz_raw_engines.cpp
-// drives one telegram; this drives the chain logic between them: the chain
-// window, the GFA pause, the P300 -> KW -> P300 switches and the ack checks.
+// operations sent back to back on a KW link (the KW exchange) or on a P300
+// link that detours to KW for KW telegrams and GFA reads (VS2Engine), against
+// a scripted controller whose bytes and timing come from the input.
+// fuzz_raw_engines.cpp drives one telegram; this drives the chain logic
+// between them: the chain window, the GFA pause, the P300 -> KW -> P300
+// switches and the ack checks.
 //
 // INPUT LAYOUT
 //
-//   [0] engine     bit 0: 0 KW (VS1Engine), 1 P300 (VS2Engine)
+//   [0] engine     bit 0: 0 KW (the KW exchange), 1 P300 (VS2Engine)
 //   [1] ops        b % 6 + 1 operations follow, 5 bytes each:
 //         [0] kind     bits 0-2: 0 read, 1 write, 2 GFA read,
 //                      3 KW: telegram() without payload / P300: rpc(),
@@ -75,8 +76,10 @@ namespace optolink = esphome::vitohome::optolink;
 // KW: the KW stack on the live side, VS1Engine on the reference side.
 #ifdef VITOHOME_DIFF_REF
 template<class Port> using KwEngine = optolink::VS1Engine;
+constexpr uint32_t kGfaGapMs = optolink::VS1Engine::GFA_GAP_MS;
 #else
 template<class Port> using KwEngine = optolink::KwExchange<Port>;
+constexpr uint32_t kGfaGapMs = optolink::KW_GFA_GAP_MS;
 #endif
 
 namespace {
@@ -182,8 +185,7 @@ class Line {
     if (n > 0 && d[0] == optolink::PacketVS1Type.GFA_READ && g_s.pending >= 0 &&
         sends_gfa_frame(g_s.ops[g_s.pending]) && !g_s.fed_since_answer) {
       oracle(g_s.p300 ? g_s.answered_kw : g_s.answered, "a GFA read chained onto no answer");
-      oracle(optolink_millis() - g_s.answer_ms >= optolink::VS1Engine::GFA_GAP_MS,
-             "a chained GFA read went out inside GFA_GAP_MS");
+      oracle(optolink_millis() - g_s.answer_ms >= kGfaGapMs, "a chained GFA read went out inside GFA_GAP_MS");
     }
     for (uint8_t i = 0; i < n; ++i)
       g_sink = g_sink + d[i];

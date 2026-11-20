@@ -39,7 +39,6 @@ read -r -a SAN_FLAGS <<<"$SAN"
 SRCS=(
   "$OPTO/constants.cpp"
   "$OPTO/protocol/vs2/vs2.cpp"
-  "$OPTO/protocol/vs1/vs1.cpp"
   "$OPTO/protocol/gwg/gwg.cpp"
 )
 
@@ -62,6 +61,13 @@ for sel in "P300:" "KW:-DVITOHOME_PROTOCOL_KW" "GWG:-DVITOHOME_PROTOCOL_GWG"; do
     proof_read_coalesce.cpp "${SRCS[@]}" "$OPTO/datapoint/datapoint.cpp" "$OPTO/datapoint/converter.cpp" \
     -o read_coalesce
   ./read_coalesce
+done
+
+echo "== hub requests against the engine calls they replace, per protocol =="
+for sel in "P300:" "KW:-DVITOHOME_PROTOCOL_KW" "GWG:-DVITOHOME_PROTOCOL_GWG"; do
+  flag="${sel#*:}"
+  g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread ${flag:+"$flag"} -I"$ROOT" -I"$OPTO"     proof_hub_requests.cpp "${SRCS[@]}" -o hub_requests
+  ./hub_requests
 done
 
 echo "== generic telegrams: P300 request / KW detour / KW / GWG (#28) =="
@@ -190,20 +196,20 @@ echo "== P300 open frames (raw lane) =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO"   proof_p300_frame.cpp "${SRCS[@]}" -o p300_frame
 ./p300_frame
 
-echo "== VS1/KW chaining + the two split sync windows (#22) =="
+echo "== KW chaining and its two windows (#22) =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" -I"$OPTO" \
-  proof_vs1_chain.cpp "${SRCS[@]}" -o vs1_chain
-./vs1_chain
+  proof_kw_chain.cpp "${SRCS[@]}" -o kw_chain
+./kw_chain
 
-echo "== VS1/KW write-ack completion (THIRD_PARTY.md #11 fix) =="
+echo "== KW write-ack completion (THIRD_PARTY.md #11) =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" -I"$OPTO" \
-  proof_vs1_write.cpp "${SRCS[@]}" -o vs1_write
-./vs1_write
+  proof_kw_write.cpp "${SRCS[@]}" -o kw_write
+./kw_write
 
-echo "== VS1/KW GFA read: type 0x6B, the chained pause (#27) =="
+echo "== KW GFA read: type 0x6B, the chained pause (#27) =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" -I"$OPTO" \
-  proof_vs1_gfa.cpp "${SRCS[@]}" -o vs1_gfa
-./vs1_gfa
+  proof_kw_gfa.cpp "${SRCS[@]}" -o kw_gfa
+./kw_gfa
 
 echo "== VS2/P300 GFA read: the KW detour (#27) =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \

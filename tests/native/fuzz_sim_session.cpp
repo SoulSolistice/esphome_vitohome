@@ -6,7 +6,7 @@
 //
 // INPUT LAYOUT
 //
-//   [0] protocol  % 3: 0 KW (VS1Engine, SimVitotronic without P300),
+//   [0] protocol  % 3: 0 KW (the KW exchange, SimVitotronic without P300),
 //                 1 P300 (VS2Engine, SimVitotronic), 2 GWG (GWGEngine, SimGwg)
 //   [1] quirks    bit 0 refuse_chain, bit 1 swallow_ack, bit 2 one extra
 //                 answer byte, bit 3 one answer byte missing, bits 4-5

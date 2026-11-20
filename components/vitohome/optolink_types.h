@@ -100,14 +100,40 @@ inline Request make_frame(const uint8_t *bytes, uint8_t length, uint8_t answer_l
   return r;
 }
 
-// How a request ended, as the exchange reports it.
+// How a telegram went out on an ENQ-paced line. Only the GWG engine measures
+// it so far; on the other links it stays zero.
+struct Timing {
+  // Sent on an ENQ; false when burst-sent.
+  bool enq_paced;
+  // The loop gap of the pass that read the ENQ: an upper bound on its age.
+  uint32_t enq_age_ms;
+  uint32_t enq_to_send_ms;
+  // The 01 to the rest of the telegram.
+  uint32_t ack_gap_ms;
+  // Whether send_to_answer_ms holds the time from the request's last byte to
+  // a read's complete answer.
+  bool answer_timed;
+  uint32_t send_to_answer_ms;
+};
+
+// How a request ended, as the exchange reports it. The pointers are valid
+// inside the result callback only.
 struct Result {
   OptolinkResult status;
-  // The request's address (FRAME: 0).
+  // P300: the address in the answer; otherwise the request's (FRAME: 0).
   uint16_t address;
-  // The answer, valid inside the result callback only; null on an error.
+  // The answer; null on an error.
   const uint8_t *data;
   uint8_t length;
+  // DEVICE_ERROR on P300: the error frame's payload, 01 for an address the
+  // controller does not serve, 05 for a function code it lacks.
+  const uint8_t *error_code;
+  uint8_t error_code_length;
+  // GWG: a TIMEOUT before any ENQ came, so the request never went out.
+  bool never_sent;
+  // A GWG EEPROM cell answered FF FF (not in use), delivered as FF.
+  bool unserved_eeprom;
+  Timing timing;
 };
 
 // An open frame of `max` bytes at most, sent as given.

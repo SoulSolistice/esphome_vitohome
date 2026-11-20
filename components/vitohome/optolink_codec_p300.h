@@ -149,23 +149,20 @@ class P300Parser {
         frame_.buffer_[5] = b;
         const uint8_t function = frame_.function_code();
         const PacketType type = frame_.packet_type();
-        if ((function == static_cast<uint8_t>(FunctionCode::READ) && type == PacketType::REQUEST) ||
-            (function == static_cast<uint8_t>(FunctionCode::WRITE) && type == PacketType::RESPONSE)) {
-          step_ = Step::CHECKSUM;
-        } else if ((function == static_cast<uint8_t>(FunctionCode::RPC) && type == PacketType::RESPONSE) ||
-                   type == PacketType::ERROR || !named(function)) {
-          // Sized by LL: a procedure call's answer, an error frame, an
-          // unnamed code's answer.
-          remaining_ = frame_.payload_length();
-          step_ = remaining_ == 0 ? Step::CHECKSUM : Step::PAYLOAD;
-        } else if (b != frame_.length() - 6U) {
+        // No payload: a read request, a write's answer.
+        const bool header_only =
+            (function == static_cast<uint8_t>(FunctionCode::READ) && type == PacketType::REQUEST) ||
+            (function == static_cast<uint8_t>(FunctionCode::WRITE) && type == PacketType::RESPONSE);
+        // Sized by LL: a procedure call's answer, an error frame, an unnamed
+        // code's answer. Any other payload is DataLength bytes, which LL
+        // must agree with.
+        const bool sized_by_ll =
+            !header_only && ((function == static_cast<uint8_t>(FunctionCode::RPC) && type == PacketType::RESPONSE) ||
+                             type == PacketType::ERROR || !named(function));
+        if (!header_only && !sized_by_ll && b != frame_.length() - 6U)
           return this->fail(P300Parse::ERROR);
-        } else if (b == 0) {
-          step_ = Step::CHECKSUM;
-        } else {
-          remaining_ = b;
-          step_ = Step::PAYLOAD;
-        }
+        remaining_ = header_only ? 0 : sized_by_ll ? frame_.payload_length() : b;
+        step_ = remaining_ == 0 ? Step::CHECKSUM : Step::PAYLOAD;
         break;
       }
       case Step::PAYLOAD:
