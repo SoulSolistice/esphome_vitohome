@@ -84,6 +84,33 @@ echo "== KW sessions, native and over the P300 detour: fuzz corpus (fuzz.sh kw_s
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO"   fuzz_kw_session.cpp "${SRCS[@]}" -o fuzz_kw_session
 ./fuzz_kw_session
 
+echo "== differential: live engines against the reference copy (fuzz_diff_engines.cpp) =="
+# Each session harness twice, once per side; the reference engines are the
+# frozen copy in reference/ (README.md there).
+REF="reference/optolink"
+REF_SRCS=(
+  "$REF/constants.cpp"
+  "$REF/protocol/vs2/vs2.cpp"
+  "$REF/protocol/vs2/parser_vs2.cpp"
+  "$REF/protocol/vs2/packet_vs2.cpp"
+  "$REF/protocol/vs1/vs1.cpp"
+  "$REF/protocol/vs1/packet_vs1.cpp"
+  "$REF/protocol/gwg/gwg.cpp"
+  "$REF/protocol/gwg/packet_gwg.cpp"
+)
+DIFF_OBJS=()
+for h in kw_session gwg_session raw_engines; do
+  g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
+    -DVITOHOME_DIFF_SIDE="diff_${h}_live" -c "fuzz_${h}.cpp" -o "diff_${h}_live.o"
+  g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
+    -DVITOHOME_DIFF_SIDE="diff_${h}_ref" -DVITOHOME_DIFF_REF -c "fuzz_${h}.cpp" -o "diff_${h}_ref.o"
+  DIFF_OBJS+=("diff_${h}_live.o" "diff_${h}_ref.o")
+done
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
+  fuzz_diff_engines.cpp "${DIFF_OBJS[@]}" "${SRCS[@]}" "${REF_SRCS[@]}" -o fuzz_diff_engines
+rm -f "${DIFF_OBJS[@]}"
+./fuzz_diff_engines
+
 echo "== GWG read/write completion (THIRD_PARTY.md #8 fix) =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
   proof_gwg_read.cpp "${SRCS[@]}" -o gwg_read

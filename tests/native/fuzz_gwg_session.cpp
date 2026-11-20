@@ -23,7 +23,8 @@
 //                      for a frame its byte count
 //         [4] value    first payload byte of a write or frame, the rest count up
 //   then the device's script, as in fuzz_raw_engines.cpp:
-//     b & 0x80    let (b & 0x7F) * 10 ms pass
+//     b & 0x80    let (b & 0x7F) * 10 ms pass (the differential target
+//                 also replays it in 1 ms steps)
 //     else        feed the next (b + 1) bytes
 //   The engine is pumped after every step; whenever it is idle the next
 //   operation is submitted.
@@ -53,35 +54,49 @@
 //
 // Same two-build arrangement as fuzz_parser_vs2.cpp; seeds in
 // fuzz_corpus_gwg_session.h.
+//
+// Built with -DVITOHOME_DIFF_SIDE it is one side of fuzz_diff_engines.cpp
+// (diff_hooks.h).
 
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <vector>
 
+#include "diff_hooks.h"
 #include "fake_optolink.h"
 #include "fuzz_corpus_gwg_session.h"
+#ifdef VITOHOME_DIFF_REF
+#include "reference/optolink/optolink.h"
+namespace optolink = esphome::vitohome::optolink_ref;
+#else
 #include "optolink/optolink.h"
-
 namespace optolink = esphome::vitohome::optolink;
+#endif
 using optolink::GWGAccessMode;
 using optolink::GWGEngine;
 
 namespace {
 
-#ifndef VITOHOME_FUZZ_LIBFUZZER
+#if !defined(VITOHOME_FUZZ_LIBFUZZER) && !defined(VITOHOME_DIFF_SIDE)
 int g_fail = 0;
 #endif
+#ifndef VITOHOME_DIFF_SIDE
 const char *g_case = "(fuzz)";
+#endif
 
 void oracle(bool ok, const char *what) {
   if (ok)
     return;
+#if defined(VITOHOME_DIFF_SIDE)
+  diff_note_oracle(what);
+#else
   std::fprintf(stderr, "ORACLE VIOLATED [%s]: %s\n", g_case, what);
 #ifdef VITOHOME_FUZZ_LIBFUZZER
   std::abort();
 #else
   ++g_fail;
+#endif
 #endif
 }
 
@@ -136,6 +151,7 @@ void check_paced_send() {
 }
 
 void on_response(const uint8_t *data, uint8_t length, uint16_t address) {
+  DIFF_EVENT(DiffEvent::RESPONSE, address, data, length);
   oracle(g_s.pending >= 0, "a response with no operation in flight");
   if (g_s.pending < 0)
     return;
@@ -157,7 +173,11 @@ void on_response(const uint8_t *data, uint8_t length, uint16_t address) {
   g_s.pending = -1;
 }
 
-void on_error(optolink::OptolinkResult, uint16_t address) {
+void on_error(optolink::OptolinkResult result, uint16_t address) {
+  {
+    const uint8_t code = static_cast<uint8_t>(result);
+    DIFF_EVENT(DiffEvent::ERROR, address, &code, 1);
+  }
   oracle(g_s.pending >= 0, "an error with no operation in flight");
   if (g_s.pending < 0)
     return;
@@ -167,15 +187,42 @@ void on_error(optolink::OptolinkResult, uint16_t address) {
   g_s.pending = -1;
 }
 
-void on_timing(uint32_t, uint32_t, uint16_t address) {
+void on_timing(uint32_t enq_age_ms, uint32_t enq_to_send_ms, uint16_t address) {
+  {
+    uint8_t d[8];
+    for (int k = 0; k < 4; ++k) {
+      d[k] = static_cast<uint8_t>(enq_age_ms >> (8 * k));
+      d[4 + k] = static_cast<uint8_t>(enq_to_send_ms >> (8 * k));
+    }
+    DIFF_EVENT(DiffEvent::TIMING, address, d, sizeof(d));
+  }
   oracle(g_s.pending >= 0 && !g_s.ops[g_s.pending].write, "a timing report outside an answered read");
   if (g_s.pending >= 0)
     oracle(address == g_s.ops[g_s.pending].address, "a timing report for another address");
 }
 
-void on_fallback(uint8_t) { oracle(++g_s.fallbacks == 1, "the burst fallback fired twice"); }
+void on_fallback(uint8_t failures) {
+  DIFF_EVENT(DiffEvent::FALLBACK, 0, &failures, 1);
+  oracle(++g_s.fallbacks == 1, "the burst fallback fired twice");
+}
 
 void on_late(const GWGEngine::LateAnswer &late) {
+  {
+    uint8_t d[4 + 12 + 1 + sizeof(late.late)] = {};
+    std::size_t n = 0;
+    d[n++] = late.received;
+    d[n++] = late.expected;
+    d[n++] = late.late_count;
+    d[n++] = late.late_stored;
+    for (uint32_t w : {late.first_late_ms, late.deadline_ms, late.enq_age_ms}) {
+      for (int k = 0; k < 4; ++k)
+        d[n++] = static_cast<uint8_t>(w >> (8 * k));
+    }
+    d[n++] = late.retried ? 1 : 0;
+    for (std::size_t k = 0; k < late.late_stored && k < late.late.size(); ++k)
+      d[n++] = late.late[k];
+    DIFF_EVENT(DiffEvent::LATE, late.address, d, n);
+  }
   oracle(session_address(late.address), "a late-answer report for an address nobody asked");
   oracle(late.late_stored <= late.late.size() && late.late_stored <= late.late_count,
          "a late-answer report stores more than it saw");
@@ -224,6 +271,7 @@ void pump(FakeOptolink &io, int n) {
     const bool idle_before = !e.isBusy();
     const std::size_t written_before = io.written().size();
     e.loop();
+    DIFF_PASS(io.written().data(), io.written().size());
     if (idle_before && !e.isBusy())
       oracle(io.written().size() == written_before, "an idle engine wrote to the line");
     if (g_s.delay == 0)
@@ -247,7 +295,13 @@ void parse_op(const uint8_t *b, Op &op) {
 
 }  // namespace
 
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
+#ifdef VITOHOME_DIFF_SIDE
+#define FUZZ_ENTRY VITOHOME_DIFF_SIDE
+#else
+#define FUZZ_ENTRY LLVMFuzzerTestOneInput
+#endif
+
+extern "C" int FUZZ_ENTRY(const uint8_t *data, std::size_t size) {
   if (size < 2)
     return 0;
   const uint8_t sw = data[0];
@@ -285,7 +339,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
   while (i < n) {
     const uint8_t b = s[i++];
     if (b & 0x80) {
-      optolink::optolink_test_clock_advance(static_cast<uint32_t>(b & 0x7F) * 10);
+      optolink::optolink_test_clock_advance(static_cast<uint32_t>(b & 0x7F) * DIFF_STEP_MS);
     } else {
       const std::size_t take = (static_cast<std::size_t>(b) + 1 < n - i) ? static_cast<std::size_t>(b) + 1 : n - i;
       io.feed(std::vector<uint8_t>(s + i, s + i + take));
@@ -316,7 +370,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
   return 0;
 }
 
-#ifndef VITOHOME_FUZZ_LIBFUZZER
+#if !defined(VITOHOME_FUZZ_LIBFUZZER) && !defined(VITOHOME_DIFF_SIDE)
 
 int main(int argc, char **argv) {
   std::printf("== GWG session fuzz corpus (deterministic replay) ==\n");
@@ -343,4 +397,4 @@ int main(int argc, char **argv) {
   return g_fail == 0 ? 0 : 1;
 }
 
-#endif  // VITOHOME_FUZZ_LIBFUZZER
+#endif  // !VITOHOME_FUZZ_LIBFUZZER && !VITOHOME_DIFF_SIDE

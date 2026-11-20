@@ -17,7 +17,8 @@
 //                 and [1] its answer length (0: it collects), on the P300
 //                 engine for 0 and 1
 //   then the controller's script, a sequence of steps:
-//     b & 0x80    let (b & 0x7F) * 10 ms pass
+//     b & 0x80    let (b & 0x7F) * 10 ms pass (the differential target
+//                 also replays it in 1 ms steps)
 //     else        feed the next (b + 1) bytes
 //   the engine is pumped after every step.
 //
@@ -39,33 +40,47 @@
 //
 // Same two-build arrangement as fuzz_parser_vs2.cpp; seeds in
 // fuzz_corpus_raw_engines.h.
+//
+// Built with -DVITOHOME_DIFF_SIDE it is one side of fuzz_diff_engines.cpp
+// (diff_hooks.h).
 
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <vector>
 
+#include "diff_hooks.h"
 #include "fake_optolink.h"
 #include "fuzz_corpus_raw_engines.h"
+#ifdef VITOHOME_DIFF_REF
+#include "reference/optolink/optolink.h"
+namespace optolink = esphome::vitohome::optolink_ref;
+#else
 #include "optolink/optolink.h"
-
 namespace optolink = esphome::vitohome::optolink;
+#endif
 
 namespace {
 
-#ifndef VITOHOME_FUZZ_LIBFUZZER
+#if !defined(VITOHOME_FUZZ_LIBFUZZER) && !defined(VITOHOME_DIFF_SIDE)
 int g_fail = 0;
 #endif
+#ifndef VITOHOME_DIFF_SIDE
 const char *g_case = "(fuzz)";
+#endif
 
 void oracle(bool ok, const char *what) {
   if (ok)
     return;
+#if defined(VITOHOME_DIFF_SIDE)
+  diff_note_oracle(what);
+#else
   std::fprintf(stderr, "ORACLE VIOLATED [%s]: %s\n", g_case, what);
 #ifdef VITOHOME_FUZZ_LIBFUZZER
   std::abort();
 #else
   ++g_fail;
+#endif
 #endif
 }
 
@@ -80,7 +95,8 @@ bool g_ack_must_be_zero = false;
 bool g_collect = false;
 volatile uint32_t g_sink = 0;
 
-void on_response(const uint8_t *data, uint8_t length, uint16_t) {
+void on_response(const uint8_t *data, uint8_t length, uint16_t address) {
+  DIFF_EVENT(DiffEvent::RESPONSE, address, data, length);
   ++g_completions;
   if (g_expect_length != 0 && length != g_expect_length)
     g_shape_ok = false;
@@ -98,11 +114,21 @@ void on_response(const uint8_t *data, uint8_t length, uint16_t) {
   }
 }
 
-void on_error(optolink::OptolinkResult, uint16_t) { ++g_completions; }
+void on_error(optolink::OptolinkResult result, uint16_t address) {
+  {
+    const uint8_t code = static_cast<uint8_t>(result);
+    DIFF_EVENT(DiffEvent::ERROR, address, &code, 1);
+  }
+  ++g_completions;
+}
+
+FakeOptolink *g_io = nullptr;
 
 template<class E> void pump(E &e, int n = 8) {
-  for (int i = 0; i < n; ++i)
+  for (int i = 0; i < n; ++i) {
     e.loop();
+    DIFF_PASS(g_io->written().data(), g_io->written().size());
+  }
 }
 
 template<class E> void run_script(E &e, FakeOptolink &io, const uint8_t *s, std::size_t n) {
@@ -110,7 +136,7 @@ template<class E> void run_script(E &e, FakeOptolink &io, const uint8_t *s, std:
   while (i < n) {
     const uint8_t b = s[i++];
     if (b & 0x80) {
-      optolink::optolink_test_clock_advance(static_cast<uint32_t>(b & 0x7F) * 10);
+      optolink::optolink_test_clock_advance(static_cast<uint32_t>(b & 0x7F) * DIFF_STEP_MS);
     } else {
       const std::size_t take = (static_cast<std::size_t>(b) + 1 < n - i) ? static_cast<std::size_t>(b) + 1 : n - i;
       io.feed(std::vector<uint8_t>(s + i, s + i + take));
@@ -136,7 +162,13 @@ template<class E> void wire(E &e) {
 
 }  // namespace
 
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
+#ifdef VITOHOME_DIFF_SIDE
+#define FUZZ_ENTRY VITOHOME_DIFF_SIDE
+#else
+#define FUZZ_ENTRY LLVMFuzzerTestOneInput
+#endif
+
+extern "C" int FUZZ_ENTRY(const uint8_t *data, std::size_t size) {
   if (size < 6)
     return 0;
   optolink::optolink_test_clock_freeze();
@@ -168,6 +200,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
   bool next_taken = false;
 
   FakeOptolink io;
+  g_io = &io;
   const std::size_t frame_max = engine == 2   ? optolink::PacketVS1::kMaxFrame
                                 : engine == 3 ? optolink::PacketGWG::kMaxFrame
                                               : std::size_t{optolink::VS2Engine::FRAME_MAX};
@@ -255,7 +288,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {
   return 0;
 }
 
-#ifndef VITOHOME_FUZZ_LIBFUZZER
+#if !defined(VITOHOME_FUZZ_LIBFUZZER) && !defined(VITOHOME_DIFF_SIDE)
 
 int main(int argc, char **argv) {
   std::printf("== raw engines fuzz corpus (deterministic replay) ==\n");
@@ -282,4 +315,4 @@ int main(int argc, char **argv) {
   return g_fail == 0 ? 0 : 1;
 }
 
-#endif  // VITOHOME_FUZZ_LIBFUZZER
+#endif  // !VITOHOME_FUZZ_LIBFUZZER && !VITOHOME_DIFF_SIDE

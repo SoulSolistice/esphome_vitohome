@@ -99,6 +99,10 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
 - `fuzz_kw_session.cpp` — the same over KW sessions, on a KW link
   (`VS1Engine`) and over the P300 engine's KW detour. Seeds in
   `fuzz_corpus_kw_session.h`.
+- `fuzz_diff_engines.cpp` — the three engine harnesses against the
+  reference engines (`reference/`), compared pass by pass; `diff_hooks.h` is
+  what each harness reports. Boundary seeds in `fuzz_corpus_diff.h`; see "The
+  differential target" below.
 - `fuzz.sh` — campaign driver (clang/libFuzzer), one target or all of them
   in turn. Not a gate, not run by CI.
 - `build_and_run_wsl.sh` — Windows-only convenience wrapper. Mirrors the two
@@ -267,6 +271,33 @@ the GFA pause: a GFA read chained onto an answer goes out no earlier than
 `GFA_GAP_MS` after it, unless a byte arrived in between that the engine takes
 as its sync. Its first finding was a real defect: the P300 engine accepted a
 read longer than `MAX_PAYLOAD`, whose answer the parser cannot hold.
+
+### The differential target
+
+`fuzz_diff_engines.cpp` is the acceptance check of the engine redesign: the
+same bytes at the same moments. `reference/` holds a frozen copy of the
+engines as they stood before it, under the namespace `optolink_ref`.
+`fuzz_raw_engines.cpp`, `fuzz_gwg_session.cpp` and `fuzz_kw_session.cpp` are
+each compiled twice with `-DVITOHOME_DIFF_SIDE` (`diff_hooks.h`), once against
+the live engines and once against the reference, and the target runs one input
+through both on the same clock. After every `loop()` it compares the bytes
+written, and it compares every callback with its address and data.
+
+The input's first byte picks the harness and, with bit 7 set, makes the
+script's time steps 1 ms instead of 10 ms; the rest is that harness's input.
+The replay build walks the three harness corpora twice, in 10 ms and in 1 ms
+steps, and the seeds in `fuzz_corpus_diff.h`, which sit on a timing boundary.
+A divergence names the pass and both sides' bytes:
+
+```
+kw session: record 10 (after 9 pass(es)): reference: pass, wrote 0 byte(s); live: pass, wrote 4 byte(s) 6B 40 50 01
+```
+
+The seeds sample time coarsely: after the script, the harnesses move in
+100 ms steps. A change of a few ms shows only where a seed puts a step on
+that boundary (`diff_kw_gfa_gap_edge` catches `GFA_GAP_MS` 25 → 26) or where a
+campaign finds one. `fuzz.sh diff_engines` runs one, seeded with all four
+corpora.
 
 **Running a campaign.**
 
