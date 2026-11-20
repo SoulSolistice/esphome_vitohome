@@ -38,6 +38,7 @@ static_assert(2u + P300_FRAME_MAX <= Telegram::CAPACITY, "a P300 frame with 41 a
 inline bool p300_encode(uint8_t function, uint16_t address, uint8_t length, const uint8_t *payload, Telegram &out) {
   out.length = 0;
   out.has_payload = false;
+  out.chain_gap_ms = 0;
   const bool rpc = function == static_cast<uint8_t>(FunctionCode::RPC);
   if (length == 0 && !rpc)
     return false;

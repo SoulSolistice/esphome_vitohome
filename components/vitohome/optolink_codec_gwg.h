@@ -140,6 +140,7 @@ inline constexpr uint8_t GWG_EOT = 0x04;
 inline bool gwg_eeprom_pair(uint16_t address, uint8_t b0, uint8_t b1, Telegram &out) {
   out.length = 0;
   out.has_payload = false;
+  out.chain_gap_ms = 0;
   if (address > 0xFF)
     return false;
   uint8_t n = 0;
@@ -159,6 +160,7 @@ inline bool gwg_encode(uint8_t type, uint16_t address, uint8_t length, const uin
                        Telegram &out) {
   out.length = 0;
   out.has_payload = false;
+  out.chain_gap_ms = 0;
   if (length == 0 || address > 0xFF)
     return false;
   if (1u + (payload != nullptr ? 4u + length : 4u) > GWG_FRAME_MAX)

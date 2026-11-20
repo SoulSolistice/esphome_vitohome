@@ -52,6 +52,14 @@ namespace optolink = esphome::vitohome::optolink_ref;
 #include "optolink/optolink.h"
 namespace optolink = esphome::vitohome::optolink;
 #endif
+#include "kw_calls.h"
+
+// KW: the KW stack on the live side, VS1Engine on the reference side.
+#ifdef VITOHOME_DIFF_REF
+template<class Port> using KwEngine = optolink::VS1Engine;
+#else
+template<class Port> using KwEngine = optolink::KwExchange<Port>;
+#endif
 
 namespace {
 
@@ -125,14 +133,14 @@ void on_error(optolink::OptolinkResult result, uint16_t address) {
   g_s.pending = -1;
 }
 
-bool submit_one(optolink::VS1Engine &e, Op &op) {
+bool submit_one(KwEngine<sim::SimVitotronic> &e, Op &op) {
   switch (op.kind) {
     case 1:
-      return e.write(op.address, op.payload, op.length);
+      return kw_calls::write(e, op.address, op.payload, op.length);
     case 2:
-      return e.gfaRead(op.address, op.length);
+      return kw_calls::gfa_read(e, op.address, op.length);
     default:
-      return e.read(op.address, op.length);
+      return kw_calls::read(e, op.address, op.length);
   }
 }
 
@@ -183,14 +191,13 @@ std::vector<uint8_t> expected(const sim::SimGwg &dev, const Op &op, Proto) {
 }
 
 template<class E, class Dev> void run(E &e, Dev &dev, Proto proto, bool benign) {
-  e.onResponse(on_response);
-  e.onError(on_error);
+  kw_calls::wire(e, on_response, on_error);
   e.begin();
   int next = 0;
   uint32_t wait_until = optolink_millis();
   const uint32_t start = optolink_millis();
-  while (optolink_millis() - start < kMaxRunMs && (next < g_s.count || g_s.pending >= 0 || e.isBusy())) {
-    if (g_s.pending < 0 && next < g_s.count && !e.isBusy()) {
+  while (optolink_millis() - start < kMaxRunMs && (next < g_s.count || g_s.pending >= 0 || kw_calls::busy(e))) {
+    if (g_s.pending < 0 && next < g_s.count && !kw_calls::busy(e)) {
       Op &op = g_s.ops[next];
       if (wait_until == 0) {
         wait_until = optolink_millis() + op.wait_ms;
@@ -219,7 +226,7 @@ template<class E, class Dev> void run(E &e, Dev &dev, Proto proto, bool benign) 
     const Op &op = g_s.ops[k];
     oracle(op.completions == (op.accepted ? 1 : 0), "an operation did not complete exactly once");
   }
-  oracle(!e.isBusy(), "the engine is still busy after a minute");
+  oracle(!kw_calls::busy(e), "the engine is still busy after a minute");
 }
 
 }  // namespace
@@ -287,9 +294,9 @@ extern "C" int FUZZ_ENTRY(const uint8_t *data, std::size_t size) {
       run(e, dev, proto, benign);
       oracle(e.read(0x00F8, 1), "the engine refuses the next request");
     } else {
-      optolink::VS1Engine e(&dev);
+      KwEngine<sim::SimVitotronic> e(&dev);
       run(e, dev, proto, benign);
-      oracle(e.read(0x00F8, 1), "the engine refuses the next request");
+      oracle(kw_calls::read(e, 0x00F8, 1), "the engine refuses the next request");
     }
   }
   return 0;

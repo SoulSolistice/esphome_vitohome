@@ -70,6 +70,14 @@ namespace optolink = esphome::vitohome::optolink_ref;
 #include "optolink/optolink.h"
 namespace optolink = esphome::vitohome::optolink;
 #endif
+#include "kw_calls.h"
+
+// KW: the KW stack on the live side, VS1Engine on the reference side.
+#ifdef VITOHOME_DIFF_REF
+template<class Port> using KwEngine = optolink::VS1Engine;
+#else
+template<class Port> using KwEngine = optolink::KwExchange<Port>;
+#endif
 
 namespace {
 
@@ -97,10 +105,9 @@ void oracle(bool ok, const char *what) {
 
 constexpr int kMaxOps = 6;
 
-// The frame caps, built from MAX_PAYLOAD so they hold for the live engines
-// (KW_FRAME_MAX, GWG_FRAME_MAX) and the reference copy alike.
+// The KW frame cap, built from MAX_PAYLOAD so it holds for the live engines
+// (KW_FRAME_MAX) and the reference copy alike.
 constexpr std::size_t kKwFrameMax = 4 + optolink::MAX_PAYLOAD;
-constexpr std::size_t kGwgFrameMax = 5 + optolink::MAX_PAYLOAD;
 
 enum class Kind : uint8_t { READ, WRITE, GFA, TELEGRAM, TELEGRAM_PAYLOAD, KW, KW_PAYLOAD, RPC, FRAME };
 
@@ -259,20 +266,20 @@ void on_error(optolink::OptolinkResult result, uint16_t address) {
   finish(false);
 }
 
-bool submit_one(optolink::VS1Engine &e, const Op &op) {
+bool submit_one(KwEngine<Line> &e, const Op &op) {
   switch (op.kind) {
     case Kind::WRITE:
-      return e.write(op.address, op.payload, op.length);
+      return kw_calls::write(e, op.address, op.payload, op.length);
     case Kind::GFA:
-      return e.gfaRead(op.address, op.length);
+      return kw_calls::gfa_read(e, op.address, op.length);
     case Kind::TELEGRAM:
-      return e.telegram(op.type, op.address, op.length);
+      return kw_calls::telegram(e, op.type, op.address, op.length);
     case Kind::TELEGRAM_PAYLOAD:
-      return e.telegram(op.type, op.address, op.length, op.payload);
+      return kw_calls::telegram(e, op.type, op.address, op.length, op.payload);
     case Kind::FRAME:
-      return e.frame(op.payload, op.frame_len, op.length);
+      return kw_calls::frame(e, op.payload, op.frame_len, op.length);
     default:
-      return e.read(op.address, op.length);
+      return kw_calls::read(e, op.address, op.length);
   }
 }
 
@@ -296,7 +303,7 @@ bool submit_one(optolink::VS2Engine &e, const Op &op) {
 }
 
 template<class E> void submit(E &e) {
-  while (g_s.pending < 0 && g_s.next < g_s.count && !e.isBusy()) {
+  while (g_s.pending < 0 && g_s.next < g_s.count && !kw_calls::busy(e)) {
     Op &op = g_s.ops[g_s.next];
     const int index = g_s.next++;
     op.accepted = submit_one(e, op);
@@ -326,8 +333,7 @@ template<class E> void pump(E &e, int n) {
 
 template<class E> void run(E &e, Line &line, const uint8_t *s, std::size_t n) {
   g_line = &line;
-  e.onResponse(on_response);
-  e.onError(on_error);
+  kw_calls::wire(e, on_response, on_error);
   e.begin();
   submit(e);
   std::size_t i = 0;
@@ -342,7 +348,7 @@ template<class E> void run(E &e, Line &line, const uint8_t *s, std::size_t n) {
     }
     pump(e, 4);
   }
-  for (int k = 0; k < 600 && (g_s.pending >= 0 || g_s.next < g_s.count || e.isBusy()); ++k) {
+  for (int k = 0; k < 600 && (g_s.pending >= 0 || g_s.next < g_s.count || kw_calls::busy(e)); ++k) {
     optolink::optolink_test_clock_advance(100);
     pump(e, 2);
   }
@@ -351,8 +357,8 @@ template<class E> void run(E &e, Line &line, const uint8_t *s, std::size_t n) {
     oracle(op.completions == (op.accepted ? 1 : 0), "an operation did not complete exactly once");
   }
   oracle(g_s.next == g_s.count, "operations left unsubmitted");
-  oracle(!e.isBusy(), "the engine is still busy after every timeout");
-  oracle(e.read(0x00F8, 1), "the engine refuses the next request");
+  oracle(!kw_calls::busy(e), "the engine is still busy after every timeout");
+  oracle(kw_calls::read(e, 0x00F8, 1), "the engine refuses the next request");
 }
 
 void parse_op(const uint8_t *b, bool p300, Op &op) {
@@ -409,7 +415,7 @@ extern "C" int FUZZ_ENTRY(const uint8_t *data, std::size_t size) {
     optolink::VS2Engine e(&line);
     run(e, line, data + pos, size - pos);
   } else {
-    optolink::VS1Engine e(&line);
+    KwEngine<Line> e(&line);
     run(e, line, data + pos, size - pos);
   }
   return 0;

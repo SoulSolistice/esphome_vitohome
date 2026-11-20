@@ -59,6 +59,14 @@ namespace optolink = esphome::vitohome::optolink_ref;
 #include "optolink/optolink.h"
 namespace optolink = esphome::vitohome::optolink;
 #endif
+#include "kw_calls.h"
+
+// KW: the KW stack on the live side, VS1Engine on the reference side.
+#ifdef VITOHOME_DIFF_REF
+template<class Port> using KwEngine = optolink::VS1Engine;
+#else
+template<class Port> using KwEngine = optolink::KwExchange<Port>;
+#endif
 
 namespace {
 
@@ -160,8 +168,7 @@ template<class E> void settle(E &e) {
 }
 
 template<class E> void wire(E &e) {
-  e.onResponse(on_response);
-  e.onError(on_error);
+  kw_calls::wire(e, on_response, on_error);
   e.begin();
 }
 
@@ -244,17 +251,18 @@ extern "C" int FUZZ_ENTRY(const uint8_t *data, std::size_t size) {
       break;
     }
     case 2: {
-      auto *e = new optolink::VS1Engine(&io);
+      auto *e = new KwEngine<FakeOptolink>(&io);
       wire(*e);
       if (!frame) {
         g_expect_length = has_payload ? 1 : length;
         g_ack_must_be_zero = has_payload;
       }
-      accepted = frame ? e->frame(payload, length, code) : e->telegram(code, address, length, payload);
+      accepted =
+          frame ? kw_calls::frame(*e, payload, length, code) : kw_calls::telegram(*e, code, address, length, payload);
       run_script(*e, io, script, script_len);
       settle(*e);
-      idle_after = !e->isBusy();
-      next_taken = e->read(0x00F8, 1);
+      idle_after = !kw_calls::busy(*e);
+      next_taken = kw_calls::read(*e, 0x00F8, 1);
       delete e;
       break;
     }

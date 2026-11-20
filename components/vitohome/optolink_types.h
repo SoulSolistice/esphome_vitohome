@@ -5,8 +5,7 @@
 #define VITOHOME_OPTOLINK_TYPES_H
 
 // What every layer of the Optolink engine shares (design-optolink-layers.md,
-// section 3). Request, Result and the timing record follow in stage 3 with
-// the exchange that uses them.
+// section 3).
 
 #include <cstddef>
 #include <cstdint>
@@ -39,8 +38,9 @@ enum class PacketType : uint8_t {
 // that is not a response (the P300 error frame, type 03): the device answered,
 // so the link is alive. ERROR is malformed traffic, possibly line noise, and
 // proves nothing. CONTINUE is never a result; proof_vs2_guards.cpp uses it as
-// "nothing seen yet".
-enum class OptolinkResult { CONTINUE, TIMEOUT, LENGTH, NACK, CRC, ERROR, DEVICE_ERROR };
+// "nothing seen yet". OK comes last so the error codes keep their values
+// while the old engines still report them.
+enum class OptolinkResult { CONTINUE, TIMEOUT, LENGTH, NACK, CRC, ERROR, DEVICE_ERROR, OK };
 
 // One telegram as a codec builds it: the bytes a link sends, without the
 // link's own (the 01 that answers an ENQ, the P300 ACKs). A P300 telegram
@@ -51,16 +51,75 @@ struct Telegram {
   uint8_t length;
   // Whether a payload rides, so the answer is an acknowledgement.
   bool has_payload;
+  // The least pause after the previous answer when chained (KW 6B: 25 ms).
+  uint8_t chain_gap_ms;
+};
+
+// Which telegram a request is: a protocol's own, or an open frame sent as
+// given.
+enum class Lane : uint8_t { P300, KW, GWG, FRAME };
+
+// One operation as the hub asks for it. The exchange copies it on submit.
+struct Request {
+  Lane lane;
+  // The P300 function code, the KW or GWG TYPE byte; unused for FRAME.
+  uint8_t code;
+  // GWG 0..0xFF; FRAME 0.
+  uint16_t address;
+  // A read's answer length, a payload's length; FRAME: the frame's length.
+  uint8_t length;
+  bool has_payload;
+  // The payload, or FRAME's bytes.
+  uint8_t payload[Telegram::CAPACITY];
+  // FRAME only: the answer's length, 0 for until the line is quiet.
+  uint8_t answer_length;
+};
+
+// A protocol's telegram; `payload` (null: none) copied up to the capacity,
+// the codec refusing a length past what it takes.
+inline Request make_request(Lane lane, uint8_t code, uint16_t address, uint8_t length, const uint8_t *payload) {
+  Request r{};
+  r.lane = lane;
+  r.code = code;
+  r.address = address;
+  r.length = length;
+  r.has_payload = payload != nullptr;
+  if (payload != nullptr)
+    std::memcpy(r.payload, payload, length < sizeof(r.payload) ? length : sizeof(r.payload));
+  return r;
+}
+
+// An open frame: `length` bytes sent as given, `answer_length` answer bytes
+// (0: until the line is quiet).
+inline Request make_frame(const uint8_t *bytes, uint8_t length, uint8_t answer_length) {
+  Request r = make_request(Lane::FRAME, 0, 0, length, bytes);
+  r.has_payload = false;
+  r.answer_length = answer_length;
+  if (bytes == nullptr)
+    r.length = 0;
+  return r;
+}
+
+// How a request ended, as the exchange reports it.
+struct Result {
+  OptolinkResult status;
+  // The request's address (FRAME: 0).
+  uint16_t address;
+  // The answer, valid inside the result callback only; null on an error.
+  const uint8_t *data;
+  uint8_t length;
 };
 
 // An open frame of `max` bytes at most, sent as given.
 inline bool frame_encode(const uint8_t *bytes, uint8_t length, uint8_t max, Telegram &out) {
   out.length = 0;
   out.has_payload = false;
+  out.chain_gap_ms = 0;
   if (bytes == nullptr || length == 0 || length > max)
     return false;
   std::memcpy(out.bytes, bytes, length);
   out.length = length;
+  out.chain_gap_ms = 0;
   return true;
 }
 

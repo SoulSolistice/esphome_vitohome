@@ -309,6 +309,16 @@ corpora.
 `fuzz_sim_session.cpp` is the fourth harness: there both sides face a device
 simulator built from the same input.
 
+On KW the two sides are different code. The live side runs the new KW stack
+(`optolink_kw.h`: the KW codec, `EnqLink`, `Exchange`), the reference side
+`VS1Engine`; `kw_calls.h` gives a harness one set of KW calls for both, and
+maps the stack's `Result` back onto the old engines' two callbacks, so the
+checks and the compared events stay one set. The boundary seeds put a step on
+each KW timing constant the stack carries that a harness can reach: the GFA
+pause, the answer deadline, the EOT interval and the watchdog. The ENQ hold
+and the chain window are out of reach, because the harnesses submit the next
+operation the moment the last one completes.
+
 ### Device simulators
 
 A simulator is a controller behind the port: it sends its ENQs, parses each
