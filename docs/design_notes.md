@@ -1059,8 +1059,8 @@ which the hub stops looping until the script ends:
    whole script ends after 8 s, inside the hub's 10 s watchdog.
 4. The hub restarts the engine (`begin()`), which resyncs: P300 from its
    RESET, KW and GWG on the next ENQ, and GWG without a burst window left
-   over from before. KW counts its EOT timer from the restart: an EOT at
-   once made a VScotHO1_72 send its next ENQ only 2.97 s later.
+   over from before. KW counts its EOT timer from the restart, so no EOT
+   follows a script.
 
 The result line has the spec, when each segment went out and when the answer
 came:
@@ -1101,6 +1101,11 @@ reads of 00F8/4):
 
 The answer came 11 to 39 ms after the last byte. The KW engine answers an
 ENQ within `ENQ_ACK_WINDOW_MS` (50 ms), well inside the device's limit.
+
+On KW the device's next ENQ came 2.97 s (2968 to 2984 ms) after its last
+answer, and within 2.2 s on an idle bus. The engine does not wait for it: it
+chains the next telegram onto the answer. A timed frame is timed from an ENQ,
+so a KW frame that follows another takes about 3 s.
 
 `unrestricted` needs `raw_queue_size`, and `unsafe_raw_writes` needs
 `unrestricted` (config errors). The layer is checked when the line arrives:

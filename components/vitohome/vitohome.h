@@ -714,7 +714,7 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   // A timed frame: the wait for the device's ENQ and the whole script. A
   // VScotHO1_72 on KW sent its ENQ within 2.2 s when idle, and 2.97 s after
-  // an EOT; GWG sends one every 0.75 to 2.1 s. The deadline covers the ENQ
+  // its last answer; GWG sends one every 0.75 to 2.1 s. The deadline covers the ENQ
   // wait, four waits of 255 ms and KW's 1 s answer timeout.
   static constexpr uint32_t RAW_SCRIPT_ENQ_TIMEOUT_MS = 4000;
   static constexpr uint32_t RAW_SCRIPT_DEADLINE_MS = 8000;

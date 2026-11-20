@@ -179,8 +179,7 @@ int main() {
   check(g_responses == before_restart + 1 && g_errors == 0, "  and answered");
   // --- (7) begin() restarts the wait for an ENQ ------------------------------
   // The hub calls begin() after a timed frame, which held the port longer than
-  // ENQ_RESET_INTERVAL_MS. An EOT at once would restart the device's ENQ
-  // cycle: on a VScotHO1_72 the next ENQ then came 2.97 s later.
+  // ENQ_RESET_INTERVAL_MS. Nothing on a KW link asks for an EOT then.
   uart.clear_written();
   optolink::optolink_test_clock_advance(optolink::VS1Engine::ENQ_RESET_INTERVAL_MS + 500);
   adapter.begin();
