@@ -13,8 +13,6 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 namespace esphome::vitohome::optolink {
 
-VS1Engine::~VS1Engine() { delete _interface; }
-
 void VS1Engine::onResponse(OnResponseCallback callback) { _onResponseCallback = std::move(callback); }
 void VS1Engine::onError(OnErrorCallback callback) { _onErrorCallback = std::move(callback); }
 
@@ -73,13 +71,11 @@ bool VS1Engine::frame(const uint8_t *bytes, uint8_t length, uint8_t answerLength
 }
 
 bool VS1Engine::begin() {
-  if (_interface == nullptr)
-    return false;
   // A request submitted before the next loop() takes its watchdog from now.
   _currentMillis = optolink_millis();
-  if (_interface->begin()) {
-    while (_interface->available()) {
-      _interface->read();  // clear rx buffer
+  if (_port.begin()) {
+    while (_port.available()) {
+      _port.read();  // clear rx buffer
     }
     // The EOT is due ENQ_RESET_INTERVAL_MS after this start, not at once.
     _lastMillis = optolink_millis();
@@ -119,7 +115,7 @@ void VS1Engine::loop() {
 }
 
 void VS1Engine::end() {
-  _interface->end();
+  _port.end();
   _setState(State::UNDEFINED);
   _busy = false;
 }
@@ -134,15 +130,15 @@ void VS1Engine::_setState(State state) {
 
 // wait for ENQ or reset connection if ENQ is not coming
 void VS1Engine::_init() {
-  if (_interface->available()) {
-    if (_interface->read() == internals::ProtocolBytes.ENQ) {
+  if (_port.available()) {
+    if (_port.read() == internals::ProtocolBytes.ENQ) {
       _lastMillis = _currentMillis;
       _setState(State::SYNC_ENQ);
     }
   } else {
     if (_currentMillis - _lastMillis > ENQ_RESET_INTERVAL_MS) {
       _lastMillis = _currentMillis;
-      _interface->write(&internals::ProtocolBytes.EOT, 1);
+      _port.write(&internals::ProtocolBytes.EOT, 1);
     }
   }
 }
@@ -152,7 +148,7 @@ void VS1Engine::_init() {
 void VS1Engine::_syncEnq() {
   if (_currentMillis - _lastMillis < ENQ_ACK_WINDOW_MS) {
     // An open frame answers the ENQ with its own first byte.
-    if (_busy && (_frame || _interface->write(&internals::ProtocolBytes.ENQ_ACK, 1) == 1)) {
+    if (_busy && (_frame || _port.write(&internals::ProtocolBytes.ENQ_ACK, 1) == 1)) {
       _setState(State::SEND);
       _send();  // speed up things
     }
@@ -174,7 +170,7 @@ void VS1Engine::_syncRecv() {
   //
   // The guard also bounds CHAIN_WINDOW_MS in practice: the window can only be
   // ridden while the device has NOT spoken since the last answer.
-  if (_interface->available()) {
+  if (_port.available()) {
     _setState(State::INIT);
     return;
   }
@@ -200,7 +196,7 @@ void VS1Engine::_syncRecv() {
 // send request and move to RECEIVE
 void VS1Engine::_send() {
   _bytesTransferred +=
-      _interface->write(&_currentRequest.bytes[_bytesTransferred], _currentRequest.length - _bytesTransferred);
+      _port.write(&_currentRequest.bytes[_bytesTransferred], _currentRequest.length - _bytesTransferred);
   if (_bytesTransferred == _currentRequest.length) {
     _bytesTransferred = 0;
     _lastMillis = _currentMillis;
@@ -233,8 +229,8 @@ void VS1Engine::_receive() {
     _tryOnError(OptolinkResult::TIMEOUT);
     return;
   }
-  while (_interface->available()) {
-    const uint8_t byte = _interface->read();
+  while (_port.available()) {
+    const uint8_t byte = _port.read();
     // A device that sends more than asked fails the count below and times out.
     if (_bytesTransferred < kResponseBufferSize)
       _responseBuffer[_bytesTransferred] = byte;

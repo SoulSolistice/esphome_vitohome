@@ -22,8 +22,8 @@ THIRD_PARTY.md), so the wrapper mark_failed()s instead of the firmware aborting.
 #include <functional>
 
 #include "../../constants.h"
-#include "../../helpers.h"
-#include "../../interface/generic_interface.h"
+#include "optolink_clock.h"
+#include "optolink_port.h"
 #include "../../logging.h"
 #include "optolink_codec_kw.h"
 #include "optolink_codec_p300.h"
@@ -47,6 +47,7 @@ class VS2Engine {
   static constexpr uint32_t HANDSHAKE_RETRY_MS = 3000;     // RESET-ACK / INIT-ACK window
   static constexpr uint32_t KEEPALIVE_INTERVAL_MS = 3000;  // idle re-INIT keepalive
 
+  // The port must outlive the engine (optolink_port.h).
   template<class C>
   explicit VS2Engine(C *interface)
       : _state(State::UNDEFINED),
@@ -54,27 +55,14 @@ class VS2Engine {
         _lastMillis(_currentMillis),
         _requestTime(0),
         _bytesTransferred(0),
-        _interface(nullptr),
+        _port(interface),
         _parser(),
         _currentAddress(0),
         _currentLength(0),
         _busy(false),
         _currentPacket(),
         _onResponseCallback(nullptr),
-        _onErrorCallback(nullptr) {
-    assert(interface != nullptr);
-    _interface = new (std::nothrow) internals::GenericInterface<C>(interface);
-    if (!_interface) {
-      // Fail soft on allocation failure: leave _interface null and let the
-      // object be constructed in a failed state. begin() then returns false and
-      // the ESPHome wrapper mark_failed()s the component (see
-      // VitoHomeComponent::setup), rather than abort()ing the whole firmware on
-      // a transient OOM. The vendored engine has no ESPHome dependency, so it
-      // signals failure through begin()'s return value, not mark_failed().
-      optolink_log_e("Could not create serial interface");
-    }
-  }
-  ~VS2Engine();
+        _onErrorCallback(nullptr) {}
   VS2Engine(const VS2Engine &) = delete;
   VS2Engine &operator=(const VS2Engine &) = delete;
 
@@ -180,7 +168,7 @@ class VS2Engine {
   uint32_t _lastMillis;
   uint32_t _requestTime;
   uint8_t _bytesTransferred;
-  internals::SerialInterface *_interface;
+  PortRef _port;
   P300Parser _parser;
   // In-flight request context (no Datapoint): the address is echoed back to
   // the caller, the length is retained for symmetry with the byte-oriented

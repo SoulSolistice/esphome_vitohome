@@ -66,8 +66,8 @@ with setters, not process-wide globals. See THIRD_PARTY.md #34.
 #include <functional>
 
 #include "../../constants.h"
-#include "../../helpers.h"
-#include "../../interface/generic_interface.h"
+#include "optolink_clock.h"
+#include "optolink_port.h"
 #include "../../logging.h"
 #include "optolink_codec_gwg.h"
 
@@ -295,6 +295,7 @@ class GWGEngine {
   static constexpr bool SEND_ENQ_POKE = false;
   static constexpr uint32_t ENQ_POKE_INTERVAL_MS = 3000;
 
+  // The port must outlive the engine (optolink_port.h).
   template<class C>
   explicit GWGEngine(C *interface)
       : _state(State::UNDEFINED),
@@ -318,7 +319,7 @@ class GWGEngine {
         _lateSendMillis(0),
         _late{},
         _bytesTransferred(0),
-        _interface(nullptr),
+        _port(interface),
         _currentAddress(0),
         _currentLength(0),
         _perAddress(false),
@@ -334,20 +335,7 @@ class GWGEngine {
         _onErrorCallback(nullptr),
         _onTimingCallback(nullptr),
         _onBurstFallbackCallback(nullptr),
-        _onLateAnswerCallback(nullptr) {
-    assert(interface != nullptr);
-    _interface = new (std::nothrow) internals::GenericInterface<C>(interface);
-    if (!_interface) {
-      // Fail soft on allocation failure: leave _interface null and let the
-      // object be constructed in a failed state. begin() then returns false and
-      // the ESPHome wrapper mark_failed()s the component (see
-      // VitoHomeComponent::setup), rather than abort()ing the whole firmware on
-      // a transient OOM. The vendored engine has no ESPHome dependency, so it
-      // signals failure through begin()'s return value, not mark_failed().
-      optolink_log_e("Could not create serial interface");
-    }
-  }
-  ~GWGEngine();
+        _onLateAnswerCallback(nullptr) {}
   GWGEngine(const GWGEngine &) = delete;
   GWGEngine &operator=(const GWGEngine &) = delete;
 
@@ -513,7 +501,7 @@ class GWGEngine {
   uint32_t _lateSendMillis;
   LateAnswer _late;
   uint8_t _bytesTransferred;
-  internals::SerialInterface *_interface;
+  PortRef _port;
   uint16_t _currentAddress;
   uint8_t _currentLength;
   // Per-address read state (gwgCellLength()). _currentLength is the number of

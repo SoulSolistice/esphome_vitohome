@@ -289,7 +289,7 @@ void VitoHomeComponent::raw_script_loop_() {
   this->raw_script_.clear();
   // A fresh start resyncs the link: P300 from its reset, KW and GWG on the
   // device's next ENQ.
-  this->vito_->begin();
+  this->vito_.begin();
   VitoEntityBase *entity = nullptr;
   (void) this->take_in_flight_(entity);
 #endif
@@ -420,7 +420,7 @@ void VitoHomeComponent::raw_handle_error_(optolink::OptolinkResult error) {
   // does not serve, 05 a function code it lacks (VS2Engine::errorPayload()).
   if (error == optolink::OptolinkResult::DEVICE_ERROR) {
     uint8_t length = 0;
-    const uint8_t *code = this->vito_->errorPayload(length);
+    const uint8_t *code = this->vito_.errorPayload(length);
     for (uint8_t i = 0; i < length && offset > 0 && offset < static_cast<int>(sizeof(buffer)); ++i)
       offset += snprintf(buffer + offset, sizeof(buffer) - offset, i == 0 ? ", code %02X" : " %02X", code[i]);
   }
@@ -469,7 +469,7 @@ void VitoHomeComponent::dispatch_raw_front_() {
   if (operation.frame && raw_frame_timed(operation.waits, operation.now, operation.answer_p300)) {
     // The runner takes the port from an idle engine, which is not looped until
     // the script ends.
-    if (this->vito_->isBusy())
+    if (this->vito_.isBusy())
       return;
     this->raw_queue_.drop_front();
     this->raw_write_len_ = 0;
@@ -499,7 +499,7 @@ void VitoHomeComponent::dispatch_raw_front_() {
     // (the GWG codec takes 0x00..0xFF), is dropped: kept at the head, it would stop
     // all bus traffic, since this lane goes first, with nothing in flight for
     // the watchdog.
-    if (this->vito_->isBusy())
+    if (this->vito_.isBusy())
       return;
     char described[160];
     raw_describe_(operation, label, described, sizeof(described));

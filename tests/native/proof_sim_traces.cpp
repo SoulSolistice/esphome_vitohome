@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 
-#include "optolink/helpers.h"
+#include "optolink_clock.h"
 #include "sim/sim_gwg.h"
 #include "sim/sim_vitotronic.h"
 #include "sim/trace_gwg_35.h"

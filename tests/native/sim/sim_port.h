@@ -25,7 +25,7 @@
 #include <utility>
 #include <vector>
 
-#include "optolink/helpers.h"  // optolink_millis(): the host test clock
+#include "optolink_clock.h"
 
 namespace sim {
 

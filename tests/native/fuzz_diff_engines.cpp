@@ -36,7 +36,7 @@
 #include "fuzz_corpus_kw_session.h"
 #include "fuzz_corpus_raw_engines.h"
 #include "fuzz_corpus_sim_session.h"
-#include "optolink/helpers.h"
+#include "optolink_clock.h"
 
 extern "C" int diff_kw_session_live(const uint8_t *data, std::size_t size);
 extern "C" int diff_kw_session_ref(const uint8_t *data, std::size_t size);

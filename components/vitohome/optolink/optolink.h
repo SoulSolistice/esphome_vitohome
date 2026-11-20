@@ -51,7 +51,7 @@ template<> struct ProtocolEngine<GWG> {
 
 // OptolinkEngine<P300> is a drop-in for the former VitoWiFi::VitoWiFi<VS2>.
 // The protocol tag selects the concrete engine; the constructor takes the
-// duck-typed interface pointer (wrapped internally in GenericInterface<C>).
+// port pointer (optolink_port.h).
 template<class PROTOCOLVERSION> using OptolinkEngine = typename internals::ProtocolEngine<PROTOCOLVERSION>::type;
 
 }  // namespace esphome::vitohome::optolink

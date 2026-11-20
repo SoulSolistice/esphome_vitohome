@@ -15,7 +15,7 @@
 //
 // Built with -DVITOHOME_PROTOCOL_GWG by build_and_run_protocols.sh.
 //
-// TIME IS INJECTED, NOT SLEPT (see optolink_test_clock_freeze in helpers.h).
+// TIME IS INJECTED, NOT SLEPT (see optolink_test_clock_freeze in optolink_clock.h).
 // The timing assertions below are about millis() deltas the engine computes,
 // and the engine's own deadlines are millis() deltas too, so a proof built on
 // std::this_thread::sleep_for is racing the thing it measures: the response

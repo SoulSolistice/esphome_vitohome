@@ -15,8 +15,6 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 namespace esphome::vitohome::optolink {
 
-VS2Engine::~VS2Engine() { delete _interface; }
-
 void VS2Engine::onResponse(OnResponseCallback callback) { _onResponseCallback = std::move(callback); }
 void VS2Engine::onError(OnErrorCallback callback) { _onErrorCallback = std::move(callback); }
 
@@ -122,12 +120,10 @@ const uint8_t *VS2Engine::errorPayload(uint8_t &length) const {
 }
 
 bool VS2Engine::begin() {
-  if (_interface == nullptr)
-    return false;
   // A request submitted before the next loop() takes its watchdog from now.
   _currentMillis = optolink_millis();
   _setState(State::RESET);
-  return _interface->begin();
+  return _port.begin();
 }
 
 void VS2Engine::loop() {
@@ -198,7 +194,7 @@ void VS2Engine::loop() {
 }
 
 void VS2Engine::end() {
-  _interface->end();
+  _port.end();
   _setState(State::UNDEFINED);
   _busy = false;
 }
@@ -224,17 +220,17 @@ void VS2Engine::_reset() {
   // failed with CS_ERROR before self-healing. Every path into RESET now also
   // resets the parser, matching the RX-buffer drain below.
   _parser.reset();
-  while (_interface->available())
-    _interface->read();
-  if (_interface->write(&internals::ProtocolBytes.EOT, 1) == 1) {
+  while (_port.available())
+    _port.read();
+  if (_port.write(&internals::ProtocolBytes.EOT, 1) == 1) {
     _lastMillis = _currentMillis;
     _setState(State::RESET_ACK);
   }
 }
 
 void VS2Engine::_resetAck() {
-  if (_interface->available()) {
-    uint8_t buff = _interface->read();
+  if (_port.available()) {
+    uint8_t buff = _port.read();
     if (buff == internals::ProtocolBytes.ENQ) {
       _lastMillis = _currentMillis;
       // After the EOT the controller speaks KW: a KW telegram waiting for the
@@ -256,8 +252,8 @@ void VS2Engine::_resetAck() {
 }
 
 void VS2Engine::_init() {
-  _bytesTransferred += _interface->write(&internals::ProtocolBytes.SYNC[_bytesTransferred],
-                                         sizeof(internals::ProtocolBytes.SYNC) - _bytesTransferred);
+  _bytesTransferred += _port.write(&internals::ProtocolBytes.SYNC[_bytesTransferred],
+                                   sizeof(internals::ProtocolBytes.SYNC) - _bytesTransferred);
   if (_bytesTransferred == sizeof(internals::ProtocolBytes.SYNC)) {
     _bytesTransferred = 0;
     _lastMillis = _currentMillis;
@@ -266,8 +262,8 @@ void VS2Engine::_init() {
 }
 
 void VS2Engine::_initAck() {
-  if (_interface->available()) {
-    uint8_t buff = _interface->read();
+  if (_port.available()) {
+    uint8_t buff = _port.read();
     optolink_log_i("rcv: 0x%02x", buff);
     if (buff == internals::ProtocolBytes.ACK) {
       _setState(State::IDLE);
@@ -295,8 +291,8 @@ void VS2Engine::_idle() {
     if (!keepalive) {
       // Nothing on the line before a telegram can be its answer: a byte left
       // over would be read as the device's ACK or the start of its frame.
-      while (_interface->available())
-        _interface->read();
+      while (_port.available())
+        _port.read();
       // The whole telegram in this pass: a host loop that sleeps between
       // passes (ESPHome: about 16 ms) would otherwise add one per state.
       _setState(State::SENDSTART);
@@ -310,7 +306,7 @@ void VS2Engine::_idle() {
 }
 
 void VS2Engine::_sendStart() {
-  if (_interface->write(&internals::ProtocolBytes.PACKETSTART, 1) == 1) {
+  if (_port.write(&internals::ProtocolBytes.PACKETSTART, 1) == 1) {
     _lastMillis = _currentMillis;
     _setState(State::SENDPACKET);
     _sendPacket();
@@ -321,7 +317,7 @@ void VS2Engine::_sendStart() {
 void VS2Engine::_sendPacket() {
   // LL .. the last payload byte: the telegram without its 41 and checksum.
   const uint8_t body = static_cast<uint8_t>(_currentPacket.length - 2);
-  _bytesTransferred += _interface->write(&_currentPacket.bytes[1 + _bytesTransferred], body - _bytesTransferred);
+  _bytesTransferred += _port.write(&_currentPacket.bytes[1 + _bytesTransferred], body - _bytesTransferred);
   if (_bytesTransferred == body) {
     _bytesTransferred = 0;
     _lastMillis = _currentMillis;
@@ -332,15 +328,15 @@ void VS2Engine::_sendPacket() {
 
 void VS2Engine::_sendCRC() {
   const uint8_t crc = _currentPacket.bytes[_currentPacket.length - 1];
-  if (_interface->write(&crc, 1) == 1) {
+  if (_port.write(&crc, 1) == 1) {
     _lastMillis = _currentMillis;
     _setState(State::SEND_ACK);
   }
 }
 
 void VS2Engine::_sendAck() {
-  if (_interface->available()) {
-    uint8_t buff = _interface->read();
+  if (_port.available()) {
+    uint8_t buff = _port.read();
     optolink_log_i("rcv: 0x%02x", buff);
     if (buff == internals::ProtocolBytes.ACK) {  // transmit succesful, moving to next state
       _setState(State::RECEIVE);
@@ -353,9 +349,9 @@ void VS2Engine::_sendAck() {
 }
 
 void VS2Engine::_receive() {
-  while (_interface->available()) {
+  while (_port.available()) {
     _lastMillis = _currentMillis;
-    const P300Parse result = _parser.parse(_interface->read());
+    const P300Parse result = _parser.parse(_port.read());
     if (result == P300Parse::COMPLETE) {
       const P300Frame &answer = _parser.frame();
       const uint8_t fc = answer.function_code();
@@ -404,7 +400,7 @@ void VS2Engine::_receive() {
 }
 
 void VS2Engine::_receiveAck() {
-  if (_interface->write(&internals::ProtocolBytes.ACK, 1) == 1) {
+  if (_port.write(&internals::ProtocolBytes.ACK, 1) == 1) {
     _lastMillis = _currentMillis;
     _setState(State::IDLE);
   }
@@ -421,9 +417,9 @@ void VS2Engine::_receiveAck() {
 // Leave P300 like _reset(): parser, stale bytes, EOT.
 void VS2Engine::_kwDrop() {
   _parser.reset();
-  while (_interface->available())
-    _interface->read();
-  if (_interface->write(&internals::ProtocolBytes.EOT, 1) == 1) {
+  while (_port.available())
+    _port.read();
+  if (_port.write(&internals::ProtocolBytes.EOT, 1) == 1) {
     _lastMillis = _currentMillis;
     // The request watchdog runs from here: the request may have waited out a
     // handshake before the link was idle.
@@ -433,10 +429,10 @@ void VS2Engine::_kwDrop() {
 }
 
 void VS2Engine::_kwEnq() {
-  if (_interface->available()) {
+  if (_port.available()) {
     // Anything but the ENQ is left over from P300 (the controller ACKs the
     // EOT first) and dropped.
-    if (_interface->read() == internals::ProtocolBytes.ENQ)
+    if (_port.read() == internals::ProtocolBytes.ENQ)
       _kwStart(true);
   } else if (_currentMillis - _lastMillis > KW_ENQ_TIMEOUT_MS) {
     _setState(State::RESET);
@@ -463,7 +459,7 @@ void VS2Engine::_kwStart(bool enqAck) {
 }
 
 void VS2Engine::_kwSend() {
-  _bytesTransferred += _interface->write(&_kwFrame[_bytesTransferred], _kwFrameLen - _bytesTransferred);
+  _bytesTransferred += _port.write(&_kwFrame[_bytesTransferred], _kwFrameLen - _bytesTransferred);
   if (_bytesTransferred == _kwFrameLen) {
     _bytesTransferred = 0;
     _lastMillis = _currentMillis;
@@ -484,8 +480,8 @@ void VS2Engine::_kwReceive() {
     _tryOnError(OptolinkResult::TIMEOUT);
     return;
   }
-  while (_interface->available() && _bytesTransferred < expected) {
-    _kwAnswer[_bytesTransferred++] = _interface->read();
+  while (_port.available() && _bytesTransferred < expected) {
+    _kwAnswer[_bytesTransferred++] = _port.read();
     _lastMillis = _currentMillis;
   }
   if (_bytesTransferred < expected)
@@ -512,8 +508,8 @@ void VS2Engine::_kwReceive() {
 // meanwhile is its ENQ (the session idled out): it opens the next KW telegram,
 // or is answered with SYNC like the ENQ RESET waits for.
 void VS2Engine::_kwChain() {
-  if (_interface->available()) {
-    if (_interface->read() != internals::ProtocolBytes.ENQ) {
+  if (_port.available()) {
+    if (_port.read() != internals::ProtocolBytes.ENQ) {
       _setState(State::RESET);
       return;
     }
@@ -538,7 +534,7 @@ void VS2Engine::_kwChain() {
 // --- An open frame (frame()) -------------------------------------------------
 
 void VS2Engine::_frameSend() {
-  _bytesTransferred += _interface->write(&_frameBytes[_bytesTransferred], _frameLen - _bytesTransferred);
+  _bytesTransferred += _port.write(&_frameBytes[_bytesTransferred], _frameLen - _bytesTransferred);
   if (_bytesTransferred == _frameLen) {
     _bytesTransferred = 0;
     _lastMillis = _currentMillis;
@@ -551,8 +547,8 @@ void VS2Engine::_frameSend() {
 
 // Bytes past a fixed answer length stay on the line for RESET to drain.
 void VS2Engine::_frameReceive() {
-  while (_interface->available() && (_currentLength == 0 || _bytesTransferred < _currentLength)) {
-    const uint8_t byte = _interface->read();
+  while (_port.available() && (_currentLength == 0 || _bytesTransferred < _currentLength)) {
+    const uint8_t byte = _port.read();
     if (_bytesTransferred < FRAME_MAX)
       _frameAnswer[_bytesTransferred++] = byte;
     _lastMillis = _currentMillis;

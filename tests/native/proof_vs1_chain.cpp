@@ -32,7 +32,7 @@
 //
 // Built with -DVITOHOME_PROTOCOL_KW by build_and_run_protocols.sh.
 //
-// TIME IS INJECTED, NOT SLEPT (see optolink_test_clock_freeze in helpers.h).
+// TIME IS INJECTED, NOT SLEPT (see optolink_test_clock_freeze in optolink_clock.h).
 // Case (3) is the one THIRD_PARTY.md item 23 named as the remaining latent
 // flake, and it is the two-sided kind: its 200 ms pause must land past the old
 // 50 ms ENQ_ACK_WINDOW_MS *and* inside the 500 ms CHAIN_WINDOW_MS. sleep_for

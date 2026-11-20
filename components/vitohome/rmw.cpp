@@ -37,7 +37,7 @@ void VitoHomeComponent::rmw_handle_read_(VitoEntityBase *entity, const ResponseV
   // byte with every flag set. Merging into it and writing it back would put
   // data at an unused address, so the engine flags it
   // (GWGEngine::lastReadHadUnservedEeprom) and the write stops here.
-  if (this->vito_->lastReadHadUnservedEeprom()) {
+  if (this->vito_.lastReadHadUnservedEeprom()) {
     this->rmw_abort_(entity, optolink::OptolinkResult::ERROR,
                      "GWG EEPROM answered FF FF (address not in use) - refusing to merge into it");
     return;
@@ -67,7 +67,7 @@ void VitoHomeComponent::rmw_dispatch_write_() {
   if (!write_ok) {
     // Busy: stay armed. dispatch_next_() comes back here first, so nothing
     // else reaches the bus before the merged write.
-    if (this->vito_->isBusy())
+    if (this->vito_.isBusy())
       return;
     this->rmw_pending_ = nullptr;
     this->rmw_abort_(entity, optolink::OptolinkResult::ERROR, "engine refused the merged write (permanent)");

@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -440,8 +439,9 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   // Selected at build time; all three engines have the same read/write calls
   // and callbacks, response(data, length, address) and
-  // error(result, request_address).
-  std::unique_ptr<optolink::OptolinkEngine<SelectedProtocol>> vito_;
+  // error(result, request_address). Built with the component, on iface_
+  // above, which outlives it.
+  optolink::OptolinkEngine<SelectedProtocol> vito_{&this->iface_};
 
   // Set by the first answer of the selected protocol, a NACK or device error
   // frame included.

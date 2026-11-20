@@ -13,7 +13,7 @@
 #include <cstdint>
 #include <cstdio>
 
-#include "optolink/helpers.h"  // optolink_millis()
+#include "optolink_clock.h"
 #include "raw_op.h"
 
 namespace esphome::vitohome {

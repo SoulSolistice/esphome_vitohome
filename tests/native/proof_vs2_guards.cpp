@@ -14,7 +14,7 @@
 //     succeed at the first attempt (upstream needed one extra failed
 //     transaction to self-heal via CS_ERROR). This test crosses
 //     REQUEST_TIMEOUT_MS (4 s) once, deliberately -- as a clock advance rather
-//     than a real wait (see optolink_test_clock_freeze in helpers.h), so it is
+//     than a real wait (see optolink_test_clock_freeze in optolink_clock.h), so it is
 //     exact and costs no wall time.
 //
 // Built for P300 (no protocol flag) by build_and_run_protocols.sh.

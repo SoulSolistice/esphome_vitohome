@@ -961,8 +961,19 @@ These are intentional divergences from upstream `edc059a7`:
     `tests/native/reference/` (7.4 million cases), and the differential
     target, live engines against the reference ones.
 
+43. **The port is a reference, the clock its own header (structural, no wire
+    change).** `SerialInterface`, `GenericInterface<C>` and `helpers.h` are
+    gone. An engine takes its port as a `PortRef` (`optolink_port.h`): a
+    pointer and one static table of functions per port type, built by the
+    same `template<class C>` constructor, so it allocates nothing and cannot
+    fail; item 17's fail-soft path and the destructors go with the
+    allocation. The hub holds its engine as a member instead of on the heap.
+    `optolink_millis()` and the host test clock moved unchanged into
+    `optolink_clock.h`. Proof: the differential target, live engines against
+    the reference ones, which keep the old interface.
+
 Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called), 39 (when its gap is set), 40 and 41 are the only intentional changes to on-wire/runtime
-protocol behavior; items 13-16 and 42 are structural (no behavior change from any call
+protocol behavior; items 13-16, 42 and 43 are structural (no behavior change from any call
 site that exists -- item 16 altered bytes only on a RESPONSE-construction path
 nothing exercised, now removed); item 17 changes only construction-failure handling
 (abort -> fail-soft), not protocol or normal-path behavior; item 20 is a

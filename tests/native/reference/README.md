@@ -13,9 +13,9 @@ two agree, or when it changes the wire on purpose and the fixtures say so.
 Made by `make_reference.py`, with one rule: `esphome::vitohome::optolink`
 becomes `esphome::vitohome::optolink_ref`. The script refuses to run over an
 existing copy. Apart from the namespace, the 18 copied files
-equal the live ones at the branch point. `helpers.h` and `logging.h` are shims
-to the live files, so both sides share one test clock, and `optolink.h`
-includes the engines only. The build files, `datapoint/` and `THIRD_PARTY.md`
+equal the live ones at the branch point. `helpers.h` is a shim to the live clock
+(`optolink_clock.h`), so both sides share one test clock, `logging.h` one to
+the live logging, and `optolink.h` includes the engines only. The build files, `datapoint/` and `THIRD_PARTY.md`
 are not copied.
 
 Compiled only in the native tests. Deleted with `optolink/` in stage 6; the

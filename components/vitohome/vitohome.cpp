@@ -86,21 +86,12 @@ void VitoHomeComponent::setup() {
     return;
   }
 
-  // Engine selected at build time (protocol_select.h). Not std::make_unique:
-  // without exceptions a failed allocation there aborts the firmware, where
-  // this fails soft like the lanes.
-  this->vito_.reset(new (std::nothrow) optolink::OptolinkEngine<SelectedProtocol>(&this->iface_));
-  if (!this->vito_) {
-    ESP_LOGE(TAG, "failed to allocate the protocol engine");
-    this->mark_failed(LOG_STR("engine allocation failed"));
-    return;
-  }
   this->apply_gwg_diagnostics_();
 
   // `address` is the one in the device's response frame on P300, the request's
   // on KW and GWG. The hub knows what is in flight (in_flight_op_,
   // in_flight_); the address only cross-checks it.
-  this->vito_->onResponse([this](const uint8_t *data, uint8_t length, uint16_t address) {
+  this->vito_.onResponse([this](const uint8_t *data, uint8_t length, uint16_t address) {
     this->link_note_alive_();
 #ifdef VITOHOME_PROTOCOL_GWG
     this->gwg_note_all_ff_(data, length);
@@ -109,7 +100,7 @@ void VitoHomeComponent::setup() {
     this->on_response_(ResponseView{data, length, address}, address);
   });
 
-  this->vito_->onError([this](optolink::OptolinkResult error, uint16_t request_address) {
+  this->vito_.onError([this](optolink::OptolinkResult error, uint16_t request_address) {
     // Link health counts silence, not failed operations. NACK and DEVICE_ERROR
     // (a complete, checksum-valid error frame) are answers: they reset the
     // streak and satisfy start-up verification. TIMEOUT advances it. ERROR,
@@ -128,22 +119,22 @@ void VitoHomeComponent::setup() {
         // out for want of an ENQ says anything about the link
         // (GWGEngine::lastTimeoutWasUnsynced()); otherwise a run of silent
         // datapoints would publish a unit that keeps sending ENQs offline.
-        if (this->vito_->lastTimeoutWasUnsynced()) {
+        if (this->vito_.lastTimeoutWasUnsynced()) {
           this->link_note_error_();
-        } else if (this->vito_->lastSendWasEnqPaced()) {
+        } else if (this->vito_.lastSendWasEnqPaced()) {
           // The same two numbers as an answered telegram's `GWG timing:` line,
           // to tell a stale ENQ from a too-early answer to it.
           if (this->gwg_enq_ack_gap_ms_ > 0) {
             ESP_LOGD(TAG,
                      "GWG 0x%04X unanswered: enq age <=%" PRIu32 " ms, enq->send %" PRIu32 " ms, 01->rest %" PRIu32
                      " ms (delay setting %" PRIu32 " ms, gap setting %" PRIu32 " ms)",
-                     request_address, this->vito_->lastEnqAgeMs(), this->vito_->lastEnqToSendMs(),
-                     this->vito_->lastAckGapMs(), this->gwg_enq_send_delay_ms_, this->gwg_enq_ack_gap_ms_);
+                     request_address, this->vito_.lastEnqAgeMs(), this->vito_.lastEnqToSendMs(),
+                     this->vito_.lastAckGapMs(), this->gwg_enq_send_delay_ms_, this->gwg_enq_ack_gap_ms_);
           } else {
             ESP_LOGD(TAG,
                      "GWG 0x%04X unanswered: enq age <=%" PRIu32 " ms, enq->send %" PRIu32 " ms (delay setting %" PRIu32
                      " ms)",
-                     request_address, this->vito_->lastEnqAgeMs(), this->vito_->lastEnqToSendMs(),
+                     request_address, this->vito_.lastEnqAgeMs(), this->vito_.lastEnqToSendMs(),
                      this->gwg_enq_send_delay_ms_);
           }
         }
@@ -168,16 +159,16 @@ void VitoHomeComponent::setup() {
 #ifdef VITOHOME_PROTOCOL_GWG
   // Timing of every answered read (GWGEngine::OnTimingCallback), at DEBUG on
   // the `vitohome` tag.
-  this->vito_->onTiming([this](uint32_t enq_age_ms, uint32_t send_to_response_ms, uint16_t address) {
-    if (this->vito_->lastSendWasEnqPaced() && this->gwg_enq_ack_gap_ms_ > 0) {
+  this->vito_.onTiming([this](uint32_t enq_age_ms, uint32_t send_to_response_ms, uint16_t address) {
+    if (this->vito_.lastSendWasEnqPaced() && this->gwg_enq_ack_gap_ms_ > 0) {
       ESP_LOGD(TAG,
                "GWG timing: 0x%04X enq age <=%" PRIu32 " ms, enq->send %" PRIu32 " ms, 01->rest %" PRIu32
                " ms, send->response %" PRIu32 " ms",
-               address, enq_age_ms, this->vito_->lastEnqToSendMs(), this->vito_->lastAckGapMs(), send_to_response_ms);
-    } else if (this->vito_->lastSendWasEnqPaced()) {
+               address, enq_age_ms, this->vito_.lastEnqToSendMs(), this->vito_.lastAckGapMs(), send_to_response_ms);
+    } else if (this->vito_.lastSendWasEnqPaced()) {
       ESP_LOGD(TAG,
                "GWG timing: 0x%04X enq age <=%" PRIu32 " ms, enq->send %" PRIu32 " ms, send->response %" PRIu32 " ms",
-               address, enq_age_ms, this->vito_->lastEnqToSendMs(), send_to_response_ms);
+               address, enq_age_ms, this->vito_.lastEnqToSendMs(), send_to_response_ms);
     } else {
       ESP_LOGD(TAG, "GWG timing: 0x%04X enq age <=%" PRIu32 " ms (burst), send->response %" PRIu32 " ms", address,
                enq_age_ms, send_to_response_ms);
@@ -187,7 +178,7 @@ void VitoHomeComponent::setup() {
   // A warning: from here on polling gets one datapoint per ENQ interval (749 to
   // 2070 ms on the captures) until reboot, and the engine's own warning is
   // compiled out of normal builds (GWGEngine::OnBurstFallbackCallback).
-  this->vito_->onBurstFallback([this](uint8_t consecutive_failures) {
+  this->vito_.onBurstFallback([this](uint8_t consecutive_failures) {
     this->gwg_burst_disabled_ = true;
     ESP_LOGW(TAG,
              "GWG burst disabled after %u unanswered burst-sent request(s); polling is now one "
@@ -199,7 +190,7 @@ void VitoHomeComponent::setup() {
   // A warning: a TIMEOUT alone does not say whether the device answered late,
   // short or not at all, and the deadline it needs is what
   // set_gwg_response_timeout_ms() sets.
-  this->vito_->onLateAnswer([](const optolink::GWGEngine::LateAnswer &late) {
+  this->vito_.onLateAnswer([](const optolink::GWGEngine::LateAnswer &late) {
     // A silent burst-sent read, retried on the next ENQ: a TIMEOUT follows
     // only if the retry goes unanswered too.
     if (late.retried && late.received == 0 && late.late_count == 0) {
@@ -225,7 +216,7 @@ void VitoHomeComponent::setup() {
   });
 #endif
 
-  if (!this->vito_->begin()) {
+  if (!this->vito_.begin()) {
     ESP_LOGE(TAG, "optolink engine begin() failed");
     this->mark_failed(LOG_STR("optolink engine begin() failed"));
     return;
@@ -271,7 +262,7 @@ void VitoHomeComponent::setup() {
 }
 
 void VitoHomeComponent::loop() {
-  if (this->vito_ == nullptr || this->is_failed())
+  if (this->is_failed())
     return;
 
 #ifdef VITOHOME_RAW_SCRIPT
@@ -279,17 +270,17 @@ void VitoHomeComponent::loop() {
   if (this->raw_script_.active()) {
     this->raw_script_loop_();
   } else {
-    this->vito_->loop();
+    this->vito_.loop();
   }
 #else
-  this->vito_->loop();
+  this->vito_.loop();
 #endif
 
 #ifdef VITOHOME_PROTOCOL_GWG
   // Hold the main loop awake only while a request waits out the ENQ-to-send
   // delay or the gap after the 0x01 (default 0: never). start()/stop() are
   // no-ops when already in state.
-  if (this->vito_->isHoldingEnq()) {
+  if (this->vito_.isHoldingEnq()) {
     this->gwg_hold_loop_.start();
   } else {
     this->gwg_hold_loop_.stop();
@@ -383,13 +374,11 @@ void VitoHomeComponent::loop() {
 
 void VitoHomeComponent::apply_gwg_diagnostics_() {
 #ifdef VITOHOME_PROTOCOL_GWG
-  if (!this->vito_)
-    return;  // setup() applies them once the engine exists
-  this->vito_->setWriteEotBeforePayload(this->gwg_write_eot_before_payload_);
-  this->vito_->setBurstOmitsEnqAck(this->gwg_burst_omits_enq_ack_);
-  this->vito_->setResponseTimeoutMs(this->gwg_response_timeout_ms_);
-  this->vito_->setEnqSendDelayMs(this->gwg_enq_send_delay_ms_);
-  this->vito_->setEnqAckGapMs(this->gwg_enq_ack_gap_ms_);
+  this->vito_.setWriteEotBeforePayload(this->gwg_write_eot_before_payload_);
+  this->vito_.setBurstOmitsEnqAck(this->gwg_burst_omits_enq_ack_);
+  this->vito_.setResponseTimeoutMs(this->gwg_response_timeout_ms_);
+  this->vito_.setEnqSendDelayMs(this->gwg_enq_send_delay_ms_);
+  this->vito_.setEnqAckGapMs(this->gwg_enq_ack_gap_ms_);
 #endif
 }
 
@@ -473,7 +462,7 @@ void VitoHomeComponent::dispatch_next_() {
 
       ESP_LOGV(TAG, "Dispatched identification read 0x%04X len %u", this->ident_dp_.address(),
                this->ident_dp_.length());
-    } else if (!this->vito_->isBusy()) {
+    } else if (!this->vito_.isBusy()) {
       // A permanent refusal (unreachable for these addresses) would spin here
       // with nothing in flight for the watchdog. Treat it as a failed step,
       // as the watchdog would.
@@ -539,7 +528,7 @@ bool VitoHomeComponent::dispatch_write_front_() {
       return true;
     }
     if (!this->send_read_(wdp.address(), wdp.length(), entity->space())) {
-      if (this->vito_->isBusy())
+      if (this->vito_.isBusy())
         return true;  // transient: stays at the head
       ESP_LOGE(TAG, "Engine refused read-before-write for %s (permanent); dropping", entity->get_datapoint().name());
       this->write_queue_.drop_front();
@@ -566,7 +555,7 @@ bool VitoHomeComponent::dispatch_write_front_() {
     // validated config): the write is dropped, so the lane cannot spin, and
     // the entity is told, so one waiting for the answer (VitoClock) does not
     // wait forever.
-    if (this->vito_->isBusy())
+    if (this->vito_.isBusy())
       return true;  // transient: stays at the head
     ESP_LOGE(TAG, "Engine refused write for %s (permanent); dropping", entity->get_datapoint().name());
     this->write_queue_.drop_front();
@@ -605,7 +594,7 @@ void VitoHomeComponent::dispatch_read_front_() {
   if (!this->send_read_(datapoint.address(), datapoint.length(), entity->space(), entity->rpc_prefix(),
                         entity->rpc_prefix_len())) {
     // As in the write lane; a dropped read is scheduled again when next due.
-    if (this->vito_->isBusy())
+    if (this->vito_.isBusy())
       return;  // transient: stays at the head
     ESP_LOGE(TAG, "Engine refused read for %s (permanent); dropping", entity->get_datapoint().name());
     this->read_queue_.drop_front();
@@ -709,7 +698,7 @@ void VitoHomeComponent::schedule_due_entities_() {
 }
 
 void VitoHomeComponent::update() {
-  if (this->vito_ == nullptr || this->is_failed())
+  if (this->is_failed())
     return;
 
 #ifdef VITOHOME_TIME_SYNC
@@ -825,11 +814,11 @@ bool VitoHomeComponent::send_read_(uint16_t address, uint8_t length, AddressSpac
   switch (space) {
 #ifdef VITOHOME_HAS_RPC
     case AddressSpace::RPC:
-      return this->vito_->rpc(address, parameter, parameter_len);
+      return this->vito_.rpc(address, parameter, parameter_len);
 #endif
 #ifdef VITOHOME_HAS_GFA
     case AddressSpace::GFA:
-      return this->vito_->gfaRead(address, length);
+      return this->vito_.gfaRead(address, length);
 #endif
     default:
       break;
@@ -837,9 +826,9 @@ bool VitoHomeComponent::send_read_(uint16_t address, uint8_t length, AddressSpac
   (void) parameter;
   (void) parameter_len;
 #ifdef VITOHOME_PROTOCOL_GWG
-  return this->vito_->read(address, length, gwg_mode(space));
+  return this->vito_.read(address, length, gwg_mode(space));
 #else
-  return this->vito_->read(address, length);
+  return this->vito_.read(address, length);
 #endif
 }
 
@@ -850,16 +839,16 @@ bool VitoHomeComponent::send_write_(uint16_t address, const uint8_t *data, uint8
 #ifdef VITOHOME_HAS_RPC
   // An action button: the procedure call is sent for its effect.
   if (space == AddressSpace::RPC)
-    return this->vito_->rpc(address, parameter, parameter_len);
+    return this->vito_.rpc(address, parameter, parameter_len);
 #endif
   (void) parameter;
   (void) parameter_len;
   if (!space_writable(space))
     return false;
 #ifdef VITOHOME_PROTOCOL_GWG
-  return this->vito_->write(address, data, length, gwg_mode(space));
+  return this->vito_.write(address, data, length, gwg_mode(space));
 #else
-  return this->vito_->write(address, data, length);
+  return this->vito_.write(address, data, length);
 #endif
 }
 
@@ -869,15 +858,15 @@ bool VitoHomeComponent::send_raw_op_(uint16_t address, uint8_t length, RawLayer 
   switch (layer) {
 #if defined(VITOHOME_PROTOCOL_KW)
     case RawLayer::KW:
-      return this->vito_->telegram(code, address, length, payload);
+      return this->vito_.telegram(code, address, length, payload);
 #elif defined(VITOHOME_PROTOCOL_GWG)
     case RawLayer::GWG:
-      return this->vito_->telegram(code, address, length, payload);
+      return this->vito_.telegram(code, address, length, payload);
 #else
     case RawLayer::P300:
-      return this->vito_->request(code, address, length, payload);
+      return this->vito_.request(code, address, length, payload);
     case RawLayer::KW:
-      return this->vito_->kwTelegram(code, address, length, payload);
+      return this->vito_.kwTelegram(code, address, length, payload);
 #endif
     default:
       return false;
@@ -885,7 +874,7 @@ bool VitoHomeComponent::send_raw_op_(uint16_t address, uint8_t length, RawLayer 
 }
 
 bool VitoHomeComponent::send_raw_frame_(const uint8_t *bytes, uint8_t len, uint8_t answer_length) {
-  return this->vito_->frame(bytes, len, answer_length);
+  return this->vito_.frame(bytes, len, answer_length);
 }
 
 // ---------------------------------------------------------------------------

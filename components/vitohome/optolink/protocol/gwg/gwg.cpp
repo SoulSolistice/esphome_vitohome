@@ -15,8 +15,6 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 namespace esphome::vitohome::optolink {
 
-GWGEngine::~GWGEngine() { delete _interface; }
-
 void GWGEngine::onResponse(OnResponseCallback callback) { _onResponseCallback = std::move(callback); }
 void GWGEngine::onError(OnErrorCallback callback) { _onErrorCallback = std::move(callback); }
 void GWGEngine::onTiming(OnTimingCallback callback) { _onTimingCallback = std::move(callback); }
@@ -162,8 +160,6 @@ bool GWGEngine::frame(const uint8_t *bytes, uint8_t length, uint8_t answerLength
 }
 
 bool GWGEngine::begin() {
-  if (_interface == nullptr)
-    return false;
   // A request submitted before the next loop() takes its watchdog from now.
   _currentMillis = optolink_millis();
   // A restart (the hub's, after a raw script had the port) knows nothing of
@@ -172,7 +168,7 @@ bool GWGEngine::begin() {
   _syncValid = false;
   _closeLateWatch();
   _setState(State::INIT);
-  return _interface->begin();
+  return _port.begin();
 }
 
 void GWGEngine::loop() {
@@ -216,7 +212,7 @@ void GWGEngine::loop() {
 }
 
 void GWGEngine::end() {
-  _interface->end();
+  _port.end();
   _setState(State::UNDEFINED);
   _busy = false;
 }
@@ -243,8 +239,8 @@ void GWGEngine::_setState(State state) {
 }
 
 void GWGEngine::_init() {
-  if (_interface->available()) {
-    const uint8_t byte = _interface->read();
+  if (_port.available()) {
+    const uint8_t byte = _port.read();
     if (byte == internals::ProtocolBytes.ENQ && _busy) {
       // The next telegram goes out on this ENQ; anything arriving from here on
       // belongs to it, not to the late-answer report.
@@ -319,7 +315,7 @@ void GWGEngine::_init() {
     // (SEND 04; WAIT 05) and the VS1 EOT fallback. The default build discards
     // this branch, so passive-wait behaviour is unchanged.
     if (_busy && (_currentMillis - _lastMillis) > ENQ_POKE_INTERVAL_MS) {
-      _interface->write(&internals::ProtocolBytes.EOT, 1);
+      _port.write(&internals::ProtocolBytes.EOT, 1);
       _lastMillis = _currentMillis;
     }
   }
@@ -331,8 +327,8 @@ void GWGEngine::_init() {
 // hold its ENQ; anything that does arrive is not the answer to this request,
 // so it is dropped here rather than read as one in RECEIVE.
 void GWGEngine::_hold() {
-  while (_interface->available())
-    _interface->read();
+  while (_port.available())
+    _port.read();
   if (optolink_millis() - _enqSeenMillis < _enqSendDelayMs)
     return;
   _setState(State::SEND);
@@ -342,8 +338,8 @@ void GWGEngine::_hold() {
 // Gap after the 0x01 (setEnqAckGapMs()). Like _hold(): a fresh
 // optolink_millis(), and bytes arriving meanwhile are not the answer.
 void GWGEngine::_ackGap() {
-  while (_interface->available())
-    _interface->read();
+  while (_port.available())
+    _port.read();
   const uint32_t elapsed = optolink_millis() - _ackSentMillis;
   if (elapsed < _enqAckGapMs)
     return;
@@ -359,8 +355,8 @@ void GWGEngine::_send() {
                         _currentRequest.bytes[0] == internals::ProtocolBytes.ENQ_ACK;
   // Taken before the write, which may log after handing the bytes over.
   const uint32_t writeMillis = optolink_millis();
-  _bytesTransferred += _interface->write(&_currentRequest.bytes[_bytesTransferred],
-                                         ackAlone ? 1 : _currentRequest.length - _bytesTransferred);
+  _bytesTransferred +=
+      _port.write(&_currentRequest.bytes[_bytesTransferred], ackAlone ? 1 : _currentRequest.length - _bytesTransferred);
   if (_stampEnqToSend) {
     _stampEnqToSend = false;
     _enqToSendMillis = writeMillis - _enqSeenMillis;
@@ -415,8 +411,8 @@ void GWGEngine::_receive() {
     // _init() as a fresh sync byte and burn the next request on a window that
     // has already closed. The late-answer report keeps a copy first.
     _openLateWatch(retry);
-    while (_interface->available())
-      _noteLateByte(_interface->read());
+    while (_port.available())
+      _noteLateByte(_port.read());
     _bytesTransferred = 0;
     // Out of sync: we no longer know where the device's ENQ cadence is, so the
     // next request waits for a real one rather than riding a stale window.
@@ -438,8 +434,8 @@ void GWGEngine::_receive() {
   // A per-address read's answer lands after the value bytes already collected
   // (gwgCellLength()); every other read starts at 0.
   const std::size_t base = _perAddress ? _runIndex : 0;
-  while (_interface->available()) {
-    const uint8_t byte = _interface->read();
+  while (_port.available()) {
+    const uint8_t byte = _port.read();
     // Never index past the buffer: a device that keeps talking past the
     // expected count simply fails the length match below and times out.
     if (base + _bytesTransferred < kResponseBufferSize)

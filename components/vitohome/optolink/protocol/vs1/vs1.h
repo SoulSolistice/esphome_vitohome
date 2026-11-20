@@ -23,8 +23,8 @@ THIRD_PARTY.md), so the wrapper mark_failed()s instead of the firmware aborting.
 #include <functional>
 
 #include "../../constants.h"
-#include "../../helpers.h"
-#include "../../interface/generic_interface.h"
+#include "optolink_clock.h"
+#include "optolink_port.h"
 #include "../../logging.h"
 #include "optolink_codec_kw.h"
 
@@ -95,6 +95,7 @@ class VS1Engine {
   // The longest answer: a read of MAX_PAYLOAD bytes.
   static constexpr std::size_t kResponseBufferSize = MAX_PAYLOAD;
 
+  // The port must outlive the engine (optolink_port.h).
   template<class C>
   explicit VS1Engine(C *interface)
       : _state(State::UNDEFINED),
@@ -102,27 +103,14 @@ class VS1Engine {
         _lastMillis(_currentMillis),
         _requestTime(0),
         _bytesTransferred(0),
-        _interface(nullptr),
+        _port(interface),
         _currentAddress(0),
         _currentLength(0),
         _busy(false),
         _currentRequest(),
         _responseBuffer{},
         _onResponseCallback(nullptr),
-        _onErrorCallback(nullptr) {
-    assert(interface != nullptr);
-    _interface = new (std::nothrow) internals::GenericInterface<C>(interface);
-    if (!_interface) {
-      // Fail soft on allocation failure: leave _interface null and let the
-      // object be constructed in a failed state. begin() then returns false and
-      // the ESPHome wrapper mark_failed()s the component (see
-      // VitoHomeComponent::setup), rather than abort()ing the whole firmware on
-      // a transient OOM. The vendored engine has no ESPHome dependency, so it
-      // signals failure through begin()'s return value, not mark_failed().
-      optolink_log_e("Could not create serial interface");
-    }
-  }
-  ~VS1Engine();
+        _onErrorCallback(nullptr) {}
   VS1Engine(const VS1Engine &) = delete;
   VS1Engine &operator=(const VS1Engine &) = delete;
 
@@ -163,7 +151,7 @@ class VS1Engine {
   uint32_t _lastMillis;
   uint32_t _requestTime;
   uint8_t _bytesTransferred;
-  internals::SerialInterface *_interface;
+  PortRef _port;
   uint16_t _currentAddress;
   uint8_t _currentLength;
   bool _busy;
