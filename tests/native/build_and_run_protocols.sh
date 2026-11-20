@@ -94,6 +94,11 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OP
   proof_sim_traces.cpp -o proof_sim_traces
 ./proof_sim_traces
 
+echo "== simulator sessions: fuzz corpus (deterministic replay; fuzz.sh sim_session) =="
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
+  fuzz_sim_session.cpp "${SRCS[@]}" -o fuzz_sim_session
+./fuzz_sim_session
+
 echo "== differential: live engines against the reference copy (fuzz_diff_engines.cpp) =="
 # Each session harness twice, once per side; the reference engines are the
 # frozen copy in reference/ (README.md there).
@@ -109,7 +114,7 @@ REF_SRCS=(
   "$REF/protocol/gwg/packet_gwg.cpp"
 )
 DIFF_OBJS=()
-for h in kw_session gwg_session raw_engines; do
+for h in kw_session gwg_session raw_engines sim_session; do
   g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
     -DVITOHOME_DIFF_SIDE="diff_${h}_live" -c "fuzz_${h}.cpp" -o "diff_${h}_live.o"
   g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \

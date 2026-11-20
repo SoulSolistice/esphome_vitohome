@@ -6,9 +6,10 @@
 //
 // INPUT LAYOUT
 //
-//   [0] harness   bits 0-6 % 3: 0 fuzz_kw_session.cpp, 1 fuzz_gwg_session.cpp,
-//                 2 fuzz_raw_engines.cpp; bit 7: the script's time steps are
-//                 1 ms instead of 10 ms
+//   [0] harness   bits 0-6 % 4: 0 fuzz_kw_session.cpp, 1 fuzz_gwg_session.cpp,
+//                 2 fuzz_raw_engines.cpp, 3 fuzz_sim_session.cpp; bit 7: the
+//                 script's time steps are 1 ms instead of 10 ms (the
+//                 simulator session has no script and ignores it)
 //   then          that harness's input, as its corpus header describes it
 //
 // ORACLES:
@@ -18,8 +19,8 @@
 //   (2) no harness oracle fails on either side.
 //
 // Each harness is compiled twice with -DVITOHOME_DIFF_SIDE (diff_hooks.h);
-// see build_and_run_protocols.sh. The replay build walks all three corpora,
-// each seed in 10 ms and in 1 ms steps, so a timing difference under one
+// see build_and_run_protocols.sh. The replay build walks the four corpora,
+// each scripted seed in 10 ms and in 1 ms steps, so a timing difference under one
 // step of the seeds still shows; the libFuzzer build (-DVITOHOME_FUZZ_LIBFUZZER) aborts on the first
 // divergence.
 
@@ -34,6 +35,7 @@
 #include "fuzz_corpus_gwg_session.h"
 #include "fuzz_corpus_kw_session.h"
 #include "fuzz_corpus_raw_engines.h"
+#include "fuzz_corpus_sim_session.h"
 #include "optolink/helpers.h"
 
 extern "C" int diff_kw_session_live(const uint8_t *data, std::size_t size);
@@ -42,6 +44,8 @@ extern "C" int diff_gwg_session_live(const uint8_t *data, std::size_t size);
 extern "C" int diff_gwg_session_ref(const uint8_t *data, std::size_t size);
 extern "C" int diff_raw_engines_live(const uint8_t *data, std::size_t size);
 extern "C" int diff_raw_engines_ref(const uint8_t *data, std::size_t size);
+extern "C" int diff_sim_session_live(const uint8_t *data, std::size_t size);
+extern "C" int diff_sim_session_ref(const uint8_t *data, std::size_t size);
 
 namespace {
 
@@ -53,10 +57,11 @@ struct Harness {
   Entry live;
   Entry ref;
 };
-constexpr Harness kHarnesses[3] = {
+constexpr Harness kHarnesses[4] = {
     {"kw session", diff_kw_session_live, diff_kw_session_ref},
     {"gwg session", diff_gwg_session_live, diff_gwg_session_ref},
     {"raw engines", diff_raw_engines_live, diff_raw_engines_ref},
+    {"sim session", diff_sim_session_live, diff_sim_session_ref},
 };
 
 // Where both sides start their clock. Not 0: the engines' timers start at 0,
@@ -136,7 +141,7 @@ std::string compare(const Trace &ref, const Trace &live) {
 std::string check(const uint8_t *data, std::size_t size) {
   if (size < 1)
     return {};
-  const Harness &h = kHarnesses[(data[0] & 0x7F) % 3];
+  const Harness &h = kHarnesses[(data[0] & 0x7F) % 4];
   diff_step_ms = (data[0] & 0x80) ? 1 : 10;
   Trace ref;
   Trace live;
@@ -231,6 +236,11 @@ int main(int argc, char **argv) {
     replay(kGwgSessionSeeds[i].name, 1, kGwgSessionSeeds[i].bytes, kGwgSessionSeeds[i].len);
   for (std::size_t i = 0; i < kRawEngineSeedCount; ++i)
     replay(kRawEngineSeeds[i].name, 2, kRawEngineSeeds[i].bytes, kRawEngineSeeds[i].len);
+  for (std::size_t i = 0; i < kSimSessionSeedCount; ++i) {
+    std::vector<uint8_t> input(1, 3);
+    input.insert(input.end(), kSimSessionSeeds[i].bytes, kSimSessionSeeds[i].bytes + kSimSessionSeeds[i].len);
+    replay_one(kSimSessionSeeds[i].name, input.data(), input.size());
+  }
   for (std::size_t i = 0; i < kDiffSeedCount; ++i)
     replay_one(kDiffSeeds[i].name, kDiffSeeds[i].bytes, kDiffSeeds[i].len);
   // Further inputs, each already led by its harness byte.

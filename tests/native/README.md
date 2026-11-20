@@ -107,8 +107,9 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
   (`sim_vitotronic.h`) and a GWG controller (`sim_gwg.h`) on a shared port
   (`sim_port.h`). `proof_sim.cpp` runs each engine against its simulator,
   quirks included; `proof_sim_traces.cpp` replays real frame logs
-  (`sim/trace_*.h`, from `sim/import_frames.py`) against the simulators.
-  See "Device simulators" below.
+  (`sim/trace_*.h`, from `sim/import_frames.py`) against the simulators;
+  `fuzz_sim_session.cpp` fuzzes operations and quirks against them. See
+  "Device simulators" below.
 - `fuzz.sh` — campaign driver (clang/libFuzzer), one target or all of them
   in turn. Not a gate, not run by CI.
 - `build_and_run_wsl.sh` — Windows-only convenience wrapper. Mirrors the two
@@ -302,8 +303,11 @@ kw session: record 10 (after 9 pass(es)): reference: pass, wrote 0 byte(s); live
 The seeds sample time coarsely: after the script, the harnesses move in
 100 ms steps. A change of a few ms shows only where a seed puts a step on
 that boundary (`diff_kw_gfa_gap_edge` catches `GFA_GAP_MS` 25 → 26) or where a
-campaign finds one. `fuzz.sh diff_engines` runs one, seeded with all four
+campaign finds one. `fuzz.sh diff_engines` runs one, seeded with all five
 corpora.
+
+`fuzz_sim_session.cpp` is the fourth harness: there both sides face a device
+simulator built from the same input.
 
 ### Device simulators
 
@@ -337,6 +341,11 @@ python sim/import_frames.py LOG NAME --source "what the log is" [--start 04] [--
 ```
 
 It keeps bytes and times only. Add a replay for it in `proof_sim_traces.cpp`.
+
+`fuzz_sim_session.cpp` drives up to six operations against a simulator whose
+quirks come from the input. Without quirks every operation must succeed and
+every read return what the device's memory holds, a check the scripted
+harnesses cannot make.
 
 **Running a campaign.**
 

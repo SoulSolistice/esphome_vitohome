@@ -1,0 +1,93 @@
+#pragma once
+#include <cstddef>
+#include <cstdint>
+
+// Seed corpus for the simulator session target (fuzz_sim_session.cpp), in
+// that file's input layout: protocol, quirks, delay, window, dead, the
+// operation count, four bytes per operation.
+
+// KW: the ident, a chained read, a GFA read
+inline constexpr uint8_t kSSeed_kw_reads[] = {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0xF8, 0x03, 0x00, 0x55, 0x25, 0x01, 0x02, 0x40, 0x50, 0x00,
+};
+
+// KW: a write, read back
+inline constexpr uint8_t kSSeed_kw_write_read[] = {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x23, 0x06, 0x01, 0x00, 0x23, 0x06, 0x01,
+};
+
+// P300: a read, a procedure call, a read over the KW detour, a read
+inline constexpr uint8_t kSSeed_p300_mixed[] = {
+    0x01, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0xF8, 0x03, 0x02,
+    0x0B, 0x00, 0x01, 0x03, 0x55, 0x25, 0x01, 0x00, 0x08, 0x02, 0x01,
+};
+
+// P300: a write, read back after 200 ms
+inline constexpr uint8_t kSSeed_p300_write_read[] = {
+    0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x23, 0x06, 0x00, 0xE0, 0x23, 0x06, 0x00,
+};
+
+// GWG: two reads in a burst, an EEPROM run, a write
+inline constexpr uint8_t kSSeed_gwg_mixed[] = {
+    0x02, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x05, 0x01, 0x00,
+    0x00, 0x06, 0x00, 0x02, 0x00, 0x15, 0x02, 0x01, 0x00, 0x30, 0x00,
+};
+
+// KW: a device that refuses chained telegrams
+inline constexpr uint8_t kSSeed_kw_refuse_chain[] = {
+    0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0xF8, 0x03, 0x00, 0x55, 0x25, 0x01, 0x00, 0x08, 0x02, 0x01,
+};
+
+// P300: the device swallows its 06
+inline constexpr uint8_t kSSeed_p300_swallow_ack[] = {
+    0x01, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0xF8, 0x03, 0x00, 0x08, 0x02, 0x01,
+};
+
+// P300: one extra byte after every answer
+inline constexpr uint8_t kSSeed_p300_extra_byte[] = {
+    0x01, 0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0xF8, 0x03, 0x00, 0x08, 0x02, 0x01,
+};
+
+// GWG: answers 320 ms late, past the deadline
+inline constexpr uint8_t kSSeed_gwg_late[] = {
+    0x02, 0x00, 0x50, 0x00, 0x00, 0x01, 0x00, 0x00, 0x05, 0x01, 0x00, 0x00, 0x06, 0x00,
+};
+
+// GWG: every second telegram ignored, as #35's unit did one in six
+inline constexpr uint8_t kSSeed_gwg_ignores[] = {
+    0x02, 0x10, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x05, 0x01, 0x00,
+    0x00, 0x06, 0x00, 0x02, 0x00, 0x15, 0x01, 0x00, 0x00, 0x20, 0x02,
+};
+
+// GWG: a 10 ms ENQ window and a read 32 ms after the last answer
+inline constexpr uint8_t kSSeed_gwg_window[] = {
+    0x02, 0x00, 0x00, 0x05, 0x00, 0x01, 0x00, 0x00, 0x05, 0x01, 0x90, 0x00, 0x06, 0x00,
+};
+
+// KW: dead for 4 s at the start, past the EOT interval
+inline constexpr uint8_t kSSeed_kw_dead[] = {
+    0x00, 0x00, 0x00, 0x00, 0x64, 0x00, 0x00, 0x00, 0xF8, 0x03,
+};
+
+struct SimSessionSeed {
+  const char *name;
+  const uint8_t *bytes;
+  std::size_t len;
+};
+
+inline constexpr SimSessionSeed kSimSessionSeeds[] = {
+    {"kw_reads", kSSeed_kw_reads, sizeof(kSSeed_kw_reads)},
+    {"kw_write_read", kSSeed_kw_write_read, sizeof(kSSeed_kw_write_read)},
+    {"p300_mixed", kSSeed_p300_mixed, sizeof(kSSeed_p300_mixed)},
+    {"p300_write_read", kSSeed_p300_write_read, sizeof(kSSeed_p300_write_read)},
+    {"gwg_mixed", kSSeed_gwg_mixed, sizeof(kSSeed_gwg_mixed)},
+    {"kw_refuse_chain", kSSeed_kw_refuse_chain, sizeof(kSSeed_kw_refuse_chain)},
+    {"p300_swallow_ack", kSSeed_p300_swallow_ack, sizeof(kSSeed_p300_swallow_ack)},
+    {"p300_extra_byte", kSSeed_p300_extra_byte, sizeof(kSSeed_p300_extra_byte)},
+    {"gwg_late", kSSeed_gwg_late, sizeof(kSSeed_gwg_late)},
+    {"gwg_ignores", kSSeed_gwg_ignores, sizeof(kSSeed_gwg_ignores)},
+    {"gwg_window", kSSeed_gwg_window, sizeof(kSSeed_gwg_window)},
+    {"kw_dead", kSSeed_kw_dead, sizeof(kSSeed_kw_dead)},
+};
+
+inline constexpr std::size_t kSimSessionSeedCount = sizeof(kSimSessionSeeds) / sizeof(kSimSessionSeeds[0]);
