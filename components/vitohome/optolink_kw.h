@@ -5,8 +5,10 @@
 // The KW stack: the KW codec on an ENQ-paced link, in an exchange.
 //
 //   ENQ hold         50 ms: the master answers inside the device's sync window
-//   chain window     1.5 s after an answer (vogod's figure; the device's next
-//                    ENQ comes 2.97 s after it on a VScotHO1_72)
+//   chain window     500 ms after an answer: a VScotHO1_72 answers a chained
+//                    telegram up to 0.91 s after its answer and ignores one
+//                    from 0.95 s (2026-11-20); later work waits for the ENQ,
+//                    2.97 s after the answer
 //   answer deadline  1 s of silence while an answer is due
 //   EOT              after 4 s without an ENQ, past that 2.97 s
 //   watchdog         4 s per request, from submit or an open frame's send
@@ -19,7 +21,7 @@
 
 namespace esphome::vitohome::optolink {
 
-inline constexpr EnqLinkParams KW_LINK_PARAMS{50, 1500, 1000, 4000};
+inline constexpr EnqLinkParams KW_LINK_PARAMS{50, 500, 1000, 4000};
 inline constexpr uint32_t KW_WATCHDOG_MS = 4000;
 
 template<class Port> class KwExchange : public Exchange<KwCodec, EnqLink<Port>> {

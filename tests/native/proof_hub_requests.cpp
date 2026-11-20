@@ -187,6 +187,13 @@ template<class Old> struct Twin {
     holds_agree = holds_agree && holding == engine.wants_fast_loop() && old_engine.isBusy() == engine.busy();
     optolink::optolink_test_clock_advance(1);
   }
+  // The port held by a timed frame: time passes, neither engine is looped,
+  // then both restart.
+  void park(uint32_t ms) {
+    optolink::optolink_test_clock_advance(ms);
+    old_engine.begin();
+    engine.begin();
+  }
   void step(const Bytes &feed, int passes) {
     old_port.feed(feed);
     new_port.feed(feed);
@@ -393,6 +400,19 @@ void gwg_cases() {
           "a gap after the 01: held, the gap measured");
   }
   {
+    // A read right after a restart: its watchdog runs from the restart.
+    GwgTwin t;
+    t.step({}, 8);
+    t.park(2500);
+    const bool alike = gwg_read(t, AddressSpace::OWN, 0x55, 1, {});
+    for (int i = 0; i < 25; ++i)
+      t.step({}, 40);
+    t.step({0x05}, 40);
+    t.step({0x42}, 40);
+    t.settle();
+    check(alike && t.ended({kOk}), "after a 2.5 s park: no early TIMEOUT, answered on the ENQ");
+  }
+  {
     // A read's timing is its own: the write after it reports none.
     GwgTwin t;
     const bool read_alike = gwg_read(t, AddressSpace::OWN, 0x55, 1, {{0x05}, {0x42}});
@@ -565,6 +585,24 @@ void p300_cases() {
   r = optolink::make_frame(frame, sizeof(frame), 1);
   p300_case("open frame", {kOk}, true, r, [&frame](optolink::VS2Engine &e) { return e.frame(frame, sizeof(frame), 1); },
             {{0x06}});
+
+  {
+    // A read right after a restart: its watchdog runs from the restart.
+    P300Twin t;
+    t.step({}, 8);
+    t.park(3500);
+    const bool b2 = read_request(AddressSpace::OWN, 0x00F8, 2, nullptr, 0, r);
+    const bool old_ok = t.old_engine.read(0x00F8, 2);
+    const bool new_ok = b2 && t.engine.submit(r);
+    for (int i = 0; i < 8; ++i)
+      t.step({}, 100);  // 800 ms before the device's ENQ
+    t.step({0x05}, 8);
+    t.step({0x06}, 8);
+    t.step({}, 8);
+    t.step(acked(p300({0x07, 0x01, 0x01, 0x00, 0xF8, 0x02, 0x20, 0xCB})), 8);
+    t.settle();
+    check(old_ok && new_ok && t.ended({kOk}), "after a 3.5 s park: no early TIMEOUT, answered");
+  }
 
   P300Twin t;
   check(!t.engine.submit(optolink::make_request(optolink::Lane::GWG, 0xCB, 0x55, 1, nullptr)),

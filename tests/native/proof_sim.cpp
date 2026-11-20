@@ -133,6 +133,26 @@ void kw() {
     check(o.responses == 7 && bytes_are(o.data, {0x24}), "K4: a GFA read answers from the burner control");
   }
   {
+    // The device takes a chained telegram for chain_listen_ms after its
+    // answer. A read due 1 s after an answer, past the link's chain window,
+    // waits for the ENQ instead of going out unheard.
+    const sim::VitotronicConfig c = kw_only();
+    check(optolink::KW_LINK_PARAMS.chain_window_ms < c.chain_listen_ms,
+          "K9: the chain window ends before the device stops listening");
+    sim::SimVitotronic dev(c);
+    optolink::KwExchange<sim::SimVitotronic> e(&dev);
+    Outcome o;
+    wire(e, o);
+    kw_calls::read(e, 0x00F8, 4);
+    finish(e, o, 5000);
+    const uint32_t enqs = dev.enq_count();
+    idle(e, 1000);
+    kw_calls::read(e, 0x5525, 2);
+    finish(e, o, 5000);
+    check(o.responses == 2 && o.errors == 0 && dev.enq_count() == enqs + 1,
+          "K9: a read 1 s after an answer goes out on the next ENQ and is answered");
+  }
+  {
     sim::VitotronicConfig c = kw_only();
     c.quirks.refuse_chain = true;
     sim::SimVitotronic dev(c);

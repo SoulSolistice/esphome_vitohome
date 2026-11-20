@@ -35,7 +35,13 @@ template<class Codec, class Link> class Exchange {
 
   void on_result(ResultCallback callback) { on_result_ = std::move(callback); }
 
-  bool begin() { return link_.begin(); }
+  // A restart takes the clock afresh: the exchange may not have been looped
+  // for a while (a timed frame held the port), and a request submitted before
+  // the next pass would take its watchdog from the old time.
+  bool begin() {
+    now_ = optolink_millis();
+    return link_.begin();
+  }
   void end() {
     link_.end();
     link_.release();

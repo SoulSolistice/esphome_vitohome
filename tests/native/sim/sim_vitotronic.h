@@ -54,6 +54,9 @@ struct VitotronicConfig {
   uint32_t p300_ack_ms = 13;
   // The pause inside an error frame, after its 41 LL: 124 and 126.
   uint32_t p300_error_gap_ms = 125;
+  // An answer -> the last moment a chained telegram is taken (VScotHO1_72:
+  // answered at 911 ms, ignored from 954 ms).
+  uint32_t chain_listen_ms = 930;
   // A pause inside a KW telegram that abandons it.
   uint32_t kw_byte_timeout_ms = 1000;
   // The 41 -> the rest (VScotHO1_72: 200 ms answered, 255 ms NACKed).
@@ -151,6 +154,8 @@ class SimVitotronic : public SimPort {
       kw_ = Kw::IDLE;
     if (kw_ == Kw::ENQ_OPEN && now - enq_at_ > q_.enq_window_ms)
       kw_ = Kw::IDLE;
+    if (kw_ == Kw::CHAIN && static_cast<int32_t>(now - chain_until_) > 0)
+      kw_ = Kw::IDLE;
     last_rx_ms_ = now;
     switch (kw_) {
       case Kw::IDLE:
@@ -226,6 +231,7 @@ class SimVitotronic : public SimPort {
     }
     const uint32_t end = this->send_answer(answer.data(), answer.size(), now);
     kw_ = Kw::CHAIN;
+    chain_until_ = end + c_.chain_listen_ms;
     next_enq_at_ = end + c_.post_answer_enq_ms;
   }
 
@@ -371,6 +377,7 @@ class SimVitotronic : public SimPort {
   P3 p3_ = P3::IDLE;
   uint32_t next_enq_at_;
   uint32_t enq_at_ = 0;
+  uint32_t chain_until_ = 0;
   uint32_t last_rx_ms_ = 0;
   uint32_t last_p300_ms_ = 0;
   uint32_t frame_start_ms_ = 0;

@@ -16,7 +16,10 @@
 //   (5) a byte arriving between the answer and the next request ends the
 //       chain, so the request does not go out with that byte buffered where
 //       it would be read as the answer;
-//   (6) begin() restarts the wait for an ENQ, so no EOT goes out at once.
+//   (6) begin() restarts the wait for an ENQ, so no EOT goes out at once;
+//   (7) begin() restarts the clock too: a request submitted right after a
+//       restart, before the next pass, takes its watchdog from then, not from
+//       the last pass before a timed frame held the port.
 //
 // Time is injected (optolink_test_clock_freeze in optolink_clock.h), so the
 // 200 ms pause of (3) is pinned on both sides: past the ENQ hold and inside
@@ -148,6 +151,28 @@ int main() {
   optolink::optolink_test_clock_advance(kParams.eot_interval_ms + 1);
   pump(kw);
   check(uart.written() == std::vector<uint8_t>{0x04}, "  the EOT once no ENQ came for the EOT interval");
+
+  // --- (7) begin() restarts the clock ------------------------------------
+  // The stress test (2026-11-20): a 2.5 s timed frame, then the next read
+  // timed out before the device's ENQ, 3 s after the frame's answer.
+  uart.clear_written();
+  const int errors_before = g_errors;
+  const int responses_before = g_responses;
+  optolink::optolink_test_clock_advance(2500);  // the port held, no pass
+  kw.begin();
+  check(kw_calls::read(kw, 0x00F8, 1), "read accepted right after begin()");
+  for (int i = 0; i < 30; ++i) {
+    kw.loop();
+    optolink::optolink_test_clock_advance(100);
+  }
+  check(g_errors == errors_before, "  no watchdog TIMEOUT 3 s after the restart");
+  uart.clear_written();
+  uart.feed({0x05});
+  pump(kw);
+  check(uart.written() == std::vector<uint8_t>({0x01, 0xF7, 0x00, 0xF8, 0x01}), "  sent on the device's ENQ");
+  uart.feed({0x20});
+  pump(kw);
+  check(g_responses == responses_before + 1 && g_errors == errors_before, "  and answered");
 
   std::printf("kw chaining: %d failure(s)\n", failures);
   return failures == 0 ? 0 : 1;
