@@ -201,6 +201,11 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTO
   proof_kw_chain.cpp "${SRCS[@]}" -o kw_chain
 ./kw_chain
 
+echo "== KW link timing: same pass, retry after silence =="
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" -I"$OPTO" \
+  proof_kw_timing.cpp "${SRCS[@]}" -o kw_timing
+./kw_timing
+
 echo "== KW write-ack completion (THIRD_PARTY.md #11) =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" -I"$OPTO" \
   proof_kw_write.cpp "${SRCS[@]}" -o kw_write

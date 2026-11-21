@@ -61,9 +61,13 @@ namespace optolink = esphome::vitohome::optolink;
 #endif
 #include "kw_calls.h"
 
-// KW: the KW stack on the live side, VS1Engine on the reference side.
+// KW: the KW stack on the live side, VS1Engine on the reference side; in
+// the differential target the live side keeps VS1Engine's timing
+// (kw_calls::kVs1Timing).
 #ifdef VITOHOME_DIFF_REF
 template<class Port> using KwEngine = optolink::VS1Engine;
+#elif defined(VITOHOME_DIFF_SIDE)
+template<class Port> using KwEngine = optolink::KwExchange<Port, kw_calls::kVs1Timing>;
 #else
 template<class Port> using KwEngine = optolink::KwExchange<Port>;
 #endif

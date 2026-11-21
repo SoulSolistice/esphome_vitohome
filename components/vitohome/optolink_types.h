@@ -133,6 +133,8 @@ struct Result {
   bool never_sent;
   // A GWG EEPROM cell answered FF FF (not in use), delivered as FF.
   bool unserved_eeprom;
+  // How often the telegram went out again after silence (KW).
+  uint8_t retries;
   Timing timing;
 };
 

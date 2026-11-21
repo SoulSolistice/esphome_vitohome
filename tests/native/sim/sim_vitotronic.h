@@ -214,7 +214,11 @@ class SimVitotronic : public SimPort {
     if (type == KW_WRITE && telegram_.size() < 4u + length)
       return;
     if (this->ignore_this()) {
+      // Silence, then the next ENQ as after an answer: a VScotHO1_72 left 17
+      // of 6066 telegrams unanswered and sent its next ENQ 2.97 s after each
+      // (2026-11-21).
       kw_ = Kw::IDLE;
+      next_enq_at_ = now + c_.post_answer_enq_ms;
       return;
     }
     std::vector<uint8_t> answer;

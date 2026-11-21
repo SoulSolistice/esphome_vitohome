@@ -161,14 +161,11 @@ void kw() {
     wire(e, o);
     kw_calls::read(e, 0x00F8, 4);
     finish(e, o, 5000);
-    // The KW link has no fallback for a refused chain, unlike GWG's burst: the
-    // chained read times out, and the read after it waits for an ENQ.
+    // The chained read meets silence and goes out again on the next ENQ.
     kw_calls::read(e, 0x5525, 2);
     finish(e, o, 10000);
-    check(o.errors == 1 && o.error == OptolinkResult::TIMEOUT, "K5: refuse_chain: a chained read times out");
-    kw_calls::read(e, 0x5525, 2);
-    finish(e, o, 10000);
-    check(o.responses == 2 && dev.enq_count() == 2, "K5:   the next read goes out on the next ENQ");
+    check(o.responses == 2 && o.errors == 0 && dev.enq_count() == 2,
+          "K5: refuse_chain: the chained read is answered on the next ENQ");
   }
   {
     sim::VitotronicConfig c = kw_only();
@@ -184,7 +181,9 @@ void kw() {
   }
   {
     // #35's finding B as a model: the 01 must follow the ENQ within 5 ms, and
-    // a loop of 10 ms reads the ENQ too late.
+    // a stalled loop reads the ENQ 7 ms late. The device ignores the 01, takes
+    // the telegram's length byte 04 for an EOT and offers its next ENQ during
+    // the answer wait; the retry goes out on the ENQ after it, read at once.
     sim::VitotronicConfig c = kw_only();
     c.quirks.enq_window_ms = 5;
     sim::SimVitotronic dev(c);
@@ -193,9 +192,9 @@ void kw() {
     wire(e, o);
     kw_calls::read(e, 0x00F8, 4);
     optolink::optolink_test_clock_advance(c.enq_first_ms + 7);
-    finish(e, o, 3000);
-    check(o.errors == 1 && o.error == OptolinkResult::TIMEOUT && dev.answered() == 0,
-          "K7: enq_window_ms: a 01 sent 7 ms after the ENQ is ignored");
+    finish(e, o, 8000);
+    check(o.responses == 1 && o.errors == 0 && dev.answered() == 1,
+          "K7: enq_window_ms: a 01 sent 7 ms late is ignored, the retry is answered");
   }
   {
     // A dead phase longer than the link's EOT interval: it sends an EOT and
@@ -214,6 +213,39 @@ void kw() {
     kw_calls::read(e, 0x00F8, 4);
     finish(e, o, 5000);
     check(o.responses == 1 && bytes_are(o.data, {0x20, 0xCB, 0x03, 0x51}), "K8:   once the device is back it answers");
+  }
+}
+
+// The device leaves a telegram unanswered (ignore_next_telegram): the link
+// sends it once more on the next ENQ, and reports how often it did.
+void kw_ignored() {
+  std::printf("-- K: KW, ignored telegrams --\n");
+  for (int ignored = 1; ignored <= 2; ++ignored) {
+    sim::SimVitotronic dev(kw_only());
+    optolink::KwExchange<sim::SimVitotronic> e(&dev);
+    int responses = 0;
+    int errors = 0;
+    uint8_t retries = 0;
+    e.on_result([&](const optolink::Result &r) {
+      ++(r.status == OptolinkResult::OK ? responses : errors);
+      retries = r.retries;
+    });
+    e.begin();
+    kw_calls::read(e, 0x00F8, 4);
+    idle(e, 2000);
+    dev.ignore_next_telegram();
+    kw_calls::read(e, 0x5525, 2);
+    // The read goes out on the ENQ about 1.5 s from here and is ignored; its
+    // retry waits for the next ENQ, about 3 s after it.
+    idle(e, 3000);
+    if (ignored == 2)
+      dev.ignore_next_telegram();
+    idle(e, 6000);
+    if (ignored == 1) {
+      check(responses == 2 && errors == 0 && retries == 1, "K10: an ignored read goes out again and is answered");
+    } else {
+      check(responses == 1 && errors == 1 && retries == 1, "K11: ignored twice: TIMEOUT after the one retry");
+    }
   }
 }
 
@@ -391,6 +423,7 @@ void gwg() {
 int main() {
   optolink::optolink_test_clock_freeze();
   kw();
+  kw_ignored();
   p300();
   gwg();
   std::printf("simulators: %d failure(s)\n", g_fail);

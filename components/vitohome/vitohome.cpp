@@ -768,6 +768,12 @@ bool VitoHomeComponent::send_raw_frame_(const uint8_t *bytes, uint8_t len, uint8
 // on KW and GWG. The hub knows what is in flight (in_flight_op_, in_flight_);
 // the address only cross-checks it.
 void VitoHomeComponent::on_result_(const optolink::Result &result) {
+  // A telegram the device met with silence, sent again on its next ENQ: rare
+  // (about 3 in 1000 on a VScotHO1_72), so each one is worth a line.
+  if (result.retries != 0) {
+    ESP_LOGI(TAG, "0x%04X: no answer, sent again on the next ENQ: %s", result.address,
+             result.status == optolink::OptolinkResult::OK ? "answered" : optolink::errorToString(result.status));
+  }
   if (result.status == optolink::OptolinkResult::OK) {
 #ifdef VITOHOME_PROTOCOL_GWG
     // The timing of every answered read, at DEBUG.

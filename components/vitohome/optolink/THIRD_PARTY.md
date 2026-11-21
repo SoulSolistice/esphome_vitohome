@@ -984,7 +984,19 @@ These are intentional divergences from upstream `edc059a7`:
     (153 seeds), and `proof_hub_requests.cpp`, the adapters against the
     engine calls they replace.
 
-Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called), 39 (when its gap is set), 40 and 41 are the only intentional changes to on-wire/runtime
+45. **KW answers in the same pass and sends a telegram again after
+    silence (behavioral divergence).** The KW link writes the 01 and the
+    telegram in the pass that reads the device's ENQ, and a chained
+    telegram from `submit()`, where `VS1Engine` waited one pass each. A
+    telegram met by silence until the answer deadline, or by nothing but
+    the device's next ENQ, goes out once more on the next ENQ, with a
+    fresh watchdog; `Result.retries` says so, and the hub logs it. Open
+    frames and partial answers are not sent again. A VScotHO1_72 had left
+    17 of 6066 telegrams sent on an ENQ unanswered over 7.7 h and none of
+    78,550 chained ones (2026-11-21). Proof: `proof_kw_timing.cpp`,
+    `proof_sim.cpp` K5, K7, K10 and K11.
+
+Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called), 39 (when its gap is set), 40, 41 and 45 are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16, 42, 43 and 44 are structural (no behavior change from any call
 site that exists -- item 16 altered bytes only on a RESPONSE-construction path
 nothing exercised, now removed); item 17 changes only construction-failure handling

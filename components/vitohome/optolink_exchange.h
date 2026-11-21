@@ -63,17 +63,23 @@ template<class Codec, class Link> class Exchange {
     address_ = frame_ ? 0 : request.address;
     // From the last pass's clock, as the watchdog compares against it.
     request_ms_ = now_;
+    retries_ = 0;
     link_.start(telegram, expect, collect, frame_);
+    // On the clock as it is now: submit() may come long after the last pass.
+    this->sent_(link_.poke(optolink_millis()));
     return true;
   }
 
   void loop() {
     now_ = optolink_millis();
-    switch (link_.loop(now_)) {
+    switch (const LinkEvent event = link_.loop(now_)) {
       case LinkEvent::SENT:
-        // An open frame's watchdog runs from its last byte.
-        if (frame_)
-          request_ms_ = now_;
+        this->sent_(event);
+        break;
+      case LinkEvent::RETRY:
+        // The watchdog runs afresh for the telegram's second time out.
+        request_ms_ = now_;
+        ++retries_;
         break;
       case LinkEvent::ANSWER: {
         const OptolinkResult status = Codec::accept(link_.telegram(), link_.answer(), link_.answer_length());
@@ -102,6 +108,11 @@ template<class Codec, class Link> class Exchange {
   }
 
  private:
+  // An open frame's watchdog runs from its last byte.
+  void sent_(LinkEvent event) {
+    if (event == LinkEvent::SENT && frame_)
+      request_ms_ = now_;
+  }
   void deliver_(OptolinkResult status, const uint8_t *data, uint8_t length) {
     if (on_result_) {
       Result result{};
@@ -109,6 +120,7 @@ template<class Codec, class Link> class Exchange {
       result.address = address_;
       result.data = data;
       result.length = length;
+      result.retries = retries_;
       on_result_(result);
     }
     link_.release();
@@ -120,6 +132,7 @@ template<class Codec, class Link> class Exchange {
   uint32_t request_ms_{0};
   uint16_t address_{0};
   bool frame_{false};
+  uint8_t retries_{0};
   ResultCallback on_result_;
 };
 

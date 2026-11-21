@@ -249,7 +249,8 @@ void kw_cases() {
   check(!kw_calls::telegram(e, 0x7B, 0x0800, 0), "G: zero length refused");
 
   // An ignored telegram: the controller's next ENQ, already waiting when the
-  // deadline is checked, is not a one-byte answer.
+  // deadline is checked, is not a one-byte answer but the ENQ the telegram
+  // goes out again on.
   responses = g_responses;
   const int errors = g_errors;
   check(kw_calls::telegram(e, 0x7B, 0x0800, 1), "G: telegram(7B, 0800, 1) accepted");
@@ -262,13 +263,10 @@ void kw_cases() {
   io.feed({0x05});
   optolink::optolink_test_clock_advance(1);
   pump(e);
-  check(g_responses == responses && g_errors == errors + 1 && g_last_error == optolink::OptolinkResult::TIMEOUT,
-        "G: the ENQ that follows is no answer: TIMEOUT");
-  // That ENQ is then the sync for the next telegram; an answer just inside
-  // the deadline is delivered.
-  check(kw_calls::telegram(e, 0x7B, 0x0800, 1), "G: next telegram accepted");
-  pump(e);
-  check(io.written() == Bytes({0x01, 0x7B, 0x08, 0x00, 0x01}), "G: 01 7B 08 00 01 on that ENQ");
+  // Silence until the deadline: the telegram goes out once more, on that ENQ.
+  check(g_responses == responses && g_errors == errors, "G: the ENQ that follows is no answer");
+  check(io.written() == Bytes({0x01, 0x7B, 0x08, 0x00, 0x01}), "G: the telegram again, 01 7B 08 00 01 on that ENQ");
+  // An answer just inside the deadline is delivered.
   io.clear_written();
   optolink::optolink_test_clock_advance(optolink::KW_LINK_PARAMS.answer_timeout_ms);
   io.feed({0x12});

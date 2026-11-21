@@ -73,10 +73,15 @@ namespace optolink = esphome::vitohome::optolink;
 #endif
 #include "kw_calls.h"
 
-// KW: the KW stack on the live side, VS1Engine on the reference side.
+// KW: the KW stack on the live side, VS1Engine on the reference side; in
+// the differential target the live side keeps VS1Engine's timing
+// (kw_calls::kVs1Timing).
 #ifdef VITOHOME_DIFF_REF
 template<class Port> using KwEngine = optolink::VS1Engine;
 constexpr uint32_t kGfaGapMs = optolink::VS1Engine::GFA_GAP_MS;
+#elif defined(VITOHOME_DIFF_SIDE)
+template<class Port> using KwEngine = optolink::KwExchange<Port, kw_calls::kVs1Timing>;
+constexpr uint32_t kGfaGapMs = optolink::KW_GFA_GAP_MS;
 #else
 template<class Port> using KwEngine = optolink::KwExchange<Port>;
 constexpr uint32_t kGfaGapMs = optolink::KW_GFA_GAP_MS;

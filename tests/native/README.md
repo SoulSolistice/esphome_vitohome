@@ -62,6 +62,9 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
   run side by side on one clock: same refusals, same bytes, same results,
   the getters the hub used to read included, and each case's named outcome.
   On KW each request equals the one `kw_calls.h` sends.
+- `proof_kw_timing.cpp` — the KW link's own timing on counted passes: the
+  ENQ answered in the pass that reads it, a chained telegram sent from
+  `submit()`, and the retry after silence with its limits.
 - `proof_kw_chain.cpp`, `proof_kw_gfa.cpp`, `proof_kw_write.cpp`,
   `proof_kw_frame.cpp` — the KW exchange: chaining and its two windows, the
   GFA read and its pause, the write acknowledgement, open frames.
@@ -319,8 +322,10 @@ corpora.
 simulator built from the same input.
 
 On KW the two sides are different code. The live side runs the new KW stack
-(`optolink_kw.h`: the KW codec, `EnqLink`, `Exchange`), the reference side
-`VS1Engine`; `kw_calls.h` gives a harness one set of KW calls for both, and
+(`optolink_kw.h`: the KW codec, `EnqLink`, `Exchange`) on `VS1Engine`'s timing
+(`kw_calls::kVs1Timing`: one pass later, no retry after silence), the
+reference side `VS1Engine`; the new timing has its own proofs
+(`proof_kw_timing.cpp`) and the harnesses' own builds run on it; `kw_calls.h` gives a harness one set of KW calls for both, and
 maps the stack's `Result` back onto the old engines' two callbacks, so the
 checks and the compared events stay one set. The boundary seeds put a step on
 each KW timing constant the stack carries that a harness can reach: the GFA

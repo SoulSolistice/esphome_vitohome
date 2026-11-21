@@ -10,16 +10,21 @@
 //   WAIT_ENQ   one byte read per pass; an ENQ opens ENQ_HELD. Without one for
 //              eot_interval_ms, an EOT (it ends a P300 session the device may
 //              still be in).
-//   ENQ_HELD   from the next pass on, for enq_hold_ms: with a telegram
-//              pending, 01 and the telegram (an open frame without the 01).
+//   ENQ_HELD   for enq_hold_ms: with a telegram pending, 01 and the telegram
+//              (an open frame without the 01); with same_pass in the pass
+//              that read the ENQ, else from the next one on.
 //   SEND       the telegram; a partial write resumes on the next pass.
 //   RECEIVE    the answer: `expect` bytes in one go, or while collecting,
 //              whatever arrives until the line is quiet; the deadline is
-//              checked before the drain and restarts on every byte.
+//              checked before the drain and restarts on every byte. Silence
+//              until the deadline, or a lone ENQ, sends a telegram (not an
+//              open frame) again on the device's next ENQ, up to
+//              silence_retries times.
 //   CHAINED    after an answer, for chain_window_ms: the next telegram goes
-//              out without an ENQ or 01, on the pass after it was taken, and
-//              no earlier than its chain_gap_ms after the answer. Any byte on
-//              the line ends the chain; so does an open frame.
+//              out without an ENQ or 01, no earlier than its chain_gap_ms
+//              after the answer; with same_pass from start() (poke()), else
+//              on the pass after it was taken. Any byte on the line ends the
+//              chain; so does an open frame.
 //
 // The exchange decides what an answer is worth and moves the link on: chain()
 // after a good one, wait_enq() after a refused one, abort() on its watchdog.
@@ -41,9 +46,15 @@ struct EnqLinkParams {
   uint32_t answer_timeout_ms;
   // The EOT while no ENQ comes; 0: none.
   uint32_t eot_interval_ms;
+  // Answer an ENQ, and chain a telegram, in the pass that allows it; false:
+  // one pass later.
+  bool same_pass;
+  // How often a telegram met by silence goes out again, on the next ENQ.
+  uint8_t silence_retries;
 };
 
-enum class LinkEvent : uint8_t { NONE, SENT, ANSWER, COLLECTED, TIMEOUT };
+// RETRY: silence until the deadline; the telegram waits for the next ENQ.
+enum class LinkEvent : uint8_t { NONE, SENT, ANSWER, COLLECTED, TIMEOUT, RETRY };
 
 template<class Port> class EnqLink {
  public:
@@ -75,6 +86,18 @@ template<class Port> class EnqLink {
     collect_ = collect;
     frame_ = frame;
     pending_ = true;
+    retries_left_ = params_.silence_retries;
+  }
+  // With same_pass, what start() allows at once: a telegram onto a held ENQ
+  // or onto a chain.
+  LinkEvent poke(uint32_t now) {
+    if (!params_.same_pass)
+      return LinkEvent::NONE;
+    if (state_ == State::ENQ_HELD)
+      return this->enq_held_(now);
+    if (state_ == State::CHAINED)
+      return this->chained_(now);
+    return LinkEvent::NONE;
   }
   bool pending() const { return pending_; }
   void release() { pending_ = false; }
@@ -97,13 +120,11 @@ template<class Port> class EnqLink {
   LinkEvent loop(uint32_t now) {
     switch (state_) {
       case State::WAIT_ENQ:
-        this->wait_for_enq_(now);
-        return LinkEvent::NONE;
+        return this->wait_for_enq_(now);
       case State::ENQ_HELD:
         return this->enq_held_(now);
       case State::CHAINED:
-        this->chained_(now);
-        return LinkEvent::NONE;
+        return this->chained_(now);
       case State::SEND:
         return this->send_(now);
       case State::RECEIVE:
@@ -121,16 +142,19 @@ template<class Port> class EnqLink {
   static constexpr uint8_t ENQ_ACK = 0x01;
   static constexpr uint8_t EOT = 0x04;
 
-  void wait_for_enq_(uint32_t now) {
+  LinkEvent wait_for_enq_(uint32_t now) {
     if (port_->available()) {
       if (port_->read() == ENQ) {
         last_ms_ = now;
         state_ = State::ENQ_HELD;
+        if (params_.same_pass)
+          return this->enq_held_(now);
       }
     } else if (params_.eot_interval_ms != 0 && now - last_ms_ > params_.eot_interval_ms) {
       last_ms_ = now;
       port_->write(&EOT, 1);
     }
+    return LinkEvent::NONE;
   }
 
   LinkEvent enq_held_(uint32_t now) {
@@ -145,18 +169,20 @@ template<class Port> class EnqLink {
     return LinkEvent::NONE;
   }
 
-  void chained_(uint32_t now) {
+  LinkEvent chained_(uint32_t now) {
     // A byte since the answer is the device's next ENQ: never chain across it.
     if (port_->available() || (pending_ && frame_)) {
       state_ = State::WAIT_ENQ;
-      return;
+      return LinkEvent::NONE;
     }
     if (now - last_ms_ >= params_.chain_window_ms) {
       state_ = State::WAIT_ENQ;
-      return;
+      return LinkEvent::NONE;
     }
-    if (pending_ && now - last_ms_ >= telegram_.chain_gap_ms)
-      state_ = State::SEND;
+    if (!pending_ || now - last_ms_ < telegram_.chain_gap_ms)
+      return LinkEvent::NONE;
+    state_ = State::SEND;
+    return params_.same_pass ? this->send_(now) : LinkEvent::NONE;
   }
 
   LinkEvent send_(uint32_t now) {
@@ -177,6 +203,13 @@ template<class Port> class EnqLink {
       if (collect_ && received != 0) {
         answer_length_ = received < ANSWER_MAX ? received : static_cast<uint8_t>(ANSWER_MAX);
         return LinkEvent::COLLECTED;
+      }
+      // Silence, or nothing but the device's next ENQ: the telegram went
+      // unheard.
+      const bool unheard = received == 0 || (received == 1 && answer_[0] == ENQ);
+      if (unheard && !frame_ && retries_left_ != 0) {
+        --retries_left_;
+        return LinkEvent::RETRY;
       }
       return LinkEvent::TIMEOUT;
     }
@@ -205,6 +238,7 @@ template<class Port> class EnqLink {
   bool collect_{false};
   bool frame_{false};
   bool pending_{false};
+  uint8_t retries_left_{0};
   // Bytes written of the telegram while sending, of the answer while
   // receiving.
   uint8_t count_{0};
