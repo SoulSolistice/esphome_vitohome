@@ -75,6 +75,8 @@ bool VS1Engine::frame(const uint8_t *bytes, uint8_t length, uint8_t answerLength
 bool VS1Engine::begin() {
   if (_interface == nullptr)
     return false;
+  // A request submitted before the next loop() takes its watchdog from now.
+  _currentMillis = optolink_millis();
   if (_interface->begin()) {
     while (_interface->available()) {
       _interface->read();  // clear rx buffer
@@ -168,9 +170,8 @@ void VS1Engine::_syncRecv() {
   // request's payload. Hand control to INIT, which consumes it as the sync it
   // actually is.
   //
-  // This guard is also what makes a long CHAIN_WINDOW_MS safe: the window can
-  // only ever be ridden while the device has NOT spoken since the last answer,
-  // which is exactly the condition under which the old sync is still current.
+  // The guard also bounds CHAIN_WINDOW_MS in practice: the window can only be
+  // ridden while the device has NOT spoken since the last answer.
   if (_interface->available()) {
     _setState(State::INIT);
     return;

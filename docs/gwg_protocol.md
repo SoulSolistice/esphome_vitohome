@@ -46,6 +46,13 @@ them have a BES. See [Identification](#identification).
   without it, 0 of 4 with it). A burst-sent read that times out is retried once
   on a fresh ENQ; only an answered retry counts against bursting (HW #35:
   burst stays on with 54 silent datapoints).
+- **A burst must leave within about 100 ms of the previous answer** (HW #35,
+  40 h log, 2026-11-19/20): answered almost always under 80 ms, mostly
+  unanswered from 100 ms. The engine bursts for 80 ms (`ENQ_VALIDITY_MS`).
+  After a late burst the fresh-ENQ retry failed 35 times out of 44: 9 of 9
+  sent within 25 ms of that ENQ were answered, 35 of 35 sent 27-57 ms after
+  it were not. Ordinary ENQ-paced reads answer at any of those delays, so the
+  late frame seems to leave the controller less patient for one telegram.
 
 ## Access modes
 

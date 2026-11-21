@@ -25,7 +25,8 @@
 //       only an answer there counts as a burst failure (issue #35);
 //  (10) bytes that arrive after the deadline are reported, not lost;
 //  (11) the response deadline can be lengthened at runtime for a test;
-//  (12) the window covers a chain of polls, not the next ENQ interval;
+//  (12) the window ends where the device stops listening, about 100 ms
+//       after its answer;
 //  (13) a silent burst-sent read is reported when it is retried.
 //
 // Built with -DVITOHOME_PROTOCOL_GWG by build_and_run_protocols.sh.
@@ -540,9 +541,9 @@ int main() {
           "  another engine keeps its own deadline (250 ms)");
   }
 
-  // --- (12) the window covers a chain, not the next ENQ interval -------------
-  // Issue #35 logs 11-14: one burst left 381 ms after the answer and was
-  // answered; the two that left about 1 s after it were not.
+  // --- (12) the window ends before the device stops listening --------------
+  // Issue #35, 40 h log: bursts under 80 ms after the answer were answered,
+  // from 100 ms mostly not.
   {
     FakeOptolink u13;
     Engine a13(&u13);
@@ -551,21 +552,23 @@ int main() {
     a13.begin();
 
     sync_and_complete(a13, u13, 0x6F, 0x26);
-    optolink::optolink_test_clock_advance(381);
+    static_assert(60u < optolink::GWGEngine::ENQ_VALIDITY_MS, "60 ms must be inside the burst window");
+    static_assert(120u > optolink::GWGEngine::ENQ_VALIDITY_MS, "120 ms must be past the burst window");
+    optolink::optolink_test_clock_advance(60);
     pump(a13);
     a13.read(0x0070, 1);
     pump(a13);
     const std::vector<uint8_t> burst70 = {0xCB, 0x70, 0x01, 0x04};
-    check(u13.written() == burst70, "381 ms after the answer: burst-sent");
+    check(u13.written() == burst70, "60 ms after the answer: burst-sent");
     u13.clear_written();
     u13.feed({0x5F});
     pump(a13);
 
-    optolink::optolink_test_clock_advance(982);
+    optolink::optolink_test_clock_advance(120);
     pump(a13);
     a13.read(0x0071, 1);
     pump(a13);
-    check(u13.written().empty(), "982 ms after the answer: waits for the ENQ");
+    check(u13.written().empty(), "120 ms after the answer: waits for the ENQ");
     u13.feed({0x05});
     a13.loop();
     const std::vector<uint8_t> enq71 = {0x01, 0xCB, 0x71, 0x01, 0x04};

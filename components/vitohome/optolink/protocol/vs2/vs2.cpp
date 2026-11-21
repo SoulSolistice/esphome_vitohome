@@ -124,6 +124,8 @@ const uint8_t *VS2Engine::errorPayload(uint8_t &length) const {
 bool VS2Engine::begin() {
   if (_interface == nullptr)
     return false;
+  // A request submitted before the next loop() takes its watchdog from now.
+  _currentMillis = optolink_millis();
   _setState(State::RESET);
   return _interface->begin();
 }

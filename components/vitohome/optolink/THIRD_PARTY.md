@@ -479,13 +479,14 @@ These are intentional divergences from upstream `edc059a7`:
 
 21. **GWG burst (behavioral divergence, throughput).** `_init()` may now send a
     queued request on a sync it already earned, without waiting for the device's
-    next ENQ, for up to `ENQ_VALIDITY_MS` (500 ms). Upstream, and the openv
+    next ENQ, for up to `ENQ_VALIDITY_MS` (80 ms, item 40). Upstream, and the openv
     wiki, wait for a fresh `0x05` every time -- which caps the poll rate at one
     datapoint per ENQ interval (749-2070 ms on the 2026-08-23 capture).
 
-    The window is shorter than vogod's 1500 ms because on issue #35 logs 11-14
-    every answered burst left within 381 ms of the previous answer, and the
-    two sent about 1 s after it went unanswered.
+    The window is far shorter than vogod's 1500 ms because the issue #35 unit
+    stops listening about 100 ms after its answer (40 h log, 2026-11-19/20):
+    under 80 ms 109,520 burst-sent reads were answered and 1 was not, at
+    80-99 ms 183 and 14, at 100-139 ms 7 and 29.
 
     Sourced from the implementations that have run on hardware: vogod uses
     a 1500 ms ENQ validity on KW and re-stamps it at the end of every
@@ -517,7 +518,8 @@ These are intentional divergences from upstream `edc059a7`:
     the second to the first.
 
     Split into `ENQ_ACK_WINDOW_MS = 50` (unchanged, upstream's value) and
-    `CHAIN_WINDOW_MS = 1500`, matching vogod's figure for the same job.
+    `CHAIN_WINDOW_MS`, first 1500 (vogod's figure for the same job), now 500
+    (item 40).
     Motivated by measurement: on the 2026-08-24
     VScotHO1_72 capture the answer-to-next-request gap ran 22-42 ms over 235
     transactions (median 29, p90 35), i.e. ~8 ms under the old 50 ms ceiling.
@@ -920,7 +922,20 @@ These are intentional divergences from upstream `edc059a7`:
     pass later. On #35 a 30 ms gap made no difference (alternating per read,
     2026-11-17). Proof: `proof_gwg_enq_ack_gap.cpp`.
 
-Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called) and 39 (when its gap is set) are the only intentional changes to on-wire/runtime
+40. **Windows where the device stops listening; `begin()` reads the clock
+    (behavioral divergence).** `VS1Engine::CHAIN_WINDOW_MS` is 500 ms instead
+    of 1500: a VScotHO1_72 ignores a chained telegram from 0.95 s
+    after its answer (chain-window probe, 2026-11-20), and a read due 1.43 s
+    after a chain went out unheard and failed. `GWGEngine::ENQ_VALIDITY_MS` is
+    80 ms instead of 500: issue #35's unit stops listening about
+    100 ms after its answer (40 h log, 2026-11-19/20). Past either window a
+    request waits for the device's ENQ. `VS1Engine::begin()`,
+    `VS2Engine::begin()` and `GWGEngine::begin()` read the clock, so a request
+    submitted before the next `loop()` takes its watchdog from then and not
+    from the last pass. Proof: `proof_vs1_chain.cpp` (6),
+    `proof_gwg_burst.cpp` (12).
+
+Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called), 39 (when its gap is set) and 40 are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16 are structural (no behavior change from any call
 site that exists -- item 16 alters bytes only on a RESPONSE-construction path
 nothing exercises); item 17 changes only construction-failure handling

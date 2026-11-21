@@ -231,13 +231,14 @@ class GWGEngine {
   // ENQ interval, which the 2026-08-23 capture measured at 749-2070 ms
   // (median 1229). A 180-entity catalog is then a multi-minute sweep.
   //
-  // 500 ms rather than vogod's 1500: on the issue #35 captures (GWG_VBEM
-  // 0x2053 SW=0x1E, logs 11-14) 2,327 burst-sent reads left within 100 ms of
-  // the previous answer, one of them unanswered, and one after 381 ms,
-  // answered. The two sent about 1 s after it went unanswered. By then the
-  // device's next ENQ is due, so a late burst saves nothing and risks the
-  // response deadline and a retry.
-  static constexpr uint32_t ENQ_VALIDITY_MS = 500;
+  // 80 ms: the device stops listening about 100 ms after its answer. Issue #35
+  // (GWG_VBEM 0x2053 SW=0x1E, 40 h log of 2026-11-19/20): of the burst-sent
+  // reads that left under 80 ms after the previous answer, 109,520 were
+  // answered and 1 was not; at 80-99 ms, 183 and 14; at 100-139 ms, 7 and 29.
+  // Each miss also cost its fresh-ENQ retry, which went unanswered 35 times
+  // out of 44, so a late burst saves nothing. Past the window a request waits
+  // for the next ENQ, about 1.2 s.
+  static constexpr uint32_t ENQ_VALIDITY_MS = 80;
 
   // Compile-time off switch, in the style of SEND_ENQ_POKE. Set false to
   // restore strict one-telegram-per-ENQ behaviour.

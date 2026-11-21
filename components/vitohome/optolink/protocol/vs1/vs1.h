@@ -60,13 +60,17 @@ class VS1Engine {
   // transactions (median 29, p90 35). Against the old 50 ms that is ~8 ms of
   // headroom -- fine on that config, but any extra loop latency pushes a gap
   // past it and silently ends the chain, dropping the poll rate back to one
-  // telegram per ENQ (~1.2-2 s each). vogod uses 1500 ms for exactly this job;
-  // this matches it.
+  // telegram per ENQ (~1.2-2 s each).
+  //
+  // The device sets the upper bound: a VScotHO1_72 answers a chained telegram
+  // up to 0.91 s after its answer and ignores one from 0.95 s, counted from the
+  // last answer however long the chain (chain-window probe, 2026-11-20). At
+  // vogod's 1500 ms a read due 1.43 s after a chain went out unheard and
+  // failed. 500 ms leaves half of that unit's limit as margin for others.
   //
   // Exceeding it is a SOFT failure: the chain simply ends and the next
-  // telegram waits for an ENQ. So the cost of being too tight is throughput,
-  // and the cost of being too loose is bounded by the guard in _syncRecv().
-  static constexpr uint32_t CHAIN_WINDOW_MS = 1500;
+  // telegram waits for an ENQ, 2.97 s after the answer on that unit.
+  static constexpr uint32_t CHAIN_WINDOW_MS = 500;
   // GFA_GAP_MS: how long a GFA read (gfaRead(), type 0x6B) chained onto an
   // answer waits after that answer before it goes out. The read is forwarded
   // to the burner control, a second controller behind the Vitotronic. The

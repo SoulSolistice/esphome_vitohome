@@ -14,7 +14,8 @@
 // which pinned the second to the first. The same capture measures the second
 // directly: answer-to-next-request ran 22-42 ms over 235 transactions, i.e.
 // ~8 ms under the old ceiling. They are now ENQ_ACK_WINDOW_MS (50, unchanged)
-// and CHAIN_WINDOW_MS (1500, vogod's figure for the same job).
+// and CHAIN_WINDOW_MS (500: the device ignores a chained telegram from 0.95 s
+// after its answer).
 //
 // Pinned below:
 //   (1) the first telegram after an ENQ carries the 0x01 prefix;
@@ -23,16 +24,18 @@
 //   (4) past CHAIN_WINDOW_MS the engine waits for a real ENQ again;
 //   (5) THE GUARD: a byte arriving between the answer and the next request
 //       ends the chain, so the request cannot go out with that byte buffered
-//       where _receive() would read it as its payload.
+//       where _receive() would read it as its payload;
+//   (6) begin() reads the clock: a request submitted right after it, before
+//       the next loop(), takes its watchdog from then.
 //
 // Built with -DVITOHOME_PROTOCOL_KW by build_and_run_protocols.sh.
 //
 // TIME IS INJECTED, NOT SLEPT (see optolink_test_clock_freeze in helpers.h).
 // Case (3) is the one THIRD_PARTY.md item 23 named as the remaining latent
 // flake, and it is the two-sided kind: its 200 ms pause must land past the old
-// 50 ms ENQ_ACK_WINDOW_MS *and* inside the 1500 ms CHAIN_WINDOW_MS. sleep_for
+// 50 ms ENQ_ACK_WINDOW_MS *and* inside the 500 ms CHAIN_WINDOW_MS. sleep_for
 // guarantees only "at least 200 ms", so the upper bound was never actually
-// pinned -- a host stall past 1500 ms expired the window and failed case (3)
+// pinned -- a host stall past the window expired it and failed case (3)
 // for a reason having nothing to do with the engine. Advancing a frozen clock
 // pins both sides exactly; the two static_asserts below keep the constants
 // from drifting out from under the number.
@@ -151,6 +154,27 @@ int main() {
   check(g_responses == before_guard + 1, "  read completed");
   check(g_last_payload == 0x99, "  payload is the data byte, NOT the 0x05 that was buffered");
   check(g_errors == 0, "  no errors anywhere in the run");
+
+  // --- (6) begin() reads the clock ------------------------------------------
+  // 2.5 s with no loop(), a restart, and a read submitted at once: its 4 s
+  // watchdog must count from the restart, not from the last loop().
+  optolink::optolink_test_clock_advance(2500);
+  adapter.begin();
+  uart.clear_written();
+  check(adapter.read(0x00F8, 1), "read accepted right after begin()");
+  for (int i = 0; i < 30; ++i) {
+    adapter.loop();
+    optolink::optolink_test_clock_advance(100);
+  }
+  check(g_errors == 0, "  no watchdog TIMEOUT 3 s after the restart");
+  uart.clear_written();
+  uart.feed({0x05});
+  pump(adapter);
+  check(uart.written() == want_first, "  sent on the device's ENQ");
+  const int before_restart = g_responses;
+  uart.feed({0x20});
+  pump(adapter);
+  check(g_responses == before_restart + 1 && g_errors == 0, "  and answered");
 
   std::printf("vs1 chaining: %d failure(s)\n", failures);
   return failures == 0 ? 0 : 1;

@@ -262,11 +262,23 @@ completed answer to the next request ran **22–42 ms (median 29, p90 35)** acro
 235 transactions, against what was then a 50 ms budget — no breach, but only
 ~8 ms of headroom. That measurement is what prompted the split below.
 
-GWG bursts too, on a 500 ms window (`GWGEngine::ENQ_VALIDITY_MS`). It started
-on vogod's 1500 ms. On the issue #35 logs 11–14 (GWG_VBEM `0x2053` SW `0x1E`),
-2,327 burst-sent reads left within 100 ms of the previous answer and one
-after 381 ms; the two sent about 1 s after it went unanswered. By then the
-device's next ENQ is due, so a later burst saves nothing.
+GWG bursts too, on an 80 ms window (`GWGEngine::ENQ_VALIDITY_MS`). It started
+on vogod's 1500 ms and was 500 ms until the issue #35 unit (GWG_VBEM `0x2053`
+SW `0x1E`) showed where the device stops listening. In a 40 h log
+(2026-11-19/20) the burst-sent reads that left after the previous answer
+split like this:
+
+| Gap after the answer | Answered | Unanswered |
+|---|---|---|
+| under 80 ms | 109,520 | 1 |
+| 80–99 ms | 183 | 14 |
+| 100–139 ms | 7 | 29 |
+
+The late ones were all one read: per-bit DEBUG lines of the six binary sensors
+on the read before it took about 100 ms, in the hours when a second log client
+was attached. A miss costs more than the burst saves: the read is retried on
+the next ENQ, and 35 of those 44 retries went unanswered too, each a TIMEOUT.
+Past the window a request waits for the next ENQ, about 1.2 s.
 
 Because this contradicts the only written specification, it is **self-correcting
 rather than assumed**:
@@ -364,11 +376,17 @@ distinct constants:
 | constant | used by | kind | value |
 |---|---|---|---|
 | `ENQ_ACK_WINDOW_MS` | `_syncEnq()` | protocol constraint — how fast we must answer the device's ENQ | 50 ms (unchanged) |
-| `CHAIN_WINDOW_MS` | `_syncRecv()` | throughput policy — how long a chain may pause | 1500 ms |
+| `CHAIN_WINDOW_MS` | `_syncRecv()` | throughput policy — how long a chain may pause | 500 ms |
 
-1500 ms is vogod's figure for the same job. The 22–42 ms measurement above is
-what the second window has
-to cover, and it was sitting ~8 ms under the old ceiling.
+The 22–42 ms measurement above is what the second window has to cover, and it
+was sitting ~8 ms under the old ceiling. It started at vogod's 1500 ms. The
+device sets the upper bound: a VScotHO1_72 answers a chained telegram up to
+0.91 s after its answer and ignores one from 0.95 s, counted from the last
+answer however long the chain, the same sweeping up and down (chain-window
+probe, 2026-11-20). At 1500 ms a read due 1.43 s after a chain went out
+unheard and failed. Past 500 ms a request waits for the device's ENQ, 2.97 s
+after the answer. A `01` with a telegram outside an ENQ is never answered, at
+any gap from 61 to 1409 ms.
 
 Widening it needed one guard, because a long window and an empty queue would
 otherwise park `_syncRecv()` without reading the interface: **if any byte has

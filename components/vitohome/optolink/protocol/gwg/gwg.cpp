@@ -155,6 +155,8 @@ bool GWGEngine::frame(const uint8_t *bytes, uint8_t length, uint8_t answerLength
 bool GWGEngine::begin() {
   if (_interface == nullptr)
     return false;
+  // A request submitted before the next loop() takes its watchdog from now.
+  _currentMillis = optolink_millis();
   _setState(State::INIT);
   return _interface->begin();
 }
