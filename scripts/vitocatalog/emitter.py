@@ -12,6 +12,7 @@ from .constants import (
     CONVERSION_MAP,
     COUNTER,
     DIV,
+    HW_BIG_ENDIAN,
     MAX_P300_READ_LENGTH,
     MAX_TEXT_BLOCK_LENGTH,
     NO_BORDERS_CAUTION,
@@ -852,6 +853,10 @@ def build_entity_spec(
             )
         conv, conv_kind = "rotatebytes", PLAIN
         note = (note + "; " if note else "") + f"ParameterType {ptype_raw}: big-endian -> rotatebytes"
+    hw_be = HW_BIG_ENDIAN.get((ev.tech, addr))
+    if hw_be and length == 2 and conv == "noconv" and not is_bit and not enum_opts:
+        conv, conv_kind = "rotatebytes", PLAIN
+        note = (note + "; " if note else "") + f"big-endian on hardware ({hw_be}) -> rotatebytes"
 
     # `writable` was resolved above; the demotions below narrow it further.
     # A converter without an encode path (sec2hour, rotatebytes are read-only

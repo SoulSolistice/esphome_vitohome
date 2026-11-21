@@ -345,14 +345,14 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.0052 + -0.65)
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.0052 + -0.65); big-endian on hardware (issue #35) -> rotatebytes
   - platform: vitohome
     name: "Water pressure"
     id: GWG_Wasserdruck
     address: 0x0088
     access: xram  # Vitosoft XRAM_READ
     length: 2
-    converter: noconv
+    converter: rotatebytes
     unit_of_measurement: "bar"
     device_class: pressure
     filters:
