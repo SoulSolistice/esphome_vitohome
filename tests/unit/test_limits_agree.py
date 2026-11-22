@@ -23,7 +23,13 @@ for _p in (_SCRIPTS, _REPO_ROOT):
 
 from vitocatalog import constants as generator  # noqa: E402
 
-from components.vitohome import MAX_P300_READ_LENGTH, MAX_RMW_BLOCK, RPC_PREFIX_MAX  # noqa: E402
+from components.vitohome import (  # noqa: E402
+    ANSWER_TO_NEXT_MAX_MS,
+    ENQ_TO_SEND_MAX_MS,
+    MAX_P300_READ_LENGTH,
+    MAX_RMW_BLOCK,
+    RPC_PREFIX_MAX,
+)
 from components.vitohome.text_sensor import MAX_TEXT_BLOCK_LENGTH  # noqa: E402
 
 _COMPONENT = pathlib.Path(_REPO_ROOT) / "components" / "vitohome"
@@ -44,6 +50,9 @@ def _cpp_constant(header: str, name: str) -> int:
         (MAX_P300_READ_LENGTH, "vitohome.h", "RAW_READ_MAX"),
         (MAX_RMW_BLOCK, "vitohome.h", "MAX_RMW_BLOCK"),
         (RPC_PREFIX_MAX, "vito_entity.h", "RPC_PREFIX_MAX"),
+        # The link_timing bounds: the YAML refuses what the link would clamp.
+        (ENQ_TO_SEND_MAX_MS, "optolink_types.h", "ENQ_TO_SEND_MAX_MS"),
+        (ANSWER_TO_NEXT_MAX_MS, "optolink_types.h", "ANSWER_TO_NEXT_MAX_MS"),
     ],
 )
 def test_component_limit_matches_the_hub(python_value, header, cpp_name):

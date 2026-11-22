@@ -271,12 +271,17 @@ void kw_cases() {
   kw.on_result([&events](const optolink::Result &res) { events.push_back(from_result(res)); });
   kw.begin();
   check(read_request(AddressSpace::OWN, 0x00F8, 1, nullptr, 0, r) && kw.submit(r), "a read accepted");
+  // 1 ms per pass, past the link's pauses.
   port.feed({0x05});
-  for (int i = 0; i < 4; ++i)
+  for (int i = 0; i < 40; ++i) {
     kw.loop();
+    optolink::optolink_test_clock_advance(1);
+  }
   port.feed({0x20});
-  for (int i = 0; i < 4; ++i)
+  for (int i = 0; i < 40; ++i) {
     kw.loop();
+    optolink::optolink_test_clock_advance(1);
+  }
   Event want;
   want.status = OptolinkResult::OK;
   want.address = 0x00F8;

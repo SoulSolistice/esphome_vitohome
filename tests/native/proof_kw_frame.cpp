@@ -21,8 +21,10 @@
 #include "optolink_kw.h"
 
 using namespace esphome::vitohome;
-using Engine = optolink::KwExchange<FakeOptolink>;
-constexpr optolink::EnqLinkParams kParams = optolink::KW_LINK_PARAMS;
+// Without the link's pauses, so passes count without the clock moving; the
+// pauses have their own proof (proof_kw_timing.cpp).
+using Engine = optolink::KwExchange<FakeOptolink, kw_calls::kNoPause>;
+constexpr optolink::EnqLinkParams kParams = kw_calls::kNoPause;
 constexpr std::size_t kAnswerMax = optolink::EnqLink<FakeOptolink>::ANSWER_MAX;
 
 namespace {

@@ -222,7 +222,7 @@ void p300_cases() {
 void kw_cases() {
   std::printf("-- KW --\n");
   FakeOptolink io;
-  optolink::KwExchange<FakeOptolink> e(&io);
+  optolink::KwExchange<FakeOptolink, kw_calls::kNoPause> e(&io);
   hook(e);
   e.begin();
 
@@ -257,7 +257,7 @@ void kw_cases() {
   pump(e);
   check(io.written() == Bytes({0x7B, 0x08, 0x00, 0x01}), "G: 7B 08 00 01 chained");
   io.clear_written();
-  optolink::optolink_test_clock_advance(optolink::KW_LINK_PARAMS.answer_timeout_ms);
+  optolink::optolink_test_clock_advance(kw_calls::kNoPause.answer_timeout_ms);
   pump(e);
   check(g_errors == errors, "G: no error at the answer deadline");
   io.feed({0x05});
@@ -268,7 +268,7 @@ void kw_cases() {
   check(io.written() == Bytes({0x01, 0x7B, 0x08, 0x00, 0x01}), "G: the telegram again, 01 7B 08 00 01 on that ENQ");
   // An answer just inside the deadline is delivered.
   io.clear_written();
-  optolink::optolink_test_clock_advance(optolink::KW_LINK_PARAMS.answer_timeout_ms);
+  optolink::optolink_test_clock_advance(kw_calls::kNoPause.answer_timeout_ms);
   io.feed({0x12});
   pump(e);
   check(g_responses == responses + 1 && g_payload == Bytes({0x12}), "G: an answer at the deadline is delivered");
@@ -343,7 +343,7 @@ void frame_limit_cases() {
   optolink::VS2Engine vs2(&io);
   check(!vs2.read(0x2000, max + 1) && !vs2.request(0x05, 0x2000, max + 1), "P300: a read of MAX_PAYLOAD + 1 refused");
   check(vs2.read(0x2000, max), "P300: a read of MAX_PAYLOAD accepted");
-  optolink::KwExchange<FakeOptolink> kw(&io);
+  optolink::KwExchange<FakeOptolink, kw_calls::kNoPause> kw(&io);
   check(!kw_calls::read(kw, 0x2000, max + 1) && kw_calls::read(kw, 0x2000, max), "KW: the same limit");
   optolink::GWGEngine gwg_engine(&io);
   check(!gwg_engine.read(0x10, max + 1) && gwg_engine.read(0x10, max), "GWG: the same limit");

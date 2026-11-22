@@ -27,8 +27,9 @@
 // ORACLES, besides the sanitizers:
 //   (1) every accepted operation completes exactly once;
 //   (2) without quirks ([1] and [4] zero, [2] below the engines' answer
-//       deadlines) every operation succeeds, and a read returns what the
-//       device's memory holds at that address;
+//       deadlines, on KW [3] no shorter than the engine's pause before its
+//       01) every operation succeeds, and a read returns what the device's
+//       memory holds at that address;
 //   (3) afterwards the engine is idle and takes the next request.
 //
 // Same two-build arrangement as fuzz_parser_vs2.cpp; seeds in
@@ -57,12 +58,16 @@ namespace optolink = esphome::vitohome::optolink;
 // KW: the KW stack on the live side, VS1Engine on the reference side; in
 // the differential target the live side keeps VS1Engine's timing
 // (kw_calls::kVs1Timing).
+// kKwEnqToSendMs: how long after the ENQ that engine writes its 01.
 #ifdef VITOHOME_DIFF_REF
 template<class Port> using KwEngine = optolink::VS1Engine;
+constexpr uint32_t kKwEnqToSendMs = 0;
 #elif defined(VITOHOME_DIFF_SIDE)
 template<class Port> using KwEngine = optolink::KwExchange<Port, kw_calls::kVs1Timing>;
+constexpr uint32_t kKwEnqToSendMs = kw_calls::kVs1Timing.enq_to_send_ms;
 #else
 template<class Port> using KwEngine = optolink::KwExchange<Port>;
+constexpr uint32_t kKwEnqToSendMs = optolink::KW_LINK_PARAMS.enq_to_send_ms;
 #endif
 
 namespace {
@@ -278,8 +283,11 @@ extern "C" int FUZZ_ENTRY(const uint8_t *data, std::size_t size) {
     q.dead_period_ms = 20000;
     q.dead_ms = 40u * data[4];
   }
-  // The shortest answer deadline of the three engines: GWG's.
-  const bool benign = (data[1] & 0x3F) == 0 && data[4] == 0 && q.answer_delay_ms < 200;
+  // The shortest answer deadline of the three engines: GWG's. On KW the ENQ
+  // window must also outlast the engine's pause before its 01: the ENQ is
+  // read up to a pass late and the 01 written up to a pass after its moment.
+  const bool enq_window_ok = proto != Proto::KW || data[3] == 0 || q.enq_window_ms >= kKwEnqToSendMs + 2;
+  const bool benign = (data[1] & 0x3F) == 0 && data[4] == 0 && q.answer_delay_ms < 200 && enq_window_ok;
 
   if (proto == Proto::GWG) {
     sim::GwgConfig c;

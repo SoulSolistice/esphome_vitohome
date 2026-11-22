@@ -33,3 +33,10 @@ packages:
   unsafe_raw:
     vitohome:
       unsafe_raw_writes: true
+  # The link's timing points through the codegen; a setting other than the
+  # default is logged as a warning at boot.
+  link_timing:
+    vitohome:
+      link_timing:
+        enq_to_send: 30ms
+        answer_to_next: 25ms

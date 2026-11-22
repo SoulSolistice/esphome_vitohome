@@ -184,10 +184,13 @@ void kw() {
     // a stalled loop reads the ENQ 7 ms late. The device ignores the 01, takes
     // the telegram's length byte 04 for an EOT and offers its next ENQ during
     // the answer wait; the retry goes out on the ENQ after it, read at once.
+    // Such a unit needs ENQ_TO_SEND 0: the default 20 ms would miss its window.
     sim::VitotronicConfig c = kw_only();
     c.quirks.enq_window_ms = 5;
     sim::SimVitotronic dev(c);
     optolink::KwExchange<sim::SimVitotronic> e(&dev);
+    uint32_t no_pause = 0;
+    e.set_timing(optolink::TimingPoint::ENQ_TO_SEND, no_pause);
     Outcome o;
     wire(e, o);
     kw_calls::read(e, 0x00F8, 4);

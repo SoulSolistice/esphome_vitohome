@@ -29,7 +29,7 @@ template<class Codec, class Link> class Exchange {
 
   template<class Port>
   Exchange(Port *port, const EnqLinkParams &params, uint32_t watchdog_ms)
-      : link_(port, params), watchdog_ms_(watchdog_ms), now_(optolink_millis()) {}
+      : link_(port, params), defaults_(params), watchdog_ms_(watchdog_ms), now_(optolink_millis()) {}
   Exchange(const Exchange &) = delete;
   Exchange &operator=(const Exchange &) = delete;
 
@@ -47,9 +47,19 @@ template<class Codec, class Link> class Exchange {
     link_.release();
   }
   bool busy() const { return link_.pending(); }
-  // Whether a write waits on the clock, so the main loop must not idle: never
-  // on this link.
-  bool wants_fast_loop() const { return false; }
+  // Whether a write waits on the clock, so the main loop must not idle and
+  // stretch the pause.
+  bool wants_fast_loop() const { return link_.write_waits(); }
+
+  // A timing point, `ms` clamped to its bound; false where the link has none.
+  bool set_timing(TimingPoint point, uint32_t &ms) {
+    link_.set_timing(point, ms);
+    return true;
+  }
+  uint32_t timing(TimingPoint point) const { return link_.timing(point); }
+  uint32_t timing_default(TimingPoint point) const {
+    return point == TimingPoint::ENQ_TO_SEND ? defaults_.enq_to_send_ms : defaults_.answer_to_next_ms;
+  }
 
   bool submit(const Request &request) {
     if (link_.pending())
@@ -127,6 +137,7 @@ template<class Codec, class Link> class Exchange {
   }
 
   Link link_;
+  const EnqLinkParams defaults_;
   uint32_t watchdog_ms_;
   uint32_t now_;
   uint32_t request_ms_{0};

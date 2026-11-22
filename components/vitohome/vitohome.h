@@ -43,6 +43,8 @@ class RealTimeClock;
 
 namespace vitohome {
 
+using TimingPoint = optolink::TimingPoint;
+
 class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice {
  public:
   // iface_ keeps `this` as a UARTDevice*, a base constructed before the
@@ -209,6 +211,16 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   //   id(vito).set_gwg_enq_ack_gap_ms(30);
   void set_gwg_enq_ack_gap_ms(uint32_t ms);
   uint32_t gwg_enq_ack_gap_ms() const { return this->gwg_enq_ack_gap_ms_; }
+
+  // A timing point of the link: how long it holds a write back after its
+  // moment (TimingPoint, optolink_types.h). KW only so far, where
+  // ENQ_TO_SEND is 20 ms and ANSWER_TO_NEXT 25 ms; a value past the bound
+  // is clamped, and any value other than the default is logged as a
+  // warning. False on a protocol without them. Settable live:
+  //
+  //   id(vito).set_link_timing(vitohome::TimingPoint::ENQ_TO_SEND, 30);
+  bool set_link_timing(TimingPoint point, uint32_t ms);
+  uint32_t link_timing(TimingPoint point) const { return this->vito_.timing(point); }
 
   // True once the GWG engine has stopped bursting
   // (GWGEngine::BURST_FAILURES_BEFORE_FALLBACK), until reboot. A burst A/B test
@@ -402,6 +414,8 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // `code`: the device's error code (a P300 error frame's payload).
   void raw_handle_error_(optolink::OptolinkResult error, const uint8_t *code = nullptr, uint8_t code_length = 0);
   void raw_publish_(const char *line);
+  // A timing point that differs from its default, as a warning.
+  void warn_link_timing_(TimingPoint point) const;
 
   // Every raw operation is queued here. bytes/bytes_len is the write payload or
   // the procedure parameter, nullptr/0 for a read, copied into the RawOp. False

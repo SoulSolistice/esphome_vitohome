@@ -69,6 +69,12 @@ inline constexpr uint8_t kSSeed_kw_dead[] = {
     0x00, 0x00, 0x00, 0x00, 0x64, 0x00, 0x00, 0x00, 0xF8, 0x03,
 };
 
+// KW: a device whose ENQ window (22 ms) just outlasts the link's 20 ms pause
+// before its 01: still a device without quirks, so the read must succeed.
+inline constexpr uint8_t kSSeed_kw_window_edge[] = {
+    0x00, 0x00, 0x00, 0x0B, 0x00, 0x00, 0x00, 0x00, 0xF8, 0x03,
+};
+
 struct SimSessionSeed {
   const char *name;
   const uint8_t *bytes;
@@ -88,6 +94,7 @@ inline constexpr SimSessionSeed kSimSessionSeeds[] = {
     {"gwg_ignores", kSSeed_gwg_ignores, sizeof(kSSeed_gwg_ignores)},
     {"gwg_window", kSSeed_gwg_window, sizeof(kSSeed_gwg_window)},
     {"kw_dead", kSSeed_kw_dead, sizeof(kSSeed_kw_dead)},
+    {"kw_window_edge", kSSeed_kw_window_edge, sizeof(kSSeed_kw_window_edge)},
 };
 
 inline constexpr std::size_t kSimSessionSeedCount = sizeof(kSimSessionSeeds) / sizeof(kSimSessionSeeds[0]);

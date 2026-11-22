@@ -62,9 +62,11 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
   run side by side on one clock: same refusals, same bytes, same results,
   the getters the hub used to read included, and each case's named outcome.
   On KW each request equals the one `kw_calls.h` sends.
-- `proof_kw_timing.cpp` — the KW link's own timing on counted passes: the
-  ENQ answered in the pass that reads it, a chained telegram sent from
-  `submit()`, and the retry after silence with its limits.
+- `proof_kw_timing.cpp` — the KW link's own timing on a frozen clock: its
+  two pauses (20 ms after the ENQ, 25 ms after an answer), 0 as the same
+  pass, their bounds, the ENQ hold, the fast loop while a write waits, and
+  the retry after silence with its limits. The other KW proofs run on
+  `kw_calls::kNoPause`, the same link without the pauses.
 - `proof_kw_chain.cpp`, `proof_kw_gfa.cpp`, `proof_kw_write.cpp`,
   `proof_kw_frame.cpp` — the KW exchange: chaining and its two windows, the
   GFA read and its pause, the write acknowledgement, open frames.

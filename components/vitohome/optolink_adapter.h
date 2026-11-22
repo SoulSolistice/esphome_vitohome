@@ -50,6 +50,10 @@ template<class Port> class P300Adapter {
   void end() { engine_.end(); }
   bool busy() const { return engine_.isBusy(); }
   bool wants_fast_loop() const { return false; }
+  // No timing points on this engine.
+  bool set_timing(TimingPoint, uint32_t &) { return false; }
+  uint32_t timing(TimingPoint) const { return 0; }
+  uint32_t timing_default(TimingPoint) const { return 0; }
 
   // A KW request takes the engine's detour to KW and back.
   bool submit(const Request &request) {
@@ -111,6 +115,10 @@ template<class Port> class GwgAdapter {
   bool busy() const { return engine_.isBusy(); }
   // While a request waits out the ENQ-to-send delay or the gap after the 01.
   bool wants_fast_loop() const { return engine_.isHoldingEnq(); }
+  // GWG's own knobs (set_gwg_*) until its link has timing points.
+  bool set_timing(TimingPoint, uint32_t &) { return false; }
+  uint32_t timing(TimingPoint) const { return 0; }
+  uint32_t timing_default(TimingPoint) const { return 0; }
 
   // A GWG request by its TYPE byte: an access mode's read or write keeps its
   // mode's handling, a two-byte EEPROM write is the pair as given.

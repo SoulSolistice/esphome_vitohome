@@ -278,6 +278,13 @@ vitohome:
   #                         # 1–2 for one-off reads, 256 for RANGE SWEEPS
   #                         # (~10 KiB — see example/vitohome-scanner-raw.yaml).
   #                         # Time sync does NOT use this lane.
+  # link_timing:            # KW only: the link's pauses. Defaults are the
+  #   enq_to_send: 20ms     # ones a VScotHO1_72 answers best (after its
+  #   answer_to_next: 25ms  # ENQ before the 01, max 100ms; after an answer
+  #                         # before the next telegram, max 400ms). Any
+  #                         # other value is a diagnostic setting, logged as
+  #                         # a warning at boot; set_link_timing() changes
+  #                         # them live.
 
 sensor:
   - platform: vitohome

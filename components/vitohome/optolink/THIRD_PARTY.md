@@ -996,7 +996,19 @@ These are intentional divergences from upstream `edc059a7`:
     78,550 chained ones (2026-11-21). Proof: `proof_kw_timing.cpp`,
     `proof_sim.cpp` K5, K7, K10 and K11.
 
-Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called), 39 (when its gap is set), 40, 41 and 45 are the only intentional changes to on-wire/runtime
+46. **KW pauses before it writes (behavioral divergence).** Item 45's
+    same-pass writes left twice as many telegrams on an ENQ unanswered on
+    a VScotHO1_72 (64 of 10,909) and chained ones too (28 of 123,528, 0
+    before), most right after the 1-byte reads A305 and A38F (12.6 h,
+    2026-11-22). The KW link now holds the 01 20 ms after the device's
+    ENQ and a chained telegram 25 ms after an answer: two timing points
+    (`TimingPoint::ENQ_TO_SEND`, `ANSWER_TO_NEXT`), settable from YAML
+    (`link_timing:`) and live (`set_link_timing()`), bounded at 100 ms
+    and 400 ms, logged as a warning when not the default. The main loop
+    runs fast while a write waits. The ENQ hold counts from the moment
+    the write is due. Proof: `proof_kw_timing.cpp`, `test_link_timing.py`.
+
+Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called), 39 (when its gap is set), 40, 41, 45 and 46 are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16, 42, 43 and 44 are structural (no behavior change from any call
 site that exists -- item 16 altered bytes only on a RESPONSE-construction path
 nothing exercised, now removed); item 17 changes only construction-failure handling

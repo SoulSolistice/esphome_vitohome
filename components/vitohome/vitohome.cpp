@@ -138,6 +138,10 @@ void VitoHomeComponent::setup() {
     return;
   }
 
+  // A timing point someone set is never silent: in every log uploaded.
+  this->warn_link_timing_(TimingPoint::ENQ_TO_SEND);
+  this->warn_link_timing_(TimingPoint::ANSWER_TO_NEXT);
+
   // Start-up window for the first answer: max(PROTOCOL_VERIFY_MIN_MS, 3 * hub
   // interval), saturated at INT32_MAX for loop()'s signed-difference deadline
   // check.
@@ -298,6 +302,29 @@ void VitoHomeComponent::apply_gwg_diagnostics_() {
 void VitoHomeComponent::arm_watchdog_(uint8_t telegrams) {
   this->in_flight_started_ms_ = App.get_loop_component_start_time();
   this->in_flight_watchdog_ms_ = in_flight_watchdog_ms(IN_FLIGHT_WATCHDOG_MS, telegrams);
+}
+
+bool VitoHomeComponent::set_link_timing(TimingPoint point, uint32_t ms) {
+  const uint32_t asked = ms;
+  if (!this->vito_.set_timing(point, ms)) {
+    ESP_LOGW(TAG, "set_link_timing: the %s link has no timing points yet", PROTOCOL_NAME);
+    return false;
+  }
+  if (ms != asked)
+    ESP_LOGW(TAG, "set_link_timing: %" PRIu32 " ms is past the bound, %" PRIu32 " ms set", asked, ms);
+  // Before setup() the logger is not up yet; setup() warns then.
+  if (this->is_ready())
+    this->warn_link_timing_(point);
+  return true;
+}
+
+void VitoHomeComponent::warn_link_timing_(TimingPoint point) const {
+  const uint32_t ms = this->vito_.timing(point);
+  const uint32_t standard = this->vito_.timing_default(point);
+  if (ms == standard)
+    return;
+  ESP_LOGW(TAG, "diagnostic link timing active: %s %" PRIu32 " ms (default %" PRIu32 " ms)",
+           point == TimingPoint::ENQ_TO_SEND ? "ENQ_TO_SEND" : "ANSWER_TO_NEXT", ms, standard);
 }
 
 void VitoHomeComponent::set_gwg_write_eot_before_payload(bool eot_first) {
@@ -635,6 +662,10 @@ void VitoHomeComponent::dump_config() {
                 "  Entities: %zu\n"
                 "  Raw queue capacity: %zu",
                 PROTOCOL_NAME, this->entities_.size(), this->raw_queue_capacity_);
+#ifdef VITOHOME_PROTOCOL_KW
+  ESP_LOGCONFIG(TAG, "  Link timing: ENQ to send %" PRIu32 " ms, answer to next %" PRIu32 " ms",
+                this->vito_.timing(TimingPoint::ENQ_TO_SEND), this->vito_.timing(TimingPoint::ANSWER_TO_NEXT));
+#endif
 
   if (this->ident_state_ == IdentState::DONE) {
     ESP_LOGCONFIG(TAG, "  Device: %s", this->ident_string_().c_str());

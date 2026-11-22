@@ -19,7 +19,12 @@ namespace live = esphome::vitohome::optolink;
 // sent one pass later, no retry after silence. The live side of the
 // differential target runs on it, so the comparison with the reference covers
 // everything else; the new timing has its own proofs.
-inline constexpr live::EnqLinkParams kVs1Timing{50, 500, 1000, 4000, false, 0};
+inline constexpr live::EnqLinkParams kVs1Timing{50, 500, 1000, 4000, false, 0, 0, 0};
+
+// The KW link without its pauses: the proofs of chaining, GFA reads, writes
+// and open frames count passes without moving the clock; the pauses have
+// their own proof (proof_kw_timing.cpp).
+inline constexpr live::EnqLinkParams kNoPause{50, 500, 1000, 4000, true, 1, 0, 0};
 
 template<class E, class R, class F> void wire(E &e, R on_response, F on_error) {
   e.onResponse(on_response);

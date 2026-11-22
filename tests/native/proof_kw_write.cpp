@@ -17,7 +17,9 @@
 #include "optolink_kw.h"
 
 using namespace esphome::vitohome;
-using Engine = optolink::KwExchange<FakeOptolink>;
+// Without the link's pauses, so passes count without the clock moving; the
+// pauses have their own proof (proof_kw_timing.cpp).
+using Engine = optolink::KwExchange<FakeOptolink, kw_calls::kNoPause>;
 
 namespace {
 int g_responses = 0;

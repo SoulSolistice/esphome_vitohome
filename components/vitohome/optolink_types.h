@@ -55,6 +55,25 @@ struct Telegram {
   uint8_t chain_gap_ms;
 };
 
+// The moments a link holds a write back (design-optolink-layers.md, section
+// 13), each settable up to its bound.
+enum class TimingPoint : uint8_t {
+  // The device's ENQ read -> the 01 and the telegram.
+  ENQ_TO_SEND,
+  // An answer -> the next telegram chained onto it; a GFA read keeps at
+  // least its own 25 ms.
+  ANSWER_TO_NEXT,
+};
+
+// The bounds: well inside what a VScotHO1_72 takes (200 ms after its ENQ,
+// 0.91 s after its answer) and inside the KW link's 500 ms chain window.
+inline constexpr uint32_t ENQ_TO_SEND_MAX_MS = 100;
+inline constexpr uint32_t ANSWER_TO_NEXT_MAX_MS = 400;
+
+constexpr uint32_t timing_max(TimingPoint point) {
+  return point == TimingPoint::ENQ_TO_SEND ? ENQ_TO_SEND_MAX_MS : ANSWER_TO_NEXT_MAX_MS;
+}
+
 // Which telegram a request is: a protocol's own, or an open frame sent as
 // given.
 enum class Lane : uint8_t { P300, KW, GWG, FRAME };

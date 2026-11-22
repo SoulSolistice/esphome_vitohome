@@ -91,6 +91,12 @@ CONF_LOG_FRAMES = "log_frames"
 # VitoHomeComponent::set_raw_queue_capacity for the RAM trade-off. Defaults to
 # 0 -- clock sync does not use this lane.
 CONF_RAW_QUEUE_SIZE = "raw_queue_size"
+CONF_LINK_TIMING = "link_timing"
+CONF_ENQ_TO_SEND = "enq_to_send"
+CONF_ANSWER_TO_NEXT = "answer_to_next"
+# The bounds of optolink_types.h (ENQ_TO_SEND_MAX_MS, ANSWER_TO_NEXT_MAX_MS).
+ENQ_TO_SEND_MAX_MS = 100
+ANSWER_TO_NEXT_MAX_MS = 400
 # The generic raw operation (VitoHomeComponent::queue_raw_op(), raw_op.h): any
 # telegram of any layer, for reverse engineering. Off by default; the second
 # switch adds the operations that may change the controller (RawClass UNSAFE).
@@ -116,6 +122,19 @@ CONF_WEEKDAY_BASE = "weekday_base"
 WEEKDAY_BASE_AUTO = "auto"
 # Values in decode.h's WeekdayBase order (set_clock_weekday_base()).
 WEEKDAY_BASES = (WEEKDAY_BASE_AUTO, "sunday_0", "monday_0", "monday_1")
+
+LINK_TIMING_SCHEMA = cv.Schema(
+    {
+        cv.Optional(CONF_ENQ_TO_SEND): cv.All(
+            cv.positive_time_period_milliseconds,
+            cv.Range(max=cv.TimePeriod(milliseconds=ENQ_TO_SEND_MAX_MS)),
+        ),
+        cv.Optional(CONF_ANSWER_TO_NEXT): cv.All(
+            cv.positive_time_period_milliseconds,
+            cv.Range(max=cv.TimePeriod(milliseconds=ANSWER_TO_NEXT_MAX_MS)),
+        ),
+    }
+)
 
 TIME_SYNC_SCHEMA = cv.Schema(
     {
@@ -1039,6 +1058,16 @@ def poll_update_interval(value):
     return _check_interval(cv.update_interval(value), "update_interval", allow_never=True)
 
 
+def _validate_link_timing(config):
+    """``link_timing`` sets the KW link's pauses; the P300 and GWG engines have none yet."""
+    if CONF_LINK_TIMING in config and str(config[CONF_PROTOCOL]) != "KW":
+        raise cv.Invalid(
+            f"'{CONF_LINK_TIMING}' is for 'protocol: KW' only so far",
+            path=[CONF_LINK_TIMING],
+        )
+    return config
+
+
 def _validate_raw_access(config):
     """``unsafe_raw_writes`` widens ``raw_access: unrestricted``, which needs the
     raw lane it queues on."""
@@ -1110,12 +1139,18 @@ CONFIG_SCHEMA = cv.All(
                 RAW_ACCESS_STANDARD, RAW_ACCESS_UNRESTRICTED, lower=True
             ),
             cv.Optional(CONF_UNSAFE_RAW_WRITES, default=False, visibility=cv.Visibility.ADVANCED): cv.boolean,
+            # The link's pauses (KW): after the device's ENQ before the 01,
+            # after an answer before the next chained telegram. Defaults 20 ms
+            # and 25 ms; anything else is a diagnostic setting and logged as a
+            # warning at boot.
+            cv.Optional(CONF_LINK_TIMING, visibility=cv.Visibility.ADVANCED): LINK_TIMING_SCHEMA,
         }
     )
     .extend(cv.polling_component_schema("60s"))
     .extend(uart.UART_DEVICE_SCHEMA),
     _validate_time_sync,
     _validate_raw_access,
+    _validate_link_timing,
 )
 
 
@@ -1665,6 +1700,10 @@ async def to_code(config):
     # Raw-lane capacity is applied before setup() reserves the lane. Emitted
     # unconditionally so the generated main.cpp states the size it runs with.
     cg.add(var.set_raw_queue_capacity(config[CONF_RAW_QUEUE_SIZE]))
+    timing_point = vitohome_ns.namespace("optolink").enum("TimingPoint", is_class=True)
+    for key, point in ((CONF_ENQ_TO_SEND, "ENQ_TO_SEND"), (CONF_ANSWER_TO_NEXT, "ANSWER_TO_NEXT")):
+        if key in config.get(CONF_LINK_TIMING, {}):
+            cg.add(var.set_link_timing(getattr(timing_point, point), config[CONF_LINK_TIMING][key].total_milliseconds))
     if config[CONF_RAW_ACCESS] == RAW_ACCESS_UNRESTRICTED:
         cg.add_build_flag("-DVITOHOME_RAW_UNRESTRICTED")
         _LOGGER.warning(

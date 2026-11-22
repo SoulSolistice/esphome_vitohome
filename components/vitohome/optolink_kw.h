@@ -12,8 +12,12 @@
 //   answer deadline  1 s of silence while an answer is due; a telegram met
 //                    by silence goes out once more on the next ENQ (a
 //                    VScotHO1_72 left 17 of 6066 unanswered, 2026-11-21)
-//   same pass        an ENQ is answered, and a telegram chained, in the pass
-//                    that allows it
+//   pauses           the 01 20 ms after the ENQ, a chained telegram 25 ms
+//                    after the answer (TimingPoint, settable): sent at once,
+//                    a VScotHO1_72 left twice as many telegrams on an ENQ
+//                    unanswered and chained ones too, most after A305 and
+//                    A38F (2026-11-22); Vitosoft chains 22-42 ms after an
+//                    answer
 //   EOT              after 4 s without an ENQ, past that 2.97 s
 //   watchdog         4 s per request, from submit, an open frame's send or a
 //                    retry
@@ -26,7 +30,7 @@
 
 namespace esphome::vitohome::optolink {
 
-inline constexpr EnqLinkParams KW_LINK_PARAMS{50, 500, 1000, 4000, true, 1};
+inline constexpr EnqLinkParams KW_LINK_PARAMS{50, 500, 1000, 4000, true, 1, 20, 25};
 inline constexpr uint32_t KW_WATCHDOG_MS = 4000;
 
 // `Params`: the link's timing, KW_LINK_PARAMS but in the tests.
