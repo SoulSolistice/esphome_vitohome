@@ -38,6 +38,7 @@ from .transforms import (
     _llround,
     _negative_option_count,
     _poll_for,
+    _raw_grid,
     _scale_from_bounds,
     _unit_for,
     _unit_negated,
@@ -149,7 +150,9 @@ def render_entity_lines(spec: EntitySpec) -> list[str]:
         else:
             lines.append(f"  bit_mask: 0x{spec.bit_mask:02X}")
 
-    if spec.converter:
+    if spec.scale is not None:
+        lines.append(f"  scale: {spec.scale:.12g}")
+    elif spec.converter:
         lines.append(f"  converter: {spec.converter}")
     if spec.value_offset is not None:
         lines.append(f"  value_offset: {spec.value_offset:g}")
@@ -497,6 +500,7 @@ def _build_bit_field_spec(
     # --- numeric fields ------------------------------------------------------
     filters: list[tuple[str, float]] = []
     value_offset = 0.0  # number only: value = field * scale + value_offset
+    scale_override: float | None = None  # number only: a factor no preset carries
     conv_factor = getattr(ev, "conv_factor", None)
     conv_offset = getattr(ev, "conv_offset", None)
     eff_factor = conv_factor if conv_factor not in (None, 0.0) else None
@@ -536,6 +540,16 @@ def _build_bit_field_spec(
             conv = preset or "noconv"
             value_offset = o_val
             notes.append(f"conversion 'MultOffset': value = field * {f_val or 1:g} + {o_val:g} -> {conv} + value_offset")
+        elif writable and f_val is not None and f_val > 0:
+            conv = "noconv"
+            scale_override = f_val
+            value_offset = o_val
+            notes.append(
+                f"conversion 'MultOffset': value = field * {f_val:g}"
+                + (f" + {o_val:g}" if o_val else "")
+                + " -> scale"
+                + (" + value_offset" if o_val else "")
+            )
         else:
             conv = "noconv"
             if f_val is not None and f_val != 1.0:
@@ -555,6 +569,9 @@ def _build_bit_field_spec(
         scale = _CONV_SCALE.get(conv or "", 1.0)
         if scale != 1.0:
             filters.insert(0, ("multiply", scale))
+        if scale_override is not None:
+            filters.append(("multiply", scale_override))
+            scale_override = None
         if value_offset:
             filters.append(("offset", value_offset))
             value_offset = 0.0
@@ -565,11 +582,21 @@ def _build_bit_field_spec(
     unit = _unit_for(ev)
     dc = _device_class_for(unit)
     vals = getattr(ev, "values", None) or []
+    lo = ev.lower or (vals[0].lower if vals else "")
+    hi = ev.upper or (vals[0].upper if vals else "")
+    step = ev.stepping or (vals[0].stepping if vals else "")
     if writable:
-        scale = _CONV_SCALE.get(conv, 1.0)
-        lo = ev.lower or (vals[0].lower if vals else "")
-        hi = ev.upper or (vals[0].upper if vals else "")
-        step = ev.stepping or (vals[0].stepping if vals else "")
+        step, grid_note, on_grid = _raw_grid(lo, hi, step, scale_override or _CONV_SCALE.get(conv, 1.0), value_offset)
+        if grid_note:
+            notes.append(grid_note)
+        if not on_grid:
+            if scale_override is not None:
+                filters.append(("multiply", scale_override))
+            if value_offset:
+                filters.append(("offset", value_offset))
+            scale_override, value_offset, writable = None, 0.0, False
+    if writable:
+        scale = scale_override or _CONV_SCALE.get(conv, 1.0)
 
         def _fits(v: str) -> bool:
             try:
@@ -595,6 +622,7 @@ def _build_bit_field_spec(
             bit_mask_comment=mask_comment,
             converter=conv,
             value_offset=value_offset or None,
+            scale=scale_override,
             unit=unit or None,
             device_class=dc,
             min_value=min_v,
@@ -693,6 +721,9 @@ def build_entity_spec(
     # number only: value = raw * scale + value_offset. Folded into the filters
     # if the datapoint ends up read-only.
     value_offset = 0.0
+    # number only: a factor no converter preset carries. Folded into the
+    # filters like value_offset.
+    scale_override: float | None = None
     force_signed = False
     writable = _is_writable(ev, protocol)
 
@@ -757,6 +788,16 @@ def build_entity_spec(
             conv_kind = DIV if conv.startswith("div") else PLAIN
             value_offset = o_val
             note = f"conversion 'MultOffset': value = raw * {f_val or 1:g} + {o_val:g} -> {conv} + value_offset"
+        elif writable and ev.conversion == "MultOffset" and f_val is not None and f_val > 0 and not preset:
+            conv = "noconv"
+            scale_override = f_val
+            value_offset = o_val
+            note = (
+                f"conversion 'MultOffset': value = raw * {f_val:g}"
+                + (f" + {o_val:g}" if o_val else "")
+                + " -> scale"
+                + (" + value_offset" if o_val else "")
+            )
         elif f_val is not None and (f_val != 1.0 or o_val != 0.0):
             conv = "noconv"
             if writable and ev.conversion != "MultOffset":
@@ -1057,10 +1098,14 @@ def build_entity_spec(
     # Set when a writable datapoint has to be emitted read-only for want of a
     # range (NO_BORDERS_CAUTION).
     caution: list[str] = []
+    lo = ev.lower or (vals[0].lower if vals else "")
+    hi = ev.upper or (vals[0].upper if vals else "")
+    step = ev.stepping or (vals[0].stepping if vals else "")
     if writable:
-        lo = ev.lower or (vals[0].lower if vals else "")
-        hi = ev.upper or (vals[0].upper if vals else "")
-        step = ev.stepping or (vals[0].stepping if vals else "")
+        step, grid_note, writable = _raw_grid(lo, hi, step, scale_override or _CONV_SCALE.get(conv, 1.0), value_offset)
+        if grid_note:
+            notes.append(grid_note)
+    if writable:
         # A negative lower border means the raw byte(s) are two's-complement.
         # div2/div10 are already signed in the component; every other converter
         # is unsigned by default and needs an explicit `signed: true` to accept
@@ -1092,12 +1137,13 @@ def build_entity_spec(
             signed_comment = f"Vitosoft ParameterType {getattr(ev, 'parameter_type', '')}, borders {lo}..{hi}"
         unit = _unit_for(ev)
         dc = _device_class_for(unit)
+        num_scale = scale_override or _CONV_SCALE.get(conv, 1.0)
         have_bounds = (
             lo != ""
             and hi != ""
             and step not in ("", "0")
-            and _bound_fits(lo, length, conv, is_signed, value_offset)
-            and _bound_fits(hi, length, conv, is_signed, value_offset)
+            and _bound_fits(lo, length, num_scale, is_signed, value_offset)
+            and _bound_fits(hi, length, num_scale, is_signed, value_offset)
             # An empty range is no range: 94 datapoints carry the borders 0..0
             # (step 1), which is the same "can only write 0" entity as one
             # without borders.
@@ -1113,6 +1159,7 @@ def build_entity_spec(
                 byte_length=w_blen,
                 converter=conv,
                 value_offset=value_offset or None,
+                scale=scale_override,
                 signed=signed_val,
                 signed_comment=signed_comment,
                 unit=unit or None,
@@ -1131,6 +1178,8 @@ def build_entity_spec(
         caution = list(NO_BORDERS_CAUTION)
 
     # --- read-only: single-bit binary_sensor, enum text_sensor, or sensor ---
+    if scale_override is not None:
+        value_filters.append(("multiply", scale_override))
     if value_offset:
         value_filters.append(("offset", value_offset))
     if is_bit:

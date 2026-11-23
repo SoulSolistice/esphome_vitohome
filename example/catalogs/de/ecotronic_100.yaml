@@ -2164,6 +2164,21 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # vito: quickcheck
+    # NOTE: upper border 199 is between two raw steps (5) -> read-only
+  - platform: vitohome
+    name: "(80) Verzögerung Fehleranzeige"
+    id: NRF_K80_KonfiFehlerDelay
+    entity_category: diagnostic
+    address: 0x7780
+    length: 1
+    converter: mult5
+    unit_of_measurement: "s"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
   - platform: vitohome
     name: "Viessmann - Anlagennummer"
     id: K98_KonfiVI_Anlagennummer_D
@@ -6139,23 +6154,6 @@ number:
     entity_category: config
     min_value: 1
     max_value: 99
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(80) Verzögerung Fehleranzeige"
-    id: NRF_K80_KonfiFehlerDelay
-    address: 0x7780
-    length: 1
-    converter: mult5
-    unit_of_measurement: "s"
-    device_class: duration
-    entity_category: config
-    min_value: 0
-    max_value: 199
     step: 1
     mode: box
     disabled_by_default: true

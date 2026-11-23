@@ -109,11 +109,12 @@ _SCALE = {"noconv": 1.0, "div2": 0.5, "div10": 0.1, "div100": 0.01, "mult2": 2.0
 
 
 def _decode(lines, raw_byte):
-    """What the component publishes: mask/shift, converter scale, value_offset
-    (number), then filters (sensor)."""
+    """What the component publishes: mask/shift, scale or converter scale,
+    value_offset (number), then filters (sensor)."""
     mask = _mask(lines)
     shift = (mask & -mask).bit_length() - 1
-    v = float((raw_byte & mask) >> shift) * _SCALE[_key(lines, "converter")]
+    scale = _key(lines, "scale")
+    v = float((raw_byte & mask) >> shift) * (float(scale) if scale else _SCALE[_key(lines, "converter")])
     v += float(_key(lines, "value_offset") or 0)
     for name, arg in _filters(lines):
         v = v * arg if name == "multiply" else v + arg
@@ -305,10 +306,21 @@ def test_read_only_multoffset_with_offset_keeps_its_filters(bit_position, value)
     assert _decode(lines, 0xA8) == pytest.approx(value)
 
 
-def test_multoffset_without_a_converter_for_its_factor_stays_read_only():
+def test_multoffset_without_a_preset_for_its_factor_is_a_scale_number():
+    ev = _k05_k06(0, conv_factor=3.0, conv_offset=6.0, lower="6", upper="51", stepping="3")
+    platform, lines = emit_entity(ev, "full", PROTO_GWG)
+    assert platform == "number"
+    assert (_key(lines, "scale"), _key(lines, "value_offset"), _key(lines, "converter")) == ("3", "6", None)
+    assert _filters(lines) == []
+    assert _decode(lines, 0xA8) == pytest.approx(10 * 3 + 6)
+
+
+def test_multoffset_whose_borders_contradict_its_factor_stays_read_only():
+    # 35..110 step 5 are not whole steps of 3.
     platform, lines = emit_entity(_k05_k06(0, conv_factor=3.0), "full", PROTO_GWG)
     assert platform == "sensor"
-    assert "no encode path" in "\n".join(lines)
+    assert "step 5 is not a whole number of raw steps (3)" in "\n".join(lines)
+    assert _decode(lines, 0xA8) == pytest.approx(10 * 3 + 35)
 
 
 def test_multoffset_preset_factor_is_writable_with_the_converter():

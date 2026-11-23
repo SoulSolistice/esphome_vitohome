@@ -1019,6 +1019,20 @@ sensor:
     update_interval: 3600s
 
   # vito: circuit=boiler quickcheck
+    # NOTE: lower border 1 is between two raw steps (10) -> read-only
+  - platform: vitohome
+    name: "(18) Reglernachstellzeit"
+    id: SR13_K18_KonfiKTReglernachstellzeit
+    address: 0x5818
+    length: 1
+    converter: mult10
+    unit_of_measurement: "s"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=boiler quickcheck
   # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
   # usable range for it (borders absent or equal, a zero step, or outside
   # the byte width). It is emitted READ-ONLY. To write it, declare it as a
@@ -2688,23 +2702,6 @@ number:
     entity_category: config
     min_value: 0
     max_value: 15
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=boiler quickcheck
-  - platform: vitohome
-    name: "(18) Reglernachstellzeit"
-    id: SR13_K18_KonfiKTReglernachstellzeit
-    address: 0x5818
-    length: 1
-    converter: mult10
-    unit_of_measurement: "s"
-    device_class: duration
-    entity_category: config
-    min_value: 1
-    max_value: 1000
     step: 1
     mode: box
     disabled_by_default: true

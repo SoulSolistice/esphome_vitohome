@@ -20,11 +20,11 @@
 # screen, quick check and trend recorder), and gfa=<chips> (the burner-
 # control chips a GFA datapoint is listed for). ESPHome ignores them.
 #
-# 32 entity name(s) repeat within their platform in Vitosoft (e.g. one
+# 31 entity name(s) repeat within their platform in Vitosoft (e.g. one
 # 'Pegel' per RF participant); each such name carries its id in parentheses,
 # since ESPHome requires a unique name per platform.
 #
-# WRITABLE WITHOUT A RANGE: 17 datapoint(s) are writable in Vitosoft, but
+# WRITABLE WITHOUT A RANGE: 28 datapoint(s) are writable in Vitosoft, but
 # the export gives no usable borders for them. Each is emitted READ-ONLY
 # under a CAUTION comment. Making one a `number` means choosing its
 # range yourself, and nothing here checks it: confirm the range on the
@@ -38,7 +38,12 @@
 sensor:
   # --- Bedienung / BedienungHK1 ---
   # vito: circuit=hk1 overview trend
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+    # NOTE: conversion 'MultOffset': value = raw * 0.015625 -> scale; writes are a read-modify-write of the whole 3-byte block
   - platform: vitohome
     name: "Set comfort temperature (Vitotwin_2000_Komfortsollwert)"
     id: Vitotwin_2000_Komfortsollwert
@@ -55,7 +60,12 @@ sensor:
     update_interval: 3600s
 
   # vito: circuit=hk1 overview trend
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+    # NOTE: conversion 'MultOffset': value = raw * 0.015625 -> scale; writes are a read-modify-write of the whole 3-byte block
   - platform: vitohome
     name: "Set reduced temperature (Vitotwin_2003_Reduziertsollwert)"
     id: Vitotwin_2003_Reduziertsollwert
@@ -72,22 +82,12 @@ sensor:
     update_interval: 3600s
 
   # vito: overview
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.02); value transform has no encode path -> demoted to sensor
-  - platform: vitohome
-    name: "Slope (Vitotwin_2006_Neigung)"
-    id: Vitotwin_2006_Neigung
-    address: 0x2006
-    length: 2
-    converter: noconv
-    filters:
-      - multiply: 0.02
-    state_class: measurement
-    accuracy_decimals: 2
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+    # NOTE: conversion 'MultOffset': value = raw * 0.015625 -> scale; writes are a read-modify-write of the whole 3-byte block
   - platform: vitohome
     name: "Level (Vitotwin_2009_Niveau)"
     id: Vitotwin_2009_Niveau
@@ -121,7 +121,12 @@ sensor:
     update_interval: 3600s
 
   # vito: overview
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+    # NOTE: conversion 'MultOffset': value = raw * 0.015625 -> scale; writes are a read-modify-write of the whole 3-byte block
   - platform: vitohome
     name: "Mixer increase (Vitotwin_2011_Mischererhoehung)"
     id: Vitotwin_2011_Mischererhoehung
@@ -211,7 +216,12 @@ sensor:
 
   # --- Bedienung / BedienungHK2 ---
   # vito: circuit=hk2 overview trend
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+    # NOTE: conversion 'MultOffset': value = raw * 0.015625 -> scale; writes are a read-modify-write of the whole 3-byte block
   - platform: vitohome
     name: "Set comfort temperature (Vitotwin_3000_Komfortsollwert)"
     id: Vitotwin_3000_Komfortsollwert
@@ -228,7 +238,12 @@ sensor:
     update_interval: 3600s
 
   # vito: circuit=hk2 overview trend
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+    # NOTE: conversion 'MultOffset': value = raw * 0.015625 -> scale; writes are a read-modify-write of the whole 3-byte block
   - platform: vitohome
     name: "Set reduced temperature (Vitotwin_3003_Reduziertsollwert)"
     id: Vitotwin_3003_Reduziertsollwert
@@ -245,22 +260,12 @@ sensor:
     update_interval: 3600s
 
   # vito: overview
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.02); value transform has no encode path -> demoted to sensor
-  - platform: vitohome
-    name: "Slope (Vitotwin_3006_Neigung)"
-    id: Vitotwin_3006_Neigung
-    address: 0x3006
-    length: 2
-    converter: noconv
-    filters:
-      - multiply: 0.02
-    state_class: measurement
-    accuracy_decimals: 2
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+    # NOTE: conversion 'MultOffset': value = raw * 0.015625 -> scale; writes are a read-modify-write of the whole 3-byte block
   - platform: vitohome
     name: "Level (Vitotwin_3009_Niveau)"
     id: Vitotwin_3009_Niveau
@@ -294,7 +299,12 @@ sensor:
     update_interval: 3600s
 
   # vito: overview
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+    # NOTE: conversion 'MultOffset': value = raw * 0.015625 -> scale; writes are a read-modify-write of the whole 3-byte block
   - platform: vitohome
     name: "Mixer increase (Vitotwin_3011_Mischererhoehung)"
     id: Vitotwin_3011_Mischererhoehung
@@ -384,7 +394,12 @@ sensor:
 
   # --- Bedienung / BedienungHK3 ---
   # vito: circuit=hk3 overview trend
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+    # NOTE: conversion 'MultOffset': value = raw * 0.015625 -> scale; writes are a read-modify-write of the whole 3-byte block
   - platform: vitohome
     name: "Set comfort temperature (Vitotwin_4000_Komfortsollwert)"
     id: Vitotwin_4000_Komfortsollwert
@@ -400,40 +415,13 @@ sensor:
     disabled_by_default: true
     update_interval: 3600s
 
-  # vito: circuit=hk3 overview trend
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
-  - platform: vitohome
-    name: "Set reduced temperature (Vitotwin_4003_Reduziertsollwert)"
-    id: Vitotwin_4003_Reduziertsollwert
-    address: 0x4003
-    length: 2
-    converter: noconv
-    unit_of_measurement: "°C"
-    device_class: temperature
-    filters:
-      - multiply: 0.015625
-    state_class: measurement
-    accuracy_decimals: 2
-    disabled_by_default: true
-    update_interval: 3600s
-
   # vito: overview
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.02); value transform has no encode path -> demoted to sensor
-  - platform: vitohome
-    name: "Slope (Vitotwin_4006_Neigung)"
-    id: Vitotwin_4006_Neigung
-    address: 0x4006
-    length: 2
-    converter: noconv
-    filters:
-      - multiply: 0.02
-    state_class: measurement
-    accuracy_decimals: 2
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+    # NOTE: conversion 'MultOffset': value = raw * 0.015625 -> scale; writes are a read-modify-write of the whole 3-byte block
   - platform: vitohome
     name: "Level (Vitotwin_4009_Niveau)"
     id: Vitotwin_4009_Niveau
@@ -467,7 +455,12 @@ sensor:
     update_interval: 3600s
 
   # vito: overview
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
+  # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
+  # usable range for it (borders absent or equal, a zero step, or outside
+  # the byte width). It is emitted READ-ONLY. To write it, declare it as a
+  # `number` with a min_value / max_value / step you have confirmed on the
+  # unit: nothing in this catalog bounds what you would send.
+    # NOTE: conversion 'MultOffset': value = raw * 0.015625 -> scale; writes are a read-modify-write of the whole 3-byte block
   - platform: vitohome
     name: "Mixer increase (Vitotwin_4011_Mischererhoehung)"
     id: Vitotwin_4011_Mischererhoehung
@@ -538,23 +531,6 @@ sensor:
     update_interval: 3600s
 
   # --- Bedienung / BedienungWW ---
-  # vito: circuit=dhw overview trend
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
-  - platform: vitohome
-    name: "Nominal set value"
-    id: Vitotwin_5000_Nennsollwert
-    address: 0x5000
-    length: 2
-    converter: noconv
-    unit_of_measurement: "°C"
-    device_class: temperature
-    filters:
-      - multiply: 0.015625
-    state_class: measurement
-    accuracy_decimals: 2
-    disabled_by_default: true
-    update_interval: 3600s
-
   # vito: overview
   # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
   # usable range for it (borders absent or equal, a zero step, or outside
@@ -593,22 +569,6 @@ sensor:
     update_interval: 3600s
 
   # --- Bedienung / ExternerWarmeerzeuger ---
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.015625); value transform has no encode path -> demoted to sensor
-  - platform: vitohome
-    name: "Setpoint increase main generator"
-    id: Vitotwin_1010_Sollwertanhebung_Haupterzeug
-    address: 0x1010
-    length: 2
-    converter: noconv
-    unit_of_measurement: "°C"
-    device_class: temperature
-    filters:
-      - multiply: 0.015625
-    state_class: measurement
-    accuracy_decimals: 2
-    disabled_by_default: true
-    update_interval: 3600s
-
   # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
   # usable range for it (borders absent or equal, a zero step, or outside
   # the byte width). It is emitted READ-ONLY. To write it, declare it as a
@@ -1596,6 +1556,124 @@ sensor:
     update_interval: 60s
 
 number:
+  # --- Bedienung / BedienungHK1 ---
+  # vito: overview
+    # NOTE: conversion 'MultOffset': value = raw * 0.02 -> scale; writes are a read-modify-write of the whole 3-byte block
+  - platform: vitohome
+    name: "Slope (Vitotwin_2006_Neigung)"
+    id: Vitotwin_2006_Neigung
+    address: 0x2006
+    length: 3
+    byte_offset: 0
+    byte_length: 2
+    scale: 0.02
+    entity_category: config
+    min_value: 0.1
+    max_value: 4
+    step: 0.02
+    mode: box
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Bedienung / BedienungHK2 ---
+  # vito: overview
+    # NOTE: conversion 'MultOffset': value = raw * 0.02 -> scale; writes are a read-modify-write of the whole 3-byte block
+  - platform: vitohome
+    name: "Slope (Vitotwin_3006_Neigung)"
+    id: Vitotwin_3006_Neigung
+    address: 0x3006
+    length: 3
+    byte_offset: 0
+    byte_length: 2
+    scale: 0.02
+    entity_category: config
+    min_value: 0.1
+    max_value: 4
+    step: 0.02
+    mode: box
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Bedienung / BedienungHK3 ---
+  # vito: circuit=hk3 overview trend
+    # NOTE: conversion 'MultOffset': value = raw * 0.015625 -> scale; writes are a read-modify-write of the whole 3-byte block
+  - platform: vitohome
+    name: "Set reduced temperature"
+    id: Vitotwin_4003_Reduziertsollwert
+    address: 0x4003
+    length: 3
+    byte_offset: 0
+    byte_length: 2
+    scale: 0.015625
+    unit_of_measurement: "°C"
+    device_class: temperature
+    entity_category: config
+    min_value: 6
+    max_value: 29
+    step: 1
+    mode: box
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: overview
+    # NOTE: conversion 'MultOffset': value = raw * 0.02 -> scale; writes are a read-modify-write of the whole 3-byte block
+  - platform: vitohome
+    name: "Slope (Vitotwin_4006_Neigung)"
+    id: Vitotwin_4006_Neigung
+    address: 0x4006
+    length: 3
+    byte_offset: 0
+    byte_length: 2
+    scale: 0.02
+    entity_category: config
+    min_value: 0.1
+    max_value: 4
+    step: 0.02
+    mode: box
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Bedienung / BedienungWW ---
+  # vito: circuit=dhw overview trend
+    # NOTE: conversion 'MultOffset': value = raw * 0.015625 -> scale; writes are a read-modify-write of the whole 3-byte block
+  - platform: vitohome
+    name: "Nominal set value"
+    id: Vitotwin_5000_Nennsollwert
+    address: 0x5000
+    length: 3
+    byte_offset: 0
+    byte_length: 2
+    scale: 0.015625
+    unit_of_measurement: "°C"
+    device_class: temperature
+    entity_category: config
+    min_value: 8
+    max_value: 65
+    step: 1
+    mode: box
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Bedienung / ExternerWarmeerzeuger ---
+    # NOTE: conversion 'MultOffset': value = raw * 0.015625 -> scale; writes are a read-modify-write of the whole 3-byte block
+  - platform: vitohome
+    name: "Setpoint increase main generator"
+    id: Vitotwin_1010_Sollwertanhebung_Haupterzeug
+    address: 0x1010
+    length: 3
+    byte_offset: 0
+    byte_length: 2
+    scale: 0.015625
+    unit_of_measurement: "°C"
+    device_class: temperature
+    entity_category: config
+    min_value: 0
+    max_value: 10
+    step: 1
+    mode: box
+    disabled_by_default: true
+    update_interval: 3600s
+
   # --- DiagnoseSystem / Allgemein ---
   # vito: overview quickcheck
   - platform: vitohome

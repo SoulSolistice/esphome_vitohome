@@ -748,6 +748,22 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # --- Codierungen / Allgemein ---
+  # vito: quickcheck
+    # NOTE: upper border 199 is between two raw steps (5) -> read-only
+  - platform: vitohome
+    name: "(80) Verzögerung Fehleranzeige"
+    id: NRF_K80_KonfiFehlerDelay
+    entity_category: diagnostic
+    address: 0x7780
+    length: 1
+    converter: mult5
+    unit_of_measurement: "s"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
   # --- LON Objekte / Node Objekt ---
   - platform: vitohome
     name: "Uhrzeit Senden - Minute"
@@ -3352,23 +3368,6 @@ number:
   # --- Codierungen / Allgemein ---
   # vito: quickcheck
   - platform: vitohome
-    name: "(80) Verzögerung Fehleranzeige"
-    id: NRF_K80_KonfiFehlerDelay
-    address: 0x7780
-    length: 1
-    converter: mult5
-    unit_of_measurement: "s"
-    device_class: duration
-    entity_category: config
-    min_value: 0
-    max_value: 199
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
     name: "(77) Viessmann - Teilnehmernummer"
     id: K77_KonfiVI_TeilnehmernummerV100_V300
     address: 0x7777
@@ -4497,6 +4496,7 @@ number:
     update_interval: 3600s
 
   # vito: quickcheck
+    # NOTE: step 1 is below the raw step 2 -> step 2
   - platform: vitohome
     name: "(FB) Dauer Überhöhung Vorlauftemperatur Soll HK1"
     id: KFB_KonfiDauerUeberhoehungVTSollA1
@@ -4508,7 +4508,7 @@ number:
     entity_category: config
     min_value: 0
     max_value: 300
-    step: 1
+    step: 2
     mode: box
     disabled_by_default: true
     update_interval: 3600s
@@ -4719,6 +4719,7 @@ number:
     update_interval: 3600s
 
   # vito: quickcheck
+    # NOTE: step 1 is below the raw step 2 -> step 2
   - platform: vitohome
     name: "(FB) Dauer Überhöhung Vorlauftemperatur Soll HK2"
     id: KFB_KonfiDauerUeberhoehungVTSollM2
@@ -4730,7 +4731,7 @@ number:
     entity_category: config
     min_value: 0
     max_value: 300
-    step: 1
+    step: 2
     mode: box
     disabled_by_default: true
     update_interval: 3600s

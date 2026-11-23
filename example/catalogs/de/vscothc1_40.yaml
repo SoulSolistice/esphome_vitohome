@@ -4111,6 +4111,7 @@ number:
     update_interval: 3600s
 
   # vito: quickcheck
+    # NOTE: step 1 is below the raw step 2 -> step 2
   - platform: vitohome
     name: "(FB) Dauer Überhöhung Vorlauftemperatur Soll HK1"
     id: KFB_KonfiDauerUeberhoehungVTSollA1
@@ -4122,7 +4123,7 @@ number:
     entity_category: config
     min_value: 0
     max_value: 300
-    step: 1
+    step: 2
     mode: box
     disabled_by_default: true
     update_interval: 3600s

@@ -9,7 +9,6 @@ import units
 
 from .constants import (
     _BOOLEAN_ON_OFF_PAIRS,
-    _CONV_SCALE,
     _FACTOR_PRESETS,
     _STEP_TOL,
     _UNSIGNED_PARAMETER_TYPES,
@@ -661,6 +660,44 @@ def _llround(x: float) -> int:
     return int(math.floor(abs(x) + 0.5)) * (1 if x >= 0 else -1)
 
 
+def _on_raw_grid(value: float, scale: float) -> bool:
+    """Whether *value* is a whole number of raw steps; number.py's _validate_raw_grid."""
+    steps = value / scale
+    return abs(steps - round(steps)) <= 1e-6
+
+
+def _raw_grid(lo: str, hi: str, step: str, scale: float, offset: float) -> tuple[str, str | None, bool]:
+    """Fit a number's borders to its raw steps (number.py's _validate_raw_grid).
+
+    Returns (step, note, ok). A step below the raw step that divides it is
+    raised to the raw step (Mult10 rows with step 1: the frontend would offer
+    values the write rounds away). A step or border between two raw steps
+    contradicts the encoding (Mult10 with 0..12): ok is False and the
+    datapoint stays read-only. Absent or unparsable borders pass through
+    unchanged."""
+    if lo == "" or step in ("", "0"):
+        return step, None, True
+    try:
+        step_f = float(step)
+    except (TypeError, ValueError):
+        return step, None, True
+    note = None
+    if not _on_raw_grid(step_f, scale):
+        if step_f < scale and _on_raw_grid(scale, step_f):
+            note = f"step {step} is below the raw step {scale:g} -> step {scale:g}"
+            step = f"{scale:.12g}"
+        else:
+            return step, f"step {step} is not a whole number of raw steps ({scale:g}) -> read-only", False
+    for label, border in (("lower", lo), ("upper", hi)):
+        try:
+            off_grid = border != "" and not _on_raw_grid(float(border) - offset, scale)
+        except (TypeError, ValueError):
+            off_grid = False
+        if off_grid:
+            return step, f"{label} border {border} is between two raw steps ({scale:g}) -> read-only", False
+    return step, note, True
+
+
 def _factor_preset(factor: float | None) -> str | None:
     """The converter whose scale is *factor*, or None."""
     if factor is None:
@@ -668,7 +705,7 @@ def _factor_preset(factor: float | None) -> str | None:
     return next((name for f, name in _FACTOR_PRESETS if abs(factor - f) < 1e-12), None)
 
 
-def _bound_fits(value_str: str, length: int, conv: str, is_signed: bool, offset: float = 0.0) -> bool:
+def _bound_fits(value_str: str, length: int, scale: float, is_signed: bool, offset: float = 0.0) -> bool:
     """Whether a min/max border survives encoding into ``length`` raw bytes.
 
     Mirrors components/vitohome/number.py (raw = llround(value / scale) -- half
@@ -683,7 +720,6 @@ def _bound_fits(value_str: str, length: int, conv: str, is_signed: bool, offset:
         v = float(value_str)
     except (TypeError, ValueError):
         return False
-    scale = _CONV_SCALE.get(conv, 1.0)
     raw = _llround((v - offset) / scale)
     if is_signed:
         return -(1 << (8 * length - 1)) <= raw <= (1 << (8 * length - 1)) - 1

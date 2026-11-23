@@ -127,6 +127,21 @@ sensor:
     update_interval: 60s
 
   # --- Diagnose / Allgemein ---
+  # vito: overview quickcheck
+    # NOTE: upper border 199 is between two raw steps (5) -> read-only
+  - platform: vitohome
+    name: "(80) Delay fault display"
+    id: NRF_K80_KonfiFehlerDelay
+    entity_category: diagnostic
+    address: 0x7780
+    length: 1
+    converter: mult5
+    unit_of_measurement: "s"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
   - platform: vitohome
     name: "Service"
     id: Ecotronic_Warnungen
@@ -5473,23 +5488,6 @@ number:
 
   # --- Diagnose / Allgemein ---
   # vito: overview quickcheck
-  - platform: vitohome
-    name: "(80) Delay fault display"
-    id: NRF_K80_KonfiFehlerDelay
-    address: 0x7780
-    length: 1
-    converter: mult5
-    unit_of_measurement: "s"
-    device_class: duration
-    entity_category: config
-    min_value: 0
-    max_value: 199
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: overview quickcheck
     # NOTE: conversion 'MultOffset' (factor 10) -> mult10
   - platform: vitohome
     name: "(90) Time constant, outside temperature"
@@ -7007,6 +7005,7 @@ number:
     update_interval: 3600s
 
   # vito: quickcheck
+    # NOTE: step 1 is below the raw step 2 -> step 2
   - platform: vitohome
     name: "(FA) Duration excess set flow temperature HC1"
     id: KFB_KonfiDauerUeberhoehungVTSollA1
@@ -7018,7 +7017,7 @@ number:
     entity_category: config
     min_value: 0
     max_value: 300
-    step: 1
+    step: 2
     mode: box
     disabled_by_default: true
     update_interval: 3600s
@@ -7109,6 +7108,7 @@ number:
     update_interval: 3600s
 
   # vito: quickcheck
+    # NOTE: step 1 is below the raw step 2 -> step 2
   - platform: vitohome
     name: "(FB) Duration excess set flow temperature HC2"
     id: KFB_KonfiDauerUeberhoehungVTSollM2
@@ -7120,7 +7120,7 @@ number:
     entity_category: config
     min_value: 0
     max_value: 300
-    step: 1
+    step: 2
     mode: box
     disabled_by_default: true
     update_interval: 3600s

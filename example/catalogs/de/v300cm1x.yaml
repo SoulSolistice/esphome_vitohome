@@ -1153,6 +1153,49 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # --- Codierungen / Alle ---
+  # vito: quickcheck
+    # NOTE: upper border 12 is between two raw steps (10) -> read-only
+  - platform: vitohome
+    name: "(C1) Absenkzeitvorverschiebung A1M1 der Ausschaltoptimierung"
+    id: KC1_KonfiAbsenkzeitA1M1
+    address: 0x27C1
+    length: 1
+    converter: mult10
+    unit_of_measurement: "min"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+    # NOTE: upper border 12 is between two raw steps (10) -> read-only
+  - platform: vitohome
+    name: "(C1) Absenkzeitvorverschiebung M2 der Ausschaltoptimierung"
+    id: KC1_KonfiAbsenkzeitM2
+    address: 0x37C1
+    length: 1
+    converter: mult10
+    unit_of_measurement: "min"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+    # NOTE: upper border 12 is between two raw steps (10) -> read-only
+  - platform: vitohome
+    name: "(C1) Absenkzeitvorverschiebung M3 der Ausschaltoptimierung"
+    id: KC1_KonfiAbsenkzeitM3
+    address: 0x47C1
+    length: 1
+    converter: mult10
+    unit_of_measurement: "min"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
   # --- Codierungen / Allgemein ---
   # vito: quickcheck
   # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
@@ -1201,54 +1244,6 @@ sensor:
     update_interval: 3600s
 
   # --- Codierungen / PM1 ---
-  # vito: circuit=boiler quickcheck
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 3); value transform has no encode path -> demoted to sensor
-  - platform: vitohome
-    name: "(09) Nachstellzeit Funktion 2⁄6"
-    id: K89_KonfiFkt2u6NachstellzeitZielTR
-    address: 0x8709
-    length: 1
-    converter: noconv
-    unit_of_measurement: "s"
-    device_class: duration
-    filters:
-      - multiply: 3
-    state_class: measurement
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=boiler quickcheck
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 3); value transform has no encode path -> demoted to sensor
-  - platform: vitohome
-    name: "(0C) Nachstellzeit Funktion 3⁄4"
-    id: K8C_KonfiFkt3u4Nachstellzeit
-    address: 0x870C
-    length: 1
-    converter: noconv
-    unit_of_measurement: "s"
-    device_class: duration
-    filters:
-      - multiply: 3
-    state_class: measurement
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=boiler quickcheck
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 3); value transform has no encode path -> demoted to sensor
-  - platform: vitohome
-    name: "(12) Nachstellzeit Funktion 7"
-    id: K92_KonfiFkt7Nachstellzeit
-    address: 0x8712
-    length: 1
-    converter: noconv
-    unit_of_measurement: "s"
-    device_class: duration
-    filters:
-      - multiply: 3
-    state_class: measurement
-    disabled_by_default: true
-    update_interval: 3600s
-
   # vito: circuit=boiler quickcheck
   # CAUTION: Vitosoft marks this datapoint WRITABLE, but the export gives no
   # usable range for it (borders absent or equal, a zero step, or outside
@@ -4539,57 +4534,6 @@ number:
 
   # vito: quickcheck
   - platform: vitohome
-    name: "(C1) Absenkzeitvorverschiebung A1M1 der Ausschaltoptimierung"
-    id: KC1_KonfiAbsenkzeitA1M1
-    address: 0x27C1
-    length: 1
-    converter: mult10
-    unit_of_measurement: "min"
-    device_class: duration
-    entity_category: config
-    min_value: 0
-    max_value: 12
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(C1) Absenkzeitvorverschiebung M2 der Ausschaltoptimierung"
-    id: KC1_KonfiAbsenkzeitM2
-    address: 0x37C1
-    length: 1
-    converter: mult10
-    unit_of_measurement: "min"
-    device_class: duration
-    entity_category: config
-    min_value: 0
-    max_value: 12
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
-    name: "(C1) Absenkzeitvorverschiebung M3 der Ausschaltoptimierung"
-    id: KC1_KonfiAbsenkzeitM3
-    address: 0x47C1
-    length: 1
-    converter: mult10
-    unit_of_measurement: "min"
-    device_class: duration
-    entity_category: config
-    min_value: 0
-    max_value: 12
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-  - platform: vitohome
     name: "(C3) Laufzeit Heizkreis Mischer M1"
     id: KC3_KonfiLaufzeitHKMischerM1
     address: 0x27C3
@@ -5039,6 +4983,7 @@ number:
     update_interval: 3600s
 
   # vito: quickcheck
+    # NOTE: step 1 is below the raw step 2 -> step 2
   - platform: vitohome
     name: "(FB) Dauer Überhöhung Vorlauftemperatur Soll HK1"
     id: KFB_KonfiDauerUeberhoehungVTSollA1
@@ -5050,12 +4995,13 @@ number:
     entity_category: config
     min_value: 0
     max_value: 300
-    step: 1
+    step: 2
     mode: box
     disabled_by_default: true
     update_interval: 3600s
 
   # vito: quickcheck
+    # NOTE: step 1 is below the raw step 2 -> step 2
   - platform: vitohome
     name: "(FB) Dauer Überhöhung Vorlauftemperatur Soll HK2"
     id: KFB_KonfiDauerUeberhoehungVTSollM2
@@ -5067,12 +5013,13 @@ number:
     entity_category: config
     min_value: 0
     max_value: 300
-    step: 1
+    step: 2
     mode: box
     disabled_by_default: true
     update_interval: 3600s
 
   # vito: quickcheck
+    # NOTE: step 1 is below the raw step 2 -> step 2
   - platform: vitohome
     name: "(FB) Dauer Überhöhung Vorlauftemperatur Soll HK3"
     id: KFB_KonfiDauerUeberhoehungVTSollM3
@@ -5084,7 +5031,7 @@ number:
     entity_category: config
     min_value: 0
     max_value: 300
-    step: 1
+    step: 2
     mode: box
     disabled_by_default: true
     update_interval: 3600s
@@ -5257,6 +5204,7 @@ number:
     update_interval: 3600s
 
   # vito: circuit=hk1 quickcheck
+    # NOTE: step 1 is below the raw step 2 -> step 2
   - platform: vitohome
     name: "(28) Dauer Überhöhung Vorlauftemperatur Soll HK1"
     id: K28_NRP_KonfiDauerUeberhoehungVTSollA1
@@ -5268,7 +5216,7 @@ number:
     entity_category: config
     min_value: 0
     max_value: 300
-    step: 1
+    step: 2
     mode: box
     disabled_by_default: true
     update_interval: 3600s
@@ -5441,6 +5389,7 @@ number:
     update_interval: 3600s
 
   # vito: circuit=hk2 quickcheck
+    # NOTE: step 1 is below the raw step 2 -> step 2
   - platform: vitohome
     name: "(28) Dauer Überhöhung Vorlauftemperatur Soll HK2"
     id: K28_NRP_KonfiDauerUeberhoehungVTSollM2
@@ -5452,7 +5401,7 @@ number:
     entity_category: config
     min_value: 0
     max_value: 300
-    step: 1
+    step: 2
     mode: box
     disabled_by_default: true
     update_interval: 3600s
@@ -5643,6 +5592,7 @@ number:
     update_interval: 3600s
 
   # vito: circuit=hk3 quickcheck
+    # NOTE: step 1 is below the raw step 2 -> step 2
   - platform: vitohome
     name: "(28) Dauer Überhöhung Vorlauftemperatur Soll HK3"
     id: K28_NRP_KonfiDauerUeberhoehungVTSollM3
@@ -5654,7 +5604,7 @@ number:
     entity_category: config
     min_value: 0
     max_value: 300
-    step: 1
+    step: 2
     mode: box
     disabled_by_default: true
     update_interval: 3600s
@@ -5950,6 +5900,24 @@ number:
     update_interval: 3600s
 
   # vito: circuit=boiler quickcheck
+    # NOTE: conversion 'MultOffset': value = raw * 3 -> scale
+  - platform: vitohome
+    name: "(09) Nachstellzeit Funktion 2⁄6"
+    id: K89_KonfiFkt2u6NachstellzeitZielTR
+    address: 0x8709
+    length: 1
+    scale: 3
+    unit_of_measurement: "s"
+    device_class: duration
+    entity_category: config
+    min_value: 0
+    max_value: 765
+    step: 3
+    mode: box
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=boiler quickcheck
   - platform: vitohome
     name: "(0A) Soll-Differenztemperatur Funktion 3⁄4"
     id: K8A_KonfiFkt3u4DifferenztempSoll
@@ -5979,6 +5947,24 @@ number:
     min_value: 0.1
     max_value: 10
     step: 0.1
+    mode: box
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=boiler quickcheck
+    # NOTE: conversion 'MultOffset': value = raw * 3 -> scale
+  - platform: vitohome
+    name: "(0C) Nachstellzeit Funktion 3⁄4"
+    id: K8C_KonfiFkt3u4Nachstellzeit
+    address: 0x870C
+    length: 1
+    scale: 3
+    unit_of_measurement: "s"
+    device_class: duration
+    entity_category: config
+    min_value: 0
+    max_value: 765
+    step: 3
     mode: box
     disabled_by_default: true
     update_interval: 3600s
@@ -6064,6 +6050,24 @@ number:
     min_value: 0.1
     max_value: 10
     step: 0.1
+    mode: box
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=boiler quickcheck
+    # NOTE: conversion 'MultOffset': value = raw * 3 -> scale
+  - platform: vitohome
+    name: "(12) Nachstellzeit Funktion 7"
+    id: K92_KonfiFkt7Nachstellzeit
+    address: 0x8712
+    length: 1
+    scale: 3
+    unit_of_measurement: "s"
+    device_class: duration
+    entity_category: config
+    min_value: 0
+    max_value: 765
+    step: 3
     mode: box
     disabled_by_default: true
     update_interval: 3600s

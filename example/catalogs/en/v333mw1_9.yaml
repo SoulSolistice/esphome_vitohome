@@ -817,6 +817,51 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # --- Codierungen / FernbedfuerHKA1 ---
+  # vito: circuit=hk1 quickcheck
+    # NOTE: upper border 12 is between two raw steps (10) -> read-only
+  - platform: vitohome
+    name: "(C1) Setback period brought forward A1M1 of stop optimisation"
+    id: KC1_KonfiAbsenkzeitA1M1
+    address: 0x27C1
+    length: 1
+    converter: mult10
+    unit_of_measurement: "min"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Codierungen / FernbedfuerHKM2 ---
+  # vito: circuit=hk2 quickcheck
+    # NOTE: upper border 12 is between two raw steps (10) -> read-only
+  - platform: vitohome
+    name: "(C1) Setback period brought forward M2 of stop optimisation"
+    id: KC1_KonfiAbsenkzeitM2
+    address: 0x37C1
+    length: 1
+    converter: mult10
+    unit_of_measurement: "min"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # --- Codierungen / FernbedfuerHKM3 ---
+  # vito: circuit=hk3 quickcheck
+    # NOTE: upper border 12 is between two raw steps (10) -> read-only
+  - platform: vitohome
+    name: "(C1) Setback period brought forward M3 of stop optimisation"
+    id: KC1_KonfiAbsenkzeitM3
+    address: 0x47C1
+    length: 1
+    converter: mult10
+    unit_of_measurement: "min"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
   # --- LON Objekte / Node Objekt ---
   # vito: level=td
   - platform: vitohome
@@ -2869,6 +2914,7 @@ number:
     update_interval: 3600s
 
   # vito: circuit=hk2 quickcheck
+    # NOTE: step 1 is below the raw step 2 -> step 2
   - platform: vitohome
     name: "(FB) Duration excess set flow temperature HC2"
     id: KFB_KonfiDauerUeberhoehungVTSollM2
@@ -2880,7 +2926,7 @@ number:
     entity_category: config
     min_value: 0
     max_value: 300
-    step: 1
+    step: 2
     mode: box
     disabled_by_default: true
     update_interval: 3600s
@@ -3041,6 +3087,7 @@ number:
     update_interval: 3600s
 
   # vito: circuit=hk3 quickcheck
+    # NOTE: step 1 is below the raw step 2 -> step 2
   - platform: vitohome
     name: "(FB) Duration excess set flow temperature HC3"
     id: KFB_KonfiDauerUeberhoehungVTSollM3
@@ -3052,7 +3099,7 @@ number:
     entity_category: config
     min_value: 0
     max_value: 300
-    step: 1
+    step: 2
     mode: box
     disabled_by_default: true
     update_interval: 3600s
@@ -3098,23 +3145,6 @@ number:
     entity_category: config
     min_value: 10
     max_value: 255
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=hk1 quickcheck
-  - platform: vitohome
-    name: "(C1) Setback period brought forward A1M1 of stop optimisation"
-    id: KC1_KonfiAbsenkzeitA1M1
-    address: 0x27C1
-    length: 1
-    converter: mult10
-    unit_of_measurement: "min"
-    device_class: duration
-    entity_category: config
-    min_value: 0
-    max_value: 12
     step: 1
     mode: box
     disabled_by_default: true
@@ -3198,23 +3228,6 @@ number:
 
   # vito: circuit=hk2 quickcheck
   - platform: vitohome
-    name: "(C1) Setback period brought forward M2 of stop optimisation"
-    id: KC1_KonfiAbsenkzeitM2
-    address: 0x37C1
-    length: 1
-    converter: mult10
-    unit_of_measurement: "min"
-    device_class: duration
-    entity_category: config
-    min_value: 0
-    max_value: 12
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=hk2 quickcheck
-  - platform: vitohome
     name: "(C8) Room controller limit M2"
     id: KC8_KonfiBegrenzungRaumeinflussM2
     address: 0x37C8
@@ -3291,23 +3304,6 @@ number:
 
   # vito: circuit=hk3 quickcheck
   - platform: vitohome
-    name: "(C1) Setback period brought forward M3 of stop optimisation"
-    id: KC1_KonfiAbsenkzeitM3
-    address: 0x47C1
-    length: 1
-    converter: mult10
-    unit_of_measurement: "min"
-    device_class: duration
-    entity_category: config
-    min_value: 0
-    max_value: 12
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=hk3 quickcheck
-  - platform: vitohome
     name: "(C8) Room controller limit M3"
     id: KC8_KonfiBegrenzungRaumeinflussM3
     address: 0x47C8
@@ -3374,6 +3370,7 @@ number:
     update_interval: 3600s
 
   # vito: quickcheck
+    # NOTE: step 1 is below the raw step 2 -> step 2
   - platform: vitohome
     name: "(FA) Duration excess set flow temperature HC1"
     id: KFB_KonfiDauerUeberhoehungVTSollA1
@@ -3385,7 +3382,7 @@ number:
     entity_category: config
     min_value: 0
     max_value: 300
-    step: 1
+    step: 2
     mode: box
     disabled_by_default: true
     update_interval: 3600s

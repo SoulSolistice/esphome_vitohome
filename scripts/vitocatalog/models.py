@@ -143,6 +143,7 @@ class EntitySpec:
     bit_mask_comment: str | None = None
     converter: str | None = None
     value_offset: float | None = None  # number: value = raw * scale + value_offset
+    scale: float | None = None  # number: replaces the converter's scale
     signed: bool | None = None
     signed_comment: str | None = None
     unit: str | None = None

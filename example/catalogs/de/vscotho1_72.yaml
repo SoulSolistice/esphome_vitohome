@@ -5838,6 +5838,7 @@ number:
 
   # --- Codierungen / HeizkreisA1 ---
   # vito: circuit=hk1 quickcheck
+    # NOTE: step 1 is below the raw step 2 -> step 2
   - platform: vitohome
     name: "(FB) Dauer Überhöhung Vorlauftemperatur Soll HK1"
     id: KFB_KonfiDauerUeberhoehungVTSollA1_GWG2010
@@ -5849,13 +5850,14 @@ number:
     entity_category: config
     min_value: 0
     max_value: 300
-    step: 1
+    step: 2
     mode: box
     disabled_by_default: true
     update_interval: 3600s
 
   # --- Codierungen / HeizkreisM2 ---
   # vito: circuit=hk2 quickcheck
+    # NOTE: step 1 is below the raw step 2 -> step 2
   - platform: vitohome
     name: "(FB) Dauer Überhöhung Vorlauftemperatur Soll HK2"
     id: KFB_KonfiDauerUeberhoehungVTSollM2_GWG2010
@@ -5867,7 +5869,7 @@ number:
     entity_category: config
     min_value: 0
     max_value: 300
-    step: 1
+    step: 2
     mode: box
     disabled_by_default: true
     update_interval: 3600s
@@ -5891,6 +5893,7 @@ number:
     update_interval: 3600s
 
   # vito: circuit=hk3 quickcheck
+    # NOTE: step 1 is below the raw step 2 -> step 2
   - platform: vitohome
     name: "(FB) Dauer Überhöhung Vorlauftemperatur Soll HK3"
     id: KFB_KonfiDauerUeberhoehungVTSollM3_GWG2010
@@ -5902,7 +5905,7 @@ number:
     entity_category: config
     min_value: 0
     max_value: 300
-    step: 1
+    step: 2
     mode: box
     disabled_by_default: true
     update_interval: 3600s

@@ -104,6 +104,49 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
+  # --- Coding2 / Alle ---
+  # vito: circuit=hk1 quickcheck
+    # NOTE: upper border 12 is between two raw steps (10) -> read-only
+  - platform: vitohome
+    name: "(C1) Absenkzeitvorverschiebung A1M1 der Ausschaltoptimierung"
+    id: KC1_KonfiAbsenkzeitA1M1
+    address: 0x27C1
+    length: 1
+    converter: mult10
+    unit_of_measurement: "min"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=hk2 quickcheck
+    # NOTE: upper border 12 is between two raw steps (10) -> read-only
+  - platform: vitohome
+    name: "(C1) Absenkzeitvorverschiebung M2 der Ausschaltoptimierung"
+    id: KC1_KonfiAbsenkzeitM2
+    address: 0x37C1
+    length: 1
+    converter: mult10
+    unit_of_measurement: "min"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: circuit=hk3 quickcheck
+    # NOTE: upper border 12 is between two raw steps (10) -> read-only
+  - platform: vitohome
+    name: "(C1) Absenkzeitvorverschiebung M3 der Ausschaltoptimierung"
+    id: KC1_KonfiAbsenkzeitM3
+    address: 0x47C1
+    length: 1
+    converter: mult10
+    unit_of_measurement: "min"
+    device_class: duration
+    state_class: measurement
+    disabled_by_default: true
+    update_interval: 3600s
+
   # --- DiagnosisDiagnosis1 / Erweiterung ---
   - platform: vitohome
     name: "Funktionserweiterung 0 - 10 V Software-Index"
@@ -3153,57 +3196,6 @@ number:
     disabled_by_default: true
     update_interval: 3600s
 
-  # vito: circuit=hk1 quickcheck
-  - platform: vitohome
-    name: "(C1) Absenkzeitvorverschiebung A1M1 der Ausschaltoptimierung"
-    id: KC1_KonfiAbsenkzeitA1M1
-    address: 0x27C1
-    length: 1
-    converter: mult10
-    unit_of_measurement: "min"
-    device_class: duration
-    entity_category: config
-    min_value: 0
-    max_value: 12
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=hk2 quickcheck
-  - platform: vitohome
-    name: "(C1) Absenkzeitvorverschiebung M2 der Ausschaltoptimierung"
-    id: KC1_KonfiAbsenkzeitM2
-    address: 0x37C1
-    length: 1
-    converter: mult10
-    unit_of_measurement: "min"
-    device_class: duration
-    entity_category: config
-    min_value: 0
-    max_value: 12
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: circuit=hk3 quickcheck
-  - platform: vitohome
-    name: "(C1) Absenkzeitvorverschiebung M3 der Ausschaltoptimierung"
-    id: KC1_KonfiAbsenkzeitM3
-    address: 0x47C1
-    length: 1
-    converter: mult10
-    unit_of_measurement: "min"
-    device_class: duration
-    entity_category: config
-    min_value: 0
-    max_value: 12
-    step: 1
-    mode: box
-    disabled_by_default: true
-    update_interval: 3600s
-
   # vito: circuit=hk2 quickcheck
   - platform: vitohome
     name: "(C3) Laufzeit Heizkreis Mischer M2"
@@ -3535,6 +3527,7 @@ number:
     update_interval: 3600s
 
   # vito: circuit=hk1 quickcheck
+    # NOTE: step 1 is below the raw step 2 -> step 2
   - platform: vitohome
     name: "(FB) Dauer Überhöhung Vorlauftemperatur Soll HK1"
     id: KFB_KonfiDauerUeberhoehungVTSollA1
@@ -3546,7 +3539,7 @@ number:
     entity_category: config
     min_value: 0
     max_value: 300
-    step: 1
+    step: 2
     mode: box
     disabled_by_default: true
     update_interval: 3600s
@@ -3605,6 +3598,7 @@ number:
     update_interval: 3600s
 
   # vito: circuit=hk2 quickcheck
+    # NOTE: step 1 is below the raw step 2 -> step 2
   - platform: vitohome
     name: "(FB) Dauer Überhöhung Vorlauftemperatur Soll HK2"
     id: KFB_KonfiDauerUeberhoehungVTSollM2
@@ -3616,7 +3610,7 @@ number:
     entity_category: config
     min_value: 0
     max_value: 300
-    step: 1
+    step: 2
     mode: box
     disabled_by_default: true
     update_interval: 3600s
@@ -3675,6 +3669,7 @@ number:
     update_interval: 3600s
 
   # vito: circuit=hk3 quickcheck
+    # NOTE: step 1 is below the raw step 2 -> step 2
   - platform: vitohome
     name: "(FB) Dauer Überhöhung Vorlauftemperatur Soll HK3"
     id: KFB_KonfiDauerUeberhoehungVTSollM3
@@ -3686,7 +3681,7 @@ number:
     entity_category: config
     min_value: 0
     max_value: 300
-    step: 1
+    step: 2
     mode: box
     disabled_by_default: true
     update_interval: 3600s
