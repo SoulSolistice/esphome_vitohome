@@ -71,11 +71,17 @@ template<class Port> using KwEngine = optolink::KwExchange<Port>;
 constexpr uint32_t kKwEnqToSendMs = optolink::KW_LINK_PARAMS.enq_to_send_ms;
 #endif
 
-// P300: the P300 stack on the live side, VS2Engine on the reference side.
+// P300: the P300 stack on the live side, VS2Engine on the reference side;
+// as a side of the differential target without the KW silence retry, which
+// VS2Engine lacks.
 #ifdef VITOHOME_DIFF_REF
 template<class Port> using P300Engine = optolink::VS2Engine;
 #else
+#ifdef VITOHOME_DIFF_SIDE
+template<class Port> using P300Engine = optolink::P300Exchange<Port, 0>;
+#else
 template<class Port> using P300Engine = optolink::P300Exchange<Port>;
+#endif
 #endif
 
 namespace {

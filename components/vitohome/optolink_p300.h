@@ -26,14 +26,17 @@
 //   KW_HOLD      the line drained; ENQ_TO_SEND after the 05 -> 01 and the
 //                telegram
 //   KW_RECEIVE   <len> bytes, or one acknowledgement byte after a payload;
-//                1 s of silence, checked before the drain -> RESET and TIMEOUT
+//                1 s of silence, or nothing but an ENQ, checked before the
+//                drain -> KW_ENQ for the telegram again, SilenceRetries
+//                times, then RESET and TIMEOUT; 1 s after a partial answer
+//                -> RESET and TIMEOUT
 //   KW_CHAIN     the next KW telegram (a GFA read 25 ms after the answer), a
 //                05 opens it or the handshake; any other byte, other work or
 //                250 ms -> RESET
 //   FRAME_SEND, FRAME_RECEIVE  the bytes as given, the answer raw until its
 //                length or 500 ms of quiet -> RESET
-//   watchdog     4 s busy, from the submit, the KW drop, each KW telegram or
-//                an open frame's send -> RESET and TIMEOUT
+//   watchdog     4 s busy, from the submit, the KW drop, each KW telegram, its
+//                retry or an open frame's send -> RESET and TIMEOUT
 //
 // The timing points (TimingPoint) are 0 by default: the pacing without them,
 // the next pass for ENQ_TO_SYNC, FRAME_TO_ACK and ANSWER_TO_NEXT, the ENQ's
@@ -67,10 +70,12 @@ inline constexpr uint32_t P300_FRAME_QUIET_MS = 500;
 inline constexpr uint8_t P300_OPEN_FRAME_MAX = MAX_PAYLOAD;
 inline constexpr uint8_t P300_KW_MAX_PAYLOAD = 32;
 inline constexpr uint8_t P300_KW_MAX_LENGTH = MAX_PAYLOAD;
+// How often a KW telegram met by silence goes out again, on the next ENQ.
+inline constexpr uint8_t P300_KW_SILENCE_RETRIES = 1;
 // The error frame's payload kept for Result::error_code.
 inline constexpr uint8_t P300_ERROR_CODE_MAX = 4;
 
-template<class Port> class P300Exchange {
+template<class Port, uint8_t SilenceRetries = P300_KW_SILENCE_RETRIES> class P300Exchange {
  public:
   using ResultCallback = std::function<void(const Result &)>;
 
@@ -248,6 +253,7 @@ template<class Port> class P300Exchange {
       std::memcpy(kw_payload_, data, length);
     this->start_(address, length);
     kw_ = true;
+    kw_retries_left_ = SilenceRetries;
     return true;
   }
 
@@ -267,6 +273,7 @@ template<class Port> class P300Exchange {
     length_ = length;
     kw_ = false;
     frame_ = false;
+    retries_ = 0;
     error_len_ = 0;
     busy_ = true;
     request_ms_ = now_;
@@ -539,8 +546,18 @@ template<class Port> class P300Exchange {
   void kw_receive_() {
     const uint8_t expected = kw_has_payload_ ? 1 : length_;
     // An ignored telegram's next byte is the device's ENQ about 2 s later:
-    // checked before the drain, so it is not taken for data.
+    // checked before the drain, so it is not taken for data. An unheard
+    // telegram goes out again on the ENQ after that.
     if (now_ - last_ms_ > P300_KW_ANSWER_TIMEOUT_MS) {
+      const bool unheard = count_ == 0 || (count_ == 1 && kw_answer_[0] == ENQ);
+      if (unheard && kw_retries_left_ != 0) {
+        --kw_retries_left_;
+        ++retries_;
+        last_ms_ = now_;
+        request_ms_ = now_;
+        this->set_state_(State::KW_ENQ);
+        return;
+      }
       this->set_state_(State::RESET);
       this->fail_(OptolinkResult::TIMEOUT);
       return;
@@ -628,6 +645,7 @@ template<class Port> class P300Exchange {
       result.address = address;
       result.data = data;
       result.length = length;
+      result.retries = retries_;
       on_result_(result);
     }
     busy_ = false;
@@ -638,6 +656,7 @@ template<class Port> class P300Exchange {
       Result result{};
       result.status = status;
       result.address = address_;
+      result.retries = retries_;
       if (status == OptolinkResult::DEVICE_ERROR && error_len_ != 0) {
         result.error_code = error_code_;
         result.error_code_length = error_len_;
@@ -673,6 +692,9 @@ template<class Port> class P300Exchange {
   uint8_t kw_frame_[5 + P300_KW_MAX_PAYLOAD]{};
   uint8_t kw_frame_len_{0};
   uint8_t kw_answer_[P300_KW_MAX_LENGTH]{};
+  // Silence retries left for it, and those spent (Result::retries).
+  uint8_t kw_retries_left_{0};
+  uint8_t retries_{0};
   // An open frame in flight and its answer.
   bool frame_{false};
   uint8_t frame_bytes_[P300_OPEN_FRAME_MAX]{};

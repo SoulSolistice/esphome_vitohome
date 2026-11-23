@@ -18,7 +18,8 @@
 //   I) the request watchdog firing in the middle of a KW answer: the next
 //      handshake sends exactly 16 00 00;
 //   J) a KW telegram the controller ignores: the ENQ that follows is not
-//      taken for a one-byte answer -- TIMEOUT after KW_ANSWER_TIMEOUT_MS;
+//      taken for a one-byte answer but sends the telegram again; ignored
+//      again, TIMEOUT (the retry itself: proof_p300_kw_retry.cpp);
 //   K) a KW telegram queued while the link returns to P300 goes out on the
 //      ENQ that return waits for.
 //
@@ -281,6 +282,13 @@ int main() {
     io3.feed({0x05});  // the controller's next ENQ, not read yet
     advance(e3, 1);
     check(g_responses == responses_before, "J: the ENQ is not delivered as an answer");
+    check(g_errors == errors_before, "J: nor is it an error");
+    check(io3.written() == Bytes({0x01, 0x7B, 0x08, 0x00, 0x01}), "J: the telegram again on it");
+    io3.clear_written();
+    advance(e3, optolink::P300_KW_ANSWER_TIMEOUT_MS);
+    io3.feed({0x05});
+    advance(e3, 1);
+    check(g_responses == responses_before, "J: ignored again: no answer");
     check(g_errors == errors_before + 1 && g_last_error == optolink::OptolinkResult::TIMEOUT, "J: TIMEOUT instead");
     check(io3.written() == Bytes({0x04}), "J: and back to P300: EOT");
   }

@@ -70,6 +70,10 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
 - `proof_kw_chain.cpp`, `proof_kw_gfa.cpp`, `proof_kw_write.cpp`,
   `proof_kw_frame.cpp` — the KW exchange: chaining and its two windows, the
   GFA read and its pause, the write acknowledgement, open frames.
+- `proof_p300_kw_retry.cpp` — the P300 KW detour's retry after silence:
+  once, on the device's next ENQ, also after a lone ENQ, for a chained
+  telegram and for a write; none after a partial answer; the watchdog from
+  the retry; `ENQ_TO_SEND` on the resend.
 - `proof_codec_equality.cpp` — the codecs (`optolink_codec_*.h`) against
   the packet classes they replaced, kept in `reference/`: every TYPE byte or
   function code, every length, boundary addresses, with and without payload,
@@ -334,6 +338,10 @@ each KW timing constant the stack carries that a harness can reach: the GFA
 pause, the answer deadline, the EOT interval and the watchdog. The ENQ hold
 and the chain window are out of reach, because the harnesses submit the next
 operation the moment the last one completes.
+
+On P300 the live side is `P300Exchange<Port, 0>`, without the KW detour's
+retry after silence, which `VS2Engine` lacks; `proof_p300_kw_retry.cpp` pins
+the retry, and the harnesses' own builds run with it.
 
 ### Device simulators
 

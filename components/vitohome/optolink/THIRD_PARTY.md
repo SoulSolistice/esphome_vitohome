@@ -1037,7 +1037,18 @@ These are intentional divergences from upstream `edc059a7`:
     device's bytes during the detour's hold are dropped. Proof:
     `proof_p300_timing.cpp`, `test_link_timing.py`.
 
-Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called), 39 (when its gap is set), 40, 41, 45, 46 and 48 (when set) are the only intentional changes to on-wire/runtime
+49. **P300 KW detour: retry after silence (behavioral divergence).** A KW
+    telegram on the detour that meets 1 s of silence, or nothing but an ENQ,
+    goes out once more on the device's next ENQ, with `01` in front, as the
+    KW link does (item 45); `VS2Engine` reported
+    `TIMEOUT` at once. A partial answer is not retried. The watchdog runs
+    from the retry, the result carries `retries`, and the hub logs it. A
+    VScotHO1_72 stress run (3.7 h) met 20 of 2,228 first telegrams of a
+    detour with silence and no chained one. The differential target runs
+    the live side without the retry (`P300Exchange<Port, 0>`). Proof:
+    `proof_p300_kw_retry.cpp`.
+
+Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called), 39 (when its gap is set), 40, 41, 45, 46, 48 (when set) and 49 are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16, 42, 43, 44 and 47 are structural (no behavior change from any call
 site that exists -- item 16 altered bytes only on a RESPONSE-construction path
 nothing exercised, now removed); item 17 changes only construction-failure handling

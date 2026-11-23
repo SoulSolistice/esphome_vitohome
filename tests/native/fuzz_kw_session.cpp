@@ -87,14 +87,20 @@ template<class Port> using KwEngine = optolink::KwExchange<Port>;
 constexpr uint32_t kGfaGapMs = optolink::KW_GFA_GAP_MS;
 #endif
 
-// P300: the P300 stack on the live side, VS2Engine on the reference side.
+// P300: the P300 stack on the live side, VS2Engine on the reference side;
+// as a side of the differential target without the KW silence retry, which
+// VS2Engine lacks.
 #ifdef VITOHOME_DIFF_REF
 template<class Port> using P300Engine = optolink::VS2Engine;
 constexpr uint8_t kP300KwMaxPayload = optolink::VS2Engine::KW_MAX_PAYLOAD;
 constexpr uint8_t kP300KwMaxLength = optolink::VS2Engine::KW_MAX_LENGTH;
 constexpr std::size_t kP300FrameMax = optolink::VS2Engine::FRAME_MAX;
 #else
+#ifdef VITOHOME_DIFF_SIDE
+template<class Port> using P300Engine = optolink::P300Exchange<Port, 0>;
+#else
 template<class Port> using P300Engine = optolink::P300Exchange<Port>;
+#endif
 constexpr uint8_t kP300KwMaxPayload = optolink::P300_KW_MAX_PAYLOAD;
 constexpr uint8_t kP300KwMaxLength = optolink::P300_KW_MAX_LENGTH;
 constexpr std::size_t kP300FrameMax = optolink::P300_OPEN_FRAME_MAX;
