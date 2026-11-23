@@ -20,3 +20,298 @@ what = "big-endian: raw 01 71..01 7C is 1.27-1.33 bar, rising with the boiler te
 unit = "0x2053 HW=0x01 SW=0x1E (BES)"
 source = "SoulSolistice/esphome_vitohome#35"
 set = { big_endian = true }
+
+# ---- CU401B_S: Vitocal 222-S, one unit (0x204D HW=0x01 SW=0x41) ------------
+
+# The device has these; the issue confirmed them on hardware.
+
+[[finding]]
+tech = "WPR3_B410_Sauggasdruck"
+action = "confirm"
+devices = ["CU401B_S"]
+checked = "read"
+what = "suction pressure in bar abs; tracks the R410A saturation temperature at 0x0E10"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#19"
+
+[[finding]]
+tech = "WPR3_B411_Heissgasdruck"
+action = "confirm"
+devices = ["CU401B_S"]
+checked = "read"
+what = "high pressure in bar abs; tracks the R410A saturation temperature at 0x0E12"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#19"
+
+[[finding]]
+tech = "WPR3_Fluessiggastemperatur"
+action = "confirm"
+devices = ["CU401B_S"]
+checked = "read"
+what = "liquid line temperature, plausible during compressor runs"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#19"
+
+[[finding]]
+tech = "WPR3_B420_Drehzahl_Primaerquelle"
+action = "confirm"
+devices = ["CU401B_S"]
+checked = "read"
+what = "outdoor fan in %, low byte of 2"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#19"
+
+[[finding]]
+tech = "WPR3_B421_Drehzahl_Sekundaerpumpe"
+action = "confirm"
+devices = ["CU401B_S"]
+checked = "read"
+what = "secondary pump in %, low byte of 2"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#19"
+
+[[finding]]
+tech = "WPR3_B423_Leistung_Verdichter"
+action = "confirm"
+devices = ["CU401B_S"]
+checked = "read"
+what = "compressor output in %, low byte of 2"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#19"
+
+[[finding]]
+tech = "WPR3_B424_Position_ECV"
+action = "confirm"
+devices = ["CU401B_S"]
+checked = "read"
+what = "expansion valve opening in %, low byte of 2"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#19"
+
+[[finding]]
+tech = "WPR_130B_Zustandsautomat_WP1"
+action = "confirm"
+devices = ["CU401B_S"]
+checked = "read"
+what = "heat-pump state 0..6, defrost included"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#19"
+
+[[finding]]
+tech = "WPR_WW_Temp_soll"
+action = "confirm"
+devices = ["CU401B_S"]
+checked = "write"
+what = "DHW setpoint written, acknowledged and read back"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#19"
+
+[[finding]]
+tech = "WPR_HK1_Niveau_Heizkennlinie"
+action = "confirm"
+devices = ["CU401B_S"]
+checked = "write"
+what = "heating curve level written, acknowledged and read back"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#19"
+
+[[finding]]
+tech = "WPR_HK1_Redtemperatur"
+action = "confirm"
+devices = ["CU401B_S"]
+checked = "write"
+what = "reduced room setpoint written, acknowledged and read back"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#19"
+
+[[finding]]
+tech = "WPR_WO1H_HK1_Betriebsart"
+action = "confirm"
+devices = ["CU401B_S"]
+checked = "write"
+what = "modes 0..2 written to 0xB000 as a whole byte, acknowledged and read back"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#19"
+
+# The refrigerant block 0x0E.. is on no device in the export. Each is 3 bytes:
+# a signed int16 / 10 and a status byte. The export gives the device similar
+# quantities at 0xB406..0xB40B (WPR3_VERDAMPFUNG, _KONDENSATION, _SAUGGAS,
+# _HEISSGAS, _UEBERHITZUNG_SOLL); whether those answer on this unit is open.
+
+[[finding]]
+tech = "VH_WPR_0E03_Sauggastemperatur_Verdichter"
+action = "define"
+devices = ["CU401B_S"]
+checked = "read"
+what = "suction temperature at the compressor"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#19"
+name = { de = "Sauggastemperatur am Verdichter", en = "Suction temperature at the compressor" }
+set = { address = 0x0E03, conversion = "Div10", access_type = 1, block_length = 3, byte_length = 2, byte_position = 0, fc_read = "Virtual_READ", unit = "°C" }
+group_of = "WPR3_B410_Sauggasdruck"
+
+[[finding]]
+tech = "VH_WPR_0E04_Sauggastemperatur_Verdampfer"
+action = "define"
+devices = ["CU401B_S"]
+checked = "read"
+what = "suction temperature at the evaporator outlet"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#19"
+name = { de = "Sauggastemperatur am Verdampferaustritt", en = "Suction temperature at the evaporator outlet" }
+set = { address = 0x0E04, conversion = "Div10", access_type = 1, block_length = 3, byte_length = 2, byte_position = 0, fc_read = "Virtual_READ", unit = "°C" }
+group_of = "WPR3_B410_Sauggasdruck"
+
+[[finding]]
+tech = "VH_WPR_0E08_Ueberhitzung"
+action = "define"
+devices = ["CU401B_S"]
+checked = "read"
+what = "evaporator superheat"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#19"
+name = { de = "Überhitzung Verdampfer", en = "Evaporator superheat" }
+set = { address = 0x0E08, conversion = "Div10", access_type = 1, block_length = 3, byte_length = 2, byte_position = 0, fc_read = "Virtual_READ", unit = "K" }
+group_of = "WPR3_B410_Sauggasdruck"
+
+[[finding]]
+tech = "VH_WPR_0E09_Ueberhitzung_Soll"
+action = "define"
+devices = ["CU401B_S"]
+checked = "read"
+what = "superheat setpoint"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#19"
+name = { de = "Überhitzung Sollwert", en = "Superheat setpoint" }
+set = { address = 0x0E09, conversion = "Div10", access_type = 1, block_length = 3, byte_length = 2, byte_position = 0, fc_read = "Virtual_READ", unit = "K" }
+group_of = "WPR3_B410_Sauggasdruck"
+
+[[finding]]
+tech = "VH_WPR_0E10_Verdampfungstemperatur"
+action = "define"
+devices = ["CU401B_S"]
+checked = "read"
+what = "evaporating temperature, the R410A saturation temperature of 0xB410"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#19"
+name = { de = "Verdampfungstemperatur", en = "Evaporating temperature" }
+set = { address = 0x0E10, conversion = "Div10", access_type = 1, block_length = 3, byte_length = 2, byte_position = 0, fc_read = "Virtual_READ", unit = "°C" }
+group_of = "WPR3_B410_Sauggasdruck"
+
+[[finding]]
+tech = "VH_WPR_0E12_Kondensationstemperatur"
+action = "define"
+devices = ["CU401B_S"]
+checked = "read"
+what = "condensing temperature, the R410A saturation temperature of 0xB411"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#19"
+name = { de = "Kondensationstemperatur", en = "Condensing temperature" }
+set = { address = 0x0E12, conversion = "Div10", access_type = 1, block_length = 3, byte_length = 2, byte_position = 0, fc_read = "Virtual_READ", unit = "°C" }
+group_of = "WPR3_B410_Sauggasdruck"
+
+[[finding]]
+tech = "VH_WPR_0E1B_Heissgastemperatur"
+action = "define"
+devices = ["CU401B_S"]
+checked = "read"
+what = "discharge (hot-gas) temperature during compressor runs"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#19"
+name = { de = "Heißgastemperatur", en = "Discharge (hot-gas) temperature" }
+set = { address = 0x0E1B, conversion = "Div10", access_type = 1, block_length = 3, byte_length = 2, byte_position = 0, fc_read = "Virtual_READ", unit = "°C" }
+group_of = "WPR3_B410_Sauggasdruck"
+
+[[finding]]
+tech = "VH_WPR_0E52_Sauggastemperatur_Innenverdampfer"
+action = "define"
+devices = ["CU401B_S"]
+checked = "read"
+what = "indoor evaporator suction temperature"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#19"
+name = { de = "Sauggastemperatur Innenverdampfer", en = "Indoor evaporator suction temperature" }
+set = { address = 0x0E52, conversion = "Div10", access_type = 1, block_length = 3, byte_length = 2, byte_position = 0, fc_read = "Virtual_READ", unit = "°C" }
+group_of = "WPR3_B410_Sauggasdruck"
+
+[[finding]]
+tech = "VH_WPR_0E74_Temperatur_Inverter_IPM"
+action = "define"
+devices = ["CU401B_S"]
+checked = "read"
+what = "inverter IPM temperature"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#19"
+name = { de = "Temperatur Inverter-IPM", en = "Inverter IPM temperature" }
+set = { address = 0x0E74, conversion = "Div10", access_type = 1, block_length = 3, byte_length = 2, byte_position = 0, fc_read = "Virtual_READ", unit = "°C" }
+group_of = "WPR3_B410_Sauggasdruck"
+
+# Answered by the unit, but the export has them only for the Vitocal 300/350
+# controller (VBC700_AW, VBC700_BW_WW), with one definition. The device also
+# carries WPR3 rows for the same sensors at other addresses (0x01C1 outside).
+
+[[finding]]
+tech = "WPR_Aussentemperatur"
+action = "add"
+devices = ["CU401B_S"]
+checked = "read"
+what = "outside temperature at 0x0101"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#23"
+group_of = "WPR3_Aussentemperatur"
+
+[[finding]]
+tech = "WPR_Vorlauftemperatur_Sek"
+action = "add"
+devices = ["CU401B_S"]
+checked = "read"
+what = "secondary flow temperature at 0x0105"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#23"
+group_of = "WPR3_Sekundaer_Vorlauftemp_1"
+
+[[finding]]
+tech = "WPR_Ruecklauftemperatur_Sek1"
+action = "add"
+devices = ["CU401B_S"]
+checked = "read"
+what = "secondary return temperature at 0x0106"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#23"
+group_of = "WPR3_Sekundaer_Ruecklauftemp_1"
+
+[[finding]]
+tech = "WPR_Warmwasser_TemperaturOben"
+action = "add"
+devices = ["CU401B_S"]
+checked = "read"
+what = "DHW cylinder temperature top at 0x010D"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#23"
+group_of = "WPR_Warmwasser_TemperaturUnten"
+
+# On no heat pump in the export (0x013B is a KBUS row on Dekatel units).
+
+[[finding]]
+tech = "VH_WPR_013B_Fluessiggastemperatur"
+action = "define"
+devices = ["CU401B_S"]
+checked = "read"
+what = "liquid gas temperature, sensor on the WPR board (X25.17/X25.18, fault 2D)"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#23"
+name = { de = "Flüssiggastemperatur (WPR-Platine)", en = "Liquid gas temperature (WPR board)" }
+set = { address = 0x013B, conversion = "Div10", access_type = 1, block_length = 2, byte_length = 2, byte_position = 0, fc_read = "Virtual_READ", unit = "°C" }
+group_of = "WPR3_Fluessiggastemperatur"
+
+[[finding]]
+tech = "VH_WPR_013C_Gasleitungstemperatur"
+action = "define"
+devices = ["CU401B_S"]
+checked = "read"
+what = "gas line temperature at the indoor unit: hot gas when heating, suction when reversed (fault 2C)"
+unit = "0x204D HW=0x01 SW=0x41 (Vitocal 222-S)"
+source = "SoulSolistice/esphome_vitohome#23"
+name = { de = "Temperatur Gasleitung (Inneneinheit)", en = "Gas line temperature (indoor unit)" }
+set = { address = 0x013C, conversion = "Div10", access_type = 1, block_length = 2, byte_length = 2, byte_position = 0, fc_read = "Virtual_READ", unit = "°C" }
+group_of = "WPR3_Fluessiggastemperatur"

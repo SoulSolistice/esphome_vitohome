@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 
 import units
 
-from .confirmed import Finding, apply as apply_findings, resolve_add_source
+from .confirmed import Finding, apply as apply_findings, define_event, resolve_add_source
 from .constants import (
     _CONTAINER_PREFIXES,
     _FACTOR_PLACEHOLDERS,
@@ -543,6 +543,10 @@ class Catalog:
             from_events = self._raw_events_for(finding.from_device) if finding.from_device in self.devices else None
         return resolve_add_source(finding, candidates, from_events)
 
+    def _define(self, finding: Finding) -> Event:
+        in_export = any(e.tech == finding.tech for e in self._events.values())
+        return define_event(finding, self.culture, in_export)
+
     def product_for(self, device_token: str) -> tuple[str, str]:
         """(ShortName, ProductName) Vitosoft gives a datapoint type, "" each when
         it gives none (about half the types): "VT 200 (HO1C)", "Vitodens 3xx-W/F
@@ -840,7 +844,7 @@ class Catalog:
         events = self._raw_events_for(device_token)
         if not events or not self._findings:
             return events
-        return apply_findings(events, device_token, self._findings, self._add_source)
+        return apply_findings(events, device_token, self._findings, self._add_source, self._define)
 
     def fault_texts(self) -> tuple[dict, dict, dict]:
         """(per_device, generic, gfa) fault-code texts from the loaded language:

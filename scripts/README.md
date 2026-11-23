@@ -172,7 +172,7 @@ firmware does not use. What a real unit showed goes into
 ```toml
 [[finding]]
 tech = "GWG_Wasserdruck"          # the catalog's id:
-action = "change"                 # add | change | drop
+action = "change"                 # confirm | add | define | change | drop
 devices = ["GWG_VBES_03", ...]    # exact tokens; no other device is touched
 checked = "read"                  # read | write (written and read back)
 what = "big-endian: raw 01 71..01 7C is 1.27-1.33 bar"
@@ -181,10 +181,18 @@ source = "SoulSolistice/esphome_vitohome#35"
 set = { big_endian = true }       # Event fields to override
 ```
 
-`add` links a datapoint Vitosoft defines for another device (`from` picks
-which one if the definitions differ; `group_of` puts it in the menu group of a
-datapoint the device has). `change` overrides fields of one it has, `drop`
-removes it. The generator applies each finding only to the device tokens it
+`confirm` marks a datapoint the device has as checked on hardware and changes
+nothing else. `add` links a datapoint Vitosoft defines for another device
+(`from` picks which one if the definitions differ; `group_of` puts it in the
+menu group of a datapoint the device has). `define` describes one the export
+has on no device: `set` gives at least `address`, `conversion`, `access_type`,
+`block_length`, `byte_length`, `byte_position` and `fc_read`, and `name` the
+display name per language (`{ de = "..", en = ".." }`). A define whose tech id
+the export knows is refused, so a row Vitosoft has is always taken from there,
+and so is one on bytes the device already reads. `change` overrides fields of
+one it has, `drop` removes it. An added or defined entity whose name the
+device already uses takes the `(id)` qualifier; the existing one keeps its
+name. The generator applies each finding only to the device tokens it
 names. Add a token after a unit of that type confirmed the finding too, or
 say in a comment above the entry why it holds there without one (a row every
 listed device shares, whose other reading is impossible).

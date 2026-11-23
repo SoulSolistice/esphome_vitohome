@@ -2,7 +2,7 @@ file,token,ident,hw_index,sw_lo,sw_hi,f0_lo,f0_hi,events,entities,bytes,status,e
 bess.yaml,BESS,0x2502,,,,,,99,64,67133,ok,,,BESS,Battery Energy Storage System
 cu401b_a.yaml,CU401B_A,0x204C,,,,,,2153,2188,886293,ok,,,VT 200 (WO1C),Vitocal xxx-A mit Vitotronic 200 (Typ WO1C)
 cu401b_g.yaml,CU401B_G,0x204B,,,,,,2168,2200,896067,ok,,,VT 200 (WO1C),Vitocal xxx-G mit Vitotronic 200 (Typ WO1C)
-cu401b_s.yaml,CU401B_S,0x204D,,,,,,2292,2318,934480,ok,,,VT 200 (WO1C),"Vitocal xxx-S mit Vitotronic 200 (Typ WO1C), Vitocaldens, Vitolacaldens"
+cu401b_s.yaml,CU401B_S,0x204D,,,,,,2307,2333,943947,ok,,,VT 200 (WO1C),"Vitocal xxx-S mit Vitotronic 200 (Typ WO1C), Vitocaldens, Vitolacaldens"
 ,DEKATEL_F,0x2088,,,,,,586,1,,skipped: no Optolink-reachable datapoints,37343530353330,,,
 ,DEKATEL_F_A,0x2088,,,,,,576,1,,skipped: no Optolink-reachable datapoints,37343533353330,,,
 ,DEKATEL_F_CH,0x2088,,,,,,576,1,,skipped: no Optolink-reachable datapoints,37343531353330,,,

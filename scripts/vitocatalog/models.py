@@ -106,9 +106,11 @@ class Event:
     # value stored high byte first although the row declares a plain Int.
     # group_of: event id whose menu group an added datapoint joins.
     # confirmed: one line per finding, rendered above the entity.
+    # added: the device has it only through a finding (add, define).
     big_endian: bool = False
     group_of: str = ""
     confirmed: tuple[str, ...] = ()
+    added: bool = False
 
 
 @dataclass

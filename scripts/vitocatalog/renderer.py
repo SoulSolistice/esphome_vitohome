@@ -96,7 +96,7 @@ def _clean_name(name: str) -> str:
     return re.sub(r"\s+", " ", (name or "").strip()).replace("/", "⁄")
 
 
-def _make_names_unique(buckets: dict) -> int:
+def _make_names_unique(buckets: dict, added_ids: frozenset | set = frozenset()) -> int:
     """Clean every name (_clean_name), then give every entity whose name collides
     within its platform a qualifier.
 
@@ -105,6 +105,9 @@ def _make_names_unique(buckets: dict) -> int:
     platform. ALL members of a colliding group get " (<id>)" appended -- the
     first one too, so none of them reads as the canonical one -- where <id> is
     the entity's own, already unique ``id:`` (the Viessmann technical name).
+    An entity in *added_ids* (a hardware finding gave it to the device) is
+    the exception: it takes the qualifier alone, so adding it does not
+    rename the one the device already has.
     Returns the number of renamed entities. Mutates the bucket chunks."""
     renamed = 0
     for chunks in buckets.values():
@@ -121,10 +124,18 @@ def _make_names_unique(buckets: dict) -> int:
             # Compare the name as ESPHome sees it, i.e. with the YAML escapes undone.
             unescaped = name.replace('\\"', '"').replace("\\\\", "\\")
             slug = _esphome_object_id(unescaped)
-            seen[slug] = seen.get(slug, 0) + 1
+            if oid not in added_ids:
+                seen[slug] = seen.get(slug, 0) + 1
+            else:
+                seen.setdefault(slug, 0)
             found.append((lines, name_idx, slug, oid))
+        added_seen: dict[str, int] = {}
+        for _lines, _idx, slug, oid in found:
+            if oid in added_ids:
+                added_seen[slug] = added_seen.get(slug, 0) + 1
         for lines, name_idx, slug, oid in found:
-            if seen[slug] > 1 and oid:
+            clash = seen[slug] > 1 if oid not in added_ids else seen[slug] + added_seen[slug] > 1
+            if clash and oid:
                 m = _NAME_LINE.match(lines[name_idx])
                 lines[name_idx] = f'{m.group(1)}"{m.group(2)} ({oid})"'
                 renamed += 1
@@ -241,6 +252,7 @@ def generate(
     seq = 0
     tagged = 0  # entities with a `# vito:` metadata line (Catalog.tags_for)
     confirmed = 0  # entities carrying a hardware finding (CONFIRMED_PREFIX)
+    added_ids: set[str] = set()  # ids of entities only a finding gives the device
 
     def _add_chunk(platform: str, ev: Event | None, lines: list[str]):
         """Append one entity's lines with its sort key and group label, under
@@ -256,6 +268,8 @@ def generate(
             if getattr(ev, "confirmed", ()):
                 lines = [*(CONFIRMED_PREFIX + c for c in ev.confirmed), *lines]
                 confirmed += 1
+            if getattr(ev, "added", False):
+                added_ids.update(m.group(1) for ln in lines if (m := _ID_LINE.match(ln)))
         if order == "group" and ev is not None:
             gsort, glabel = catalog.group_for(ev, device)
         else:
@@ -581,7 +595,7 @@ def generate(
             kept += 1
             real_entities += 1
 
-    renamed = _make_names_unique(buckets)
+    renamed = _make_names_unique(buckets, added_ids)
 
     out: list[str] = []
     out.append("# ============================================================")

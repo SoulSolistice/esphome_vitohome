@@ -35,6 +35,18 @@ _BASE = {
 }
 
 
+_NAME = {"de": "Wert neu", "en": "New value"}
+_DEFINE = {
+    "address": 0x40,
+    "conversion": "NoConversion",
+    "access_type": 1,
+    "block_length": 1,
+    "byte_length": 1,
+    "byte_position": 0,
+    "fc_read": "EEPROM_READ",
+}
+
+
 def _finding(**over):
     entry = {**_BASE, **over}
     return confirmed.parse({"finding": [entry]})[0]
@@ -112,7 +124,13 @@ def test_the_shipped_file_parses():
         ({"set": {"big_endian": 1}}, "must be bool"),
         ({"action": "drop", "set": {"access_type": 1}}, "takes no set"),
         ({"action": "change", "set": {}}, "needs set"),
-        ({"action": "change", "set": {"access_type": 1}, "group_of": "X"}, "add only"),
+        ({"action": "change", "set": {"access_type": 1}, "group_of": "X"}, "group_of applies"),
+        ({"action": "define", "from": "GWG_B", "name": _NAME, "set": _DEFINE}, "from applies"),
+        ({"action": "confirm", "set": {"access_type": 1}}, "takes no set"),
+        ({"action": "define", "set": _DEFINE}, "needs name"),
+        ({"action": "define", "name": {"de": "x"}, "set": _DEFINE}, "needs name"),
+        ({"action": "define", "name": _NAME, "set": {"address": 0x10}}, "needs set.conversion"),
+        ({"name": _NAME}, "name applies to define only"),
         ({"source": ""}, "non-empty string"),
         ({"evidence": "x"}, "unknown key"),
     ],
@@ -180,7 +198,26 @@ def test_drop_removes_the_datapoint():
     [
         ({"tech": "GWG_K46Red", "action": "add", "devices": ["GWG_B"]}, "already on GWG_B"),
         ({"tech": "GWG_K46Red", "action": "change", "devices": ["GWG_A"], "set": {"access_type": 1}}, "not on GWG_A"),
-        ({"tech": "GWG_Nothing", "action": "add", "devices": ["GWG_A"]}, "no Vitosoft datapoint"),
+        ({"tech": "GWG_Nothing", "action": "add", "devices": ["GWG_A"]}, "define it instead"),
+        ({"tech": "GWG_K46Red", "action": "confirm", "devices": ["GWG_A"]}, "not on GWG_A"),
+        (
+            {"tech": "GWG_K46Red", "action": "define", "devices": ["GWG_A"], "name": _NAME, "set": _DEFINE},
+            "add it from there",
+        ),
+        (
+            {"tech": "GWG_K45Max", "action": "define", "devices": ["GWG_A"], "name": _NAME, "set": _DEFINE},
+            "already on GWG_A",
+        ),
+        (
+            {
+                "tech": "GWG_New",
+                "action": "define",
+                "devices": ["GWG_A"],
+                "name": _NAME,
+                "set": {**_DEFINE, "address": 0x0C},
+            },
+            "GWG_K45Max on the same bytes",
+        ),
         ({"tech": "GWG_K46Red", "action": "add", "devices": ["GWG_A"], "group_of": "GWG_Nothing"}, "group_of"),
         ({"tech": "GWG_K46Red", "action": "add", "devices": ["GWG_A"], "from": "GWG_Z"}, "not in the export"),
     ],
@@ -203,6 +240,47 @@ def test_add_needs_from_when_the_export_disagrees():
         cat.events_for("GWG_A")
     cat.use_findings([_finding(tech="GWG_K46Red", action="add", devices=["GWG_A"], **{"from": "GWG_C"})])
     assert _by_tech(cat.events_for("GWG_A"))["GWG_K46Red"].address == 0x0E
+
+
+def test_confirm_labels_the_row_and_changes_nothing():
+    cat = _catalog()
+    cat.use_findings([_finding(tech="GWG_K45Max", action="confirm", devices=["GWG_A"], checked="write")])
+    on_a = _by_tech(cat.events_for("GWG_A"))["GWG_K45Max"]
+    assert on_a.confirmed == ("seen on the unit [write on 0x2053 HW=0x01 SW=0x1E; SoulSolistice/esphome_vitohome#35]",)
+    assert (on_a.address, on_a.access_type, on_a.added) == (0x0C, 3, False)
+
+
+def test_define_builds_the_datapoint_in_the_catalog_language():
+    cat = _catalog()
+    cat.use_findings(
+        [
+            _finding(
+                tech="GWG_New",
+                action="define",
+                devices=["GWG_A"],
+                name=_NAME,
+                set={**_DEFINE, "unit": "K"},
+                group_of="GWG_K45Max",
+            )
+        ]
+    )
+    new = _by_tech(cat.events_for("GWG_A"))["GWG_New"]
+    assert (new.name, new.address, new.unit, new.added) == ("Wert neu", 0x40, "K", True)
+    assert "(not in the Vitosoft export)" in new.confirmed[0]
+    assert "GWG_New" not in _by_tech(cat.events_for("GWG_B"))
+    cat.culture = "en"
+    assert _by_tech(cat.events_for("GWG_A"))["GWG_New"].name == "New value"
+
+
+def test_an_added_entity_takes_the_name_qualifier_alone():
+    cat = _catalog()
+    cat._events["2"].name = "New value"
+    cat._events["2"].access_type = 1  # a sensor, like the defined one
+    cat.culture = "en"
+    cat.use_findings([_finding(tech="GWG_New", action="define", devices=["GWG_A"], name=_NAME, set=_DEFINE)])
+    out = generate(cat, "GWG_A", "full", None, None, protocol=PROTO_GWG)
+    assert 'name: "New value (GWG_New)"' in out
+    assert 'name: "New value"' in out
 
 
 def test_an_unknown_device_is_a_warning():

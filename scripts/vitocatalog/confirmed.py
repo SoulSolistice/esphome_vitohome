@@ -14,7 +14,9 @@ for another: a token without its own confirmation needs a reason in the TOML.
 Each ``[[finding]]`` table:
 
     tech      technical id of the datapoint (the catalog's ``id:``)
-    action    "add" (link an existing Vitosoft datapoint to the device),
+    action    "confirm" (mark one the device has as checked on hardware),
+              "add" (link a Vitosoft datapoint of another device to it),
+              "define" (one the export has on no device),
               "change" (override fields of one the device has) or
               "drop" (remove it from the device)
     devices   exact device tokens, e.g. ["GWG_VBES_03"]
@@ -23,11 +25,13 @@ Each ``[[finding]]`` table:
     what      one line: what the unit showed
     unit      how the unit identified itself, e.g. "0x2053 HW=0x01 SW=0x1E"
     source    where the evidence is, e.g. "SoulSolistice/esphome_vitohome#35"
-    set       (add, change) Event fields to override, see SETTABLE
+    set       (add, change, define) Event fields, see SETTABLE; a define
+              needs DEFINE_REQUIRED
+    name      (define) display name per catalog language, { de = .., en = .. }
     from      (add) device token to take the row from when the export carries
               the tech id in differing definitions
-    group_of  (add) tech id of a datapoint on the device whose menu group the
-              added one joins; without it the entity is ungrouped
+    group_of  (add, define) tech id of a datapoint on the device whose menu
+              group the new one joins; without it the entity is ungrouped
 
 stdlib only (tomllib), like the rest of the generator.
 """
@@ -43,10 +47,11 @@ from .models import Event
 
 DEFAULT_PATH = os.path.join(os.path.dirname(__file__), "confirmed.toml")
 
-ACTIONS = ("add", "change", "drop")
+ACTIONS = ("confirm", "add", "define", "change", "drop")
 CHECKS = ("read", "write")
 _REQUIRED = ("tech", "action", "devices", "checked", "what", "unit", "source")
-_OPTIONAL = ("set", "from", "group_of")
+_OPTIONAL = ("set", "name", "from", "group_of")
+NAME_CULTURES = ("de", "en")
 
 # Event fields a finding may override, with the accepted TOML types. Identity
 # fields (id, tech, token) and the enum value list are not settable.
@@ -71,6 +76,9 @@ SETTABLE: dict[str, tuple[type, ...]] = {
     "big_endian": (bool,),
 }
 
+# What a define must state: where the value is and how it is read.
+DEFINE_REQUIRED = ("address", "conversion", "access_type", "block_length", "byte_length", "byte_position", "fc_read")
+
 
 class FindingError(ValueError):
     """A malformed finding, or one that does not fit the export."""
@@ -86,13 +94,15 @@ class Finding:
     unit: str
     source: str
     set: dict = field(default_factory=dict)
+    name: dict = field(default_factory=dict)
     from_device: str = ""
     group_of: str = ""
 
     @property
     def label(self) -> str:
         """The finding as one line, rendered above the entity."""
-        return f"{self.what} [{self.checked} on {self.unit}; {self.source}]"
+        origin = " (not in the Vitosoft export)" if self.action == "define" else ""
+        return f"{self.what}{origin} [{self.checked} on {self.unit}; {self.source}]"
 
 
 def _parse(entry: dict, where: str) -> Finding:
@@ -128,12 +138,27 @@ def _parse(entry: dict, where: str) -> Finding:
         if not isinstance(value, types) or (isinstance(value, bool) and bool not in types):
             raise FindingError(f"{where}: set.{key} must be {' or '.join(t.__name__ for t in types)}")
     action = entry["action"]
-    if action == "drop" and overrides:
-        raise FindingError(f"{where}: a drop takes no set")
+    if action in ("drop", "confirm") and overrides:
+        raise FindingError(f"{where}: a {action} takes no set")
     if action == "change" and not overrides:
         raise FindingError(f"{where}: a change needs set")
-    if action != "add" and ("from" in entry or "group_of" in entry):
-        raise FindingError(f"{where}: from and group_of apply to add only")
+    if "from" in entry and action != "add":
+        raise FindingError(f"{where}: from applies to add only")
+    if "group_of" in entry and action not in ("add", "define"):
+        raise FindingError(f"{where}: group_of applies to add and define only")
+    names = entry.get("name", {})
+    if action == "define":
+        missing = [k for k in DEFINE_REQUIRED if k not in overrides]
+        if missing:
+            raise FindingError(f"{where}: a define needs set.{', set.'.join(missing)}")
+        if not (
+            isinstance(names, dict)
+            and set(names) == set(NAME_CULTURES)
+            and all(isinstance(v, str) and v.strip() for v in names.values())
+        ):
+            raise FindingError(f"{where}: a define needs name = {{ {' = .., '.join(NAME_CULTURES)} = .. }}")
+    elif "name" in entry:
+        raise FindingError(f"{where}: name applies to define only; the export names the others")
     return Finding(
         tech=entry["tech"],
         action=action,
@@ -143,6 +168,7 @@ def _parse(entry: dict, where: str) -> Finding:
         unit=entry["unit"],
         source=entry["source"],
         set=dict(overrides),
+        name=dict(names),
         from_device=entry.get("from", ""),
         group_of=entry.get("group_of", ""),
     )
@@ -187,17 +213,62 @@ def resolve_add_source(finding: Finding, candidates: list[Event], from_events: l
             raise FindingError(f"{finding.tech}: from device {finding.from_device} is not in the export")
         pool = [e for e in from_events if e.tech == finding.tech]
     if not pool:
-        where = f" on {finding.from_device}" if finding.from_device else ""
-        raise FindingError(f"{finding.tech}: no Vitosoft datapoint with this tech id{where} to add")
+        if finding.from_device:
+            raise FindingError(f"{finding.tech}: not on {finding.from_device} in the export")
+        raise FindingError(f"{finding.tech}: no device in the export has this tech id; define it instead")
     if any(not _same_definition(pool[0], e) for e in pool[1:]):
         raise FindingError(f"{finding.tech}: the export defines it differently on several devices; name one with from")
     return pool[0]
 
 
-def apply(events: list[Event], token: str, findings: list[Finding], add_source) -> list[Event]:
+def define_event(finding: Finding, culture: str, in_export: bool) -> Event:
+    """The Event a define finding describes. *in_export*: some device in the
+    export carries the tech id, which an add must reference instead."""
+    if in_export:
+        raise FindingError(f"{finding.tech}: the export defines it for another device; add it from there")
+    s = finding.set
+    return Event(
+        id=f"finding:{finding.tech}",
+        name=finding.name.get(culture) or finding.name["de"],
+        address=s["address"],
+        conversion=s["conversion"],
+        access_type=s["access_type"],
+        block_length=s["block_length"],
+        byte_length=s["byte_length"],
+        byte_position=s["byte_position"],
+        bit_length=s.get("bit_length", 0),
+        bit_position=s.get("bit_position", 0),
+        tech=finding.tech,
+        token=finding.tech,
+        **{k: v for k, v in s.items() if k not in _EVENT_POSITIONAL},
+    )
+
+
+_EVENT_POSITIONAL = (
+    "address",
+    "conversion",
+    "access_type",
+    "block_length",
+    "byte_length",
+    "byte_position",
+    "bit_length",
+    "bit_position",
+)
+
+
+def _overlaps(a: Event, b: Event) -> bool:
+    """Whether two datapoints read the same bytes the same way."""
+    if a.address != b.address or (a.fc_read or "").lower() != (b.fc_read or "").lower():
+        return False
+    a0, b0 = a.byte_position or 0, b.byte_position or 0
+    return a0 < b0 + (b.byte_length or 1) and b0 < a0 + (a.byte_length or 1)
+
+
+def apply(events: list[Event], token: str, findings: list[Finding], add_source, define=None) -> list[Event]:
     """*events* of device *token* with *findings* applied. Changed and added
     events are copies; the shared export rows stay untouched. *add_source*
-    maps an add finding to the export row it links (resolve_add_source)."""
+    maps an add finding to the export row it links (resolve_add_source),
+    *define* a define finding to its new Event (define_event)."""
     mine = [f for f in findings if token in f.devices]
     if not mine:
         return events
@@ -208,17 +279,25 @@ def apply(events: list[Event], token: str, findings: list[Finding], add_source) 
     dropped: set[int] = set()
     for f in mine:
         present = by_tech.get(f.tech, [])
-        if f.action == "add":
+        if f.action in ("add", "define"):
             if present:
-                raise FindingError(f"{f.tech}: already on {token} in the export; the add is not needed there")
+                raise FindingError(f"{f.tech}: already on {token} in the export; the {f.action} is not needed there")
             group_id = ""
             if f.group_of:
                 anchor = by_tech.get(f.group_of)
                 if not anchor:
                     raise FindingError(f"{f.tech}: group_of {f.group_of} is not on {token}")
                 group_id = events[anchor[0]].id
-            src = add_source(f)
-            out.append(dataclasses.replace(src, **f.set, group_of=group_id, confirmed=(f.label,)))
+            if f.action == "add":
+                new = dataclasses.replace(add_source(f), **f.set)
+            else:
+                if define is None:
+                    raise FindingError(f"{f.tech}: define findings need a catalog")
+                new = define(f)
+                clash = next((ev for ev in events if _overlaps(ev, new)), None)
+                if clash is not None:
+                    raise FindingError(f"{f.tech}: {token} has {clash.tech} on the same bytes; confirm or change that")
+            out.append(dataclasses.replace(new, group_of=group_id, confirmed=(f.label,), added=True))
             continue
         if not present:
             raise FindingError(f"{f.tech}: not on {token} in the export; nothing to {f.action}")
