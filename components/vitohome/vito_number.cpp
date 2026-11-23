@@ -13,9 +13,9 @@ static const char *const TAG = "vitohome.number";
 
 void VitoNumber::dump_config() {
   LOG_NUMBER("  ", "Number", this);
-  ESP_LOGCONFIG(TAG, "    Address: 0x%04X  Length: %u  scale: %g  signed: %s  read_back: %s",
-                this->datapoint_.address(), this->datapoint_.length(), this->scale_, this->signed_ ? "yes" : "no",
-                this->write_path_.read_back ? "yes" : "no");
+  ESP_LOGCONFIG(TAG, "    Address: 0x%04X  Length: %u  scale: %g  offset: %g  signed: %s  read_back: %s",
+                this->datapoint_.address(), this->datapoint_.length(), this->scale_, this->value_offset_,
+                this->signed_ ? "yes" : "no", this->write_path_.read_back ? "yes" : "no");
   if (this->extract_byte_ >= 0) {
     ESP_LOGCONFIG(TAG, "    Extract: %u byte(s) at offset %d of a %u-byte block read", this->extract_len_,
                   this->extract_byte_, this->datapoint_.length());
@@ -36,13 +36,13 @@ void VitoNumber::control(float value) {
   // field width under the interior shape, or with a read/write address split;
   // falls back to datapoint_ for the single-address case).
   const uint8_t len = this->staged_width();
+  const double raw_value = static_cast<double>(value) - this->value_offset_;
   if (this->field_mask_ != 0) {
     // Bit field: stage the FIELD value, unsigned, in one byte. The hub merges
     // it into the byte it reads back first (read-modify-write), so the bits
     // outside the mask are never touched here. number.py checks min/max
     // against the mask width; this is the runtime twin of that check.
-    if (!encode_scaled(static_cast<double>(value), this->scale_, false, 1, buf) ||
-        buf[0] > bit_field_max(this->field_mask_)) {
+    if (!encode_scaled(raw_value, this->scale_, false, 1, buf) || buf[0] > bit_field_max(this->field_mask_)) {
       ESP_LOGE(TAG, "%s: value %.3f does not fit bit_mask 0x%02X (scale %g) - not written", this->datapoint_.name(),
                value, this->field_mask_, this->scale_);
       return;
@@ -60,7 +60,7 @@ void VitoNumber::control(float value) {
              this->field_mask_);
     return;
   }
-  if (!encode_scaled(static_cast<double>(value), this->scale_, this->signed_, len, buf)) {
+  if (!encode_scaled(raw_value, this->scale_, this->signed_, len, buf)) {
     // Out-of-range for the wire representation. The Python schema already
     // cross-checks min/max against the encodable range, so reaching this
     // means a runtime caller bypassed the traits — refuse to transmit.
@@ -106,7 +106,7 @@ void VitoNumber::handle_response(const ResponseView &response) {
     this->handle_error(optolink::OptolinkResult::LENGTH);
     return;
   }
-  const float out = static_cast<float>(value);
+  const float out = static_cast<float>(value + this->value_offset_);
   if (std::isnan(out) || std::isinf(out)) {
     ESP_LOGW(TAG, "%s: decoded non-finite value, skipping", this->datapoint_.name());
     this->handle_error(optolink::OptolinkResult::LENGTH);

@@ -162,6 +162,19 @@ number:
     max_value: 90
     step: 1
     update_interval: 3600s
+  # A MultOffset coding: a 4-bit field 0..15 meaning 35..110 degC.
+  - platform: vitohome
+    name: "GWG (05) Vorlaufmaximaltemperatur HK B"
+    address: 0x01
+    access: eeprom
+    length: 1
+    bit_mask: 0x0F
+    converter: mult5
+    value_offset: 35
+    min_value: 35
+    max_value: 110
+    step: 5
+    update_interval: 3600s
   # The other writable GWG mode. EEPROM_WRITE (1082 datapoints) and BE_WRITE
   # (280) are the only two Vitosoft uses, so between them these two entities
   # cover every writable shape that actually occurs. This one carried no

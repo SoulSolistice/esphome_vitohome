@@ -39,6 +39,10 @@ from . import (
 
 DEPENDENCIES = ["vitohome"]
 
+# value = raw * scale + value_offset, for a datapoint whose zero is not raw 0
+# (a 4-bit coding field 0..15 that means 35..110 °C: mult5, value_offset 35).
+CONF_VALUE_OFFSET = "value_offset"
+
 VitoNumber = vitohome_ns.class_("VitoNumber", number.Number, cg.Component)
 
 # Optional read/state address, distinct from the command (write) CONF_ADDRESS,
@@ -78,10 +82,11 @@ def _validate_encodable_range(config):
     "value not written" log.
     """
     scale = converter_scale(config[CONF_CONVERTER])
+    offset = config[CONF_VALUE_OFFSET]
     is_signed = resolve_signed(config)
     width = field_width(config)
     for key in (CONF_MIN_VALUE, CONF_MAX_VALUE):
-        raw = llround(config[key] / scale)
+        raw = llround((config[key] - offset) / scale)
         if CONF_BIT_MASK in config:
             # A bit field holds 0..bit_field_max(mask), unsigned -- the same
             # range VitoNumber::control() enforces before staging the field.
@@ -90,7 +95,7 @@ def _validate_encodable_range(config):
                 raise cv.Invalid(
                     f"{key} ({config[key]}) -> raw {raw} does not fit bit_mask "
                     f"0x{config[CONF_BIT_MASK]:02X} (field values 0..{top}) with converter "
-                    f"'{config[CONF_CONVERTER]}' (scale {scale})",
+                    f"'{config[CONF_CONVERTER]}' (scale {scale}, value_offset {offset:g})",
                     path=[key],
                 )
             continue
@@ -99,7 +104,7 @@ def _validate_encodable_range(config):
             raise cv.Invalid(
                 f"{key} ({config[key]}) -> raw {raw} does not fit {width} "
                 f"{kind} byte(s) with converter '{config[CONF_CONVERTER]}' "
-                f"(scale {scale}). Pick a different length/converter or bound.",
+                f"(scale {scale}, value_offset {offset:g}). Pick a different length/converter or bound.",
                 path=[key],
             )
     if config[CONF_MIN_VALUE] > config[CONF_MAX_VALUE]:
@@ -121,6 +126,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_BYTE_OFFSET): cv.int_range(min=0, max=MAX_P300_READ_LENGTH - 1),
             cv.Optional(CONF_BYTE_LENGTH): cv.int_range(min=1, max=4),
             cv.Optional(CONF_CONVERTER, default="noconv"): cv.enum(_WRITABLE_CONVERTERS, lower=True),
+            cv.Optional(CONF_VALUE_OFFSET, default=0.0): cv.float_,
             cv.Optional(CONF_SIGNED): cv.boolean,
             # Writes become a read-modify-write of the one byte (vitohome.h,
             # rmw_pending_); see validate_bit_field for the shape rules.
@@ -159,6 +165,8 @@ async def to_code(config):
     emit_write_target(var, config, read_addr, write_addr)
     # scale_literal emits a C++ *double* literal (see sensor.py / __init__.py).
     cg.add(var.set_scale(scale_literal(config[CONF_CONVERTER])))
+    if config[CONF_VALUE_OFFSET]:
+        cg.add(var.set_value_offset(cg.RawExpression(repr(float(config[CONF_VALUE_OFFSET])))))
     cg.add(var.set_signed(resolve_signed(config)))
     cg.add(var.set_read_back(config[CONF_READ_BACK]))
     emit_bit_mask(var, config)

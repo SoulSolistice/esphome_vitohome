@@ -8,14 +8,16 @@
 
 namespace esphome::vitohome {
 
-// Writable datapoint exposed as an ESPHome number. The write path encodes in
-// double precision (decode.h::encode_scaled) and transmits via the optolink engine's
-// raw-bytes write; the periodic read path keeps the entity in sync with
-// changes made at the boiler panel. No flash preferences are used: the
-// device itself is the source of truth, restored by the first poll.
+// Writable datapoint exposed as an ESPHome number: value = raw * scale +
+// value_offset. The write path encodes in double precision
+// (decode.h::encode_scaled) and transmits via the optolink engine's raw-bytes
+// write; the periodic read path keeps the entity in sync with changes made at
+// the boiler panel. No flash preferences are used: the device itself is the
+// source of truth, restored by the first poll.
 class VitoNumber final : public number::Number, public Component, public VitoWritableEntity {
  public:
   void set_scale(double scale) { this->scale_ = scale; }
+  void set_value_offset(double offset) { this->value_offset_ = offset; }
   void set_signed(bool s) { this->signed_ = s; }
 
   void dump_config() override;
@@ -28,6 +30,7 @@ class VitoNumber final : public number::Number, public Component, public VitoWri
   void control(float value) override;
 
   double scale_{1.0};
+  double value_offset_{0.0};
   bool signed_{false};
   float pending_value_{0.0f};
 };
