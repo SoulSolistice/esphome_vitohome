@@ -1565,7 +1565,7 @@ async def to_code(config):
     if CORE.using_toolchain_esp_idf:
         esp32.add_idf_component(name="optolink", path=str(optolink_dir))
     else:
-        cg.add_library("optolink", None, f"file://{optolink_dir}")
+        cg.add_library("optolink", None, optolink_dir.as_uri())
     # as_posix(): on a Windows host str(Path) yields backslashes, which
     # PlatformIO/SCons mangles inside build_flags, so the include path is lost
     # and every `#include "optolink/optolink.h"` fails. Forward slashes are
