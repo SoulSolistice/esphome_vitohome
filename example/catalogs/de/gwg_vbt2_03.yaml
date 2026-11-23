@@ -46,6 +46,10 @@
 # screen, quick check and trend recorder), and gfa=<chips> (the burner-
 # control chips a GFA datapoint is listed for). ESPHome ignores them.
 #
+# Hardware findings: 1 entity carries a `# confirmed:` line. The
+# Vitosoft data was corrected or completed there from what a real unit
+# showed; the line names it (scripts/vitocatalog/confirmed.toml).
+#
 # 4 entity name(s) repeat within their platform in Vitosoft (e.g. one
 # 'Pegel' per RF participant); each such name carries its id in parentheses,
 # since ESPHome requires a unique name per platform.
@@ -312,7 +316,8 @@ sensor:
     disabled_by_default: true
     update_interval: 60s
 
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.0052 + -0.65); big-endian on hardware (issue #35) -> rotatebytes
+  # confirmed: big-endian: raw 01 71..01 7C is 1.27-1.33 bar, rising with the boiler temperature [read on 0x2053 HW=0x01 SW=0x1E (BES); SoulSolistice/esphome_vitohome#35]
+    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.0052 + -0.65); big-endian on hardware -> rotatebytes
   - platform: vitohome
     name: "Wasserdruck"
     id: GWG_Wasserdruck
@@ -727,55 +732,14 @@ sensor:
     update_interval: 60s
 
   # --- (ohne Gruppenzuordnung) ---
-    # NOTE: conversion 'MultOffset': value = field * 5 + 35 -> filters; no encode path for the transform -> read-only
+    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6?; the borders read as raw, noconv emitted; the byte(s) also hold bit-field datapoints, which a whole write would overwrite -> read-only
   - platform: vitohome
-    name: "(06) Kesselmaximaltemperatur"
-    id: GWG_K06Kesselmaximaltemperatur
-    address: 0x0001
+    name: "(11) Heizkreispumpendrehzahl im reduzierten BereichByte"
+    id: GWG_K11HKPDrehzahlreduziertByte
+    address: 0x0005
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
-    bit_mask: 0xF0  # Vitosoft BitPosition 0, BitLength 4 (MSB-first)
     converter: noconv
-    unit_of_measurement: "°C"
-    device_class: temperature
-    filters:
-      - multiply: 5
-      - offset: 35
-    state_class: measurement
-    disabled_by_default: true
-    update_interval: 3600s
-
-    # NOTE: conversion 'MultOffset': value = field * 5 + 35 -> filters; no encode path for the transform -> read-only
-  - platform: vitohome
-    name: "(05) Vorlaufmaximal-temperatur HK B (Mischerkreis)"
-    id: GWG_K05VorlaufmaximaltemperaturHKB
-    address: 0x0001
-    access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
-    length: 1
-    bit_mask: 0x0F  # Vitosoft BitPosition 4, BitLength 4 (MSB-first)
-    converter: noconv
-    unit_of_measurement: "°C"
-    device_class: temperature
-    filters:
-      - multiply: 5
-      - offset: 35
-    state_class: measurement
-    disabled_by_default: true
-    update_interval: 3600s
-
-    # NOTE: conversion 'MultOffset': value = field * 2 + 6 -> filters; no encode path for the transform -> read-only
-  - platform: vitohome
-    name: "(07) Differenztemperatur"
-    id: GWG_K07Differenztemperatur
-    address: 0x0002
-    access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
-    length: 1
-    bit_mask: 0x0F  # Vitosoft BitPosition 4, BitLength 4 (MSB-first)
-    converter: noconv
-    unit_of_measurement: "K"
-    filters:
-      - multiply: 2
-      - offset: 6
     state_class: measurement
     disabled_by_default: true
     update_interval: 3600s
@@ -830,42 +794,6 @@ sensor:
     converter: noconv
     filters:
       - multiply: 0.1
-    state_class: measurement
-    accuracy_decimals: 1
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.5 + -16); value transform has no encode path -> demoted to sensor
-  - platform: vitohome
-    name: "(85) Verschiebung SPR 30L unten"
-    id: GWG_BEMK85VerschiebungSPR30Lunten
-    address: 0x001F
-    access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
-    length: 1
-    converter: noconv
-    unit_of_measurement: "K"
-    filters:
-      - multiply: 0.5
-      - offset: -16
-    state_class: measurement
-    accuracy_decimals: 1
-    disabled_by_default: true
-    update_interval: 3600s
-
-  # vito: quickcheck
-    # NOTE: conversion 'MultOffset' -> noconv + filter (value = raw * 0.5 + -16); value transform has no encode path -> demoted to sensor
-  - platform: vitohome
-    name: "(86) Verschiebung SPR 30L oben"
-    id: GWG_BEMK86VerschiebungSPR30Loben
-    address: 0x0020
-    access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
-    length: 1
-    converter: noconv
-    unit_of_measurement: "K"
-    filters:
-      - multiply: 0.5
-      - offset: -16
     state_class: measurement
     accuracy_decimals: 1
     disabled_by_default: true
@@ -1730,18 +1658,61 @@ binary_sensor:
 
 number:
   # --- (ohne Gruppenzuordnung) ---
-    # NOTE: conversion 'NoConversion': display value = raw * 2 + 6?; the borders read as raw, noconv emitted
+    # NOTE: conversion 'MultOffset': value = field * 5 + 35 -> mult5 + value_offset
   - platform: vitohome
-    name: "(11) Heizkreispumpendrehzahl im reduzierten BereichByte"
-    id: GWG_K11HKPDrehzahlreduziertByte
-    address: 0x0005
+    name: "(06) Kesselmaximaltemperatur"
+    id: GWG_K06Kesselmaximaltemperatur
+    address: 0x0001
     access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
     length: 1
-    converter: noconv
+    bit_mask: 0xF0  # Vitosoft BitPosition 0, BitLength 4 (MSB-first)
+    converter: mult5
+    value_offset: 35
+    unit_of_measurement: "°C"
+    device_class: temperature
     entity_category: config
-    min_value: 0
-    max_value: 255
-    step: 1
+    min_value: 35
+    max_value: 110
+    step: 5
+    mode: box
+    disabled_by_default: true
+    update_interval: 3600s
+
+    # NOTE: conversion 'MultOffset': value = field * 5 + 35 -> mult5 + value_offset
+  - platform: vitohome
+    name: "(05) Vorlaufmaximal-temperatur HK B (Mischerkreis)"
+    id: GWG_K05VorlaufmaximaltemperaturHKB
+    address: 0x0001
+    access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
+    length: 1
+    bit_mask: 0x0F  # Vitosoft BitPosition 4, BitLength 4 (MSB-first)
+    converter: mult5
+    value_offset: 35
+    unit_of_measurement: "°C"
+    device_class: temperature
+    entity_category: config
+    min_value: 35
+    max_value: 110
+    step: 5
+    mode: box
+    disabled_by_default: true
+    update_interval: 3600s
+
+    # NOTE: conversion 'MultOffset': value = field * 2 + 6 -> mult2 + value_offset
+  - platform: vitohome
+    name: "(07) Differenztemperatur"
+    id: GWG_K07Differenztemperatur
+    address: 0x0002
+    access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
+    length: 1
+    bit_mask: 0x0F  # Vitosoft BitPosition 4, BitLength 4 (MSB-first)
+    converter: mult2
+    value_offset: 6
+    unit_of_measurement: "K"
+    entity_category: config
+    min_value: 6
+    max_value: 36
+    step: 2
     mode: box
     disabled_by_default: true
     update_interval: 3600s
@@ -2008,6 +1979,46 @@ number:
     min_value: 0
     max_value: 20
     step: 1
+    mode: box
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+    # NOTE: conversion 'MultOffset': value = raw * 0.5 + -16 -> div2 + value_offset
+  - platform: vitohome
+    name: "(85) Verschiebung SPR 30L unten"
+    id: GWG_BEMK85VerschiebungSPR30Lunten
+    address: 0x001F
+    access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
+    length: 1
+    converter: div2
+    value_offset: -16
+    signed: false  # borders -16..16 less value_offset -16 are non-negative
+    unit_of_measurement: "K"
+    entity_category: config
+    min_value: -16
+    max_value: 16
+    step: 0.5
+    mode: box
+    disabled_by_default: true
+    update_interval: 3600s
+
+  # vito: quickcheck
+    # NOTE: conversion 'MultOffset': value = raw * 0.5 + -16 -> div2 + value_offset
+  - platform: vitohome
+    name: "(86) Verschiebung SPR 30L oben"
+    id: GWG_BEMK86VerschiebungSPR30Loben
+    address: 0x0020
+    access: eeprom  # Vitosoft EEPROM_READ / EEPROM_WRITE
+    length: 1
+    converter: div2
+    value_offset: -16
+    signed: false  # borders -16..16 less value_offset -16 are non-negative
+    unit_of_measurement: "K"
+    entity_category: config
+    min_value: -16
+    max_value: 16
+    step: 0.5
     mode: box
     disabled_by_default: true
     update_interval: 3600s

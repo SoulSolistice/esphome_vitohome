@@ -10,6 +10,7 @@ import units
 from .constants import (
     _BOOLEAN_ON_OFF_PAIRS,
     _CONV_SCALE,
+    _FACTOR_PRESETS,
     _STEP_TOL,
     _UNSIGNED_PARAMETER_TYPES,
     COMMAND_STATE_ADDR,
@@ -660,7 +661,14 @@ def _llround(x: float) -> int:
     return int(math.floor(abs(x) + 0.5)) * (1 if x >= 0 else -1)
 
 
-def _bound_fits(value_str: str, length: int, conv: str, is_signed: bool) -> bool:
+def _factor_preset(factor: float | None) -> str | None:
+    """The converter whose scale is *factor*, or None."""
+    if factor is None:
+        return None
+    return next((name for f, name in _FACTOR_PRESETS if abs(factor - f) < 1e-12), None)
+
+
+def _bound_fits(value_str: str, length: int, conv: str, is_signed: bool, offset: float = 0.0) -> bool:
     """Whether a min/max border survives encoding into ``length`` raw bytes.
 
     Mirrors components/vitohome/number.py (raw = llround(value / scale) -- half
@@ -669,13 +677,14 @@ def _bound_fits(value_str: str, length: int, conv: str, is_signed: bool) -> bool
     rejected at ``esphome config`` time. Borders that do not fit (e.g. a
     year-valued bound on a 1-byte field, or a display unit that is not the raw
     encoding) make the datapoint read-only instead (build_entity_spec).
+    *offset* is the number's value_offset, subtracted before the scale.
     """
     try:
         v = float(value_str)
     except (TypeError, ValueError):
         return False
     scale = _CONV_SCALE.get(conv, 1.0)
-    raw = _llround(v / scale)
+    raw = _llround((v - offset) / scale)
     if is_signed:
         return -(1 << (8 * length - 1)) <= raw <= (1 << (8 * length - 1)) - 1
     return 0 <= raw <= (1 << (8 * length)) - 1
@@ -693,6 +702,22 @@ def _read_only_blocks(events, protocol: str) -> frozenset[tuple[int, str]]:
     """
     return frozenset(
         (e.address, _access_for(e, protocol)) for e in events if e.address is not None and not _is_writable(e, protocol)
+    )
+
+
+def _bit_field_bytes(events, protocol: str) -> frozenset[tuple[int, str, int]]:
+    """(address, access, byte) of every byte that holds a bit field.
+
+    A datapoint covering such a byte whole shares it with those fields: Vitosoft
+    keeps a "...Byte" row next to the coding bits it is made of (GWG EEPROM
+    0x05 carries codings 10..16). Written whole, it would set every one of them
+    from a single number. Computed over all of the device's datapoints, keyed
+    like the GWG field identity.
+    """
+    return frozenset(
+        (e.address, _access_for(e, protocol), e.byte_position or 0)
+        for e in events
+        if e.address is not None and (e.bit_length or 0) > 0
     )
 
 

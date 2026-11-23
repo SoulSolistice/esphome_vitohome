@@ -102,6 +102,13 @@ class Event:
     # fault histories; constants.HYDRO_SCHEDULE_MAPPINGS). None when absent.
     mapping_type: int | None = None
     values: list[EventValue] = field(default_factory=list)
+    # Set only by hardware findings (confirmed.py). big_endian: a 2-byte raw
+    # value stored high byte first although the row declares a plain Int.
+    # group_of: event id whose menu group an added datapoint joins.
+    # confirmed: one line per finding, rendered above the entity.
+    big_endian: bool = False
+    group_of: str = ""
+    confirmed: tuple[str, ...] = ()
 
 
 @dataclass
@@ -135,6 +142,7 @@ class EntitySpec:
     bit_mask: int | None = None
     bit_mask_comment: str | None = None
     converter: str | None = None
+    value_offset: float | None = None  # number: value = raw * scale + value_offset
     signed: bool | None = None
     signed_comment: str | None = None
     unit: str | None = None

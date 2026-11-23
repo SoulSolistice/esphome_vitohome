@@ -13,6 +13,7 @@ import xml.etree.ElementTree as ET
 
 import units
 
+from .confirmed import Finding, apply as apply_findings, resolve_add_source
 from .constants import (
     _CONTAINER_PREFIXES,
     _FACTOR_PLACEHOLDERS,
@@ -500,6 +501,47 @@ class Catalog:
         self._gfa_chip_index: dict = {}  # dp_id -> field -> chips; see gfa_chips()
         self._values = {vid: self._mk_value(f) for vid, f in raw_values.items()}
         self._events = {eid: self._mk_event(eid, f) for eid, f in raw_events.items()}
+        self._findings: list[Finding] = []  # see use_findings()
+
+    def use_findings(self, findings: list[Finding]) -> list[str]:
+        """Apply *findings* in events_for() from now on. Returns a warning per
+        device token a finding names that this export does not carry; every
+        other defect raises FindingError on first use of the device."""
+        self._findings = list(findings)
+        return [
+            f"finding {f.tech}: device {dev} is not in this export, skipped"
+            for f in self._findings
+            for dev in f.devices
+            if dev not in self.devices
+        ]
+
+    def _raw_events_for(self, device_token: str) -> list[Event]:
+        dp_id = self.devices.get(device_token)
+        if dp_id is None:
+            return []
+        ids = list(self._links.get(dp_id, []))
+        if self.menu_datapoints:
+            seen = set(ids)
+            ids += [e for e in self._menu_events_by_dp().get(dp_id, ()) if e not in seen]
+        out: list[Event] = []
+        for ev_id in ids:
+            ev = self._events.get(ev_id)
+            if ev is None:
+                continue
+            if not ev.values and ev_id in self._vlinks:
+                ev.values = [self._values[vid] for vid in self._vlinks[ev_id] if vid in self._values]
+            out.append(ev)
+        return out
+
+    def _add_source(self, finding: Finding) -> Event:
+        candidates = [e for e in self._events.values() if e.tech == finding.tech]
+        for ev in candidates:
+            if not ev.values and ev.id in self._vlinks:
+                ev.values = [self._values[vid] for vid in self._vlinks[ev.id] if vid in self._values]
+        from_events = None
+        if finding.from_device:
+            from_events = self._raw_events_for(finding.from_device) if finding.from_device in self.devices else None
+        return resolve_add_source(finding, candidates, from_events)
 
     def product_for(self, device_token: str) -> tuple[str, str]:
         """(ShortName, ProductName) Vitosoft gives a datapoint type, "" each when
@@ -621,14 +663,16 @@ class Catalog:
         numeric segment prefixes carry Vitosoft's intended ordering, so the raw
         segments are the sort key (all-str tuple; EventTypeOrder appended
         zero-padded to order entities within a group). Events without a group
-        sort last under "(ohne Gruppenzuordnung)"."""
+        sort last under "(ohne Gruppenzuordnung)". A datapoint added by a
+        finding takes the group of its ``group_of`` event."""
         dp_id = self.devices.get(device_token)
-        cache_key = (ev.id, dp_id)
+        eid = getattr(ev, "group_of", "") or ev.id
+        cache_key = (eid, dp_id)
         hit = self._group_cache.get(cache_key)
         if hit is not None:
             return hit
         best = None
-        for gid, ev_order in self._glinks.get(ev.id, ()):
+        for gid, ev_order in self._glinks.get(eid, ()):
             g = self._groups.get(gid)
             if not g or g["dp"] != dp_id:
                 continue
@@ -791,23 +835,12 @@ class Catalog:
     def events_for(self, device_token: str) -> list[Event]:
         """The device's datapoints: its direct links, then -- unless
         ``menu_datapoints`` is off -- those it carries only in its own menu
-        tree (_menu_events_by_dp), each event once."""
-        dp_id = self.devices.get(device_token)
-        if dp_id is None:
-            return []
-        ids = list(self._links.get(dp_id, []))
-        if self.menu_datapoints:
-            seen = set(ids)
-            ids += [e for e in self._menu_events_by_dp().get(dp_id, ()) if e not in seen]
-        out: list[Event] = []
-        for ev_id in ids:
-            ev = self._events.get(ev_id)
-            if ev is None:
-                continue
-            if not ev.values and ev_id in self._vlinks:
-                ev.values = [self._values[vid] for vid in self._vlinks[ev_id] if vid in self._values]
-            out.append(ev)
-        return out
+        tree (_menu_events_by_dp), each event once; then the hardware findings
+        for the device (use_findings)."""
+        events = self._raw_events_for(device_token)
+        if not events or not self._findings:
+            return events
+        return apply_findings(events, device_token, self._findings, self._add_source)
 
     def fault_texts(self) -> tuple[dict, dict, dict]:
         """(per_device, generic, gfa) fault-code texts from the loaded language:

@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import math
 
+from .confirmed import FindingError
 from .constants import (
     _CONV_LENGTHS,
     _CONV_SCALE,
-    _FACTOR_PRESETS,
     COMMAND_STATE_ADDR,
     CONVERSION_MAP,
     COUNTER,
     DIV,
-    HW_BIG_ENDIAN,
     MAX_P300_READ_LENGTH,
     MAX_TEXT_BLOCK_LENGTH,
     NO_BORDERS_CAUTION,
@@ -24,6 +23,7 @@ from .constants import (
 from .models import CommentSpec, EntitySpec, Event
 from .special import _yaml_str
 from .transforms import (
+    _access_for,
     _bit_field,
     _block_write_blocker,
     _bound_fits,
@@ -33,6 +33,7 @@ from .transforms import (
     _enum_bool_pair,
     _enum_options,
     _enum_read_length,
+    _factor_preset,
     _is_writable,
     _llround,
     _negative_option_count,
@@ -150,6 +151,8 @@ def render_entity_lines(spec: EntitySpec) -> list[str]:
 
     if spec.converter:
         lines.append(f"  converter: {spec.converter}")
+    if spec.value_offset is not None:
+        lines.append(f"  value_offset: {spec.value_offset:g}")
 
     if spec.signed is not None:
         s_val = "true" if spec.signed else "false"
@@ -493,6 +496,7 @@ def _build_bit_field_spec(
 
     # --- numeric fields ------------------------------------------------------
     filters: list[tuple[str, float]] = []
+    value_offset = 0.0  # number only: value = field * scale + value_offset
     conv_factor = getattr(ev, "conv_factor", None)
     conv_offset = getattr(ev, "conv_offset", None)
     eff_factor = conv_factor if conv_factor not in (None, 0.0) else None
@@ -524,15 +528,14 @@ def _build_bit_field_spec(
     elif ev.conversion == "MultOffset":
         f_val = eff_factor
         o_val = conv_offset or 0.0
-        preset = None
-        if f_val is not None and o_val == 0.0:
-            for pf, pname in _FACTOR_PRESETS:
-                if abs(f_val - pf) < 1e-12:
-                    preset = pname
-                    break
-        if preset:
+        preset = _factor_preset(f_val)
+        if preset and not o_val:
             conv = preset
             notes.append(f"conversion 'MultOffset' (factor {f_val:g}) -> {preset}")
+        elif writable and o_val and (preset or f_val in (None, 1.0)):
+            conv = preset or "noconv"
+            value_offset = o_val
+            notes.append(f"conversion 'MultOffset': value = field * {f_val or 1:g} + {o_val:g} -> {conv} + value_offset")
         else:
             conv = "noconv"
             if f_val is not None and f_val != 1.0:
@@ -552,6 +555,9 @@ def _build_bit_field_spec(
         scale = _CONV_SCALE.get(conv or "", 1.0)
         if scale != 1.0:
             filters.insert(0, ("multiply", scale))
+        if value_offset:
+            filters.append(("offset", value_offset))
+            value_offset = 0.0
         notes.append(f"conversion {ev.conversion!r} has no 1-byte converter -> raw field + filter, read-only")
         conv = "noconv"
         writable = False
@@ -567,7 +573,7 @@ def _build_bit_field_spec(
 
         def _fits(v: str) -> bool:
             try:
-                raw = _llround(float(v) / scale)
+                raw = _llround((float(v) - value_offset) / scale)
             except (TypeError, ValueError):
                 return False
             return 0 <= raw <= fmax
@@ -578,7 +584,7 @@ def _build_bit_field_spec(
             # The field's own range is known exactly, so unlike a whole-byte
             # number without borders it need not be emitted read-only.
             notes.append(f"borders absent or outside the {bit_len}-bit field -> the field range 0..{fmax}")
-            min_v, max_v, step_v = "0", f"{fmax * scale:g}", f"{scale:g}"
+            min_v, max_v, step_v = f"{value_offset:g}", f"{fmax * scale + value_offset:g}", f"{scale:g}"
         return EntitySpec(
             platform="number",
             name=name,
@@ -588,6 +594,7 @@ def _build_bit_field_spec(
             bit_mask=mask,
             bit_mask_comment=mask_comment,
             converter=conv,
+            value_offset=value_offset or None,
             unit=unit or None,
             device_class=dc,
             min_value=min_v,
@@ -638,6 +645,7 @@ def build_entity_spec(
     protocol: str = PROTO_P300,
     partial_writes: bool = True,
     ro_blocks: frozenset = frozenset(),
+    bit_field_bytes: frozenset = frozenset(),
 ) -> EntitySpec | CommentSpec | None:
     """Analyze one Event into a structured EntitySpec, CommentSpec, or None.
 
@@ -682,6 +690,9 @@ def build_entity_spec(
     # factor cannot be expressed as a component converter. A writable that
     # needs one is demoted to a sensor below (no encode-side transform).
     value_filters: list[tuple[str, float]] = []
+    # number only: value = raw * scale + value_offset. Folded into the filters
+    # if the datapoint ends up read-only.
+    value_offset = 0.0
     force_signed = False
     writable = _is_writable(ev, protocol)
 
@@ -736,16 +747,16 @@ def build_entity_spec(
     if factor_driven:
         f_val = eff_factor
         o_val = conv_offset or 0.0
-        preset = None
-        if f_val is not None and o_val == 0.0 and f_val != 1.0:
-            for pf, pname in _FACTOR_PRESETS:
-                if abs(f_val - pf) < 1e-12:
-                    preset = pname
-                    break
-        if preset:
+        preset = _factor_preset(f_val)
+        if preset and o_val == 0.0:
             conv = preset
             conv_kind = DIV if preset.startswith("div") else PLAIN
             note = f"conversion {ev.conversion!r} (factor {f_val:g}) -> {preset}"
+        elif writable and ev.conversion == "MultOffset" and o_val and (preset or f_val in (None, 1.0)):
+            conv = preset or "noconv"
+            conv_kind = DIV if conv.startswith("div") else PLAIN
+            value_offset = o_val
+            note = f"conversion 'MultOffset': value = raw * {f_val or 1:g} + {o_val:g} -> {conv} + value_offset"
         elif f_val is not None and (f_val != 1.0 or o_val != 0.0):
             conv = "noconv"
             if writable and ev.conversion != "MultOffset":
@@ -757,11 +768,8 @@ def build_entity_spec(
                     + (f" + {o_val:g}" if o_val else "")
                     + "?; the borders read as raw, noconv emitted"
                 )
-            # An explicit MultOffset has no encode-side transform, so it is
-            # read-only even where Vitosoft lets it be written: a raw number with
-            # the physical bounds would stage the value without its offset
-            # (raw * 0.5 - 16: 0 K is staged as 00 and reads back as -16 K). The
-            # filters make the read correct and demote it below.
+            # A MultOffset whose factor no converter carries has no encode
+            # path: filters make the read correct and demote it below.
             else:
                 if f_val != 1.0:
                     value_filters.append(("multiply", f_val))
@@ -853,10 +861,12 @@ def build_entity_spec(
             )
         conv, conv_kind = "rotatebytes", PLAIN
         note = (note + "; " if note else "") + f"ParameterType {ptype_raw}: big-endian -> rotatebytes"
-    hw_be = HW_BIG_ENDIAN.get((ev.tech, addr))
-    if hw_be and length == 2 and conv == "noconv" and not is_bit and not enum_opts:
+    # A finding (confirmed.py) can mark a plain Int row big-endian; its filters stay.
+    if getattr(ev, "big_endian", False):
+        if length != 2 or conv != "noconv" or is_bit or enum_opts:
+            raise FindingError(f"{ev.tech}: big_endian needs an unconverted 2-byte value, not {length} byte(s) {conv}")
         conv, conv_kind = "rotatebytes", PLAIN
-        note = (note + "; " if note else "") + f"big-endian on hardware ({hw_be}) -> rotatebytes"
+        note = (note + "; " if note else "") + "big-endian on hardware -> rotatebytes"
 
     # `writable` was resolved above; the demotions below narrow it further.
     # A converter without an encode path (sec2hour, rotatebytes are read-only
@@ -883,6 +893,14 @@ def build_entity_spec(
     # _block_write_blocker() allows it; else it is demoted with the reason.
     # (Weekday Schaltzeiten write 8 bytes per day into the 56-byte program, as
     # vcontrold does; they have their own path and never reach this.)
+    if writable and not is_bit:
+        access = _access_for(ev, protocol)
+        shared = sum((addr, access, b) in bit_field_bytes for b in range(field_off, field_off + length))
+        if shared:
+            writable = False
+            note = (note + "; " if note else "") + (
+                "the byte(s) also hold bit-field datapoints, which a whole write would overwrite -> read-only"
+            )
     block_mode = False
     if writable and (field_off > 0 or length < block_len):
         why = _block_write_blocker(ev, protocol, block_len, length, ro_blocks, partial_writes)
@@ -1048,8 +1066,9 @@ def build_entity_spec(
         # is unsigned by default and needs an explicit `signed: true` to accept
         # a negative bound (otherwise the number validator rejects it and the
         # datapoint is emitted read-only, see below).
+        # With a value_offset the raw lower bound is (lo - offset) / scale.
         try:
-            _lo_neg = lo != "" and float(lo) < 0
+            _lo_neg = lo != "" and float(lo) - value_offset < 0
         except (TypeError, ValueError):
             _lo_neg = False
         _default_signed = conv in ("div2", "div10")
@@ -1058,6 +1077,10 @@ def build_entity_spec(
         signed_comment: str | None = None
         if _lo_neg and not _default_signed:
             signed_val = True
+        elif _default_signed and value_offset and not _lo_neg:
+            is_signed = False
+            signed_val = False
+            signed_comment = f"borders {lo}..{hi} less value_offset {value_offset:g} are non-negative"
         elif _default_signed and _declared_unsigned(ev):
             # Declared unsigned with a non-negative border: override the
             # converter's signed default (see _declared_unsigned). This also
@@ -1073,8 +1096,8 @@ def build_entity_spec(
             lo != ""
             and hi != ""
             and step not in ("", "0")
-            and _bound_fits(lo, length, conv, is_signed)
-            and _bound_fits(hi, length, conv, is_signed)
+            and _bound_fits(lo, length, conv, is_signed, value_offset)
+            and _bound_fits(hi, length, conv, is_signed, value_offset)
             # An empty range is no range: 94 datapoints carry the borders 0..0
             # (step 1), which is the same "can only write 0" entity as one
             # without borders.
@@ -1089,6 +1112,7 @@ def build_entity_spec(
                 byte_offset=w_off,
                 byte_length=w_blen,
                 converter=conv,
+                value_offset=value_offset or None,
                 signed=signed_val,
                 signed_comment=signed_comment,
                 unit=unit or None,
@@ -1107,6 +1131,8 @@ def build_entity_spec(
         caution = list(NO_BORDERS_CAUTION)
 
     # --- read-only: single-bit binary_sensor, enum text_sensor, or sensor ---
+    if value_offset:
+        value_filters.append(("offset", value_offset))
     if is_bit:
         # BitPosition is the ABSOLUTE bit index within the block; BytePosition
         # is sometimes left 0 in the export, so the byte comes from the bit index.
@@ -1253,9 +1279,10 @@ def emit_entity(
     protocol: str = PROTO_P300,
     partial_writes: bool = True,
     ro_blocks: frozenset = frozenset(),
+    bit_field_bytes: frozenset = frozenset(),
 ) -> tuple[str, list[str]] | None:
     """Return (platform, yaml_lines) for one event, or None to skip it."""
-    spec = build_entity_spec(ev, profile, protocol, partial_writes, ro_blocks)
+    spec = build_entity_spec(ev, profile, protocol, partial_writes, ro_blocks, bit_field_bytes)
     if spec is None:
         return None
     if isinstance(spec, CommentSpec):

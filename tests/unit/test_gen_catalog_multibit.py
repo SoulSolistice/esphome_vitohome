@@ -10,7 +10,7 @@ field (read-modify-write, vitohome.h rmw_pending_).
 
 Pinned here: the MSB-first mask derivation, the writable-shape gate (a 1-byte
 datapoint, or block mode for a field in a wider block), the read-only fallbacks
-(inferred scale, MultOffset with an offset, a block with a read-only sibling,
+(inferred scale, a block with a read-only sibling,
 --no-partial-writes), enum handling in field units, and the issue #21 bytes
 decoding to the export's factory defaults.
 
@@ -109,10 +109,12 @@ _SCALE = {"noconv": 1.0, "div2": 0.5, "div10": 0.1, "div100": 0.01, "mult2": 2.0
 
 
 def _decode(lines, raw_byte):
-    """What the component publishes: mask/shift, converter scale, then filters."""
+    """What the component publishes: mask/shift, converter scale, value_offset
+    (number), then filters (sensor)."""
     mask = _mask(lines)
     shift = (mask & -mask).bit_length() - 1
     v = float((raw_byte & mask) >> shift) * _SCALE[_key(lines, "converter")]
+    v += float(_key(lines, "value_offset") or 0)
     for name, arg in _filters(lines):
         v = v * arg if name == "multiply" else v + arg
     return v
@@ -267,23 +269,45 @@ def test_spr30_inferred_scale_stays_read_only(raw_byte, value):
     assert "UNVERIFIED" in "\n".join(lines)
 
 
+def _k05_k06(bit_position, **over):
+    kw = {
+        "address": 0x0001,
+        "conversion": "MultOffset",
+        "bit_position": bit_position,
+        "lower": "35",
+        "upper": "110",
+        "stepping": "5",
+        "conv_factor": 5.0,
+        "conv_offset": 35.0,
+    }
+    kw.update(over)
+    return _ev(**kw)
+
+
 @pytest.mark.parametrize("bit_position,value", [(0, 85.0), (4, 75.0)])
-def test_multoffset_with_offset_is_read_only_and_decodes_issue_21(bit_position, value):
+def test_multoffset_with_offset_is_a_number_and_decodes_issue_21(bit_position, value):
     # 0x0001 reads 0xA8 on 0x2053 HW 0x01 SW 0x7A (issue #21): K06 = 85 degC,
     # K05 = 75 degC -- both the export's factory defaults (ALZ).
-    ev = _ev(
-        address=0x0001,
-        conversion="MultOffset",
-        bit_position=bit_position,
-        lower="35",
-        upper="110",
-        stepping="5",
-        conv_factor=5.0,
-        conv_offset=35.0,
-    )
-    platform, lines = emit_entity(ev, "full", PROTO_GWG)
-    assert platform == "sensor"
+    platform, lines = emit_entity(_k05_k06(bit_position), "full", PROTO_GWG)
+    assert platform == "number"
+    assert _key(lines, "converter") == "mult5"
+    assert _key(lines, "value_offset") == "35"
+    assert (_key(lines, "min_value"), _key(lines, "max_value"), _key(lines, "step")) == ("35", "110", "5")
+    assert _filters(lines) == []
     assert _decode(lines, 0xA8) == pytest.approx(value)
+
+
+@pytest.mark.parametrize("bit_position,value", [(0, 85.0), (4, 75.0)])
+def test_read_only_multoffset_with_offset_keeps_its_filters(bit_position, value):
+    platform, lines = emit_entity(_k05_k06(bit_position, access_type=1), "full", PROTO_GWG)
+    assert platform == "sensor"
+    assert _key(lines, "value_offset") is None
+    assert _decode(lines, 0xA8) == pytest.approx(value)
+
+
+def test_multoffset_without_a_converter_for_its_factor_stays_read_only():
+    platform, lines = emit_entity(_k05_k06(0, conv_factor=3.0), "full", PROTO_GWG)
+    assert platform == "sensor"
     assert "no encode path" in "\n".join(lines)
 
 

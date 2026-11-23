@@ -8591,53 +8591,6 @@ select:
 
   # vito: circuit=hk2 overview quickcheck trend
   - platform: vitohome
-    name: "Party mode HC2"
-    id: Ecotronic_BedienPartybetriebM2
-    address: 0x3300
-    length: 1
-    entity_category: config
-    disabled_by_default: true
-    update_interval: 3600s
-    options:
-      0x00: "OFF"
-      0x03: "3°C - ON"
-      0x04: "4 °C - ON"
-      0x05: "5 °C - ON"
-      0x06: "6°C - ON"
-      0x07: "7°C - ON"
-      0x08: "8°C - ON"
-      0x09: "9°C - ON"
-      0x0A: "10°C - ON"
-      0x0B: "11°C - ON"
-      0x0C: "12°C - ON"
-      0x0D: "13°C - ON"
-      0x0E: "14°C - ON"
-      0x0F: "15°C - ON"
-      0x10: "16°C - ON"
-      0x11: "17°C - ON"
-      0x12: "18°C - ON"
-      0x13: "19°C - ON"
-      0x14: "20°C - ON"
-      0x15: "21°C - ON"
-      0x16: "22°C - ON"
-      0x17: "23°C - ON"
-      0x18: "24°C - ON"
-      0x19: "25°C - ON"
-      0x1A: "26°C - ON"
-      0x1B: "27°C - ON"
-      0x1C: "28°C - ON"
-      0x1D: "29°C - ON"
-      0x1E: "30°C - ON"
-      0x1F: "31°C - ON"
-      0x20: "32°C - ON"
-      0x21: "33°C - ON"
-      0x22: "34°C - ON"
-      0x23: "35°C - ON"
-      0x24: "36°C - ON"
-      0x25: "37°C - ON"
-
-  # vito: circuit=hk2 overview quickcheck trend
-  - platform: vitohome
     name: "(A4) Frost protection function HC2"
     id: Ecotronic_KA4_KonfiKeineFrostschutzfunktion_HK2
     address: 0x37A4
@@ -11281,6 +11234,55 @@ text_sensor:
     id: device_type
     icon: "mdi:identifier"
     entity_category: diagnostic
+
+  # --- BedienungM2 / Betriebsdaten ---
+  # vito: circuit=hk2 overview quickcheck trend
+    # NOTE: the byte(s) also hold bit-field datapoints, which a whole write would overwrite -> read-only
+  - platform: vitohome
+    type: enum
+    name: "Party mode HC2"
+    id: Ecotronic_BedienPartybetriebM2
+    address: 0x3300
+    length: 1
+    disabled_by_default: true
+    update_interval: 3600s
+    options:
+      0x00: "OFF"
+      0x03: "3°C - ON"
+      0x04: "4 °C - ON"
+      0x05: "5 °C - ON"
+      0x06: "6°C - ON"
+      0x07: "7°C - ON"
+      0x08: "8°C - ON"
+      0x09: "9°C - ON"
+      0x0A: "10°C - ON"
+      0x0B: "11°C - ON"
+      0x0C: "12°C - ON"
+      0x0D: "13°C - ON"
+      0x0E: "14°C - ON"
+      0x0F: "15°C - ON"
+      0x10: "16°C - ON"
+      0x11: "17°C - ON"
+      0x12: "18°C - ON"
+      0x13: "19°C - ON"
+      0x14: "20°C - ON"
+      0x15: "21°C - ON"
+      0x16: "22°C - ON"
+      0x17: "23°C - ON"
+      0x18: "24°C - ON"
+      0x19: "25°C - ON"
+      0x1A: "26°C - ON"
+      0x1B: "27°C - ON"
+      0x1C: "28°C - ON"
+      0x1D: "29°C - ON"
+      0x1E: "30°C - ON"
+      0x1F: "31°C - ON"
+      0x20: "32°C - ON"
+      0x21: "33°C - ON"
+      0x22: "34°C - ON"
+      0x23: "35°C - ON"
+      0x24: "36°C - ON"
+      0x25: "37°C - ON"
 
   # --- Diagnose / Allgemein ---
   # vito: overview

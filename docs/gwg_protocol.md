@@ -283,10 +283,13 @@ The two families share every `physical`, `xram`, `port` and most `eeprom` and
     65536 − raw ≈ 562.5 × its duration in minutes (13, 7, 4 and 1). They never
     changed between reads, so they are most likely preset durations, not
     running timers (HW #35).
-  - `xram` `0x88` "Wasserdruck" reads `01 72`. Little-endian gives 151 bar;
-    big-endian gives 370 × 0.0052 − 0.65 = 1.27 bar against 1.2 bar on the
-    gauge (HW #35, one reading). Vitosoft defines it as plain `Int`. A second
-    reading at another pressure would settle it.
+  - `xram` `0x88` "Wasserdruck" is big-endian although Vitosoft defines it as
+    plain `Int`: `01 72` is 370 × 0.0052 − 0.65 = 1.27 bar against 1.2 bar on
+    the gauge, little-endian it would be 151 bar. Over two days it read
+    `01 71`..`01 7C`, 1.27..1.33 bar, rising with the boiler temperature (HW
+    #35). The catalogs apply it as a hardware finding
+    (`scripts/vitocatalog/confirmed.toml`) to every GWG device that has the
+    row: they all share it.
 - **Bits** are numbered MSB-first in Vitosoft (§8e).
 - **Absent sensors read `0xFF`** (255), for example "Raumtemperatur HK B"
   (`physical` `0x67`) on a single-circuit unit. #35's coding (04)
@@ -339,7 +342,6 @@ The two families share every `physical`, `xram`, `port` and most `eeprom` and
 | Question | Test |
 |---|---|
 | Does #35's controller keep the BES or the BEM coding map? | Read `eeprom` `0x03`, `0x08`, `0x0A`, `0x0D`, `0x13`, `0x14`, `0x1C`, `0x21` with frames logged; compare BES codings (02), (03), (04) with the panel |
-| Is `xram` `0x88` big-endian? | Second Wasserdruck reading at another pressure |
 | Does any GWG unit serve `be`? | A unit with a BEM panel |
 | How does a GWG unit frame a KM-bus read? | The candidates under `kmbus_eeprom`, with the KM-bus probe |
 | Does #35's unit answer more reads with an ENQ-to-send delay? | A read every 5 s with frames logged, `set_gwg_enq_send_delay_ms(0)` and `30` alternating for 2 h, the first 20 min after boot not counted; compare the unanswered reads of each |

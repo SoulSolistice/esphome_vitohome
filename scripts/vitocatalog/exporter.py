@@ -17,6 +17,7 @@ import sys
 
 import fault_codes
 
+from .confirmed import FindingError
 from .constants import _MANIFEST_COLUMNS, GFA_DIRNAME, RESOLVE_FILENAME
 from .identify import _dump_resolve_index, _is_hw_sw_ext, build_resolve_index as _build_resolve_index
 from .loader import Catalog
@@ -193,6 +194,8 @@ def export_all(
             manifest.append(rec)
             skipped += 1
             continue
+        except FindingError:
+            raise  # a defect in confirmed.toml, not in this unit's data
         except Exception as exc:  # noqa: BLE001 -- one bad unit must not abort the batch
             rec["status"] = f"error: {type(exc).__name__}: {exc}"
             manifest.append(rec)

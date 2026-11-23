@@ -1,11 +1,11 @@
-"""A writable datapoint whose display needs a transform the component cannot
-encode must not become a `number` with the display's bounds.
+"""A writable datapoint whose display is raw * factor + offset.
 
-External review, 2026-10-28: GWG_VWMS_36 "(85) Offset SPR 30L bottom" is
-MultOffset (value = raw * 0.5 - 16, -16..16 K, writable). It shipped as a
-`noconv` number with min -16, max 16, step 0.5 and `signed: true`, so 0 K
-staged raw 00 -- -16 K on the device. Such datapoints are read-only sensors
-with the transform as filters, and the raw signedness follows the raw range.
+GWG_VWMS_36 "(85) Offset SPR 30L bottom" is MultOffset (value = raw * 0.5 - 16,
+-16..16 K, writable). As a `noconv` number with the display's bounds, 0 K
+staged raw 00 -- -16 K on the device. With a converter for the factor it is a
+number with `value_offset`, raw 0..64 unsigned; without one it is a read-only
+sensor with the transform as filters, and the raw signedness follows the raw
+range.
 
 The last test is the general guard over every shipped catalog: a `noconv`
 number writes its value as the raw register value, so its step and bounds
@@ -59,13 +59,24 @@ def _keys(lines):
     return [line.strip() for line in lines]
 
 
-def test_writable_multoffset_is_a_sensor_with_its_transform():
+def test_writable_multoffset_is_a_number_with_value_offset():
     platform, lines = emit_entity(_event(), "full", PROTO_GWG)
+    assert platform == "number"
+    text = _keys(lines)
+    assert "converter: div2" in text
+    assert "value_offset: -16" in text
+    assert any(k.startswith("signed: false") for k in text)
+    assert {"min_value: -16", "max_value: 16", "step: 0.5"} <= set(text)
+    assert not any(k.startswith(("- multiply", "- offset")) for k in text)
+
+
+def test_writable_multoffset_without_a_converter_is_a_sensor_with_its_transform():
+    platform, lines = emit_entity(_event(conv_factor=0.25, conv_offset=4.0), "full", PROTO_GWG)
     assert platform == "sensor"
     text = _keys(lines)
-    assert "- multiply: 0.5" in text
-    assert "- offset: -16" in text
-    assert not any(k.startswith(("min_value", "max_value", "step")) for k in text)
+    assert "- multiply: 0.25" in text
+    assert "- offset: 4" in text
+    assert not any(k.startswith(("min_value", "max_value", "step", "value_offset")) for k in text)
 
 
 def test_its_raw_range_is_unsigned():

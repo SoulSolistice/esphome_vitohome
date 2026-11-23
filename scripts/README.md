@@ -162,6 +162,39 @@ devices carry datapoints only in their menus -- for `V200CO1x` its whole
 performance factors -- so the generator takes both. `--no-menu-datapoints`
 limits it to the direct table. Details: design_notes §8j.
 
+### Hardware findings
+
+The export is incomplete or wrong for some units: a datapoint the controller
+has is missing from its device table, or a row declares a byte order the
+firmware does not use. What a real unit showed goes into
+`vitocatalog/confirmed.toml`, one `[[finding]]` per datapoint:
+
+```toml
+[[finding]]
+tech = "GWG_Wasserdruck"          # the catalog's id:
+action = "change"                 # add | change | drop
+devices = ["GWG_VBES_03", ...]    # exact tokens; no other device is touched
+checked = "read"                  # read | write (written and read back)
+what = "big-endian: raw 01 71..01 7C is 1.27-1.33 bar"
+unit = "0x2053 HW=0x01 SW=0x1E (BES)"
+source = "SoulSolistice/esphome_vitohome#35"
+set = { big_endian = true }       # Event fields to override
+```
+
+`add` links a datapoint Vitosoft defines for another device (`from` picks
+which one if the definitions differ; `group_of` puts it in the menu group of a
+datapoint the device has). `change` overrides fields of one it has, `drop`
+removes it. The generator applies each finding only to the device tokens it
+names. Add a token after a unit of that type confirmed the finding too, or
+say in a comment above the entry why it holds there without one (a row every
+listed device shares, whose other reading is impossible).
+Each changed or added entity gets a `# confirmed:` line with the evidence, and
+the catalog header counts them. A finding that does not fit the export (an
+`add` the device already has, a `change` it lacks, an unknown field) stops the
+run; a device token the export does not carry is a warning. `--findings PATH`
+reads another file, `--no-findings` emits the plain Vitosoft data. The field
+list and the checks are in `vitocatalog/confirmed.py`.
+
 ### Metadata tags and product names
 
 Every entity Vitosoft places in a menu gets one comment line above it with

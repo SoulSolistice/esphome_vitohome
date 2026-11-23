@@ -26,15 +26,6 @@ CONVERSION_MAP = {
     "Sec2Minute": (None, COUNTER),  # no preset; emit noconv + note
 }
 
-# Datapoints the hardware shows stored big-endian although their Vitosoft row
-# is a plain little-endian Int, keyed by technical id and address. Each
-# decodes as rotatebytes (unsigned 2 bytes) with its row's filters.
-HW_BIG_ENDIAN = {
-    # Issue #35 (0x2053 SW 0x1E, 2026-11-19/20): raw 01 71..01 7C is 1.27-1.33 bar
-    # big-endian, rising with the boiler temperature; little-endian it is 150-165 bar.
-    ("GWG_Wasserdruck", 0x0088): "issue #35",
-}
-
 # Conversions that are not a plain scaled integer. No numeric entity is emitted
 # for them; they appear as commented hints in the output.
 NON_NUMERIC_CONVERSIONS = {
@@ -205,6 +196,8 @@ GFA_MENU_CHIPS = (
     ("", ("23",)),
 )
 TAG_PREFIX = "# vito: "
+# Above an entity a hardware finding corrected or added (confirmed.py).
+CONFIRMED_PREFIX = "# confirmed: "
 
 # Platforms this generator emits `access:` on: a subset of the component's
 # _ACCESS_DOMAINS (components/vitohome/__init__.py). `climate` is absent because

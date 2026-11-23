@@ -10,6 +10,7 @@ from .constants import (
     _WEEKDAYS,
     ACCESS_PLATFORMS,
     ACTION_WARNING,
+    CONFIRMED_PREFIX,
     DESTRUCTIVE_ACTION_NOTE,
     GFA_PLATFORMS,
     NO_BORDERS_CAUTION,
@@ -39,6 +40,7 @@ from .special import (
 )
 from .transforms import (
     _access_for,
+    _bit_field_bytes,
     _gfa_decode_key,
     _is_destructive_action,
     _is_diagnostic,
@@ -238,17 +240,22 @@ def generate(
     comments: list[str] = []
     seq = 0
     tagged = 0  # entities with a `# vito:` metadata line (Catalog.tags_for)
+    confirmed = 0  # entities carrying a hardware finding (CONFIRMED_PREFIX)
 
     def _add_chunk(platform: str, ev: Event | None, lines: list[str]):
         """Append one entity's lines with its sort key and group label, under
-        its metadata tags (Catalog.tags_for) when Vitosoft gives it any."""
-        nonlocal seq, tagged
+        its metadata tags (Catalog.tags_for) when Vitosoft gives it any and
+        its hardware findings (confirmed.py)."""
+        nonlocal seq, tagged, confirmed
         seq += 1
         if ev is not None and any(ln.startswith("- ") for ln in lines):
             tags = catalog.tags_for(ev, device)
             if tags:
                 lines = [TAG_PREFIX + " ".join(tags), *lines]
                 tagged += 1
+            if getattr(ev, "confirmed", ()):
+                lines = [*(CONFIRMED_PREFIX + c for c in ev.confirmed), *lines]
+                confirmed += 1
         if order == "group" and ev is not None:
             gsort, glabel = catalog.group_for(ev, device)
         else:
@@ -305,6 +312,7 @@ def generate(
         kept += 1
 
     ro_blocks = _read_only_blocks(events, protocol)
+    bit_field_bytes = _bit_field_bytes(events, protocol)
 
     # Within one address, a "Rohwert" row (Vitosoft's raw companion of a
     # converted datapoint at the same field, e.g. GWG_Timer13MinRohwert next to
@@ -458,7 +466,7 @@ def generate(
             dropped_unreachable += 1
             continue
 
-        spec = build_entity_spec(ev, profile, protocol, partial_writes, ro_blocks)
+        spec = build_entity_spec(ev, profile, protocol, partial_writes, ro_blocks, bit_field_bytes)
         if spec is None:
             continue
         if isinstance(spec, CommentSpec):
@@ -658,6 +666,12 @@ def generate(
         out.append("# access level only), overview, quickcheck and trend (Vitosoft's overview")
         out.append("# screen, quick check and trend recorder), and gfa=<chips> (the burner-")
         out.append("# control chips a GFA datapoint is listed for). ESPHome ignores them.")
+        out.append("#")
+    if confirmed:
+        noun = "entity carries" if confirmed == 1 else "entities carry"
+        out.append(f"# Hardware findings: {confirmed} {noun} a `# confirmed:` line. The")
+        out.append("# Vitosoft data was corrected or completed there from what a real unit")
+        out.append("# showed; the line names it (scripts/vitocatalog/confirmed.toml).")
         out.append("#")
     if rpc_actions:
         noun = "procedure" if rpc_actions == 1 else "procedures"

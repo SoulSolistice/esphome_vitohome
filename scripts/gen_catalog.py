@@ -97,6 +97,7 @@ import argparse
 import sys
 
 import fault_codes
+from vitocatalog import confirmed
 from vitocatalog.constants import CULTURES, PROFILES, PROTO_GWG, PROTO_KW, PROTO_P300
 from vitocatalog.exporter import export_all
 from vitocatalog.loader import _friendly, load_catalog
@@ -224,6 +225,13 @@ def main(argv=None) -> int:
         default=None,
         help="entity ordering: 'address' or 'group'. Default: 'group' with --export-all, 'address' otherwise",
     )
+    p.add_argument(
+        "--findings",
+        default=confirmed.DEFAULT_PATH,
+        help="hardware findings to apply, a TOML file (default: vitocatalog/confirmed.toml); "
+        "each applies only to the device tokens it names",
+    )
+    p.add_argument("--no-findings", action="store_true", help="emit the Vitosoft data without hardware findings")
     p.add_argument("--out", help="output file (default: stdout); with --export-all, the output DIRECTORY")
     args = p.parse_args(argv)
 
@@ -235,6 +243,12 @@ def main(argv=None) -> int:
 
     catalog = load_catalog(args.data, culture=args.culture)
     catalog.menu_datapoints = args.menu_datapoints
+    if not args.no_findings:
+        try:
+            for warning in catalog.use_findings(confirmed.load(args.findings)):
+                print(f"warning: {warning}", file=sys.stderr)
+        except (OSError, ValueError) as exc:
+            p.error(f"--findings {args.findings}: {exc}")
 
     if args.export_all:
         if not args.out:

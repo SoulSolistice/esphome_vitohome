@@ -17,6 +17,7 @@ const BASE_COLUMNS = [
   { key: "bit_mask",            label: "Bit Mask",          mono: true,  numericHex: true },
   { key: "type",                label: "Type",              mono: true },
   { key: "converter",           label: "Converter",         mono: true },
+  { key: "value_offset",        label: "Value Offset",      mono: true,  numeric: true },
   { key: "signed",              label: "Signed",            mono: true },
   { key: "unit_of_measurement", label: "Unit",              mono: true },
   { key: "accuracy_decimals",   label: "Decimals",          mono: true,  numeric: true },
