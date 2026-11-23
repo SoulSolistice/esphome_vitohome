@@ -377,6 +377,17 @@ inline constexpr uint8_t kRawEngineSeed_frame_without_bytes[] = {
     0x00, 0x00, 0x00, 0x00, 0x03, 0x40,
 };
 
+// read(00F8, 2) met by an error frame with five payload bytes: four are kept
+inline constexpr uint8_t kRawEngineSeed_p300_error_code_5[] = {
+    0x00, 0x01, 0x00, 0xF8, 0x02, 0x00, 0x00, 0x05, 0x00, 0x06, 0x0D, 0x06, 0x41,
+    0x0A, 0x03, 0x01, 0x00, 0xF8, 0x05, 0x31, 0x32, 0x33, 0x34, 0x35, 0x0A,
+};
+
+// kwTelegram(F4, 2306, 0A) over the detour answered 01: no acknowledgement
+inline constexpr uint8_t kRawEngineSeed_p300_kw_write_ack_01[] = {
+    0x01, 0xF4, 0x23, 0x06, 0x01, 0x01, 0x0A, 0x00, 0x05, 0x00, 0x01,
+};
+
 struct RawEngineSeed {
   const char *name;
   const uint8_t *bytes;
@@ -441,6 +452,8 @@ inline constexpr RawEngineSeed kRawEngineSeeds[] = {
     {"gwg_frame_fixed", kRawEngineSeed_gwg_frame_fixed, sizeof(kRawEngineSeed_gwg_frame_fixed)},
     {"frame_answer_too_long", kRawEngineSeed_frame_answer_too_long, sizeof(kRawEngineSeed_frame_answer_too_long)},
     {"frame_without_bytes", kRawEngineSeed_frame_without_bytes, sizeof(kRawEngineSeed_frame_without_bytes)},
+    {"p300_error_code_5", kRawEngineSeed_p300_error_code_5, sizeof(kRawEngineSeed_p300_error_code_5)},
+    {"p300_kw_write_ack_01", kRawEngineSeed_p300_kw_write_ack_01, sizeof(kRawEngineSeed_p300_kw_write_ack_01)},
 };
 
 inline constexpr std::size_t kRawEngineSeedCount = sizeof(kRawEngineSeeds) / sizeof(kRawEngineSeeds[0]);

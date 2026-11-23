@@ -1,15 +1,17 @@
 #pragma once
 
-// The KW calls the engine harnesses make, for both sides of the differential
-// target: the reference VS1Engine takes read(), telegram() and frame() and
-// reports through onResponse / onError; the live KW stack (optolink_kw.h)
-// takes a Request and reports a Result, mapped back onto the same two
-// callbacks so a harness's checks and diff_hooks.h events stay one set. The
-// generic overloads also serve the P300 and GWG engines.
+// The calls the engine harnesses make, for both sides of the differential
+// target: the reference engines (VS1Engine, VS2Engine) take read(),
+// telegram(), kwTelegram(), frame() and the like and report through
+// onResponse / onError; the live KW and P300 stacks (optolink_kw.h,
+// optolink_p300.h) take a Request and report a Result, mapped back onto the
+// same two callbacks so a harness's checks and diff_hooks.h events stay one
+// set. The generic overloads also serve the GWG engine.
 
 #include <cstdint>
 
 #include "optolink_kw.h"
+#include "optolink_p300.h"
 
 namespace kw_calls {
 
@@ -78,6 +80,91 @@ template<class E> bool frame(E &e, const uint8_t *bytes, uint8_t length, uint8_t
 }
 template<class P, const live::EnqLinkParams &K>
 bool frame(live::KwExchange<P, K> &e, const uint8_t *bytes, uint8_t length, uint8_t answer_length) {
+  return e.submit(live::make_frame(bytes, length, answer_length));
+}
+
+// --- P300: the reference VS2Engine, the live P300Exchange ------------------
+
+// on_error_code(code, length) runs before on_error for a DEVICE_ERROR that
+// carries the error frame's payload.
+template<class E, class R, class F, class C> void wire(E &e, R on_response, F on_error, C on_error_code) {
+  e.onResponse(on_response);
+  e.onError([&e, on_error, on_error_code](auto status, uint16_t address) {
+    if (status == decltype(status)::DEVICE_ERROR) {
+      uint8_t n = 0;
+      const uint8_t *code = e.errorPayload(n);
+      if (n != 0)
+        on_error_code(code, n);
+    }
+    on_error(status, address);
+  });
+}
+template<class P, class R, class F, class C>
+void wire(live::P300Exchange<P> &e, R on_response, F on_error, C on_error_code) {
+  e.on_result([on_response, on_error, on_error_code](const live::Result &r) {
+    if (r.status == live::OptolinkResult::OK) {
+      on_response(r.data, r.length, r.address);
+      return;
+    }
+    if (r.status == live::OptolinkResult::DEVICE_ERROR && r.error_code_length != 0)
+      on_error_code(r.error_code, r.error_code_length);
+    on_error(r.status, r.address);
+  });
+}
+template<class P, class R, class F> void wire(live::P300Exchange<P> &e, R on_response, F on_error) {
+  wire(e, on_response, on_error, [](const uint8_t *, uint8_t) {});
+}
+
+template<class P> bool busy(const live::P300Exchange<P> &e) { return e.busy(); }
+
+template<class P> bool read(live::P300Exchange<P> &e, uint16_t address, uint8_t length) {
+  return e.submit(
+      live::make_request(live::Lane::P300, static_cast<uint8_t>(live::FunctionCode::READ), address, length, nullptr));
+}
+
+template<class P> bool write(live::P300Exchange<P> &e, uint16_t address, const uint8_t *data, uint8_t length) {
+  return data != nullptr &&
+         e.submit(live::make_request(live::Lane::P300, static_cast<uint8_t>(live::FunctionCode::WRITE), address, length,
+                                     data));
+}
+
+template<class E> bool rpc(E &e, uint16_t address, const uint8_t *parameter, uint8_t length) {
+  return e.rpc(address, parameter, length);
+}
+template<class P> bool rpc(live::P300Exchange<P> &e, uint16_t address, const uint8_t *parameter, uint8_t length) {
+  if (length != 0 && parameter == nullptr)
+    return false;
+  return e.submit(live::make_request(live::Lane::P300, static_cast<uint8_t>(live::FunctionCode::RPC), address, length,
+                                     length != 0 ? parameter : nullptr));
+}
+
+// A P300 telegram by its function code.
+template<class E>
+bool request(E &e, uint8_t function, uint16_t address, uint8_t length, const uint8_t *data = nullptr) {
+  return e.request(function, address, length, data);
+}
+template<class P>
+bool request(live::P300Exchange<P> &e, uint8_t function, uint16_t address, uint8_t length,
+             const uint8_t *data = nullptr) {
+  return e.submit(live::make_request(live::Lane::P300, function, address, length, data));
+}
+
+// A KW telegram over the P300 link's detour.
+template<class E>
+bool kw_telegram(E &e, uint8_t type, uint16_t address, uint8_t length, const uint8_t *data = nullptr) {
+  return e.kwTelegram(type, address, length, data);
+}
+template<class P>
+bool kw_telegram(live::P300Exchange<P> &e, uint8_t type, uint16_t address, uint8_t length,
+                 const uint8_t *data = nullptr) {
+  return e.submit(live::make_request(live::Lane::KW, type, address, length, data));
+}
+
+template<class P> bool gfa_read(live::P300Exchange<P> &e, uint16_t address, uint8_t length) {
+  return kw_telegram(e, live::PacketVS1Type.GFA_READ, address, length);
+}
+
+template<class P> bool frame(live::P300Exchange<P> &e, const uint8_t *bytes, uint8_t length, uint8_t answer_length) {
   return e.submit(live::make_frame(bytes, length, answer_length));
 }
 

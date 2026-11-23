@@ -7,7 +7,8 @@
 // INPUT LAYOUT
 //
 //   [0] protocol  % 3: 0 KW (the KW exchange, SimVitotronic without P300),
-//                 1 P300 (VS2Engine, SimVitotronic), 2 GWG (GWGEngine, SimGwg)
+//                 1 P300 (the P300 exchange, SimVitotronic), 2 GWG (GWGEngine,
+//                 SimGwg)
 //   [1] quirks    bit 0 refuse_chain, bit 1 swallow_ack, bit 2 one extra
 //                 answer byte, bit 3 one answer byte missing, bits 4-5
 //                 ignore_one_in 0 / 2 / 5 / 13
@@ -68,6 +69,13 @@ constexpr uint32_t kKwEnqToSendMs = kw_calls::kVs1Timing.enq_to_send_ms;
 #else
 template<class Port> using KwEngine = optolink::KwExchange<Port>;
 constexpr uint32_t kKwEnqToSendMs = optolink::KW_LINK_PARAMS.enq_to_send_ms;
+#endif
+
+// P300: the P300 stack on the live side, VS2Engine on the reference side.
+#ifdef VITOHOME_DIFF_REF
+template<class Port> using P300Engine = optolink::VS2Engine;
+#else
+template<class Port> using P300Engine = optolink::P300Exchange<Port>;
 #endif
 
 namespace {
@@ -153,16 +161,16 @@ bool submit_one(KwEngine<sim::SimVitotronic> &e, Op &op) {
   }
 }
 
-bool submit_one(optolink::VS2Engine &e, Op &op) {
+bool submit_one(P300Engine<sim::SimVitotronic> &e, Op &op) {
   switch (op.kind) {
     case 1:
-      return e.write(op.address, op.payload, op.length);
+      return kw_calls::write(e, op.address, op.payload, op.length);
     case 2:
-      return e.rpc(op.address, op.payload, op.length);
+      return kw_calls::rpc(e, op.address, op.payload, op.length);
     case 3:
-      return e.kwTelegram(optolink::PacketVS1Type.READ, op.address, op.length);
+      return kw_calls::kw_telegram(e, optolink::PacketVS1Type.READ, op.address, op.length);
     default:
-      return e.read(op.address, op.length);
+      return kw_calls::read(e, op.address, op.length);
   }
 }
 
@@ -302,9 +310,9 @@ extern "C" int FUZZ_ENTRY(const uint8_t *data, std::size_t size) {
     c.p300 = proto == Proto::P300;
     sim::SimVitotronic dev(c);
     if (proto == Proto::P300) {
-      optolink::VS2Engine e(&dev);
+      P300Engine<sim::SimVitotronic> e(&dev);
       run(e, dev, proto, benign);
-      oracle(e.read(0x00F8, 1), "the engine refuses the next request");
+      oracle(kw_calls::read(e, 0x00F8, 1), "the engine refuses the next request");
     } else {
       KwEngine<sim::SimVitotronic> e(&dev);
       run(e, dev, proto, benign);

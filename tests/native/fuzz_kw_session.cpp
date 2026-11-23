@@ -1,6 +1,6 @@
 // Fuzz target + deterministic replay runner for KW sessions: up to six
 // operations sent back to back on a KW link (the KW exchange) or on a P300
-// link that detours to KW for KW telegrams and GFA reads (VS2Engine), against
+// link that detours to KW for KW telegrams and GFA reads (the P300 exchange), against
 // a scripted controller whose bytes and timing come from the input.
 // fuzz_raw_engines.cpp drives one telegram; this drives the chain logic
 // between them: the chain window, the GFA pause, the P300 -> KW -> P300
@@ -8,7 +8,7 @@
 //
 // INPUT LAYOUT
 //
-//   [0] engine     bit 0: 0 KW (the KW exchange), 1 P300 (VS2Engine)
+//   [0] engine     bit 0: 0 KW (the KW exchange), 1 P300 (the P300 exchange)
 //   [1] ops        b % 6 + 1 operations follow, 5 bytes each:
 //         [0] kind     bits 0-2: 0 read, 1 write, 2 GFA read,
 //                      3 KW: telegram() without payload / P300: rpc(),
@@ -85,6 +85,19 @@ constexpr uint32_t kGfaGapMs = optolink::KW_GFA_GAP_MS;
 #else
 template<class Port> using KwEngine = optolink::KwExchange<Port>;
 constexpr uint32_t kGfaGapMs = optolink::KW_GFA_GAP_MS;
+#endif
+
+// P300: the P300 stack on the live side, VS2Engine on the reference side.
+#ifdef VITOHOME_DIFF_REF
+template<class Port> using P300Engine = optolink::VS2Engine;
+constexpr uint8_t kP300KwMaxPayload = optolink::VS2Engine::KW_MAX_PAYLOAD;
+constexpr uint8_t kP300KwMaxLength = optolink::VS2Engine::KW_MAX_LENGTH;
+constexpr std::size_t kP300FrameMax = optolink::VS2Engine::FRAME_MAX;
+#else
+template<class Port> using P300Engine = optolink::P300Exchange<Port>;
+constexpr uint8_t kP300KwMaxPayload = optolink::P300_KW_MAX_PAYLOAD;
+constexpr uint8_t kP300KwMaxLength = optolink::P300_KW_MAX_LENGTH;
+constexpr std::size_t kP300FrameMax = optolink::P300_OPEN_FRAME_MAX;
 #endif
 
 namespace {
@@ -290,22 +303,22 @@ bool submit_one(KwEngine<Line> &e, const Op &op) {
   }
 }
 
-bool submit_one(optolink::VS2Engine &e, const Op &op) {
+bool submit_one(P300Engine<Line> &e, const Op &op) {
   switch (op.kind) {
     case Kind::WRITE:
-      return e.write(op.address, op.payload, op.length);
+      return kw_calls::write(e, op.address, op.payload, op.length);
     case Kind::GFA:
-      return e.gfaRead(op.address, op.length);
+      return kw_calls::gfa_read(e, op.address, op.length);
     case Kind::RPC:
-      return e.rpc(op.address, op.payload, op.length);
+      return kw_calls::rpc(e, op.address, op.payload, op.length);
     case Kind::KW:
-      return e.kwTelegram(op.type, op.address, op.length);
+      return kw_calls::kw_telegram(e, op.type, op.address, op.length);
     case Kind::KW_PAYLOAD:
-      return e.kwTelegram(op.type, op.address, op.length, op.payload);
+      return kw_calls::kw_telegram(e, op.type, op.address, op.length, op.payload);
     case Kind::FRAME:
-      return e.frame(op.payload, op.frame_len, op.length);
+      return kw_calls::frame(e, op.payload, op.frame_len, op.length);
     default:
-      return e.read(op.address, op.length);
+      return kw_calls::read(e, op.address, op.length);
   }
 }
 
@@ -318,12 +331,11 @@ template<class E> void submit(E &e) {
       continue;
     oracle(op.length <= optolink::MAX_PAYLOAD, "an operation longer than MAX_PAYLOAD accepted");
     if (g_s.p300 && (op.kind == Kind::GFA || op.kind == Kind::KW || op.kind == Kind::KW_PAYLOAD)) {
-      const uint8_t limit =
-          op.kind == Kind::KW_PAYLOAD ? optolink::VS2Engine::KW_MAX_PAYLOAD : optolink::VS2Engine::KW_MAX_LENGTH;
+      const uint8_t limit = op.kind == Kind::KW_PAYLOAD ? kP300KwMaxPayload : kP300KwMaxLength;
       oracle(op.length != 0 && op.length <= limit, "a KW detour outside its length limits accepted");
     }
     if (op.kind == Kind::FRAME) {
-      const std::size_t frame_max = g_s.p300 ? optolink::VS2Engine::FRAME_MAX : kKwFrameMax;
+      const std::size_t frame_max = g_s.p300 ? kP300FrameMax : kKwFrameMax;
       oracle(op.frame_len != 0 && op.frame_len <= frame_max, "an open frame outside its byte limits accepted");
     }
     g_s.pending = index;
@@ -343,6 +355,8 @@ template<class E> void run(E &e, Line &line, const uint8_t *s, std::size_t n) {
   kw_calls::wire(e, on_response, on_error);
   e.begin();
   submit(e);
+  // P300's RESET drains the line before its EOT.
+  pump(e, 4);
   std::size_t i = 0;
   while (i < n) {
     const uint8_t b = s[i++];
@@ -419,7 +433,7 @@ extern "C" int FUZZ_ENTRY(const uint8_t *data, std::size_t size) {
 
   Line line;
   if (p300) {
-    optolink::VS2Engine e(&line);
+    P300Engine<Line> e(&line);
     run(e, line, data + pos, size - pos);
   } else {
     KwEngine<Line> e(&line);

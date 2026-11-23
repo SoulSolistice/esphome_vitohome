@@ -1,6 +1,7 @@
 // Fuzz target + deterministic replay runner for the engines' generic
-// telegrams: VS2Engine::request() and kwTelegram() (the KW detour), a KW
-// request on the KW exchange, GWGEngine::telegram() -- the paths queue_raw_op()
+// telegrams: a P300 request by function code and a KW telegram over the P300
+// link's detour, a KW request on the KW exchange, GWGEngine::telegram() -- the
+// paths queue_raw_op()
 // opens to any function code / type byte -- and the open frames on every
 // engine (queue_raw_frame()). The parsers have their own target
 // (fuzz_parser_vs2.cpp); this one drives whole transactions: one operation
@@ -20,7 +21,8 @@
 //     b & 0x80    let (b & 0x7F) * 10 ms pass (the differential target
 //                 also replays it in 1 ms steps)
 //     else        feed the next (b + 1) bytes
-//   the engine is pumped after every step.
+//   the engine is pumped once before the first step and after every step,
+//   so the P300 engine's EOT goes out before the controller's first byte.
 //
 // ORACLES, besides the sanitizers (the response buffer is touched byte by
 // byte, so a delivered length past the data is an ASan report):
@@ -70,6 +72,19 @@ template<class Port> using KwEngine = optolink::VS1Engine;
 template<class Port> using KwEngine = optolink::KwExchange<Port, kw_calls::kVs1Timing>;
 #else
 template<class Port> using KwEngine = optolink::KwExchange<Port>;
+#endif
+
+// P300: the P300 stack on the live side, VS2Engine on the reference side.
+#ifdef VITOHOME_DIFF_REF
+template<class Port> using P300Engine = optolink::VS2Engine;
+constexpr uint8_t kP300KwMaxLength = optolink::VS2Engine::KW_MAX_LENGTH;
+constexpr std::size_t kP300FrameMax = optolink::VS2Engine::FRAME_MAX;
+constexpr uint8_t kP300ErrorCodeMax = optolink::VS2Engine::ERROR_PAYLOAD_MAX;
+#else
+template<class Port> using P300Engine = optolink::P300Exchange<Port>;
+constexpr uint8_t kP300KwMaxLength = optolink::P300_KW_MAX_LENGTH;
+constexpr std::size_t kP300FrameMax = optolink::P300_OPEN_FRAME_MAX;
+constexpr uint8_t kP300ErrorCodeMax = optolink::P300_ERROR_CODE_MAX;
 #endif
 
 namespace {
@@ -131,11 +146,22 @@ void on_response(const uint8_t *data, uint8_t length, uint16_t address) {
   }
 }
 
+// A P300 DEVICE_ERROR's error frame payload, recorded with the error.
+uint8_t g_error_code[8];
+uint8_t g_error_code_length = 0;
+
+void on_error_code(const uint8_t *code, uint8_t length) {
+  oracle(length <= kP300ErrorCodeMax, "error payload longer than its buffer");
+  g_error_code_length = length < sizeof(g_error_code) ? length : static_cast<uint8_t>(sizeof(g_error_code));
+  std::memcpy(g_error_code, code, g_error_code_length);
+}
+
 void on_error(optolink::OptolinkResult result, uint16_t address) {
-  {
-    const uint8_t code = static_cast<uint8_t>(result);
-    DIFF_EVENT(DiffEvent::ERROR, address, &code, 1);
-  }
+  uint8_t event[1 + sizeof(g_error_code)];
+  event[0] = static_cast<uint8_t>(result);
+  std::memcpy(event + 1, g_error_code, g_error_code_length);
+  DIFF_EVENT(DiffEvent::ERROR, address, event, 1u + g_error_code_length);
+  g_error_code_length = 0;
   ++g_completions;
 }
 
@@ -149,6 +175,8 @@ template<class E> void pump(E &e, int n = 8) {
 }
 
 template<class E> void run_script(E &e, FakeOptolink &io, const uint8_t *s, std::size_t n) {
+  // P300's RESET drains the line before its EOT.
+  pump(e);
   std::size_t i = 0;
   while (i < n) {
     const uint8_t b = s[i++];
@@ -173,6 +201,11 @@ template<class E> void settle(E &e) {
 
 template<class E> void wire(E &e) {
   kw_calls::wire(e, on_response, on_error);
+  e.begin();
+}
+
+template<class E> void wire_p300(E &e) {
+  kw_calls::wire(e, on_response, on_error, on_error_code);
   e.begin();
 }
 
@@ -206,6 +239,7 @@ extern "C" int FUZZ_ENTRY(const uint8_t *data, std::size_t size) {
   const std::size_t script_len = size - pos;
 
   g_completions = 0;
+  g_error_code_length = 0;
   g_shape_ok = true;
   g_expect_length = 0;
   g_max_length = optolink::MAX_PAYLOAD;
@@ -217,9 +251,7 @@ extern "C" int FUZZ_ENTRY(const uint8_t *data, std::size_t size) {
 
   FakeOptolink io;
   g_io = &io;
-  const std::size_t frame_max = engine == 2   ? kKwFrameMax
-                                : engine == 3 ? kGwgFrameMax
-                                              : std::size_t{optolink::VS2Engine::FRAME_MAX};
+  const std::size_t frame_max = engine == 2 ? kKwFrameMax : engine == 3 ? kGwgFrameMax : kP300FrameMax;
   if (frame) {
     // The answer length is the code byte; a refused frame never completes.
     g_expect_length = code;
@@ -227,30 +259,28 @@ extern "C" int FUZZ_ENTRY(const uint8_t *data, std::size_t size) {
   }
   switch (frame ? (engine == 1 ? 0 : engine) : engine) {
     case 0: {
-      auto *e = new optolink::VS2Engine(&io);
-      wire(*e);
-      accepted = frame ? e->frame(payload, length, code) : e->request(code, address, length, payload);
+      auto *e = new P300Engine<FakeOptolink>(&io);
+      wire_p300(*e);
+      accepted =
+          frame ? kw_calls::frame(*e, payload, length, code) : kw_calls::request(*e, code, address, length, payload);
       run_script(*e, io, script, script_len);
       settle(*e);
-      idle_after = !e->isBusy();
-      uint8_t n = 0;
-      e->errorPayload(n);
-      oracle(n <= optolink::VS2Engine::ERROR_PAYLOAD_MAX, "error payload longer than its buffer");
-      next_taken = e->read(0x00F8, 1);
+      idle_after = !kw_calls::busy(*e);
+      next_taken = kw_calls::read(*e, 0x00F8, 1);
       delete e;
       break;
     }
     case 1: {
-      auto *e = new optolink::VS2Engine(&io);
-      wire(*e);
+      auto *e = new P300Engine<FakeOptolink>(&io);
+      wire_p300(*e);
       g_expect_length = has_payload ? 1 : length;
-      g_max_length = optolink::VS2Engine::KW_MAX_LENGTH;
+      g_max_length = kP300KwMaxLength;
       g_ack_must_be_zero = has_payload;
-      accepted = e->kwTelegram(code, address, length, payload);
+      accepted = kw_calls::kw_telegram(*e, code, address, length, payload);
       run_script(*e, io, script, script_len);
       settle(*e);
-      idle_after = !e->isBusy();
-      next_taken = e->read(0x00F8, 1);
+      idle_after = !kw_calls::busy(*e);
+      next_taken = kw_calls::read(*e, 0x00F8, 1);
       delete e;
       break;
     }

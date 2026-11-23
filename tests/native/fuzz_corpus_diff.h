@@ -26,6 +26,12 @@ inline constexpr uint8_t kDSeed_kw_eot_watchdog_edge[] = {
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xBF, 0x81,
 };
 
+// P300: two GFA reads on the reset's ENQ, the second due at exactly GFA_GAP_MS (25 ms)
+inline constexpr uint8_t kDSeed_p300_gfa_gap_edge[] = {
+    0x80, 0x01, 0x01, 0x02, 0x40, 0x50, 0x00, 0x00, 0x02, 0x40, 0x06, 0x00, 0x00,
+    0x00, 0x05, 0x00, 0x24, 0x99, 0x00, 0x0F, 0xFF, 0xFF, 0x00, 0x05, 0x00, 0x06,
+};
+
 struct DiffSeed {
   const char *name;
   const uint8_t *bytes;
@@ -36,6 +42,7 @@ inline constexpr DiffSeed kDiffSeeds[] = {
     {"diff_kw_gfa_gap_edge", kDSeed_kw_gfa_gap_edge, sizeof(kDSeed_kw_gfa_gap_edge)},
     {"diff_kw_answer_deadline_edge", kDSeed_kw_answer_deadline_edge, sizeof(kDSeed_kw_answer_deadline_edge)},
     {"diff_kw_eot_watchdog_edge", kDSeed_kw_eot_watchdog_edge, sizeof(kDSeed_kw_eot_watchdog_edge)},
+    {"diff_p300_gfa_gap_edge", kDSeed_p300_gfa_gap_edge, sizeof(kDSeed_p300_gfa_gap_edge)},
 };
 
 inline constexpr std::size_t kDiffSeedCount = sizeof(kDiffSeeds) / sizeof(kDiffSeeds[0]);
