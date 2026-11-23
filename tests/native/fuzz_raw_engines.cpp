@@ -1,9 +1,8 @@
 // Fuzz target + deterministic replay runner for the engines' generic
 // telegrams: a P300 request by function code and a KW telegram over the P300
-// link's detour, a KW request on the KW exchange, GWGEngine::telegram() -- the
-// paths queue_raw_op()
-// opens to any function code / type byte -- and the open frames on every
-// engine (queue_raw_frame()). The parsers have their own target
+// link's detour, a KW request on the KW exchange, a GWG telegram by its TYPE
+// byte -- the paths queue_raw_op() opens to any function code / type byte --
+// and the open frames on every engine (queue_raw_frame()). The parsers have their own target
 // (fuzz_parser_vs2.cpp); this one drives whole transactions: one operation
 // against a scripted controller whose bytes and timing come from the input.
 //
@@ -61,6 +60,7 @@ namespace optolink = esphome::vitohome::optolink_ref;
 #include "optolink/optolink.h"
 namespace optolink = esphome::vitohome::optolink;
 #endif
+#include "gwg_calls.h"
 #include "kw_calls.h"
 
 // KW: the KW stack on the live side, VS1Engine on the reference side; in
@@ -91,6 +91,14 @@ template<class Port> using P300Engine = optolink::P300Exchange<Port>;
 constexpr uint8_t kP300KwMaxLength = optolink::P300_KW_MAX_LENGTH;
 constexpr std::size_t kP300FrameMax = optolink::P300_OPEN_FRAME_MAX;
 constexpr uint8_t kP300ErrorCodeMax = optolink::P300_ERROR_CODE_MAX;
+#endif
+
+// GWG: the GWG stack on the live side, GWGEngine on the reference side
+// (gwg_calls.h).
+#ifdef VITOHOME_DIFF_REF
+template<class Port> using GwgEngine = optolink::GWGEngine;
+#else
+template<class Port> using GwgEngine = optolink::GwgExchange<Port>;
 #endif
 
 namespace {
@@ -307,17 +315,19 @@ extern "C" int FUZZ_ENTRY(const uint8_t *data, std::size_t size) {
       break;
     }
     default: {
-      auto *e = new optolink::GWGEngine(&io);
-      wire(*e);
+      auto *e = new GwgEngine<FakeOptolink>(&io);
+      gwg_calls::wire(*e, on_response, on_error);
+      e->begin();
       // An EEPROM read (0xAE) delivers its decoded values, `length` of them
       // like every other read; a write mode's ack is one byte.
       if (!frame)
         g_expect_length = has_payload ? 1 : length;
-      accepted = frame ? e->frame(payload, length, code) : e->telegram(code, address, length, payload);
+      accepted =
+          frame ? gwg_calls::frame(*e, payload, length, code) : gwg_calls::telegram(*e, code, address, length, payload);
       run_script(*e, io, script, script_len);
       settle(*e);
-      idle_after = !e->isBusy();
-      next_taken = e->read(0x05, 1);
+      idle_after = !gwg_calls::busy(*e);
+      next_taken = gwg_calls::read(*e, 0x05, 1);
       delete e;
       break;
     }

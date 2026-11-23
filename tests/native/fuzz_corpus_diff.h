@@ -5,7 +5,8 @@
 // Seed corpus for the differential target (fuzz_diff_engines.cpp), in its
 // input layout: the harness byte, then that harness's input. The three
 // harness corpora are replayed as well; these are the seeds that sit on a
-// timing boundary in 1 ms steps, where a 1 ms change shows.
+// timing boundary in 1 ms steps, where a 1 ms change shows, or reach a rule
+// the harness corpora miss.
 
 // KW: kw_read_then_gfa with the GFA read due at exactly GFA_GAP_MS (25 ms)
 inline constexpr uint8_t kDSeed_kw_gfa_gap_edge[] = {
@@ -32,6 +33,31 @@ inline constexpr uint8_t kDSeed_p300_gfa_gap_edge[] = {
     0x00, 0x05, 0x00, 0x24, 0x99, 0x00, 0x0F, 0xFF, 0xFF, 0x00, 0x05, 0x00, 0x06,
 };
 
+// GWG: the watchdog ends 81 ms after the ENQ a read went out on; the next read
+// waits for an ENQ, past GWG_BURST_WINDOW_MS (80 ms)
+inline constexpr uint8_t kDSeed_gwg_burst_window_past[] = {
+    0x81, 0x00, 0x01, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x11, 0x00, 0x00,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0x00, 0x05, 0xD1,
+};
+
+// GWG: as above, 80 ms after the ENQ: the next read bursts
+inline constexpr uint8_t kDSeed_gwg_burst_window_edge[] = {
+    0x81, 0x00, 0x01, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x11, 0x00, 0x00,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x05, 0xD0,
+};
+
+// GWG: a 1000 ms answer deadline and no ENQ: the watchdog runs 750 ms longer
+inline constexpr uint8_t kDSeed_gwg_watchdog_deadline[] = {
+    0x81, 0xC0, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00,
+};
+
+// GWG: a burst-sent write unanswered: TIMEOUT, not a retry
+inline constexpr uint8_t kDSeed_gwg_burst_write_silent[] = {
+    0x81, 0x00, 0x01, 0x00, 0x00, 0x10, 0x00, 0x00, 0x08, 0x00, 0x12, 0x00, 0x33, 0x00, 0x05, 0x00, 0x42, 0xFF, 0xFC,
+};
+
 struct DiffSeed {
   const char *name;
   const uint8_t *bytes;
@@ -43,6 +69,10 @@ inline constexpr DiffSeed kDiffSeeds[] = {
     {"diff_kw_answer_deadline_edge", kDSeed_kw_answer_deadline_edge, sizeof(kDSeed_kw_answer_deadline_edge)},
     {"diff_kw_eot_watchdog_edge", kDSeed_kw_eot_watchdog_edge, sizeof(kDSeed_kw_eot_watchdog_edge)},
     {"diff_p300_gfa_gap_edge", kDSeed_p300_gfa_gap_edge, sizeof(kDSeed_p300_gfa_gap_edge)},
+    {"diff_gwg_burst_window_past", kDSeed_gwg_burst_window_past, sizeof(kDSeed_gwg_burst_window_past)},
+    {"diff_gwg_burst_window_edge", kDSeed_gwg_burst_window_edge, sizeof(kDSeed_gwg_burst_window_edge)},
+    {"diff_gwg_watchdog_deadline", kDSeed_gwg_watchdog_deadline, sizeof(kDSeed_gwg_watchdog_deadline)},
+    {"diff_gwg_burst_write_silent", kDSeed_gwg_burst_write_silent, sizeof(kDSeed_gwg_burst_write_silent)},
 };
 
 inline constexpr std::size_t kDiffSeedCount = sizeof(kDiffSeeds) / sizeof(kDiffSeeds[0]);

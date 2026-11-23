@@ -14,8 +14,7 @@
 //                  bits 5-7: response deadline, kDeadlines[]
 //   [1] ops        b % 6 + 1 operations follow, 5 bytes each:
 //         [0] kind     bits 0-2 access mode, bit 3 write, bit 4 16-bit address;
-//                      bits 5 and 6 both set: an open frame (GWGEngine::frame(),
-//                      bit 3 ignored)
+//                      bits 5 and 6 both set: an open frame (bit 3 ignored)
 //         [1..2]       address (high byte ignored without bit 4); for a frame
 //                      [1] is the answer length, b % 10 (0 collects), or with
 //                      bit 4 b itself
@@ -55,8 +54,9 @@
 // Same two-build arrangement as fuzz_parser_vs2.cpp; seeds in
 // fuzz_corpus_gwg_session.h.
 //
-// Built with -DVITOHOME_DIFF_SIDE it is one side of fuzz_diff_engines.cpp
-// (diff_hooks.h).
+// The GWG stack (optolink_gwg.h) on the live side, GWGEngine on the reference
+// side (gwg_calls.h). Built with -DVITOHOME_DIFF_SIDE it is one side of
+// fuzz_diff_engines.cpp (diff_hooks.h).
 
 #include <cstdio>
 #include <cstdlib>
@@ -69,12 +69,21 @@
 #ifdef VITOHOME_DIFF_REF
 #include "reference/optolink/optolink.h"
 namespace optolink = esphome::vitohome::optolink_ref;
+using Engine = optolink::GWGEngine;
+using LateAnswer = optolink::GWGEngine::LateAnswer;
+constexpr uint32_t kAnswerTimeoutMs = optolink::GWGEngine::RESPONSE_TIMEOUT_MS;
+constexpr uint32_t kBurstWindowMs = optolink::GWGEngine::ENQ_VALIDITY_MS;
 #else
-#include "optolink/optolink.h"
+#include "optolink/constants.h"
+#include "optolink_gwg.h"
 namespace optolink = esphome::vitohome::optolink;
+using Engine = optolink::GwgExchange<FakeOptolink>;
+using LateAnswer = optolink::GwgLateAnswer;
+constexpr uint32_t kAnswerTimeoutMs = optolink::GWG_ANSWER_TIMEOUT_MS;
+constexpr uint32_t kBurstWindowMs = optolink::GWG_BURST_WINDOW_MS;
 #endif
+#include "gwg_calls.h"
 using optolink::GWGAccessMode;
-using optolink::GWGEngine;
 
 namespace {
 
@@ -101,8 +110,8 @@ void oracle(bool ok, const char *what) {
 }
 
 constexpr uint32_t kDelays[8] = {0, 0, 0, 5, 15, 30, 50, optolink::GWG_ENQ_SEND_DELAY_MAX_MS};
-constexpr uint32_t kDeadlines[8] = {GWGEngine::RESPONSE_TIMEOUT_MS,
-                                    GWGEngine::RESPONSE_TIMEOUT_MS,
+constexpr uint32_t kDeadlines[8] = {kAnswerTimeoutMs,
+                                    kAnswerTimeoutMs,
                                     optolink::GWG_RESPONSE_TIMEOUT_MIN_MS,
                                     100,
                                     400,
@@ -128,7 +137,7 @@ struct Op {
 };
 
 struct Session {
-  GWGEngine *engine = nullptr;
+  Engine *engine = nullptr;
   Op ops[kMaxOps];
   int count = 0;
   int next = 0;      // next operation to submit
@@ -149,9 +158,9 @@ bool session_address(uint16_t address) {
 }
 
 void check_paced_send() {
-  const GWGEngine &e = *g_s.engine;
-  if (e.lastSendWasEnqPaced())
-    oracle(e.lastEnqToSendMs() >= g_s.delay, "a request went out before the ENQ-to-send delay");
+  const gwg_calls::Sent sent = gwg_calls::sent(*g_s.engine);
+  if (sent.enq_paced)
+    oracle(sent.enq_to_send_ms >= g_s.delay, "a request went out before the ENQ-to-send delay");
 }
 
 void on_response(const uint8_t *data, uint8_t length, uint16_t address) {
@@ -210,7 +219,7 @@ void on_fallback(uint8_t failures) {
   oracle(++g_s.fallbacks == 1, "the burst fallback fired twice");
 }
 
-void on_late(const GWGEngine::LateAnswer &late) {
+void on_late(const LateAnswer &late) {
   {
     uint8_t d[4 + 12 + 1 + sizeof(late.late)] = {};
     std::size_t n = 0;
@@ -223,12 +232,12 @@ void on_late(const GWGEngine::LateAnswer &late) {
         d[n++] = static_cast<uint8_t>(w >> (8 * k));
     }
     d[n++] = late.retried ? 1 : 0;
-    for (std::size_t k = 0; k < late.late_stored && k < late.late.size(); ++k)
+    for (std::size_t k = 0; k < late.late_stored && k < sizeof(late.late); ++k)
       d[n++] = late.late[k];
     DIFF_EVENT(DiffEvent::LATE, late.address, d, n);
   }
   oracle(session_address(late.address), "a late-answer report for an address nobody asked");
-  oracle(late.late_stored <= late.late.size() && late.late_stored <= late.late_count,
+  oracle(late.late_stored <= sizeof(late.late) && late.late_stored <= late.late_count,
          "a late-answer report stores more than it saw");
   // An answer of exactly `expected` bytes completes; a longer one times out.
   // Expected 0 is a collecting frame that got nothing.
@@ -236,27 +245,27 @@ void on_late(const GWGEngine::LateAnswer &late) {
          "a late-answer report for a telegram that got its answer");
   oracle(late.deadline_ms == g_s.deadline, "a late-answer report states another deadline");
   oracle(late.received != 0 || late.late_count != 0 || late.retried, "an empty late-answer report");
-  oracle(!late.retried || late.enq_age_ms <= GWGEngine::ENQ_VALIDITY_MS, "a burst rode a sync older than the window");
+  oracle(!late.retried || late.enq_age_ms <= kBurstWindowMs, "a burst rode a sync older than the window");
 }
 
 // Submits operations until one is accepted or none is left.
 void submit() {
-  GWGEngine &e = *g_s.engine;
-  while (g_s.pending < 0 && g_s.next < g_s.count && !e.isBusy()) {
+  Engine &e = *g_s.engine;
+  while (g_s.pending < 0 && g_s.next < g_s.count && !gwg_calls::busy(e)) {
     Op &op = g_s.ops[g_s.next];
     const int index = g_s.next++;
     if (op.frame) {
-      op.accepted = e.frame(op.payload, op.length, op.answer);
+      op.accepted = gwg_calls::frame(e, op.payload, op.length, op.answer);
       const bool fits = op.length >= 1 && op.length <= kGwgFrameMax && op.answer <= optolink::MAX_PAYLOAD;
       oracle(op.accepted == fits, "a frame accepted or refused against its bounds");
     } else if (op.write) {
-      op.accepted = e.write(op.address, op.payload, op.length, op.mode);
+      op.accepted = gwg_calls::write(e, op.address, op.payload, op.length, op.mode);
       if (op.accepted) {
         oracle(optolink::gwgModeIsWritable(op.mode), "a write accepted in a mode without a write type");
         oracle(op.mode != GWGAccessMode::EEPROM || op.length == 1, "an EEPROM write of more than one byte");
       }
     } else {
-      op.accepted = e.read(op.address, op.length, op.mode);
+      op.accepted = gwg_calls::read(e, op.address, op.length, op.mode);
       if (op.accepted) {
         oracle(op.length <= optolink::MAX_PAYLOAD, "a read longer than MAX_PAYLOAD accepted");
         oracle(optolink::gwgCellLength(op.mode) == 0 || (op.length != 0 && op.address + op.length - 1 <= 0xFF),
@@ -269,16 +278,16 @@ void submit() {
 }
 
 void pump(FakeOptolink &io, int n) {
-  GWGEngine &e = *g_s.engine;
+  Engine &e = *g_s.engine;
   for (int i = 0; i < n; ++i) {
-    const bool idle_before = !e.isBusy();
+    const bool idle_before = !gwg_calls::busy(e);
     const std::size_t written_before = io.written().size();
     e.loop();
     DIFF_PASS(io.written().data(), io.written().size());
-    if (idle_before && !e.isBusy())
+    if (idle_before && !gwg_calls::busy(e))
       oracle(io.written().size() == written_before, "an idle engine wrote to the line");
     if (g_s.delay == 0)
-      oracle(!e.isHoldingEnq(), "the engine holds an ENQ at delay 0");
+      oracle(!gwg_calls::holding(e), "the engine holds an ENQ at delay 0");
     submit();
   }
 }
@@ -322,17 +331,11 @@ extern "C" int FUZZ_ENTRY(const uint8_t *data, std::size_t size) {
   g_s.deadline = kDeadlines[(sw >> 5) & 0x07];
 
   FakeOptolink io;
-  GWGEngine engine(&io);
+  Engine engine(&io);
   g_s.engine = &engine;
-  engine.onResponse(on_response);
-  engine.onError(on_error);
-  engine.onTiming(on_timing);
-  engine.onBurstFallback(on_fallback);
-  engine.onLateAnswer(on_late);
-  engine.setBurstOmitsEnqAck((sw & 0x01) == 0);
-  engine.setWriteEotBeforePayload((sw & 0x02) != 0);
-  engine.setEnqSendDelayMs(g_s.delay);
-  engine.setResponseTimeoutMs(g_s.deadline);
+  gwg_calls::wire(engine, on_response, on_error, on_timing);
+  gwg_calls::wire_diagnostics(engine, on_fallback, on_late);
+  gwg_calls::configure(engine, (sw & 0x01) == 0, (sw & 0x02) != 0, g_s.delay, g_s.deadline);
   engine.begin();
   submit();
 
@@ -353,7 +356,7 @@ extern "C" int FUZZ_ENTRY(const uint8_t *data, std::size_t size) {
 
   // A silent line from here: every remaining operation runs into its
   // watchdog, and the late-answer watch closes.
-  for (int k = 0; k < 600 && (g_s.pending >= 0 || g_s.next < g_s.count || engine.isBusy()); ++k) {
+  for (int k = 0; k < 600 && (g_s.pending >= 0 || g_s.next < g_s.count || gwg_calls::busy(engine)); ++k) {
     optolink::optolink_test_clock_advance(100);
     pump(io, 2);
   }
@@ -367,8 +370,8 @@ extern "C" int FUZZ_ENTRY(const uint8_t *data, std::size_t size) {
     oracle(op.completions == (op.accepted ? 1 : 0), "an operation did not complete exactly once");
   }
   oracle(g_s.next == count, "operations left unsubmitted");
-  oracle(!engine.isBusy(), "the engine is still busy after every timeout");
-  oracle(engine.read(0x05, 1), "the engine refuses the next request");
+  oracle(!gwg_calls::busy(engine), "the engine is still busy after every timeout");
+  oracle(gwg_calls::read(engine, 0x05, 1), "the engine refuses the next request");
   g_s.engine = nullptr;
   return 0;
 }

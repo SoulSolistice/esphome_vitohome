@@ -245,6 +245,11 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OP
   proof_p300_kw_retry.cpp "${SRCS[@]}" -o p300_kw_retry
 ./p300_kw_retry
 
+echo "== GWG exchange: Request in, Result out =="
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
+  proof_gwg_exchange.cpp -o gwg_exchange
+./gwg_exchange
+
 echo "== GWG sync poke: must be OFF by default =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
   proof_gwg_poke.cpp "${SRCS[@]}" -o gwg_poke

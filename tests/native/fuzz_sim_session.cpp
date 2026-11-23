@@ -7,8 +7,8 @@
 // INPUT LAYOUT
 //
 //   [0] protocol  % 3: 0 KW (the KW exchange, SimVitotronic without P300),
-//                 1 P300 (the P300 exchange, SimVitotronic), 2 GWG (GWGEngine,
-//                 SimGwg)
+//                 1 P300 (the P300 exchange, SimVitotronic), 2 GWG (the GWG
+//                 exchange, SimGwg)
 //   [1] quirks    bit 0 refuse_chain, bit 1 swallow_ack, bit 2 one extra
 //                 answer byte, bit 3 one answer byte missing, bits 4-5
 //                 ignore_one_in 0 / 2 / 5 / 13
@@ -54,6 +54,7 @@ namespace optolink = esphome::vitohome::optolink_ref;
 #include "optolink/optolink.h"
 namespace optolink = esphome::vitohome::optolink;
 #endif
+#include "gwg_calls.h"
 #include "kw_calls.h"
 
 // KW: the KW stack on the live side, VS1Engine on the reference side; in
@@ -82,6 +83,14 @@ template<class Port> using P300Engine = optolink::P300Exchange<Port, 0>;
 #else
 template<class Port> using P300Engine = optolink::P300Exchange<Port>;
 #endif
+#endif
+
+// GWG: the GWG stack on the live side, GWGEngine on the reference side
+// (gwg_calls.h).
+#ifdef VITOHOME_DIFF_REF
+template<class Port> using GwgEngine = optolink::GWGEngine;
+#else
+template<class Port> using GwgEngine = optolink::GwgExchange<Port>;
 #endif
 
 namespace {
@@ -180,14 +189,14 @@ bool submit_one(P300Engine<sim::SimVitotronic> &e, Op &op) {
   }
 }
 
-bool submit_one(optolink::GWGEngine &e, Op &op) {
+bool submit_one(GwgEngine<sim::SimGwg> &e, Op &op) {
   switch (op.kind) {
     case 1:
-      return e.write(op.address, op.payload, op.length);
+      return gwg_calls::write(e, op.address, op.payload, op.length);
     case 2:
-      return e.read(op.address, op.length, optolink::GWGAccessMode::EEPROM);
+      return gwg_calls::read(e, op.address, op.length, optolink::GWGAccessMode::EEPROM);
     default:
-      return e.read(op.address, op.length);
+      return gwg_calls::read(e, op.address, op.length);
   }
 }
 
@@ -213,14 +222,20 @@ std::vector<uint8_t> expected(const sim::SimGwg &dev, const Op &op, Proto) {
   return want;
 }
 
+// The KW and P300 calls, or the GWG ones.
+template<class E> void wire_engine(E &e) { kw_calls::wire(e, on_response, on_error); }
+template<class P> void wire_engine(gwg_calls::Exchange<P> &e) { gwg_calls::wire(e, on_response, on_error); }
+template<class E> bool engine_busy(const E &e) { return kw_calls::busy(e); }
+template<class P> bool engine_busy(const gwg_calls::Exchange<P> &e) { return gwg_calls::busy(e); }
+
 template<class E, class Dev> void run(E &e, Dev &dev, Proto proto, bool benign) {
-  kw_calls::wire(e, on_response, on_error);
+  wire_engine(e);
   e.begin();
   int next = 0;
   uint32_t wait_until = optolink_millis();
   const uint32_t start = optolink_millis();
-  while (optolink_millis() - start < kMaxRunMs && (next < g_s.count || g_s.pending >= 0 || kw_calls::busy(e))) {
-    if (g_s.pending < 0 && next < g_s.count && !kw_calls::busy(e)) {
+  while (optolink_millis() - start < kMaxRunMs && (next < g_s.count || g_s.pending >= 0 || engine_busy(e))) {
+    if (g_s.pending < 0 && next < g_s.count && !engine_busy(e)) {
       Op &op = g_s.ops[next];
       if (wait_until == 0) {
         wait_until = optolink_millis() + op.wait_ms;
@@ -249,7 +264,7 @@ template<class E, class Dev> void run(E &e, Dev &dev, Proto proto, bool benign) 
     const Op &op = g_s.ops[k];
     oracle(op.completions == (op.accepted ? 1 : 0), "an operation did not complete exactly once");
   }
-  oracle(!kw_calls::busy(e), "the engine is still busy after a minute");
+  oracle(!engine_busy(e), "the engine is still busy after a minute");
 }
 
 }  // namespace
@@ -307,9 +322,9 @@ extern "C" int FUZZ_ENTRY(const uint8_t *data, std::size_t size) {
     sim::GwgConfig c;
     c.quirks = q;
     sim::SimGwg dev(c);
-    optolink::GWGEngine e(&dev);
+    GwgEngine<sim::SimGwg> e(&dev);
     run(e, dev, proto, benign);
-    oracle(e.read(0x05, 1), "the engine refuses the next request");
+    oracle(gwg_calls::read(e, 0x05, 1), "the engine refuses the next request");
   } else {
     sim::VitotronicConfig c;
     c.quirks = q;

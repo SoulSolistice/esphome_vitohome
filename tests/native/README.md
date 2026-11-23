@@ -74,6 +74,12 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
   once, on the device's next ENQ, also after a lone ENQ, for a chained
   telegram and for a write; none after a partial answer; the watchdog from
   the retry; `ENQ_TO_SEND` on the resend.
+- `proof_gwg_exchange.cpp` — the GWG exchange (`optolink_gwg.h`) through
+  `Request` and `Result`: the timing it reports, `never_sent` and
+  `unserved_eeprom`, the lanes and requests it refuses, the EEPROM pair on
+  the GWG lane, the burst retry and fallback, `begin()`, the watchdog with a
+  longer deadline, the held write, and a byte left stale by the deadline,
+  which no scripted harness can reach.
 - `proof_codec_equality.cpp` — the codecs (`optolink_codec_*.h`) against
   the packet classes they replaced, kept in `reference/`: every TYPE byte or
   function code, every length, boundary addresses, with and without payload,
@@ -342,6 +348,13 @@ operation the moment the last one completes.
 On P300 the live side is `P300Exchange<Port, 0>`, without the KW detour's
 retry after silence, which `VS2Engine` lacks; `proof_p300_kw_retry.cpp` pins
 the retry, and the harnesses' own builds run with it.
+
+On GWG the live side is `GwgExchange` as built; it changes nothing on the
+wire. `gwg_calls.h` maps it onto `GWGEngine`'s calls and five callbacks, as
+`kw_calls.h` does for KW. The boundary seeds put a step on the burst window
+(80 and 81 ms after the ENQ a read went out on, when the watchdog ends it),
+on the watchdog lengthened by a longer deadline, and on a burst-sent write
+met by silence.
 
 ### Device simulators
 
