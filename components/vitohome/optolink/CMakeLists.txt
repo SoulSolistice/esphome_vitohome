@@ -13,7 +13,7 @@
 # SRCS is listed explicitly rather than globbed, deliberately kept in the
 # same shape as library.json's srcFilter so the two are easy to diff against
 # each other by eye. If a source file is ever added under a *new*
-# subdirectory (not root, datapoint/ or protocol/gwg/),
+# subdirectory (not root or datapoint/),
 # both this list and library.json's srcFilter need a new line
 # -- neither one discovers new subdirectories automatically.
 #
@@ -40,6 +40,5 @@ idf_component_register(
         "constants.cpp"
         "datapoint/converter.cpp"
         "datapoint/datapoint.cpp"
-        "protocol/gwg/gwg.cpp"
     INCLUDE_DIRS ".."
 )

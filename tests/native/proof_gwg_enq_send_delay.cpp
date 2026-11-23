@@ -13,10 +13,11 @@
 #include <cstdio>
 
 #include "fake_optolink.h"
+#include "gwg_calls.h"
 #include "protocol_select.h"
 
 using namespace esphome::vitohome;
-using Engine = optolink::OptolinkEngine<SelectedProtocol>;
+using Engine = gwg_calls::Engine<FakeOptolink>;
 
 namespace {
 int g_responses = 0;
@@ -63,7 +64,7 @@ int main() {
   uart.clear_written();
 
   // Let the burst window lapse so the next read waits for an ENQ.
-  optolink::optolink_test_clock_advance(optolink::GWGEngine::ENQ_VALIDITY_MS + 100);
+  optolink::optolink_test_clock_advance(optolink::GWG_BURST_WINDOW_MS + 100);
 
   // (2) 30 ms: held, then sent; a stray byte during the hold is dropped.
   adapter.setEnqSendDelayMs(30);
@@ -80,24 +81,24 @@ int main() {
   adapter.loop();
   check(uart.written().size() == 5 && uart.written()[0] == 0x01, "(2) request sent at 30 ms, with its 0x01");
   check(!adapter.isHoldingEnq(), "(2) hold released");
-  check(adapter.lastSendWasEnqPaced() && adapter.lastEnqToSendMs() == 30, "(2) enq->send 30 ms");
   uart.feed({0x2B});
   pump(adapter);
   check(g_responses == 2 && g_last_value == 0x2B, "(2) the answer, not the stray byte, is delivered");
+  check(adapter.lastSendWasEnqPaced() && adapter.lastEnqToSendMs() == 30, "(2) its result: enq->send 30 ms");
   uart.clear_written();
 
   // (3) Burst: a read inside the window does not wait.
   check(adapter.read(0x17, 1), "(3) read accepted");
   adapter.loop();
   check(!uart.written().empty(), "(3) burst-sent without waiting");
-  check(!adapter.lastSendWasEnqPaced(), "(3) reported as not ENQ-paced");
   uart.feed({0x2C});
   pump(adapter);
   check(g_responses == 3, "(3) answered");
+  check(!adapter.lastSendWasEnqPaced(), "(3) its result: not ENQ-paced");
   uart.clear_written();
 
   // (4) Unanswered after the hold: an ordinary TIMEOUT, enq->send still set.
-  optolink::optolink_test_clock_advance(optolink::GWGEngine::ENQ_VALIDITY_MS + 100);
+  optolink::optolink_test_clock_advance(optolink::GWG_BURST_WINDOW_MS + 100);
   check(adapter.read(0x18, 1), "(4) read accepted");
   uart.feed({0x05});
   adapter.loop();
@@ -108,7 +109,7 @@ int main() {
   pump(adapter);
   check(g_errors == 1, "(4) TIMEOUT reported");
   check(adapter.lastSendWasEnqPaced() && adapter.lastEnqToSendMs() == 30, "(4) enq->send readable after it");
-  check(adapter.lastEnqAgeMs() == optolink::GWGEngine::ENQ_VALIDITY_MS + 100,
+  check(adapter.lastEnqAgeMs() == optolink::GWG_BURST_WINDOW_MS + 100,
         "(4) enq age (loop gap that read the ENQ) readable after it");
 
   std::printf("gwg enq send delay: %d failure(s)\n", failures);

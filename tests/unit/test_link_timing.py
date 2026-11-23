@@ -5,7 +5,7 @@ a chained telegram after an answer. P300 has both (the first on the KW
 detour, the second after our ACK) and `enq_to_sync` (the ENQ after our EOT ->
 our 16 00 00) and `frame_to_ack` (an answer frame -> our ACK). Each is
 bounded; the C++ side clamps to the same bounds (test_limits_agree.py). GWG
-has no timing points yet, so the option is refused there.
+has `enq_to_send` and `ack_to_telegram` (its 01 -> the rest of the telegram).
 """
 
 import os
@@ -20,7 +20,9 @@ if _REPO_ROOT not in sys.path:
 import esphome.config_validation as cv  # noqa: E402
 
 from components.vitohome import (  # noqa: E402
+    ACK_TO_TELEGRAM_MAX_MS,
     ANSWER_TO_NEXT_MAX_MS,
+    CONF_ACK_TO_TELEGRAM,
     CONF_ANSWER_TO_NEXT,
     CONF_ENQ_TO_SEND,
     CONF_ENQ_TO_SYNC,
@@ -39,7 +41,9 @@ BOUNDS = [
     (CONF_ANSWER_TO_NEXT, ANSWER_TO_NEXT_MAX_MS),
     (CONF_ENQ_TO_SYNC, ENQ_TO_SYNC_MAX_MS),
     (CONF_FRAME_TO_ACK, FRAME_TO_ACK_MAX_MS),
+    (CONF_ACK_TO_TELEGRAM, ACK_TO_TELEGRAM_MAX_MS),
 ]
+P300_POINTS = (CONF_ENQ_TO_SEND, CONF_ANSWER_TO_NEXT, CONF_ENQ_TO_SYNC, CONF_FRAME_TO_ACK)
 
 
 def test_the_points_take_milliseconds():
@@ -61,7 +65,7 @@ def _timing(*keys):
 
 
 def test_p300_takes_all_four():
-    config = {CONF_PROTOCOL: "P300", CONF_LINK_TIMING: _timing(*(key for key, _ in BOUNDS))}
+    config = {CONF_PROTOCOL: "P300", CONF_LINK_TIMING: _timing(*P300_POINTS)}
     assert _validate_link_timing(config) == config
 
 
@@ -77,10 +81,23 @@ def test_kw_refuses_the_p300_points(key):
     assert info.value.path == [CONF_LINK_TIMING, key]
 
 
-def test_gwg_refuses_it():
-    with pytest.raises(cv.Invalid, match="KW") as info:
-        _validate_link_timing({CONF_PROTOCOL: "GWG", CONF_LINK_TIMING: {}})
-    assert info.value.path == [CONF_LINK_TIMING]
+def test_gwg_takes_its_two():
+    config = {CONF_PROTOCOL: "GWG", CONF_LINK_TIMING: _timing(CONF_ENQ_TO_SEND, CONF_ACK_TO_TELEGRAM)}
+    assert _validate_link_timing(config) == config
+
+
+@pytest.mark.parametrize("key", [CONF_ANSWER_TO_NEXT, CONF_ENQ_TO_SYNC, CONF_FRAME_TO_ACK])
+def test_gwg_refuses_the_others(key):
+    with pytest.raises(cv.Invalid, match="P300 link; the GWG link has none") as info:
+        _validate_link_timing({CONF_PROTOCOL: "GWG", CONF_LINK_TIMING: _timing(key)})
+    assert info.value.path == [CONF_LINK_TIMING, key]
+
+
+@pytest.mark.parametrize("protocol", ["KW", "P300"])
+def test_only_gwg_takes_ack_to_telegram(protocol):
+    with pytest.raises(cv.Invalid, match="of the GWG link") as info:
+        _validate_link_timing({CONF_PROTOCOL: protocol, CONF_LINK_TIMING: _timing(CONF_ACK_TO_TELEGRAM)})
+    assert info.value.path == [CONF_LINK_TIMING, CONF_ACK_TO_TELEGRAM]
 
 
 @pytest.mark.parametrize("protocol", ["P300", "GWG", "KW"])

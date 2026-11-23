@@ -5,8 +5,9 @@
 // P300 and GWG: two engines on two fake ports, fed the same bytes on the same
 // frozen clock. One is the old engine, called as the hub called it (P300: the
 // reference copy's VS2Engine, tests/native/reference: read(), write(), rpc(),
-// gfaRead(), request(), kwTelegram(), frame(); GWG: GWGEngine::read() and
-// write() with the space's mode, telegram(), frame()); the other is the
+// gfaRead(), request(), kwTelegram(), frame(); GWG: the reference copy's
+// GWGEngine: read() and write() with the space's mode, telegram(), frame());
+// the other is the
 // hub's engine, given the hub's request. Both must accept or refuse alike,
 // write the same bytes and report the same outcomes, including what the hub
 // read from the old engine's getters inside its callbacks: errorPayload(),
@@ -18,14 +19,17 @@
 // the differential target holds to VS1Engine's read(), write() and gfaRead().
 #include <cstdio>
 #include <cstring>
-#include <type_traits>
 #include <vector>
 
 #include "address_space.h"
 #include "fake_optolink.h"
 #include "protocol_select.h"
-#if !defined(VITOHOME_PROTOCOL_KW) && !defined(VITOHOME_PROTOCOL_GWG)
+#if !defined(VITOHOME_PROTOCOL_KW)
 #include "reference/optolink/optolink.h"
+#endif
+#if defined(VITOHOME_PROTOCOL_GWG)
+using RefGwg = esphome::vitohome::optolink_ref::GWGEngine;
+#elif !defined(VITOHOME_PROTOCOL_KW)
 using RefVs2 = esphome::vitohome::optolink_ref::VS2Engine;
 #endif
 
@@ -116,20 +120,22 @@ void capture(RefVs2 &e, std::vector<Event> &out) {
 }
 #endif
 
+#if defined(VITOHOME_PROTOCOL_GWG)
 struct GwgTiming {
   bool timed{false};
   uint32_t enq_age_ms{0};
   uint32_t send_to_response_ms{0};
 };
 
-[[maybe_unused]] void gwg_getters(const optolink::GWGEngine &e, Event &ev) {
+void gwg_getters(const RefGwg &e, Event &ev) {
   ev.enq_paced = e.lastSendWasEnqPaced();
   ev.enq_age_ms = e.lastEnqAgeMs();
   ev.enq_to_send_ms = e.lastEnqToSendMs();
   ev.ack_gap_ms = e.lastAckGapMs();
 }
 
-[[maybe_unused]] void capture(optolink::GWGEngine &e, std::vector<Event> &out, GwgTiming &t) {
+// The reference's error codes have the live values.
+void capture(RefGwg &e, std::vector<Event> &out, GwgTiming &t) {
   e.onTiming([&t](uint32_t enq_age_ms, uint32_t send_to_response_ms, uint16_t) {
     t.timed = true;
     t.enq_age_ms = enq_age_ms;
@@ -151,16 +157,19 @@ struct GwgTiming {
     t = GwgTiming{};
     out.push_back(ev);
   });
-  e.onError([&e, &out, &t](OptolinkResult status, uint16_t address) {
+  e.onError([&e, &out, &t](esphome::vitohome::optolink_ref::OptolinkResult status, uint16_t address) {
     Event ev;
-    ev.status = status;
+    ev.status = static_cast<OptolinkResult>(static_cast<int>(status));
     ev.address = address;
-    ev.never_sent = status == OptolinkResult::TIMEOUT && e.lastTimeoutWasUnsynced();
+    ev.never_sent = ev.status == OptolinkResult::TIMEOUT && e.lastTimeoutWasUnsynced();
     gwg_getters(e, ev);
     t = GwgTiming{};
     out.push_back(ev);
   });
 }
+#else
+struct GwgTiming {};
+#endif
 
 // The old engine and the hub's engine side by side.
 template<class Old> struct Twin {
@@ -175,11 +184,11 @@ template<class Old> struct Twin {
   bool held{false};
 
   Twin() {
-    if constexpr (std::is_same<Old, optolink::GWGEngine>::value) {
-      capture(old_engine, old_events, gwg_timing);
-    } else {
-      capture(old_engine, old_events);
-    }
+#if defined(VITOHOME_PROTOCOL_GWG)
+    capture(old_engine, old_events, gwg_timing);
+#else
+    capture(old_engine, old_events);
+#endif
     engine.on_result([this](const optolink::Result &r) { new_events.push_back(from_result(r)); });
     old_engine.begin();
     engine.begin();
@@ -189,8 +198,9 @@ template<class Old> struct Twin {
     old_engine.loop();
     engine.loop();
     bool holding = false;
-    if constexpr (std::is_same<Old, optolink::GWGEngine>::value)
-      holding = old_engine.isHoldingEnq();
+#if defined(VITOHOME_PROTOCOL_GWG)
+    holding = old_engine.isHoldingEnq();
+#endif
     held = held || holding;
     holds_agree = holds_agree && holding == engine.wants_fast_loop() && old_engine.isBusy() == engine.busy();
     optolink::optolink_test_clock_advance(1);
@@ -299,7 +309,11 @@ void kw_cases() {
 
 #elif defined(VITOHOME_PROTOCOL_GWG)
 
-using GwgTwin = Twin<optolink::GWGEngine>;
+using GwgTwin = Twin<RefGwg>;
+
+esphome::vitohome::optolink_ref::GWGAccessMode ref_mode(AddressSpace space) {
+  return static_cast<esphome::vitohome::optolink_ref::GWGAccessMode>(gwg_mode(space));
+}
 
 // The bytes an EEPROM cell answers: the complement, then the value.
 Bytes cells(std::initializer_list<uint8_t> values) {
@@ -318,10 +332,12 @@ struct GwgKnobs {
 };
 
 void apply(GwgTwin &t, const GwgKnobs &k) {
+  uint32_t delay_ms = k.delay_ms;
+  uint32_t gap_ms = k.gap_ms;
   t.old_engine.setEnqSendDelayMs(k.delay_ms);
-  t.engine.set_enq_send_delay_ms(k.delay_ms);
+  t.engine.set_timing(optolink::TimingPoint::ENQ_TO_SEND, delay_ms);
   t.old_engine.setEnqAckGapMs(k.gap_ms);
-  t.engine.set_enq_ack_gap_ms(k.gap_ms);
+  t.engine.set_timing(optolink::TimingPoint::ACK_TO_TELEGRAM, gap_ms);
   t.old_engine.setWriteEotBeforePayload(k.eot_first);
   t.engine.set_write_eot_before_payload(k.eot_first);
 }
@@ -330,7 +346,7 @@ void apply(GwgTwin &t, const GwgKnobs &k) {
 bool gwg_read(GwgTwin &t, AddressSpace space, uint16_t address, uint8_t length, const std::vector<Bytes> &script) {
   optolink::Request r{};
   const bool built = read_request(space, address, length, nullptr, 0, r);
-  const bool old_ok = t.old_engine.read(address, length, gwg_mode(space));
+  const bool old_ok = t.old_engine.read(address, length, ref_mode(space));
   const bool new_ok = built && t.engine.submit(r);
   for (const Bytes &b : script)
     t.step(b, 40);
@@ -341,7 +357,7 @@ bool gwg_write(GwgTwin &t, AddressSpace space, uint16_t address, const Bytes &da
   optolink::Request r{};
   const auto n = static_cast<uint8_t>(data.size());
   const bool built = write_request(space, address, data.data(), n, nullptr, 0, r);
-  const bool old_ok = t.old_engine.write(address, data.data(), n, gwg_mode(space));
+  const bool old_ok = t.old_engine.write(address, data.data(), n, ref_mode(space));
   const bool new_ok = built && t.engine.submit(r);
   for (const Bytes &b : script)
     t.step(b, 40);
@@ -477,7 +493,7 @@ void gwg_cases() {
     GwgTwin t;
     check(!t.engine.submit(optolink::make_request(optolink::Lane::P300, 0x01, 0x55, 1, nullptr)) &&
               !t.engine.submit(optolink::make_request(optolink::Lane::KW, 0xF7, 0x55, 1, nullptr)),
-          "the GWG adapter refuses the P300 and KW lanes");
+          "the GWG exchange refuses the P300 and KW lanes");
     check(!t.engine.submit(optolink::make_frame(nullptr, 3, 1)), "and an open frame without bytes");
   }
 }

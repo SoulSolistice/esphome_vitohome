@@ -17,10 +17,11 @@
 #include <vector>
 
 #include "fake_optolink.h"
+#include "gwg_calls.h"
 #include "protocol_select.h"
 
 using namespace esphome::vitohome;
-using Engine = optolink::OptolinkEngine<SelectedProtocol>;
+using Engine = gwg_calls::Engine<FakeOptolink>;
 
 namespace {
 int g_responses = 0;
@@ -33,7 +34,7 @@ static void pump(Engine &a, int n = 6) {
     a.loop();
 }
 
-static void lapse_burst_window() { optolink::optolink_test_clock_advance(optolink::GWGEngine::ENQ_VALIDITY_MS + 100); }
+static void lapse_burst_window() { optolink::optolink_test_clock_advance(optolink::GWG_BURST_WINDOW_MS + 100); }
 
 int main() {
   optolink::optolink_test_clock_freeze();
@@ -97,10 +98,10 @@ int main() {
   check(adapter.read(0x17, 1), "(3) read accepted");
   adapter.loop();
   check(uart.written() == std::vector<uint8_t>({0xCB, 0x17, 0x01, 0x04}), "(3) burst-sent at once, without 0x01");
-  check(!adapter.lastSendWasEnqPaced(), "(3) reported as not ENQ-paced");
   uart.feed({0x2C});
   pump(adapter);
   check(g_responses == 3, "(3) answered");
+  check(!adapter.lastSendWasEnqPaced(), "(3) its result: not ENQ-paced");
   uart.clear_written();
 
   // (4) Delay 20 ms and gap 30 ms: the 0x01 at 20 ms, the rest at 50 ms.
@@ -159,10 +160,11 @@ int main() {
   uart.feed({0x05});
   adapter.loop();
   check(uart.written() == bare, "(6) sent in one write");
-  check(!adapter.isHoldingEnq() && adapter.lastAckGapMs() == 0, "(6) no gap");
+  check(!adapter.isHoldingEnq(), "(6) no hold");
   uart.feed({0x20, 0x53, 0x01, 0x1E});
   pump(adapter);
   check(g_responses == 6, "(6) answered");
+  check(adapter.lastAckGapMs() == 0, "(6) its result: no gap");
 
   std::printf("gwg enq ack gap: %d failure(s)\n", failures);
   return failures == 0 ? 0 : 1;

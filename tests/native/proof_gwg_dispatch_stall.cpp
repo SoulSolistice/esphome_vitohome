@@ -20,14 +20,15 @@
 #include <cstdio>
 
 #include "fake_optolink.h"
+#include "gwg_calls.h"
 #include "protocol_select.h"
 
 using namespace esphome::vitohome;
-using Engine = optolink::OptolinkEngine<SelectedProtocol>;
+using Engine = gwg_calls::Engine<FakeOptolink>;
 
 int main() {
   FakeOptolink uart;
-  Engine adapter(&uart);  // GWGEngine under -DVITOHOME_PROTOCOL_GWG
+  Engine adapter(&uart);
   adapter.onResponse([](const uint8_t *, uint8_t, uint16_t) {});
   adapter.onError([](optolink::OptolinkResult, uint16_t) {});
   adapter.begin();

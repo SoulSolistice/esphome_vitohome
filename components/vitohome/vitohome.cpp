@@ -86,7 +86,7 @@ void VitoHomeComponent::setup() {
     return;
   }
 
-  this->apply_gwg_diagnostics_();
+  this->apply_gwg_switches_();
 
   this->vito_.on_result([this](const optolink::Result &result) { this->on_result_(result); });
 
@@ -105,8 +105,8 @@ void VitoHomeComponent::setup() {
 
   // A warning: a TIMEOUT alone does not say whether the device answered late,
   // short or not at all, and the deadline it needs is what
-  // set_gwg_response_timeout_ms() sets.
-  this->vito_.on_late_answer([](const optolink::GWGEngine::LateAnswer &late) {
+  // set_link_window(ANSWER_DEADLINE) sets.
+  this->vito_.on_late_answer([](const optolink::GwgLateAnswer &late) {
     // A silent burst-sent read, retried on the next ENQ: a TIMEOUT follows
     // only if the retry goes unanswered too.
     if (late.retried && late.received == 0 && late.late_count == 0) {
@@ -138,9 +138,12 @@ void VitoHomeComponent::setup() {
     return;
   }
 
-  // A timing point someone set is never silent: in every log uploaded.
+  // A timing point or window someone set is never silent: in every log
+  // uploaded.
   for (uint8_t i = 0; i < optolink::TIMING_POINTS; ++i)
     this->warn_link_timing_(static_cast<TimingPoint>(i));
+  for (uint8_t i = 0; i < optolink::LINK_WINDOWS; ++i)
+    this->warn_link_window_(static_cast<LinkWindow>(i));
 
   // Start-up window for the first answer: max(PROTOCOL_VERIFY_MIN_MS, 3 * hub
   // interval), saturated at INT32_MAX for loop()'s signed-difference deadline
@@ -289,13 +292,10 @@ void VitoHomeComponent::loop() {
   this->dispatch_next_();
 }
 
-void VitoHomeComponent::apply_gwg_diagnostics_() {
+void VitoHomeComponent::apply_gwg_switches_() {
 #ifdef VITOHOME_PROTOCOL_GWG
   this->vito_.set_write_eot_before_payload(this->gwg_write_eot_before_payload_);
   this->vito_.set_burst_omits_enq_ack(this->gwg_burst_omits_enq_ack_);
-  this->vito_.set_response_timeout_ms(this->gwg_response_timeout_ms_);
-  this->vito_.set_enq_send_delay_ms(this->gwg_enq_send_delay_ms_);
-  this->vito_.set_enq_ack_gap_ms(this->gwg_enq_ack_gap_ms_);
 #endif
 }
 
@@ -327,50 +327,36 @@ void VitoHomeComponent::warn_link_timing_(TimingPoint point) const {
            optolink::timing_name(point), ms, standard);
 }
 
+bool VitoHomeComponent::set_link_window(LinkWindow window, uint32_t ms) {
+  const uint32_t asked = ms;
+  if (!this->vito_.set_window(window, ms)) {
+    ESP_LOGW(TAG, "set_link_window: the %s link has no %s", PROTOCOL_NAME, optolink::window_name(window));
+    return false;
+  }
+  if (ms != asked)
+    ESP_LOGW(TAG, "set_link_window: %" PRIu32 " ms is out of bounds, %" PRIu32 " ms set", asked, ms);
+  if (this->is_ready())
+    this->warn_link_window_(window);
+  return true;
+}
+
+void VitoHomeComponent::warn_link_window_(LinkWindow window) const {
+  const uint32_t ms = this->vito_.window(window);
+  const uint32_t standard = this->vito_.window_default(window);
+  if (ms == standard)
+    return;
+  ESP_LOGW(TAG, "diagnostic link window active: %s %" PRIu32 " ms (default %" PRIu32 " ms)",
+           optolink::window_name(window), ms, standard);
+}
+
 void VitoHomeComponent::set_gwg_write_eot_before_payload(bool eot_first) {
   this->gwg_write_eot_before_payload_ = eot_first;
-  this->apply_gwg_diagnostics_();
+  this->apply_gwg_switches_();
 }
 
 void VitoHomeComponent::set_gwg_burst_omits_enq_ack(bool omit) {
   this->gwg_burst_omits_enq_ack_ = omit;
-  this->apply_gwg_diagnostics_();
-}
-
-void VitoHomeComponent::set_gwg_response_timeout_ms(uint32_t ms) {
-  // The upper bound keeps a retried burst read (two deadlines plus an ENQ wait,
-  // see GWGEngine::_requestTimeoutMs()) inside one IN_FLIGHT_WATCHDOG_MS budget.
-  const uint32_t clamped =
-      std::min(std::max(ms, optolink::GWG_RESPONSE_TIMEOUT_MIN_MS), optolink::GWG_RESPONSE_TIMEOUT_MAX_MS);
-  this->gwg_response_timeout_ms_ = clamped;
-  this->apply_gwg_diagnostics_();
-  if (clamped != ms) {
-    ESP_LOGW(TAG, "GWG response deadline %" PRIu32 " ms is out of range; using %" PRIu32 " ms", ms, clamped);
-  } else {
-    ESP_LOGI(TAG, "GWG response deadline set to %" PRIu32 " ms", clamped);
-  }
-}
-
-void VitoHomeComponent::set_gwg_enq_send_delay_ms(uint32_t ms) {
-  const uint32_t clamped = std::min(ms, optolink::GWG_ENQ_SEND_DELAY_MAX_MS);
-  this->gwg_enq_send_delay_ms_ = clamped;
-  this->apply_gwg_diagnostics_();
-  if (clamped != ms) {
-    ESP_LOGW(TAG, "GWG ENQ-to-send delay %" PRIu32 " ms is out of range; using %" PRIu32 " ms", ms, clamped);
-  } else {
-    ESP_LOGI(TAG, "GWG ENQ-to-send delay set to %" PRIu32 " ms", clamped);
-  }
-}
-
-void VitoHomeComponent::set_gwg_enq_ack_gap_ms(uint32_t ms) {
-  const uint32_t clamped = std::min(ms, optolink::GWG_ENQ_ACK_GAP_MAX_MS);
-  this->gwg_enq_ack_gap_ms_ = clamped;
-  this->apply_gwg_diagnostics_();
-  if (clamped != ms) {
-    ESP_LOGW(TAG, "GWG gap after the 0x01 %" PRIu32 " ms is out of range; using %" PRIu32 " ms", ms, clamped);
-  } else {
-    ESP_LOGI(TAG, "GWG gap after the 0x01 set to %" PRIu32 " ms", clamped);
-  }
+  this->apply_gwg_switches_();
 }
 
 void VitoHomeComponent::dispatch_next_() {
@@ -671,6 +657,11 @@ void VitoHomeComponent::dump_config() {
                 " ms, ENQ to send (KW detour) %" PRIu32 " ms",
                 this->vito_.timing(TimingPoint::ENQ_TO_SYNC), this->vito_.timing(TimingPoint::FRAME_TO_ACK),
                 this->vito_.timing(TimingPoint::ANSWER_TO_NEXT), this->vito_.timing(TimingPoint::ENQ_TO_SEND));
+#else
+  ESP_LOGCONFIG(
+      TAG, "  Link timing: ENQ to send %" PRIu32 " ms, 01 to telegram %" PRIu32 " ms, answer deadline %" PRIu32 " ms",
+      this->vito_.timing(TimingPoint::ENQ_TO_SEND), this->vito_.timing(TimingPoint::ACK_TO_TELEGRAM),
+      this->vito_.window(LinkWindow::ANSWER_DEADLINE));
 #endif
 
   if (this->ident_state_ == IdentState::DONE) {
@@ -690,14 +681,6 @@ void VitoHomeComponent::dump_config() {
   if (ESPHomeUARTInterface::frame_logging_enabled()) {
     ESP_LOGCONFIG(TAG, "  Frame logging: ON (tag 'vitohome.frames')");
   }
-#ifdef VITOHOME_PROTOCOL_GWG
-  if (this->gwg_enq_send_delay_ms_ > 0) {
-    ESP_LOGCONFIG(TAG, "  GWG ENQ-to-send delay: %" PRIu32 " ms", this->gwg_enq_send_delay_ms_);
-  }
-  if (this->gwg_enq_ack_gap_ms_ > 0) {
-    ESP_LOGCONFIG(TAG, "  GWG gap after the 0x01: %" PRIu32 " ms", this->gwg_enq_ack_gap_ms_);
-  }
-#endif
 
   // queue_raw_op()'s gates (raw_access / unsafe_raw_writes).
 #ifdef VITOHOME_RAW_UNRESTRICTED
@@ -816,7 +799,7 @@ void VitoHomeComponent::on_result_(const optolink::Result &result) {
 #ifdef VITOHOME_PROTOCOL_GWG
     // The timing of every answered read, at DEBUG.
     const optolink::Timing &timing = result.timing;
-    if (timing.answer_timed && timing.enq_paced && this->gwg_enq_ack_gap_ms_ > 0) {
+    if (timing.answer_timed && timing.enq_paced && this->vito_.timing(TimingPoint::ACK_TO_TELEGRAM) > 0) {
       ESP_LOGD(TAG,
                "GWG timing: 0x%04X enq age <=%" PRIu32 " ms, enq->send %" PRIu32 " ms, 01->rest %" PRIu32
                " ms, send->response %" PRIu32 " ms",
@@ -863,18 +846,19 @@ void VitoHomeComponent::on_result_(const optolink::Result &result) {
       } else if (result.timing.enq_paced) {
         // The same two numbers as an answered telegram's `GWG timing:` line,
         // to tell a stale ENQ from a too-early answer to it.
-        if (this->gwg_enq_ack_gap_ms_ > 0) {
+        const uint32_t enq_to_send = this->vito_.timing(TimingPoint::ENQ_TO_SEND);
+        const uint32_t ack_to_telegram = this->vito_.timing(TimingPoint::ACK_TO_TELEGRAM);
+        if (ack_to_telegram > 0) {
           ESP_LOGD(TAG,
                    "GWG 0x%04X unanswered: enq age <=%" PRIu32 " ms, enq->send %" PRIu32 " ms, 01->rest %" PRIu32
-                   " ms (delay setting %" PRIu32 " ms, gap setting %" PRIu32 " ms)",
+                   " ms (ENQ_TO_SEND %" PRIu32 " ms, ACK_TO_TELEGRAM %" PRIu32 " ms)",
                    result.address, result.timing.enq_age_ms, result.timing.enq_to_send_ms, result.timing.ack_gap_ms,
-                   this->gwg_enq_send_delay_ms_, this->gwg_enq_ack_gap_ms_);
+                   enq_to_send, ack_to_telegram);
         } else {
           ESP_LOGD(TAG,
-                   "GWG 0x%04X unanswered: enq age <=%" PRIu32 " ms, enq->send %" PRIu32 " ms (delay setting %" PRIu32
+                   "GWG 0x%04X unanswered: enq age <=%" PRIu32 " ms, enq->send %" PRIu32 " ms (ENQ_TO_SEND %" PRIu32
                    " ms)",
-                   result.address, result.timing.enq_age_ms, result.timing.enq_to_send_ms,
-                   this->gwg_enq_send_delay_ms_);
+                   result.address, result.timing.enq_age_ms, result.timing.enq_to_send_ms, enq_to_send);
         }
       }
 #else

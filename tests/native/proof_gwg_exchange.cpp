@@ -1,6 +1,7 @@
 // The GWG exchange (optolink_gwg.h) through its own interface, Request in and
 // Result out, on a frozen clock. The differential target compares its bytes
-// and callbacks with GWGEngine's; these cases pin what only the Result says.
+// and callbacks with the reference GWGEngine's; these cases pin what only the
+// Result and the settings say.
 //   A) a read goes out on the ENQ, in the pass that reads it; the Result
 //      carries the answer and its timing;
 //   B) a read within GWG_BURST_WINDOW_MS of an answer goes out at once,
@@ -17,10 +18,13 @@
 //      once;
 //   H) begin() closes the burst window and reports an open late answer;
 //   I) a longer answer deadline lengthens the watchdog by as much;
-//   J) the ENQ-to-send delay and the gap after the 01 hold the write, and
-//      the Result states them;
+//   J) ENQ_TO_SEND and ACK_TO_TELEGRAM hold the write, and the Result states
+//      them;
 //   K) a byte buffered when the deadline is found passed is stale: it goes
-//      to the late-answer report, and the next read waits for a fresh ENQ.
+//      to the late-answer report, and the next read waits for a fresh ENQ;
+//   L) the settings: the two timing points clamped to 100 ms, the other
+//      points refused, the answer deadline clamped to 50..2000 ms, all 0 and
+//      250 ms by default; the variant switches.
 //
 // Built by build_and_run_protocols.sh.
 
@@ -35,6 +39,7 @@ using Engine = optolink::GwgExchange<FakeOptolink>;
 using optolink::GWGAccessMode;
 using optolink::Lane;
 using optolink::OptolinkResult;
+using optolink::TimingPoint;
 using Bytes = std::vector<uint8_t>;
 
 namespace {
@@ -301,7 +306,8 @@ int main() {
     Engine e(&io);
     Seen seen;
     watch(e, seen);
-    e.set_response_timeout_ms(1000);
+    uint32_t deadline = 1000;
+    e.set_window(optolink::LinkWindow::ANSWER_DEADLINE, deadline);
     e.begin();
     read(e, 0x10, 1);
     advance(e, optolink::GWG_WATCHDOG_MS + 750);
@@ -316,8 +322,10 @@ int main() {
     Engine e(&io);
     Seen seen;
     watch(e, seen);
-    e.set_enq_send_delay_ms(30);
-    e.set_enq_ack_gap_ms(20);
+    uint32_t delay = 30;
+    uint32_t gap = 20;
+    e.set_timing(TimingPoint::ENQ_TO_SEND, delay);
+    e.set_timing(TimingPoint::ACK_TO_TELEGRAM, gap);
     e.begin();
     read(e, 0x10, 1);
     check(enq(e, io).empty() && e.wants_fast_loop(), "J: the ENQ held, the loop kept fast");
@@ -354,6 +362,44 @@ int main() {
     check(enq(e, io) == Bytes({0x01, 0xCB, 0x11, 0x01, 0x04}), "K: 01 CB 11 01 04 on a fresh ENQ");
     check(seen.lates == 1 && seen.late.late_count == 1 && seen.late.late[0] == 0x05, "K: the stale 05 reported late");
     check(seen.late.first_late_ms == optolink::GWG_ANSWER_TIMEOUT_MS + 1, "K: at GWG_ANSWER_TIMEOUT_MS + 1");
+  }
+
+  // --- L ------------------------------------------------------------------
+  {
+    FakeOptolink io;
+    Engine e(&io);
+    check(e.timing(TimingPoint::ENQ_TO_SEND) == 0 && e.timing(TimingPoint::ACK_TO_TELEGRAM) == 0 &&
+              e.timing_default(TimingPoint::ENQ_TO_SEND) == 0,
+          "L: both timing points 0 by default");
+    uint32_t ms = 150;
+    check(e.set_timing(TimingPoint::ENQ_TO_SEND, ms) && ms == optolink::ENQ_TO_SEND_MAX_MS &&
+              e.timing(TimingPoint::ENQ_TO_SEND) == optolink::ENQ_TO_SEND_MAX_MS,
+          "L: ENQ_TO_SEND 150 ms clamped to 100");
+    ms = 150;
+    check(e.set_timing(TimingPoint::ACK_TO_TELEGRAM, ms) && ms == optolink::ACK_TO_TELEGRAM_MAX_MS,
+          "L: ACK_TO_TELEGRAM 150 ms clamped to 100");
+    bool refused = true;
+    for (TimingPoint point : {TimingPoint::ANSWER_TO_NEXT, TimingPoint::ENQ_TO_SYNC, TimingPoint::FRAME_TO_ACK}) {
+      ms = 10;
+      refused = refused && !e.set_timing(point, ms) && e.timing(point) == 0;
+    }
+    check(refused, "L: ANSWER_TO_NEXT, ENQ_TO_SYNC, FRAME_TO_ACK refused");
+    check(e.window(optolink::LinkWindow::ANSWER_DEADLINE) == optolink::GWG_ANSWER_TIMEOUT_MS &&
+              e.window_default(optolink::LinkWindow::ANSWER_DEADLINE) == optolink::GWG_ANSWER_TIMEOUT_MS,
+          "L: the answer deadline 250 ms by default");
+    ms = 10;
+    check(e.set_window(optolink::LinkWindow::ANSWER_DEADLINE, ms) && ms == optolink::GWG_ANSWER_TIMEOUT_MIN_MS,
+          "L: 10 ms clamped to 50");
+    ms = 5000;
+    check(e.set_window(optolink::LinkWindow::ANSWER_DEADLINE, ms) && ms == optolink::GWG_ANSWER_TIMEOUT_MAX_MS &&
+              e.window(optolink::LinkWindow::ANSWER_DEADLINE) == optolink::GWG_ANSWER_TIMEOUT_MAX_MS,
+          "L: 5000 ms clamped to 2000");
+    check(e.write_eot_before_payload() == optolink::GWG_DEFAULT_WRITE_EOT_BEFORE_PAYLOAD &&
+              e.burst_omits_enq_ack() == optolink::GWG_DEFAULT_BURST_OMITS_ENQ_ACK,
+          "L: the variant switches at their defaults");
+    e.set_write_eot_before_payload(true);
+    e.set_burst_omits_enq_ack(false);
+    check(e.write_eot_before_payload() && !e.burst_omits_enq_ack(), "L: and set");
   }
 
   std::printf("GWG exchange: %d failure(s)\n", g_fail);

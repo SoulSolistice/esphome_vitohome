@@ -14,6 +14,7 @@
 #include <cstring>
 #include <vector>
 
+#include "gwg_calls.h"
 #include "kw_calls.h"
 #include "optolink/optolink.h"
 #include "optolink_kw.h"
@@ -354,7 +355,7 @@ void gwg() {
     sim::GwgConfig c;
     c.eeprom_unserved[0x17] = true;
     sim::SimGwg dev(c);
-    optolink::GWGEngine e(&dev);
+    gwg_calls::Engine<sim::SimGwg> e(&dev);
     Outcome o;
     wire(e, o);
     e.read(0x05, 2);
@@ -391,7 +392,7 @@ void gwg() {
     sim::GwgConfig c;
     c.quirks.refuse_chain = true;
     sim::SimGwg dev(c);
-    optolink::GWGEngine e(&dev);
+    gwg_calls::Engine<sim::SimGwg> e(&dev);
     Outcome o;
     int fallbacks = 0;
     wire(e, o);
@@ -405,16 +406,16 @@ void gwg() {
   }
   {
     sim::GwgConfig c;
-    c.quirks.answer_delay_ms = optolink::GWGEngine::RESPONSE_TIMEOUT_MS + 60;
+    c.quirks.answer_delay_ms = optolink::GWG_ANSWER_TIMEOUT_MS + 60;
     sim::SimGwg dev(c);
-    optolink::GWGEngine e(&dev);
+    gwg_calls::Engine<sim::SimGwg> e(&dev);
     Outcome o;
     int late = 0;
     wire(e, o);
-    e.onLateAnswer([&late](const optolink::GWGEngine::LateAnswer &report) { late += report.late_count; });
+    e.onLateAnswer([&late](const optolink::GwgLateAnswer &report) { late += report.late_count; });
     e.read(0x05, 2);
     finish(e, o, 10000);
-    idle(e, optolink::GWGEngine::LATE_WATCH_MS + 200);  // the report comes when the watch closes
+    idle(e, optolink::GWG_LATE_WATCH_MS + 200);  // the report comes when the watch closes
     check(o.errors == 1 && o.error == OptolinkResult::TIMEOUT, "G7: an answer past the deadline times out");
     check(late == 2, "G7:   and the late-answer report holds its two bytes");
   }
@@ -425,7 +426,7 @@ void gwg() {
       sim::GwgConfig c;
       c.quirks.enq_window_ms = 20;
       sim::SimGwg dev(c);
-      optolink::GWGEngine e(&dev);
+      gwg_calls::Engine<sim::SimGwg> e(&dev);
       Outcome o;
       wire(e, o);
       e.setEnqSendDelayMs(delay);

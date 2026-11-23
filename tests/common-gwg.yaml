@@ -10,7 +10,7 @@
 # `protocol: GWG` since the wrapper was written.
 #
 # The addresses below are taken from vcontrold's GWG device overrides. This is
-# a codegen gate (the GWG engine behind its adapter), not a wire test. What
+# a codegen gate (the GWG exchange), not a wire test. What
 # GWG units do on hardware is in docs/gwg_protocol.md.
 
 esphome:
@@ -45,6 +45,10 @@ vitohome:
   raw_queue_size: 1
   raw_access: unrestricted
   unsafe_raw_writes: true
+  # GWG's two timing points.
+  link_timing:
+    enq_to_send: 0ms
+    ack_to_telegram: 0ms
 
 sensor:
   # NOTE: several read entities below deliberately omit `access:` to keep the
@@ -246,6 +250,16 @@ button:
           id(vito).queue_raw_op(esphome::vitohome::RawLayer::GWG, 0xC3, 0x00, 1, p);
           id(vito).queue_raw_op("gwg f 01 43 [03 00 43 0A 01 01 01 01] 04 / 4");
           id(vito).queue_raw_frame(std::vector<uint8_t>{0x01, 0x43, 0x01, 0x01, 0x04});
+  # The settings a GWG A/B test changes live.
+  - platform: template
+    name: "Test Link Settings"
+    entity_category: diagnostic
+    on_press:
+      - lambda: |-
+          id(vito).set_link_timing(vitohome::TimingPoint::ACK_TO_TELEGRAM, 30);
+          id(vito).set_link_window(vitohome::LinkWindow::ANSWER_DEADLINE, 700);
+          id(vito).set_gwg_write_eot_before_payload(false);
+          id(vito).set_gwg_burst_omits_enq_ack(true);
   # The #35 test C as a timed frame, from the action.
   - platform: template
     name: "Test Raw Op Action"

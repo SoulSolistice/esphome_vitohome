@@ -18,7 +18,6 @@ COMP=components/vitohome
 OPTO="$COMP/optolink"
 ENGINE=(
   "$OPTO/constants.cpp"
-  "$OPTO/protocol/gwg/gwg.cpp"
 )
 FLAGS=(-std=c++17 -I"$COMP" -I"$OPTO")
 

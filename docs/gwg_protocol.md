@@ -34,7 +34,7 @@ them have a BES. See [Identification](#identification).
 | Read request | `01 TYPE ADDR LEN 04` after an ENQ; `TYPE ADDR LEN 04` inside a burst | HW #21 |
 | Response | LEN raw bytes; `eeprom` a pair, `be` and `port` one byte, per address whatever LEN asks; no framing, checksum, address echo or error telegram | HW |
 | Answer time | 23–53 ms after the request | HW #21, #35 |
-| Answer deadline | 250 ms default (`set_gwg_response_timeout_ms()`, 50–2000 ms from a lambda) | design choice |
+| Answer deadline | 250 ms default (`set_link_window(LinkWindow::ANSWER_DEADLINE, ms)`, 50–2000 ms from a lambda) | design choice |
 | Address | one byte; anything above `0xFF` is rejected at config time | source, §8d |
 
 - **No error answer.** An address a mode does not serve answers `0xFF` (all
@@ -151,7 +151,7 @@ unrelated registers. The catalog's `access:` comes from Vitosoft's `FCRead`.
   GWG answers take, and hardly within the 250 ms deadline. An answer from the
   controller's own memory can. After the deadline, bytes show in the
   late-answer report until the next telegram goes out, and
-  `set_gwg_response_timeout_ms()` raises the deadline. On #35 the generic
+  `set_link_window(LinkWindow::ANSWER_DEADLINE, ms)` raises the deadline. On #35 the generic
   `kmbus_eeprom` reads had no late bytes either.
 - The GWG TYPE bytes of the two KM-bus modes are bus commands: `kmbus_ram`
   `0x33` is the `33` read and `kmbus_eeprom` `0x43` is the unexplained `43`.
@@ -315,8 +315,9 @@ The two families share every `physical`, `xram`, `port` and most `eeprom` and
   about 14 times in 6.5 minutes on #35, although the unit kept sending ENQs
   and answering other reads. Not yet confirmed on hardware.
 - **ENQ-to-send delay (diagnostic, off by default).** A request goes out as
-  soon as the ENQ is read. `id(vito).set_gwg_enq_send_delay_ms(30)` from a
-  lambda (0 to 100 ms) holds an ENQ-paced request that long first; burst-sent
+  soon as the ENQ is read. The timing point `ENQ_TO_SEND` (`link_timing:
+  enq_to_send:`, or `id(vito).set_link_timing(vitohome::TimingPoint::ENQ_TO_SEND,
+  30)` from a lambda, 0 to 100 ms) holds an ENQ-paced request that long first; burst-sent
   requests do not wait. The DEBUG `GWG timing:` line shows `enq age` and the
   measured `enq->send` for each answered read, and `GWG 0x.. unanswered:`
   shows the same two for each unanswered one. `enq->send` runs to the write
@@ -327,8 +328,8 @@ The two families share every `physical`, `xram`, `port` and most `eeprom` and
   2026-11-13 to 2026-11-17). The two settings ran at different times, not
   alternating.
 - **Gap after the `0x01` (diagnostic, off by default).** The delay above moves
-  the whole frame, its `0x01` included. `id(vito).set_gwg_enq_ack_gap_ms(30)`
-  from a lambda (0 to 100 ms) sends the `0x01` on the ENQ, or after the delay,
+  the whole frame, its `0x01` included. The timing point `ACK_TO_TELEGRAM`
+  (`link_timing: ack_to_telegram:`, or `set_link_timing()`, 0 to 100 ms) sends the `0x01` on the ENQ, or after the delay,
   and the rest of the frame that much later. Open frames that start with
   `0x01` get the gap too; burst-sent requests carry no `0x01` and do not wait.
   Both DEBUG lines then add the measured `01->rest`. #35's reporter's own
@@ -344,5 +345,5 @@ The two families share every `physical`, `xram`, `port` and most `eeprom` and
 | Does #35's controller keep the BES or the BEM coding map? | Read `eeprom` `0x03`, `0x08`, `0x0A`, `0x0D`, `0x13`, `0x14`, `0x1C`, `0x21` with frames logged; compare BES codings (02), (03), (04) with the panel |
 | Does any GWG unit serve `be`? | A unit with a BEM panel |
 | How does a GWG unit frame a KM-bus read? | The candidates under `kmbus_eeprom`, with the KM-bus probe |
-| Does #35's unit answer more reads with an ENQ-to-send delay? | A read every 5 s with frames logged, `set_gwg_enq_send_delay_ms(0)` and `30` alternating for 2 h, the first 20 min after boot not counted; compare the unanswered reads of each |
+| Does #35's unit answer more reads with an ENQ-to-send delay? | A read every 5 s with frames logged, `ENQ_TO_SEND` 0 and 30 ms alternating for 2 h, the first 20 min after boot not counted; compare the unanswered reads of each |
 | Where does the write frame's `0x04` go? | A first `eeprom` write on a unit whose owner accepts the risk |

@@ -58,9 +58,10 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
   vector replay request + chunked response and assert wire + payload.
 - `proof_hub_requests.cpp` — the hub's requests (`read_request()`,
   `write_request()`) on its engine (`SelectedEngine`), once per protocol.
-  On P300 and GWG the adapter and the old engine called as the hub called it
-  run side by side on one clock: same refusals, same bytes, same results,
-  the getters the hub used to read included, and each case's named outcome.
+  On P300 and GWG the hub's engine and the reference copy's old engine,
+  called as the hub called it, run side by side on one clock: same refusals,
+  same bytes, same results, the getters the hub used to read included, and
+  each case's named outcome.
   On KW each request equals the one `kw_calls.h` sends.
 - `proof_kw_timing.cpp` — the KW link's own timing on a frozen clock: its
   two pauses (20 ms after the ENQ, 25 ms after an answer), 0 as the same
@@ -106,9 +107,13 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
   contiguous masks every old byte and every field value up to one past the
   mask's capacity. Pinned with the issue #21 bytes (`0xA8`, `0x91`) decoding to
   the export's factory defaults.
-- `proof_gwg_eeprom_pairs.cpp` case (8) pins `GWGEngine::lastReadHadUnservedEeprom()`
-  (THIRD_PARTY.md #25): set inside the callback exactly when an `FF FF` pair was
-  part of the read, reset by the next read, never set for PHYSICAL.
+- `proof_gwg_eeprom_pairs.cpp` case (8) pins `Result::unserved_eeprom`
+  (THIRD_PARTY.md #25): set exactly when an `FF FF` pair was part of the read,
+  never for PHYSICAL.
+- The `proof_gwg_*.cpp` files run on the GWG exchange through
+  `gwg_calls::Engine` (`gwg_calls.h`), which maps `GWGEngine`'s calls, its
+  five callbacks and its `last...()` getters onto `submit()` and `Result`, so
+  their assertions stayed as written against that engine.
 - `fuzz_corpus_decode.h` — its seed corpus. The first two bytes of every seed
   steer the output-buffer capacity and the declared field width; the rest is
   the payload.
@@ -350,8 +355,8 @@ retry after silence, which `VS2Engine` lacks; `proof_p300_kw_retry.cpp` pins
 the retry, and the harnesses' own builds run with it.
 
 On GWG the live side is `GwgExchange` as built; it changes nothing on the
-wire. `gwg_calls.h` maps it onto `GWGEngine`'s calls and five callbacks, as
-`kw_calls.h` does for KW. The boundary seeds put a step on the burst window
+wire. `gwg_calls.h` maps it onto the reference `GWGEngine`'s calls and five
+callbacks, as `kw_calls.h` does for KW. The boundary seeds put a step on the burst window
 (80 and 81 ms after the ENQ a read went out on, when the watchdog ends it),
 on the watchdog lengthened by a longer deadline, and on a burst-sent write
 met by silence.

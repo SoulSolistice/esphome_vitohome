@@ -30,10 +30,11 @@
 #include <vector>
 
 #include "fake_optolink.h"
+#include "gwg_calls.h"
 #include "protocol_select.h"
 
 using namespace esphome::vitohome;
-using Engine = optolink::OptolinkEngine<SelectedProtocol>;
+using Engine = gwg_calls::Engine<FakeOptolink>;
 
 namespace {
 int g_responses = 0;
@@ -164,10 +165,10 @@ int main() {
   // same-loop fall-through puts both in one iteration, and _currentMillis is
   // sampled once per iteration.)
   const uint32_t enq_age_no_stall = g_last_enq_age;
-  // Let the burst window lapse first (see GWGEngine::ENQ_VALIDITY_MS): with a
+  // Let the burst window lapse first (see GWG_BURST_WINDOW_MS): with a
   // recent sync in hand the engine would send WITHOUT waiting for an ENQ, and
   // there would be no ENQ wait left to measure.
-  optolink::optolink_test_clock_advance(optolink::GWGEngine::ENQ_VALIDITY_MS + 150);
+  optolink::optolink_test_clock_advance(optolink::GWG_BURST_WINDOW_MS + 150);
   check(adapter.read(0x0073, 1), "timing: read accepted (stalled host)");
   adapter.loop();  // establish a loop timestamp with nothing to read
   uart.feed({0x05});

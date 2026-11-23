@@ -1048,8 +1048,33 @@ These are intentional divergences from upstream `edc059a7`:
     the live side without the retry (`P300Exchange<Port, 0>`). Proof:
     `proof_p300_kw_retry.cpp`.
 
+50. **`GWGEngine` removed; its knobs became timing points and a window
+    (structural, no wire change).** `protocol/gwg/` and `optolink_adapter.h`
+    are gone. GWG runs on the project's own `optolink_gwg.h`, which
+    reproduces `GWGEngine` pass by pass: the burst window and its retry and
+    fallback, per-address reads with the EEPROM pair, the late-answer report,
+    the open frame, on the `Request`/`Result` interface. The ENQ-to-send
+    delay of item 33 is the timing point `ENQ_TO_SEND`, the gap after the
+    0x01 of item 39 the new point `ACK_TO_TELEGRAM`, both 0 by default and
+    bounded at 100 ms, settable from YAML (`link_timing:`, now on GWG too)
+    and live (`set_link_timing()`). The answer deadline of item 30 is the
+    link window `ANSWER_DEADLINE`, 250 ms, 50..2000 ms, set live with
+    `set_link_window()`. `set_gwg_response_timeout_ms()`,
+    `set_gwg_enq_send_delay_ms()` and `set_gwg_enq_ack_gap_ms()` are gone;
+    the two variant switches (`set_gwg_write_eot_before_payload()`,
+    `set_gwg_burst_omits_enq_ack()`) stay. The compile-time switches
+    `BURST_ENABLED` and `SEND_ENQ_POKE` went with the engine, at their
+    defaults: bursting on, no EOT while waiting for an ENQ. The GWG proofs
+    run on the exchange through `gwg_calls::Engine`, a test-only mapping of
+    `GWGEngine`'s calls; the items above still name the old files. Proof: the
+    differential target, the GWG exchange against the reference `GWGEngine`
+    (161 seeds, among them the burst window at 80 and 81 ms, the watchdog
+    lengthened by a longer deadline and a silent burst-sent write),
+    `proof_gwg_exchange.cpp` and `proof_hub_requests.cpp`, the hub's requests
+    against the reference engine's calls.
+
 Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called), 39 (when its gap is set), 40, 41, 45, 46, 48 (when set) and 49 are the only intentional changes to on-wire/runtime
-protocol behavior; items 13-16, 42, 43, 44 and 47 are structural (no behavior change from any call
+protocol behavior; items 13-16, 42, 43, 44, 47 and 50 are structural (no behavior change from any call
 site that exists -- item 16 altered bytes only on a RESPONSE-construction path
 nothing exercised, now removed); item 17 changes only construction-failure handling
 (abort -> fail-soft), not protocol or normal-path behavior; item 20 is a

@@ -1,5 +1,5 @@
 // GWG burst: reuse a still-valid sync instead of waiting for the device's next
-// ENQ (2026-08-24). See GWGEngine::ENQ_VALIDITY_MS.
+// ENQ (2026-08-24). See GWG_BURST_WINDOW_MS (optolink_gwg.h).
 //
 // Why this exists: without bursting the poll rate is capped at one datapoint
 // per ENQ interval, measured at 749-2070 ms (median 1229) on the 2026-08-23
@@ -13,7 +13,7 @@
 //   (1) a queued request rides a fresh sync -- no ENQ needed;
 //   (2) a real ENQ still wins when one is pending, and is never left buffered
 //       where RECEIVE could read it as a payload;
-//   (3) the window expires: past ENQ_VALIDITY_MS the engine waits again;
+//   (3) the window expires: past GWG_BURST_WINDOW_MS the link waits again;
 //   (4) a TIMEOUT invalidates the sync, so the next request re-syncs properly
 //       rather than riding a window we no longer trust;
 //   (5) repeated burst failures disable bursting for the session, and a burst
@@ -29,15 +29,17 @@
 //       after its answer;
 //  (13) a silent burst-sent read is reported when it is retried.
 //
-// Built with -DVITOHOME_PROTOCOL_GWG by build_and_run_protocols.sh.
+// On the GWG exchange through gwg_calls::Engine; built by
+// build_and_run_protocols.sh.
 #include <cstdio>
 #include <vector>
 
 #include "fake_optolink.h"
+#include "gwg_calls.h"
 #include "protocol_select.h"
 
 using namespace esphome::vitohome;
-using Engine = optolink::OptolinkEngine<SelectedProtocol>;
+using Engine = gwg_calls::Engine<FakeOptolink>;
 
 namespace {
 int g_responses = 0;
@@ -109,28 +111,6 @@ int main() {
       failures++;
   };
 
-  // With bursting compiled out, the property to prove is the inverse: the
-  // engine must NEVER put a telegram on the wire without a fresh ENQ, no
-  // matter how recent the last completed transaction was. Both branches build
-  // and pass, so flipping BURST_ENABLED does not leave a red suite.
-  if constexpr (!optolink::GWGEngine::BURST_ENABLED) {
-    std::printf("  (BURST_ENABLED is false -- asserting strict one-telegram-per-ENQ)\n");
-    for (int i = 0; i < 3; ++i) {
-      check(adapter.read(static_cast<uint8_t>(0x6F + i), 1), "read accepted");
-      pump(adapter);
-      check(uart.written().empty(), "  nothing sent without an ENQ");
-      uart.feed({0x05});
-      adapter.loop();
-      check(!uart.written().empty(), "  sent once the ENQ arrived");
-      uart.clear_written();
-      uart.feed({0x26});
-      pump(adapter);
-    }
-    check(g_responses == 3 && g_errors == 0, "all three completed, one ENQ each");
-    std::printf("gwg burst: %d failure(s)\n", failures);
-    return failures == 0 ? 0 : 1;
-  }
-
   // --- cold start: no sync yet, so there is nothing to ride -----------------
   check(adapter.read(0x006F, 1), "cold read accepted");
   pump(adapter);
@@ -185,7 +165,7 @@ int main() {
   uart.clear_written();
 
   // --- (3) the window expires ----------------------------------------------
-  optolink::optolink_test_clock_advance(optolink::GWGEngine::ENQ_VALIDITY_MS + 150);
+  optolink::optolink_test_clock_advance(optolink::GWG_BURST_WINDOW_MS + 150);
   check(adapter.read(0x0072, 1), "read accepted after the window lapsed");
   pump(adapter);
   check(uart.written().empty(), "expired window -> waits for a real ENQ again");
@@ -267,9 +247,8 @@ int main() {
   // unanswered -- each one answered when retried on an ENQ -- means this unit
   // does not honour the reuse (the wiki may simply be right about it), so the
   // engine gives up on bursting for good.
-  std::printf("  (driving %u consecutive burst failures ...)\n",
-              static_cast<unsigned>(optolink::GWGEngine::BURST_FAILURES_BEFORE_FALLBACK));
-  for (uint8_t i = 0; i < optolink::GWGEngine::BURST_FAILURES_BEFORE_FALLBACK; ++i)
+  std::printf("  (driving %u consecutive burst failures ...)\n", static_cast<unsigned>(optolink::GWG_BURST_FAILURES));
+  for (uint8_t i = 0; i < optolink::GWG_BURST_FAILURES; ++i)
     burst_fails_enq_answers(adapter, uart, static_cast<uint8_t>(0x50 + i), static_cast<uint8_t>(0x60 + i));
   // Bursting is now off: even with a fresh sync, the engine waits for an ENQ.
   sync_and_complete(adapter, uart, 0x006F, 0x26);
@@ -305,10 +284,10 @@ int main() {
     });
     a2.begin();
 
-    for (uint8_t i = 0; i < optolink::GWGEngine::BURST_FAILURES_BEFORE_FALLBACK; ++i)
+    for (uint8_t i = 0; i < optolink::GWG_BURST_FAILURES; ++i)
       burst_fails_enq_answers(a2, u2, static_cast<uint8_t>(0x50 + i), static_cast<uint8_t>(0x60 + i));
     check(fallbacks == 1, "burst fallback notified the hub");
-    check(reported == optolink::GWGEngine::BURST_FAILURES_BEFORE_FALLBACK, "  reported the failure count");
+    check(reported == optolink::GWG_BURST_FAILURES, "  reported the failure count");
 
     // Drive more failures; _burstDisabled is latched, so no second callback.
     for (int i = 0; i < 3; ++i) {
@@ -334,7 +313,7 @@ int main() {
     for (const bool omit : {false, true}) {
       FakeOptolink u3;
       Engine a3(&u3);
-      check(a3.burstOmitsEnqAck() == optolink::GWGEngine::DEFAULT_BURST_OMITS_ENQ_ACK,
+      check(a3.burstOmitsEnqAck() == optolink::GWG_DEFAULT_BURST_OMITS_ENQ_ACK,
             "a new engine starts with the default (omit)");
       a3.setBurstOmitsEnqAck(omit);
       a3.onResponse([](const uint8_t *, uint8_t, uint16_t) {});
@@ -417,14 +396,14 @@ int main() {
   {
     FakeOptolink u10;
     Engine a10(&u10);
-    std::vector<optolink::GWGEngine::LateAnswer> reports;
+    std::vector<optolink::GwgLateAnswer> reports;
     int timeouts = 0;
     a10.onResponse([](const uint8_t *, uint8_t, uint16_t) {});
     a10.onError([&](optolink::OptolinkResult r, uint16_t) {
       if (r == optolink::OptolinkResult::TIMEOUT)
         timeouts++;
     });
-    a10.onLateAnswer([&](const optolink::GWGEngine::LateAnswer &l) { reports.push_back(l); });
+    a10.onLateAnswer([&](const optolink::GwgLateAnswer &l) { reports.push_back(l); });
     a10.begin();
 
     // ENQ-paced (cold), so the TIMEOUT comes straight away, without a retry.
@@ -439,7 +418,7 @@ int main() {
     u10.feed({0x3C});
     pump(a10);
     check(reports.empty(), "  the report stays open while more may come");
-    optolink::optolink_test_clock_advance(optolink::GWGEngine::LATE_WATCH_MS);
+    optolink::optolink_test_clock_advance(optolink::GWG_LATE_WATCH_MS);
     pump(a10);
     const bool one = reports.size() == 1;
     check(one, "  and is delivered once the watch lapses");
@@ -457,7 +436,7 @@ int main() {
     a10.loop();
     optolink::optolink_test_clock_advance(300);
     pump(a10);
-    optolink::optolink_test_clock_advance(optolink::GWGEngine::LATE_WATCH_MS + 1);
+    optolink::optolink_test_clock_advance(optolink::GWG_LATE_WATCH_MS + 1);
     pump(a10);
     check(reports.size() == 1, "a silent datapoint: TIMEOUT only, no report");
 
@@ -469,7 +448,7 @@ int main() {
     pump(a10);
     optolink::optolink_test_clock_advance(300);
     pump(a10);
-    optolink::optolink_test_clock_advance(optolink::GWGEngine::LATE_WATCH_MS + 1);
+    optolink::optolink_test_clock_advance(optolink::GWG_LATE_WATCH_MS + 1);
     pump(a10);
     check(reports.size() == 2 && reports[1].received == 1 && reports[1].expected == 2 && reports[1].late_count == 0,
           "a short answer: 1 of 2 bytes reported");
@@ -510,7 +489,7 @@ int main() {
     a11.onError([&](optolink::OptolinkResult, uint16_t) { errors++; });
     a11.begin();
 
-    check(a11.responseTimeoutMs() == optolink::GWGEngine::RESPONSE_TIMEOUT_MS, "a new engine starts at 250 ms");
+    check(a11.responseTimeoutMs() == optolink::GWG_ANSWER_TIMEOUT_MS, "a new engine starts at 250 ms");
     a11.setResponseTimeoutMs(1000);
     a11.read(0x006E, 1);
     u11.feed({0x05});
@@ -522,11 +501,11 @@ int main() {
     pump(a11);
     check(responses == 1 && value == 0x3C, "  the 600 ms answer is delivered");
 
-    optolink::optolink_test_clock_advance(optolink::GWGEngine::ENQ_VALIDITY_MS + 100);  // no burst
+    optolink::optolink_test_clock_advance(optolink::GWG_BURST_WINDOW_MS + 100);  // no burst
     pump(a11);  // read() stamps the request with the engine's last loop() time
     a11.read(0x006F, 1);
     pump(a11);
-    optolink::optolink_test_clock_advance(optolink::GWGEngine::REQUEST_TIMEOUT_MS + 200);
+    optolink::optolink_test_clock_advance(optolink::GWG_WATCHDOG_MS + 200);
     pump(a11);
     check(errors == 0, "  the request watchdog grew by the same 750 ms");
     u11.feed({0x05});
@@ -537,7 +516,7 @@ int main() {
 
     FakeOptolink u12;
     Engine a12(&u12);
-    check(a12.responseTimeoutMs() == optolink::GWGEngine::RESPONSE_TIMEOUT_MS,
+    check(a12.responseTimeoutMs() == optolink::GWG_ANSWER_TIMEOUT_MS,
           "  another engine keeps its own deadline (250 ms)");
   }
 
@@ -552,8 +531,8 @@ int main() {
     a13.begin();
 
     sync_and_complete(a13, u13, 0x6F, 0x26);
-    static_assert(60u < optolink::GWGEngine::ENQ_VALIDITY_MS, "60 ms must be inside the burst window");
-    static_assert(120u > optolink::GWGEngine::ENQ_VALIDITY_MS, "120 ms must be past the burst window");
+    static_assert(60u < optolink::GWG_BURST_WINDOW_MS, "60 ms must be inside the burst window");
+    static_assert(120u > optolink::GWG_BURST_WINDOW_MS, "120 ms must be past the burst window");
     optolink::optolink_test_clock_advance(60);
     pump(a13);
     a13.read(0x0070, 1);
@@ -583,14 +562,14 @@ int main() {
   {
     FakeOptolink u14;
     Engine a14(&u14);
-    std::vector<optolink::GWGEngine::LateAnswer> reports;
+    std::vector<optolink::GwgLateAnswer> reports;
     int timeouts = 0;
     a14.onResponse([](const uint8_t *, uint8_t, uint16_t) {});
     a14.onError([&](optolink::OptolinkResult r, uint16_t) {
       if (r == optolink::OptolinkResult::TIMEOUT)
         timeouts++;
     });
-    a14.onLateAnswer([&](const optolink::GWGEngine::LateAnswer &l) { reports.push_back(l); });
+    a14.onLateAnswer([&](const optolink::GwgLateAnswer &l) { reports.push_back(l); });
     a14.begin();
 
     sync_and_complete(a14, u14, 0x6F, 0x26);

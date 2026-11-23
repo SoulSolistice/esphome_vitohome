@@ -15,10 +15,11 @@
 #include <vector>
 
 #include "fake_optolink.h"
+#include "gwg_calls.h"
 #include "protocol_select.h"
 
 using namespace esphome::vitohome;
-using Engine = optolink::OptolinkEngine<SelectedProtocol>;
+using Engine = gwg_calls::Engine<FakeOptolink>;
 
 namespace {
 int g_responses = 0;
@@ -35,7 +36,7 @@ static void pump(Engine &a, int n = 6) {
 
 int main() {
   FakeOptolink uart;
-  Engine adapter(&uart);  // GWGEngine under -DVITOHOME_PROTOCOL_GWG
+  Engine adapter(&uart);
   adapter.onResponse([](const uint8_t *data, uint8_t length, uint16_t address) {
     g_responses++;
     g_last_len = length;

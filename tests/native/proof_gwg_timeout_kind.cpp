@@ -14,10 +14,11 @@
 #include <cstdio>
 
 #include "fake_optolink.h"
+#include "gwg_calls.h"
 #include "protocol_select.h"
 
 using namespace esphome::vitohome;
-using Engine = optolink::OptolinkEngine<SelectedProtocol>;
+using Engine = gwg_calls::Engine<FakeOptolink>;
 
 namespace {
 int g_responses = 0;
@@ -60,7 +61,7 @@ int main() {
   check(adapter.read(0x55, 1), "(1) read accepted");
   pump(adapter);
   check(uart.written().empty(), "(1) nothing sent without an ENQ");
-  optolink::optolink_test_clock_advance(optolink::GWGEngine::REQUEST_TIMEOUT_MS + 100);
+  optolink::optolink_test_clock_advance(optolink::GWG_WATCHDOG_MS + 100);
   pump(adapter);
   check(g_errors == 1 && g_last_error == optolink::OptolinkResult::TIMEOUT, "(1) TIMEOUT reported");
   check(g_last_unsynced, "(1) ... and it is unsynced (counts against the link)");
@@ -115,7 +116,7 @@ int main() {
   optolink::optolink_test_clock_advance(adapter.responseTimeoutMs() + 100);
   pump(adapter);
   check(g_errors == 3, "(4) no TIMEOUT yet: waiting to retry on an ENQ");
-  optolink::optolink_test_clock_advance(optolink::GWGEngine::REQUEST_TIMEOUT_MS + 100);
+  optolink::optolink_test_clock_advance(optolink::GWG_WATCHDOG_MS + 100);
   pump(adapter);
   check(g_errors == 4 && g_last_error == optolink::OptolinkResult::TIMEOUT, "(4) TIMEOUT: the ENQ never came");
   check(g_last_unsynced, "(4) ... and it is unsynced (counts against the link)");

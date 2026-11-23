@@ -73,14 +73,19 @@ using Engine = optolink::GWGEngine;
 using LateAnswer = optolink::GWGEngine::LateAnswer;
 constexpr uint32_t kAnswerTimeoutMs = optolink::GWGEngine::RESPONSE_TIMEOUT_MS;
 constexpr uint32_t kBurstWindowMs = optolink::GWGEngine::ENQ_VALIDITY_MS;
+constexpr uint32_t kDeadlineMinMs = optolink::GWG_RESPONSE_TIMEOUT_MIN_MS;
+constexpr uint32_t kDeadlineMaxMs = optolink::GWG_RESPONSE_TIMEOUT_MAX_MS;
+constexpr uint32_t kDelayMaxMs = optolink::GWG_ENQ_SEND_DELAY_MAX_MS;
 #else
-#include "optolink/constants.h"
 #include "optolink_gwg.h"
 namespace optolink = esphome::vitohome::optolink;
 using Engine = optolink::GwgExchange<FakeOptolink>;
 using LateAnswer = optolink::GwgLateAnswer;
 constexpr uint32_t kAnswerTimeoutMs = optolink::GWG_ANSWER_TIMEOUT_MS;
 constexpr uint32_t kBurstWindowMs = optolink::GWG_BURST_WINDOW_MS;
+constexpr uint32_t kDeadlineMinMs = optolink::GWG_ANSWER_TIMEOUT_MIN_MS;
+constexpr uint32_t kDeadlineMaxMs = optolink::GWG_ANSWER_TIMEOUT_MAX_MS;
+constexpr uint32_t kDelayMaxMs = optolink::ENQ_TO_SEND_MAX_MS;
 #endif
 #include "gwg_calls.h"
 using optolink::GWGAccessMode;
@@ -109,15 +114,9 @@ void oracle(bool ok, const char *what) {
 #endif
 }
 
-constexpr uint32_t kDelays[8] = {0, 0, 0, 5, 15, 30, 50, optolink::GWG_ENQ_SEND_DELAY_MAX_MS};
-constexpr uint32_t kDeadlines[8] = {kAnswerTimeoutMs,
-                                    kAnswerTimeoutMs,
-                                    optolink::GWG_RESPONSE_TIMEOUT_MIN_MS,
-                                    100,
-                                    400,
-                                    700,
-                                    1000,
-                                    optolink::GWG_RESPONSE_TIMEOUT_MAX_MS};
+constexpr uint32_t kDelays[8] = {0, 0, 0, 5, 15, 30, 50, kDelayMaxMs};
+constexpr uint32_t kDeadlines[8] = {kAnswerTimeoutMs, kAnswerTimeoutMs, kDeadlineMinMs, 100, 400, 700, 1000,
+                                    kDeadlineMaxMs};
 constexpr int kMaxOps = 6;
 
 // The GWG frame cap, built from MAX_PAYLOAD so it holds for the live engine

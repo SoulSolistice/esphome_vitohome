@@ -96,17 +96,20 @@ CONF_ENQ_TO_SEND = "enq_to_send"
 CONF_ANSWER_TO_NEXT = "answer_to_next"
 CONF_ENQ_TO_SYNC = "enq_to_sync"
 CONF_FRAME_TO_ACK = "frame_to_ack"
+CONF_ACK_TO_TELEGRAM = "ack_to_telegram"
 # The bounds of optolink_types.h (ENQ_TO_SEND_MAX_MS and the others).
 ENQ_TO_SEND_MAX_MS = 100
 ANSWER_TO_NEXT_MAX_MS = 400
 ENQ_TO_SYNC_MAX_MS = 100
 FRAME_TO_ACK_MAX_MS = 400
+ACK_TO_TELEGRAM_MAX_MS = 100
 # Each key's TimingPoint and bound, and the protocols whose link has it.
 LINK_TIMING_POINTS = {
-    CONF_ENQ_TO_SEND: ("ENQ_TO_SEND", ENQ_TO_SEND_MAX_MS, ("KW", "P300")),
+    CONF_ENQ_TO_SEND: ("ENQ_TO_SEND", ENQ_TO_SEND_MAX_MS, ("KW", "P300", "GWG")),
     CONF_ANSWER_TO_NEXT: ("ANSWER_TO_NEXT", ANSWER_TO_NEXT_MAX_MS, ("KW", "P300")),
     CONF_ENQ_TO_SYNC: ("ENQ_TO_SYNC", ENQ_TO_SYNC_MAX_MS, ("P300",)),
     CONF_FRAME_TO_ACK: ("FRAME_TO_ACK", FRAME_TO_ACK_MAX_MS, ("P300",)),
+    CONF_ACK_TO_TELEGRAM: ("ACK_TO_TELEGRAM", ACK_TO_TELEGRAM_MAX_MS, ("GWG",)),
 }
 # The generic raw operation (VitoHomeComponent::queue_raw_op(), raw_op.h): any
 # telegram of any layer, for reverse engineering. Off by default; the second
@@ -238,8 +241,8 @@ CONF_ACCESS = "access"
 # the platform modules cannot drift apart.
 _ACCESS_DOMAINS = ("sensor", "binary_sensor", "text_sensor", "number", "select", "switch", "text", "climate")
 
-# The subset of those that WRITE. GWGEngine::write() permanently refuses an
-# access mode with no write telegram type, and the write lane's response to a
+# The subset of those that WRITE. The GWG link permanently refuses a write in
+# an access mode with no write telegram type, and the write lane's response to a
 # permanent refusal is to drop the item and log -- so such an entity would
 # compile, publish, accept a value from Home Assistant, and silently never
 # write it. Rejected at config time instead (see _final_validate).
@@ -1067,19 +1070,15 @@ def poll_update_interval(value):
 
 
 def _validate_link_timing(config):
-    """``link_timing`` sets the link's pauses: KW and P300 each have their own, GWG none yet."""
+    """``link_timing`` sets the link's pauses; each protocol's link has its own."""
     if CONF_LINK_TIMING not in config:
         return config
     protocol = str(config[CONF_PROTOCOL])
-    if protocol == "GWG":
-        raise cv.Invalid(
-            f"'{CONF_LINK_TIMING}' is for 'protocol: KW' and 'protocol: P300' only so far",
-            path=[CONF_LINK_TIMING],
-        )
     for key in config[CONF_LINK_TIMING]:
-        if protocol not in LINK_TIMING_POINTS[key][2]:
+        owners = LINK_TIMING_POINTS[key][2]
+        if protocol not in owners:
             raise cv.Invalid(
-                f"'{key}' is a P300 timing point; the {protocol} link has none",
+                f"'{key}' is a timing point of the {' and '.join(owners)} link; the {protocol} link has none",
                 path=[CONF_LINK_TIMING, key],
             )
     return config

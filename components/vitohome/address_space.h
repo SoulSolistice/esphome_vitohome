@@ -93,7 +93,7 @@ constexpr bool space_has_switch_cost(AddressSpace space) { return IS_P300 && spa
 
 // How many telegrams a read of `length` bytes in `space` takes on the wire. A
 // GWG EEPROM, BE or PORT read is answered per address, so the engine reads one
-// address per telegram (GWGEngine::read(), optolink::gwgCellLength()) and
+// address per telegram (optolink_gwg.h, optolink::gwgCellLength()) and
 // re-arms its own timeout for each; after a burst fallback each one waits for
 // an ENQ. Every other read is one telegram.
 constexpr uint8_t read_telegram_count(AddressSpace space, uint8_t length) {

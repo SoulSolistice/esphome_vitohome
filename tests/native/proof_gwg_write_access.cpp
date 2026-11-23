@@ -29,10 +29,11 @@
 #include <vector>
 
 #include "fake_optolink.h"
+#include "gwg_calls.h"
 #include "protocol_select.h"
 
 using namespace esphome::vitohome;
-using Engine = optolink::OptolinkEngine<SelectedProtocol>;
+using Engine = gwg_calls::Engine<FakeOptolink>;
 
 namespace {
 int g_responses = 0;
@@ -85,7 +86,7 @@ int main() {
   // can try both layouts against the same address. Both byte orders are
   // asserted explicitly, which pins the two candidate layouts themselves.
   {
-    check(adapter.writeEotBeforePayload() == optolink::GWGEngine::DEFAULT_WRITE_EOT_BEFORE_PAYLOAD,
+    check(adapter.writeEotBeforePayload() == optolink::GWG_DEFAULT_WRITE_EOT_BEFORE_PAYLOAD,
           "a new engine starts in the default layout");
 
     adapter.setWriteEotBeforePayload(false);
@@ -128,7 +129,7 @@ int main() {
     pump(adapter);
     uart.clear_written();
 
-    adapter.setWriteEotBeforePayload(optolink::GWGEngine::DEFAULT_WRITE_EOT_BEFORE_PAYLOAD);
+    adapter.setWriteEotBeforePayload(optolink::GWG_DEFAULT_WRITE_EOT_BEFORE_PAYLOAD);
   }
 
   // --- (1) each writable mode selects the documented TYPE byte ---------------
@@ -201,7 +202,7 @@ int main() {
       pump(adapter);
       uart.clear_written();
     }
-    adapter.setWriteEotBeforePayload(optolink::GWGEngine::DEFAULT_WRITE_EOT_BEFORE_PAYLOAD);
+    adapter.setWriteEotBeforePayload(optolink::GWG_DEFAULT_WRITE_EOT_BEFORE_PAYLOAD);
   }
 
   // The raw lane's type byte takes the same path.

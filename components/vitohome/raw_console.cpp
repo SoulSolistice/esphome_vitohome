@@ -262,7 +262,7 @@ RawScriptTiming VitoHomeComponent::raw_script_timing_() const {
   // The engines' own answer deadlines; the ENQ wait as long as KW's after an
   // EOT, the whole script well inside the hub's watchdog.
 #if defined(VITOHOME_PROTOCOL_GWG)
-  const uint32_t quiet = this->gwg_response_timeout_ms_;
+  const uint32_t quiet = this->vito_.window(LinkWindow::ANSWER_DEADLINE);
 #elif defined(VITOHOME_PROTOCOL_KW)
   const uint32_t quiet = optolink::KW_LINK_PARAMS.answer_timeout_ms;
 #else

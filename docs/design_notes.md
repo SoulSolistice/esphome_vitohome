@@ -340,19 +340,18 @@ GWG has no framing, so this is a diagnostic, not a decode: a data byte `0x05`
 and the device's idle ENQ cannot be told apart. The warning says whether the
 datapoint answers slowly (raise the deadline) or never (leave it out).
 
-The 250 ms answer deadline is the engine's default
-(`GWGEngine::setResponseTimeoutMs()`), settable at run time from a lambda,
-between 50 and 2000 ms:
+The 250 ms answer deadline is the link's default (`LinkWindow::ANSWER_DEADLINE`),
+settable at run time from a lambda, between 50 and 2000 ms:
 
 ```yaml
 button:
   - platform: template
     name: "GWG deadline 700 ms"
     on_press:
-      - lambda: id(vito).set_gwg_response_timeout_ms(700);
+      - lambda: id(vito).set_link_window(vitohome::LinkWindow::ANSWER_DEADLINE, 700);
 ```
 
-`id(vito).gwg_response_timeout_ms()` reads it back. The request watchdog grows
+`id(vito).link_window(vitohome::LinkWindow::ANSWER_DEADLINE)` reads it back. The request watchdog grows
 by the same amount. This is a test aid, not a tuning knob: while a request
 waits, the device's idle ENQ (also `0x05`, every 749-2070 ms) can land inside
 the window and be read as the payload. Keep it under the shortest idle-ENQ gap

@@ -11,8 +11,8 @@
 //             telegram in this pass, or HOLD. Any other byte goes to the
 //             late-answer report. An empty line inside the burst window: the
 //             telegram without its 01, in this pass.
-//   HOLD      the line drained; the ENQ-to-send delay after the ENQ -> SEND
-//   ACK_GAP   the 01 out, the line drained; the gap after it -> SEND
+//   HOLD      the line drained; ENQ_TO_SEND after the ENQ -> SEND
+//   ACK_GAP   the 01 out, the line drained; ACK_TO_TELEGRAM after it -> SEND
 //   SEND      the telegram; a partial write resumes on the next pass
 //   RECEIVE   the answer deadline first, from the last byte written or read;
 //             then the line drained into the answer. Exactly the bytes
@@ -40,6 +40,12 @@
 // Late-answer report: after a deadline, the bytes of the telegram and any
 // byte that follows within 2.5 s, until the next telegram goes out.
 //
+// Settable (design-optolink-layers.md, section 13): the timing points
+// ENQ_TO_SEND and ACK_TO_TELEGRAM, 0 by default (the 01 and the telegram in
+// one write, in the ENQ's pass), and the answer deadline (LinkWindow), 250 ms
+// by default. Two variant switches change what is sent: the EOT before a
+// write's payload, and the 01 on a burst-sent telegram.
+//
 // The request stays busy during its result callback, so a submit from inside
 // it is refused.
 
@@ -62,9 +68,14 @@ inline constexpr uint32_t GWG_WATCHDOG_MS = 3000;
 inline constexpr uint32_t GWG_ANSWER_TIMEOUT_MS = 250;
 inline constexpr uint32_t GWG_BURST_WINDOW_MS = 80;
 inline constexpr uint8_t GWG_BURST_FAILURES = 2;
-// Longer than the longest answer deadline a test may set, so a device that
-// needs that long shows as late, not silent.
+// The answer deadline's bounds. The upper one keeps a retried burst read, two
+// deadlines and an ENQ wait, inside the hub's watchdog.
+inline constexpr uint32_t GWG_ANSWER_TIMEOUT_MIN_MS = 50;
+inline constexpr uint32_t GWG_ANSWER_TIMEOUT_MAX_MS = 2000;
+// Longer than the longest answer deadline, so a device that needs that long
+// shows as late, not silent.
 inline constexpr uint32_t GWG_LATE_WATCH_MS = 2500;
+static_assert(GWG_LATE_WATCH_MS > GWG_ANSWER_TIMEOUT_MAX_MS, "the late watch must outlast the longest deadline");
 // The variant switches' defaults: the EOT after a write's payload, no 01 on a
 // burst-sent telegram.
 inline constexpr bool GWG_DEFAULT_WRITE_EOT_BEFORE_PAYLOAD = false;
@@ -116,20 +127,52 @@ template<class Port> class GwgExchange {
     busy_ = false;
   }
   bool busy() const { return busy_; }
-  // While a write waits out the ENQ-to-send delay or the gap after the 01.
+  // While a write waits on ENQ_TO_SEND or ACK_TO_TELEGRAM.
   bool wants_fast_loop() const { return state_ == State::HOLD || state_ == State::ACK_GAP; }
 
-  bool set_timing(TimingPoint, uint32_t &) { return false; }
-  uint32_t timing(TimingPoint) const { return 0; }
+  // ENQ_TO_SEND or ACK_TO_TELEGRAM, `ms` clamped to its bound, from the next
+  // telegram; false for another point.
+  bool set_timing(TimingPoint point, uint32_t &ms) {
+    if (point != TimingPoint::ENQ_TO_SEND && point != TimingPoint::ACK_TO_TELEGRAM)
+      return false;
+    if (ms > timing_max(point))
+      ms = timing_max(point);
+    (point == TimingPoint::ENQ_TO_SEND ? enq_to_send_set_ms_ : ack_to_telegram_set_ms_) = ms;
+    return true;
+  }
+  uint32_t timing(TimingPoint point) const {
+    switch (point) {
+      case TimingPoint::ENQ_TO_SEND:
+        return enq_to_send_set_ms_;
+      case TimingPoint::ACK_TO_TELEGRAM:
+        return ack_to_telegram_set_ms_;
+      default:
+        return 0;
+    }
+  }
   uint32_t timing_default(TimingPoint) const { return 0; }
 
-  // Variant switches and pacing, each from the next telegram. Not clamped
-  // here.
+  // The answer deadline, `ms` clamped to its bounds, from the next telegram.
+  bool set_window(LinkWindow window, uint32_t &ms) {
+    if (window != LinkWindow::ANSWER_DEADLINE)
+      return false;
+    if (ms < GWG_ANSWER_TIMEOUT_MIN_MS)
+      ms = GWG_ANSWER_TIMEOUT_MIN_MS;
+    if (ms > GWG_ANSWER_TIMEOUT_MAX_MS)
+      ms = GWG_ANSWER_TIMEOUT_MAX_MS;
+    answer_timeout_ms_ = ms;
+    return true;
+  }
+  uint32_t window(LinkWindow window) const { return window == LinkWindow::ANSWER_DEADLINE ? answer_timeout_ms_ : 0; }
+  uint32_t window_default(LinkWindow window) const {
+    return window == LinkWindow::ANSWER_DEADLINE ? GWG_ANSWER_TIMEOUT_MS : 0;
+  }
+
+  // The variant switches, from the next telegram.
   void set_write_eot_before_payload(bool eot_first) { eot_first_ = eot_first; }
+  bool write_eot_before_payload() const { return eot_first_; }
   void set_burst_omits_enq_ack(bool omit) { burst_omits_ack_ = omit; }
-  void set_response_timeout_ms(uint32_t ms) { answer_timeout_ms_ = ms; }
-  void set_enq_send_delay_ms(uint32_t ms) { enq_send_delay_ms_ = ms; }
-  void set_enq_ack_gap_ms(uint32_t ms) { ack_gap_set_ms_ = ms; }
+  bool burst_omits_enq_ack() const { return burst_omits_ack_; }
 
   // A GWG telegram by its TYPE byte, or an open frame; false while busy or
   // when the request cannot be one. An access mode's read or write keeps its
@@ -317,7 +360,7 @@ template<class Port> class GwgExchange {
         enq_paced_ = true;
         stamp_enq_to_send_ = true;
         ack_gap_ms_ = 0;
-        if (enq_send_delay_ms_ > 0) {
+        if (enq_to_send_set_ms_ > 0) {
           state_ = State::HOLD;
           this->hold_();
           return;
@@ -349,7 +392,7 @@ template<class Port> class GwgExchange {
   void hold_() {
     while (port_->available())
       port_->read();
-    if (optolink_millis() - enq_seen_ms_ < enq_send_delay_ms_)
+    if (optolink_millis() - enq_seen_ms_ < enq_to_send_set_ms_)
       return;
     state_ = State::SEND;
     this->send_();
@@ -359,7 +402,7 @@ template<class Port> class GwgExchange {
     while (port_->available())
       port_->read();
     const uint32_t elapsed = optolink_millis() - ack_sent_ms_;
-    if (elapsed < ack_gap_set_ms_)
+    if (elapsed < ack_to_telegram_set_ms_)
       return;
     ack_gap_ms_ = elapsed;
     state_ = State::SEND;
@@ -369,7 +412,7 @@ template<class Port> class GwgExchange {
   void send_() {
     // With a gap set, a telegram on an ENQ goes out as its 01 alone first.
     const bool ack_alone =
-        ack_gap_set_ms_ > 0 && enq_paced_ && count_ == 0 && wire_.length > 1 && wire_.bytes[0] == ENQ_ACK;
+        ack_to_telegram_set_ms_ > 0 && enq_paced_ && count_ == 0 && wire_.length > 1 && wire_.bytes[0] == ENQ_ACK;
     // Before the write, which may log.
     const uint32_t write_ms = optolink_millis();
     count_ = static_cast<uint8_t>(count_ + port_->write(&wire_.bytes[count_], ack_alone ? 1 : wire_.length - count_));
@@ -602,8 +645,8 @@ template<class Port> class GwgExchange {
   bool eot_first_{GWG_DEFAULT_WRITE_EOT_BEFORE_PAYLOAD};
   bool burst_omits_ack_{GWG_DEFAULT_BURST_OMITS_ENQ_ACK};
   uint32_t answer_timeout_ms_{GWG_ANSWER_TIMEOUT_MS};
-  uint32_t enq_send_delay_ms_{0};
-  uint32_t ack_gap_set_ms_{0};
+  uint32_t enq_to_send_set_ms_{0};
+  uint32_t ack_to_telegram_set_ms_{0};
 
   Telegram wire_{};
   uint8_t answer_[ANSWER_MAX]{};

@@ -7,6 +7,8 @@
 // same callbacks, so a harness's checks and diff_hooks.h events stay one set.
 
 #include <cstdint>
+#include <functional>
+#include <utility>
 
 #include "optolink_gwg.h"
 
@@ -15,6 +17,100 @@ namespace gwg_calls {
 namespace live = esphome::vitohome::optolink;
 
 template<class P> using Exchange = live::GwgExchange<P>;
+
+// The GWG exchange behind GWGEngine's calls, for the proofs written against
+// that engine: each assertion stays as it was. The last...() getters read
+// the last Result; the settings map onto the timing points, the answer
+// deadline and the variant switches.
+template<class Port> class Engine {
+ public:
+  using LateAnswer = live::GwgLateAnswer;
+  using OnResponse = std::function<void(const uint8_t *, uint8_t, uint16_t)>;
+  using OnError = std::function<void(live::OptolinkResult, uint16_t)>;
+  using OnTiming = std::function<void(uint32_t, uint32_t, uint16_t)>;
+
+  explicit Engine(Port *port) : x_(port) {
+    x_.on_result([this](const live::Result &r) { this->deliver_(r); });
+  }
+
+  void onResponse(OnResponse callback) { on_response_ = std::move(callback); }
+  void onError(OnError callback) { on_error_ = std::move(callback); }
+  void onTiming(OnTiming callback) { on_timing_ = std::move(callback); }
+  void onBurstFallback(std::function<void(uint8_t)> callback) { x_.on_burst_fallback(std::move(callback)); }
+  void onLateAnswer(std::function<void(const LateAnswer &)> callback) { x_.on_late_answer(std::move(callback)); }
+
+  bool begin() { return x_.begin(); }
+  void loop() { x_.loop(); }
+  void end() { x_.end(); }
+  bool isBusy() const { return x_.busy(); }
+  bool isHoldingEnq() const { return x_.wants_fast_loop(); }
+
+  bool read(uint16_t address, uint8_t length, live::GWGAccessMode mode = live::GWGAccessMode::PHYSICAL) {
+    return this->submit_(live::make_request(live::Lane::GWG, live::gwgReadTypeByte(mode), address, length, nullptr));
+  }
+  // As GWGEngine::write(): no write TYPE byte, or an EEPROM write of other
+  // than one cell, is refused.
+  bool write(uint16_t address, const uint8_t *data, uint8_t length,
+             live::GWGAccessMode mode = live::GWGAccessMode::PHYSICAL) {
+    if (data == nullptr || !live::gwgModeIsWritable(mode) || (mode == live::GWGAccessMode::EEPROM && length != 1))
+      return false;
+    return this->submit_(live::make_request(live::Lane::GWG, live::gwgWriteTypeByte(mode), address, length, data));
+  }
+  bool telegram(uint8_t type, uint16_t address, uint8_t length, const uint8_t *data = nullptr) {
+    return this->submit_(live::make_request(live::Lane::GWG, type, address, length, data));
+  }
+  bool frame(const uint8_t *bytes, uint8_t length, uint8_t answer_length) {
+    return this->submit_(live::make_frame(bytes, length, answer_length));
+  }
+
+  bool lastSendWasEnqPaced() const { return last_.timing.enq_paced; }
+  uint32_t lastEnqToSendMs() const { return last_.timing.enq_to_send_ms; }
+  uint32_t lastEnqAgeMs() const { return last_.timing.enq_age_ms; }
+  uint32_t lastAckGapMs() const { return last_.timing.ack_gap_ms; }
+  bool lastTimeoutWasUnsynced() const { return last_.never_sent; }
+  bool lastReadHadUnservedEeprom() const { return last_.unserved_eeprom; }
+
+  void setWriteEotBeforePayload(bool eot_first) { x_.set_write_eot_before_payload(eot_first); }
+  bool writeEotBeforePayload() const { return x_.write_eot_before_payload(); }
+  void setBurstOmitsEnqAck(bool omit) { x_.set_burst_omits_enq_ack(omit); }
+  bool burstOmitsEnqAck() const { return x_.burst_omits_enq_ack(); }
+  void setResponseTimeoutMs(uint32_t ms) { x_.set_window(live::LinkWindow::ANSWER_DEADLINE, ms); }
+  uint32_t responseTimeoutMs() const { return x_.window(live::LinkWindow::ANSWER_DEADLINE); }
+  void setEnqSendDelayMs(uint32_t ms) { x_.set_timing(live::TimingPoint::ENQ_TO_SEND, ms); }
+  uint32_t enqSendDelayMs() const { return x_.timing(live::TimingPoint::ENQ_TO_SEND); }
+  void setEnqAckGapMs(uint32_t ms) { x_.set_timing(live::TimingPoint::ACK_TO_TELEGRAM, ms); }
+  uint32_t enqAckGapMs() const { return x_.timing(live::TimingPoint::ACK_TO_TELEGRAM); }
+
+  Exchange<Port> &exchange() { return x_; }
+
+ private:
+  // A new request clears the two flags, as GWGEngine's did.
+  bool submit_(const live::Request &request) {
+    if (!x_.submit(request))
+      return false;
+    last_.never_sent = false;
+    last_.unserved_eeprom = false;
+    return true;
+  }
+  void deliver_(const live::Result &r) {
+    last_ = r;
+    if (r.status != live::OptolinkResult::OK) {
+      if (on_error_)
+        on_error_(r.status, r.address);
+      return;
+    }
+    if (r.timing.answer_timed && on_timing_)
+      on_timing_(r.timing.enq_age_ms, r.timing.send_to_answer_ms, r.address);
+    if (on_response_)
+      on_response_(r.data, r.length, r.address);
+  }
+
+  Exchange<Port> x_;
+  live::Result last_{};
+  OnResponse on_response_;
+  OnError on_error_;
+  OnTiming on_timing_;
+};
 
 // How the last result's telegram went out: the live side's answer to the
 // reference engine's lastSendWasEnqPaced() and lastEnqToSendMs().
@@ -73,8 +169,8 @@ template<class P>
 void configure(Exchange<P> &e, bool burst_omits_ack, bool eot_first, uint32_t delay_ms, uint32_t deadline_ms) {
   e.set_burst_omits_enq_ack(burst_omits_ack);
   e.set_write_eot_before_payload(eot_first);
-  e.set_enq_send_delay_ms(delay_ms);
-  e.set_response_timeout_ms(deadline_ms);
+  e.set_timing(live::TimingPoint::ENQ_TO_SEND, delay_ms);
+  e.set_window(live::LinkWindow::ANSWER_DEADLINE, deadline_ms);
 }
 
 template<class E> bool busy(const E &e) { return e.isBusy(); }

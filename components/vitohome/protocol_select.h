@@ -1,7 +1,7 @@
 #pragma once
 
 #include "optolink/optolink.h"
-#include "optolink_adapter.h"
+#include "optolink_gwg.h"
 #include "optolink_kw.h"
 #include "optolink_p300.h"
 
@@ -13,8 +13,7 @@ namespace esphome::vitohome {
 // interpreted.
 //
 // SelectedEngine<Port> is the selected protocol's exchange: submit() a
-// Request, one Result per request (optolink_exchange.h). KW and P300 run on
-// their own stacks, GWG on its old engine behind optolink_adapter.h.
+// Request, one Result per request (optolink_exchange.h).
 #if defined(VITOHOME_PROTOCOL_KW)
 using SelectedProtocol = optolink::KW;
 template<class Port> using SelectedEngine = optolink::KwExchange<Port>;
@@ -24,7 +23,7 @@ inline constexpr const char *PROTOCOL_NAME = "KW (VS1)";
 #define VITOHOME_HAS_GFA
 #elif defined(VITOHOME_PROTOCOL_GWG)
 using SelectedProtocol = optolink::GWG;
-template<class Port> using SelectedEngine = optolink::GwgAdapter<Port>;
+template<class Port> using SelectedEngine = optolink::GwgExchange<Port>;
 inline constexpr const char *PROTOCOL_NAME = "GWG";
 #else
 using SelectedProtocol = optolink::P300;

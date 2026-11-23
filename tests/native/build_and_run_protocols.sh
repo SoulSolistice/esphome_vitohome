@@ -1,18 +1,12 @@
 #!/usr/bin/env bash
-# Host build + run of the per-protocol engine proofs against all three vendored
-# engines (P300 / KW / GWG). Proves OptolinkEngine<SelectedProtocol> compiles
-# and links for every build-time-selected protocol flag with the uniform
-# byte-mover callback shape (the hub drives the engine directly; there is no
-# adapter layer), and asserts the GWG sync-poke switch
-# (GWGEngine::SEND_ENQ_POKE) is OFF by default (no EOT emitted). Does not
-# exercise real wire behaviour.
+# Host build + run of the per-protocol engine proofs (P300 / KW / GWG): the
+# hub's SelectedEngine compiles and links for every protocol flag, and each
+# stack's proofs, harness replays and the differential target against the
+# reference copy run.
 #
 # Deliberately compiled WITHOUT the datapoint/converter translation units:
 # the engine layer has no Datapoint/Converter dependency, and this script is
 # the proof.
-#
-# The poke-ON path (EOT 0x04 emitted) is verified separately by flipping the
-# switch; this script guards the default-off invariant so it can't regress.
 #
 # EVERY g++ line here carries -Wall -Wextra -Werror AND $SAN; see the notes in
 # build_and_run.sh for why both are hard requirements and not preferences.
@@ -38,16 +32,20 @@ SAN="${SAN-"-fsanitize=address,undefined -fno-sanitize-recover=all"}"
 read -r -a SAN_FLAGS <<<"$SAN"
 SRCS=(
   "$OPTO/constants.cpp"
-  "$OPTO/protocol/gwg/gwg.cpp"
 )
 # The reference engines (reference/, README.md there): the differential
-# target, and the P300 hub requests against the reference VS2Engine.
+# target, and the P300 and GWG hub requests against the reference engines.
 REF="reference/optolink"
 REF_P300=(
   "$REF/constants.cpp"
   "$REF/protocol/vs2/vs2.cpp"
   "$REF/protocol/vs2/parser_vs2.cpp"
   "$REF/protocol/vs2/packet_vs2.cpp"
+)
+REF_GWG=(
+  "$REF/constants.cpp"
+  "$REF/protocol/gwg/gwg.cpp"
+  "$REF/protocol/gwg/packet_gwg.cpp"
 )
 
 echo "== protocol engine: compile + link for each protocol =="
@@ -76,6 +74,7 @@ for sel in "P300:" "KW:-DVITOHOME_PROTOCOL_KW" "GWG:-DVITOHOME_PROTOCOL_GWG"; do
   flag="${sel#*:}"
   old=()
   [ -z "$flag" ] && old=("${REF_P300[@]}")
+  [ "$flag" = "-DVITOHOME_PROTOCOL_GWG" ] && old=("${REF_GWG[@]}")
   g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread ${flag:+"$flag"} -I"$ROOT" -I"$OPTO" \
     proof_hub_requests.cpp "${SRCS[@]}" "${old[@]}" -o hub_requests
   ./hub_requests
@@ -250,14 +249,14 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OP
   proof_gwg_exchange.cpp -o gwg_exchange
 ./gwg_exchange
 
-echo "== GWG sync poke: must be OFF by default =="
+echo "== GWG: no EOT while waiting for the ENQ =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
   proof_gwg_poke.cpp "${SRCS[@]}" -o gwg_poke
 out="$(./gwg_poke)"
 echo "  $out"
 case "$out" in
   *eot_poke_emitted=0*) ;;
-  *) echo "FAIL: GWG sync poke must default to OFF (no EOT)"; exit 1 ;;
+  *) echo "FAIL: GWG sent an EOT while waiting for the ENQ"; exit 1 ;;
 esac
 
 echo "protocol proofs OK"

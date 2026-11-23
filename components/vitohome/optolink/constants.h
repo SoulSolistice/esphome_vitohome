@@ -18,22 +18,6 @@ Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
 
 namespace esphome::vitohome::optolink {
 
-// Bounds of a GWG response deadline set at run time
-// (VitoHomeComponent::set_gwg_response_timeout_ms()). The upper one keeps a
-// retried burst read inside the hub's request watchdog.
-inline constexpr uint32_t GWG_RESPONSE_TIMEOUT_MIN_MS = 50;
-inline constexpr uint32_t GWG_RESPONSE_TIMEOUT_MAX_MS = 2000;
-
-// Upper bound of a GWG ENQ-to-send delay set at run time
-// (VitoHomeComponent::set_gwg_enq_send_delay_ms()), well under the shortest
-// idle-ENQ gap seen (749 ms).
-inline constexpr uint32_t GWG_ENQ_SEND_DELAY_MAX_MS = 100;
-
-// Upper bound of a GWG gap after the 0x01 set at run time
-// (VitoHomeComponent::set_gwg_enq_ack_gap_ms()); with the delay above it stays
-// under the shortest idle-ENQ gap.
-inline constexpr uint32_t GWG_ENQ_ACK_GAP_MAX_MS = 100;
-
 const char *errorToString(OptolinkResult error);
 
 }  // namespace esphome::vitohome::optolink

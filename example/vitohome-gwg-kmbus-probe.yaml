@@ -55,7 +55,7 @@ esphome:
   on_boot:
     priority: -100
     then:
-      - lambda: id(vito).set_gwg_response_timeout_ms(600);
+      - lambda: id(vito).set_link_window(vitohome::LinkWindow::ANSWER_DEADLINE, 600);
 
 esp32:
   variant: esp32c3

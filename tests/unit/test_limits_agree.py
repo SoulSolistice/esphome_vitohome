@@ -24,6 +24,7 @@ for _p in (_SCRIPTS, _REPO_ROOT):
 from vitocatalog import constants as generator  # noqa: E402
 
 from components.vitohome import (  # noqa: E402
+    ACK_TO_TELEGRAM_MAX_MS,
     ANSWER_TO_NEXT_MAX_MS,
     ENQ_TO_SEND_MAX_MS,
     ENQ_TO_SYNC_MAX_MS,
@@ -57,6 +58,7 @@ def _cpp_constant(header: str, name: str) -> int:
         (ANSWER_TO_NEXT_MAX_MS, "optolink_types.h", "ANSWER_TO_NEXT_MAX_MS"),
         (ENQ_TO_SYNC_MAX_MS, "optolink_types.h", "ENQ_TO_SYNC_MAX_MS"),
         (FRAME_TO_ACK_MAX_MS, "optolink_types.h", "FRAME_TO_ACK_MAX_MS"),
+        (ACK_TO_TELEGRAM_MAX_MS, "optolink_types.h", "ACK_TO_TELEGRAM_MAX_MS"),
     ],
 )
 def test_component_limit_matches_the_hub(python_value, header, cpp_name):

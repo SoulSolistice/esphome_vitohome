@@ -29,6 +29,7 @@
 
 #include "fake_optolink.h"
 #include "kw_calls.h"
+#include "gwg_calls.h"
 #include "optolink/optolink.h"
 #include "optolink_kw.h"
 
@@ -302,7 +303,7 @@ void kw_cases() {
 void gwg_one(uint8_t type, uint8_t address, uint8_t length, const uint8_t *data, const Bytes &frame,
              const Bytes &answer, const Bytes &delivered, const char *what_frame, const char *what_answer) {
   FakeOptolink io;
-  optolink::GWGEngine e(&io);
+  gwg_calls::Engine<FakeOptolink> e(&io);
   hook(e);
   e.begin();
   const int responses = g_responses;
@@ -324,12 +325,12 @@ void gwg_cases() {
           "H: 01 31 05 01 04", "H: 7F delivered");
   const uint8_t data[] = {0x42};
   gwg_one(0x99, 0x10, 1, data,
-          optolink::GWGEngine::DEFAULT_WRITE_EOT_BEFORE_PAYLOAD ? Bytes({0x01, 0x99, 0x10, 0x01, 0x04, 0x42})
-                                                                : Bytes({0x01, 0x99, 0x10, 0x01, 0x42, 0x04}),
+          optolink::GWG_DEFAULT_WRITE_EOT_BEFORE_PAYLOAD ? Bytes({0x01, 0x99, 0x10, 0x01, 0x04, 0x42})
+                                                         : Bytes({0x01, 0x99, 0x10, 0x01, 0x42, 0x04}),
           Bytes({0x00}), Bytes({0x00}), "H: with payload, the write layout", "H: completes on the one ack byte");
   {
     FakeOptolink io;
-    optolink::GWGEngine e(&io);
+    gwg_calls::Engine<FakeOptolink> e(&io);
     check(!e.telegram(0x31, 0x100, 1), "H: address above FF refused");
   }
 
@@ -369,7 +370,7 @@ void frame_limit_cases() {
   check(kw_calls::read(vs2, 0x2000, max), "P300: a read of MAX_PAYLOAD accepted");
   optolink::KwExchange<FakeOptolink, kw_calls::kNoPause> kw(&io);
   check(!kw_calls::read(kw, 0x2000, max + 1) && kw_calls::read(kw, 0x2000, max), "KW: the same limit");
-  optolink::GWGEngine gwg_engine(&io);
+  gwg_calls::Engine<FakeOptolink> gwg_engine(&io);
   check(!gwg_engine.read(0x10, max + 1) && gwg_engine.read(0x10, max), "GWG: the same limit");
 }
 

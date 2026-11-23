@@ -65,6 +65,10 @@ template<class Codec, class Link> class Exchange {
         return 0;
     }
   }
+  // No settable window yet.
+  bool set_window(LinkWindow, uint32_t &) { return false; }
+  uint32_t window(LinkWindow) const { return 0; }
+  uint32_t window_default(LinkWindow) const { return 0; }
 
   bool submit(const Request &request) {
     if (link_.pending())

@@ -185,7 +185,7 @@ inline RawClass raw_op_class(RawLayer layer, uint8_t code, std::size_t payload_l
       break;
     case RawLayer::GWG:
       // Two bytes on an EEPROM write are the cell's pair as given
-      // (GWGEngine::telegram()), unchecked.
+      // (optolink_gwg.h), unchecked.
       if (code == optolink::gwgWriteTypeByte(optolink::GWGAccessMode::EEPROM) && payload_len == 2)
         return RawClass::UNSAFE;
       // The access-mode table (constants.h): what queue_raw_read() /

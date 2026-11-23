@@ -100,8 +100,10 @@ template<class Port, uint8_t SilenceRetries = P300_KW_SILENCE_RETRIES> class P30
   // Whether a write waits on a timing point; in IDLE only with a request.
   bool wants_fast_loop() const { return waiting_ && (state_ != State::IDLE || busy_); }
 
-  // A timing point, `ms` clamped to its bound.
+  // A timing point, `ms` clamped to its bound; false for GWG's ACK_TO_TELEGRAM.
   bool set_timing(TimingPoint point, uint32_t &ms) {
+    if (point == TimingPoint::ACK_TO_TELEGRAM)
+      return false;
     if (ms > timing_max(point))
       ms = timing_max(point);
     timing_[static_cast<uint8_t>(point)] = ms;
@@ -109,6 +111,10 @@ template<class Port, uint8_t SilenceRetries = P300_KW_SILENCE_RETRIES> class P30
   }
   uint32_t timing(TimingPoint point) const { return timing_[static_cast<uint8_t>(point)]; }
   uint32_t timing_default(TimingPoint) const { return 0; }
+  // No settable window yet.
+  bool set_window(LinkWindow, uint32_t &) { return false; }
+  uint32_t window(LinkWindow) const { return 0; }
+  uint32_t window_default(LinkWindow) const { return 0; }
 
   // A P300 telegram by function code, a KW telegram over the detour, or an
   // open frame; false while busy or when the request cannot be one.

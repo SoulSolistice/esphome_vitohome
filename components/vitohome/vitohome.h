@@ -44,6 +44,7 @@ class RealTimeClock;
 namespace vitohome {
 
 using TimingPoint = optolink::TimingPoint;
+using LinkWindow = optolink::LinkWindow;
 
 class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice {
  public:
@@ -173,58 +174,43 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   }
 #endif
 
-  // GWG diagnostics for A/B tests from a lambda. Not YAML keys: a production
-  // config has no reason to pick a wire format. Each applies from the next
-  // telegram. Accepted on every build, so lambdas need no #ifdef; only the GWG
-  // engine uses them. Background: design_notes.md, "Writes" and "Bursting".
+  // GWG variant switches, for A/B tests from a lambda: they change what is
+  // sent. Not YAML keys: a production config has no reason to pick a wire
+  // format. Each applies from the next telegram. Accepted on every build, so
+  // lambdas need no #ifdef; only GWG uses them. Background: design_notes.md,
+  // "Writes" and "Bursting".
   //
-  // Write frame layout: EOT after the payload (default) or before it.
+  // Write frame layout: EOT after the payload (default) or before it. Goes
+  // once a BE write is confirmed.
   void set_gwg_write_eot_before_payload(bool eot_first);
   bool gwg_write_eot_before_payload() const { return this->gwg_write_eot_before_payload_; }
   // Whether a burst-sent request omits the leading 0x01 (default: omits).
   void set_gwg_burst_omits_enq_ack(bool omit);
   bool gwg_burst_omits_enq_ack() const { return this->gwg_burst_omits_enq_ack_; }
-  // Answer deadline, clamped to optolink::GWG_RESPONSE_TIMEOUT_{MIN,MAX}_MS
-  // (50..2000) and logged; default 250 ms. For one-byte reads keep it under the
-  // device's idle-ENQ gap (about 700 ms), or an idle ENQ reads as the value.
-  //
-  //   id(vito).set_gwg_response_timeout_ms(700);
-  void set_gwg_response_timeout_ms(uint32_t ms);
-  uint32_t gwg_response_timeout_ms() const { return this->gwg_response_timeout_ms_; }
-
-  // Ms to wait after the device's ENQ before sending the request that answers
-  // it, clamped to 0..optolink::GWG_ENQ_SEND_DELAY_MAX_MS (100) and logged;
-  // default 0, send on the ENQ. Burst-sent requests do not wait. The DEBUG
-  // `GWG timing:` and `GWG ... unanswered` lines state the measured gap.
-  //
-  //   id(vito).set_gwg_enq_send_delay_ms(30);
-  void set_gwg_enq_send_delay_ms(uint32_t ms);
-  uint32_t gwg_enq_send_delay_ms() const { return this->gwg_enq_send_delay_ms_; }
-
-  // Ms between the 0x01 that answers the device's ENQ and the rest of the
-  // request, clamped to 0..optolink::GWG_ENQ_ACK_GAP_MAX_MS (100) and logged;
-  // default 0, one write. Counts after the ENQ-to-send delay; burst-sent
-  // requests carry no 0x01 and do not wait. Open frames that start with 0x01
-  // get it too. The DEBUG `GWG timing:` and `GWG ... unanswered` lines state
-  // the measured gap.
-  //
-  //   id(vito).set_gwg_enq_ack_gap_ms(30);
-  void set_gwg_enq_ack_gap_ms(uint32_t ms);
-  uint32_t gwg_enq_ack_gap_ms() const { return this->gwg_enq_ack_gap_ms_; }
 
   // A timing point of the link: how long it holds a write back after its
   // moment (TimingPoint, optolink_types.h). KW has ENQ_TO_SEND (20 ms) and
   // ANSWER_TO_NEXT (25 ms); P300 those two and ENQ_TO_SYNC and FRAME_TO_ACK,
-  // all 0, the pacing without them. A value past the bound is clamped, and
-  // any value other than the default is logged as a warning. False for a
-  // point the link lacks (GWG has none). Settable live:
+  // all 0, the pacing without them; GWG ENQ_TO_SEND and ACK_TO_TELEGRAM, 0.
+  // A value past the bound is clamped, and any value other than the default
+  // is logged as a warning. False for a point the link lacks. Settable live:
   //
   //   id(vito).set_link_timing(vitohome::TimingPoint::ENQ_TO_SEND, 30);
   bool set_link_timing(TimingPoint point, uint32_t ms);
   uint32_t link_timing(TimingPoint point) const { return this->vito_.timing(point); }
 
-  // True once the GWG engine has stopped bursting
-  // (GWGEngine::BURST_FAILURES_BEFORE_FALLBACK), until reboot. A burst A/B test
+  // A window of the link (LinkWindow, optolink_types.h), clamped to its
+  // bounds and logged as a warning when not the default; false for a window
+  // the link lacks. GWG has ANSWER_DEADLINE, 250 ms, 50 to 2000 ms: for
+  // one-byte reads keep it under the device's idle-ENQ gap (about 700 ms), or
+  // an idle ENQ reads as the value. Settable live:
+  //
+  //   id(vito).set_link_window(vitohome::LinkWindow::ANSWER_DEADLINE, 700);
+  bool set_link_window(LinkWindow window, uint32_t ms);
+  uint32_t link_window(LinkWindow window) const { return this->vito_.window(window); }
+
+  // True once the GWG link has stopped bursting (GWG_BURST_FAILURES), until
+  // reboot. A burst A/B test
   // checks it first: after the fallback every request waits for a fresh ENQ
   // and proves nothing about the burst frame. Always false off GWG.
   bool gwg_burst_disabled() const { return this->gwg_burst_disabled_; }
@@ -417,6 +403,7 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   void raw_publish_(const char *line);
   // A timing point that differs from its default, as a warning.
   void warn_link_timing_(TimingPoint point) const;
+  void warn_link_window_(LinkWindow window) const;
 
   // Every raw operation is queued here. bytes/bytes_len is the write payload or
   // the procedure parameter, nullptr/0 for a read, copied into the RawOp. False
@@ -540,8 +527,8 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   uint32_t in_flight_started_ms_{0};
   // The watchdog budget of the operation in flight (in_flight_watchdog_ms()).
   uint32_t in_flight_watchdog_ms_{IN_FLIGHT_WATCHDOG_MS};
-  // Pushes the gwg_* diagnostics to the engine (GWG builds; no-op before setup).
-  void apply_gwg_diagnostics_();
+  // Pushes the GWG variant switches to the engine (GWG builds).
+  void apply_gwg_switches_();
   // Start the watchdog for an operation of `telegrams` telegrams.
   void arm_watchdog_(uint8_t telegrams = 1);
   // The engine took a telegram: record whose it is, start the watchdog.
@@ -617,16 +604,13 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // absent (error frame on P300, FF FF on KW). Uninterpreted on the device.
   int ident_f0_{-1};
   bool gwg_burst_disabled_{false};  // see gwg_burst_disabled()
-  // Keeps the main loop from idling while the engine holds a write back
-  // (wants_fast_loop(): GWG's ENQ-to-send delay, the gap after the 0x01),
-  // which would otherwise overrun by up to one loop interval.
+  // Keeps the main loop from idling while the engine holds a write back on a
+  // timing point (wants_fast_loop()), which would otherwise overrun by up to
+  // one loop interval.
   HighFrequencyLoopRequester fast_loop_;
-  // GWG diagnostics as last set; pushed to the engine at setup and on change.
-  bool gwg_write_eot_before_payload_{optolink::GWGEngine::DEFAULT_WRITE_EOT_BEFORE_PAYLOAD};
-  bool gwg_burst_omits_enq_ack_{optolink::GWGEngine::DEFAULT_BURST_OMITS_ENQ_ACK};
-  uint32_t gwg_response_timeout_ms_{optolink::GWGEngine::RESPONSE_TIMEOUT_MS};
-  uint32_t gwg_enq_send_delay_ms_{0};
-  uint32_t gwg_enq_ack_gap_ms_{0};
+  // The GWG variant switches as last set.
+  bool gwg_write_eot_before_payload_{optolink::GWG_DEFAULT_WRITE_EOT_BEFORE_PAYLOAD};
+  bool gwg_burst_omits_enq_ack_{optolink::GWG_DEFAULT_BURST_OMITS_ENQ_ACK};
 
   // --- raw scan console lane -------------------------------------------------
   //

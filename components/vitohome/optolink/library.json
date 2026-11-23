@@ -10,8 +10,7 @@
         "srcDir": ".",
         "srcFilter": [
             "+<*.cpp>",
-            "+<datapoint/*.cpp>",
-            "+<protocol/gwg/*.cpp>"
+            "+<datapoint/*.cpp>"
         ]
     }
 }

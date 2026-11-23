@@ -56,7 +56,8 @@ struct Telegram {
 };
 
 // The moments a link holds a write back (design-optolink-layers.md, section
-// 13), each settable up to its bound. KW has the first two, P300 all four.
+// 13), each settable up to its bound. KW has the first two, P300 the first
+// four, GWG ENQ_TO_SEND and ACK_TO_TELEGRAM.
 enum class TimingPoint : uint8_t {
   // The device's ENQ read -> the 01 and the telegram; P300: on the KW
   // detour.
@@ -68,8 +69,10 @@ enum class TimingPoint : uint8_t {
   ENQ_TO_SYNC,
   // P300: the device's answer frame complete -> our ACK.
   FRAME_TO_ACK,
+  // GWG: the 01 that answers the device's ENQ -> the rest of the telegram.
+  ACK_TO_TELEGRAM,
 };
-inline constexpr uint8_t TIMING_POINTS = 4;
+inline constexpr uint8_t TIMING_POINTS = 5;
 
 // The bounds: well inside what a VScotHO1_72 takes (200 ms after its KW
 // ENQ, 0.91 s after a KW answer) and inside the KW link's 500 ms chain
@@ -78,6 +81,7 @@ inline constexpr uint32_t ENQ_TO_SEND_MAX_MS = 100;
 inline constexpr uint32_t ANSWER_TO_NEXT_MAX_MS = 400;
 inline constexpr uint32_t ENQ_TO_SYNC_MAX_MS = 100;
 inline constexpr uint32_t FRAME_TO_ACK_MAX_MS = 400;
+inline constexpr uint32_t ACK_TO_TELEGRAM_MAX_MS = 100;
 
 constexpr uint32_t timing_max(TimingPoint point) {
   switch (point) {
@@ -87,6 +91,8 @@ constexpr uint32_t timing_max(TimingPoint point) {
       return ANSWER_TO_NEXT_MAX_MS;
     case TimingPoint::ENQ_TO_SYNC:
       return ENQ_TO_SYNC_MAX_MS;
+    case TimingPoint::ACK_TO_TELEGRAM:
+      return ACK_TO_TELEGRAM_MAX_MS;
     case TimingPoint::FRAME_TO_ACK:
     default:
       return FRAME_TO_ACK_MAX_MS;
@@ -101,9 +107,28 @@ constexpr const char *timing_name(TimingPoint point) {
       return "ANSWER_TO_NEXT";
     case TimingPoint::ENQ_TO_SYNC:
       return "ENQ_TO_SYNC";
+    case TimingPoint::ACK_TO_TELEGRAM:
+      return "ACK_TO_TELEGRAM";
     case TimingPoint::FRAME_TO_ACK:
     default:
       return "FRAME_TO_ACK";
+  }
+}
+
+// How long a link waits for something (design-optolink-layers.md, section
+// 13.1), settable within its link's bounds. GWG has the answer deadline.
+enum class LinkWindow : uint8_t {
+  // The silence after the telegram, or after an answer's latest byte, that
+  // ends the wait for its answer.
+  ANSWER_DEADLINE,
+};
+inline constexpr uint8_t LINK_WINDOWS = 1;
+
+constexpr const char *window_name(LinkWindow window) {
+  switch (window) {
+    case LinkWindow::ANSWER_DEADLINE:
+    default:
+      return "ANSWER_DEADLINE";
   }
 }
 
