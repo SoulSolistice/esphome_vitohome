@@ -36,12 +36,10 @@ namespace esphome::vitohome {
 // directions are buffered and flushed on the first of: traffic in the opposite
 // direction, an inter-byte gap longer than FRAME_GAP_MS, or a full buffer.
 //
-// Buffering TX is not optional. An earlier revision assumed "one write() == one
-// telegram, on every protocol". That is true for VS1/KW and GWG, and FALSE for
-// VS2/P300: VS2Engine::_sendStart(), _sendPacket() and _sendCRC() are three
-// separate states of its send machine, each issuing its own write() one loop()
-// apart, so a single request reached the log as three lines --
-// hardware-observed on VScotHO1_72 (2026-07-10, P300):
+// Buffering TX is not optional: one write() is one telegram on KW and GWG, but
+// not on P300, whose exchange writes the 41, the body and the checksum with a
+// write() each (optolink_p300.h), so a single request reached the log as three
+// lines -- hardware-observed on VScotHO1_72 (2026-07-10, P300):
 //     >>> 41                       (PACKETSTART)
 //     >>> 05:00:01:73:62:28        (body)
 //     >>> 03                       (checksum)

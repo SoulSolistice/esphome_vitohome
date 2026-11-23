@@ -1,15 +1,15 @@
 // Proof for the engines' generic telegrams, the raw lane's queue_raw_op()
 // path (raw_op.h). On a frozen clock:
 //
-//   P300 (VS2Engine::request()):
+//   P300 (a Lane::P300 request on the P300 exchange):
 //     A) function code 05 goes out in the read frame, its RESPONSE is
 //        delivered by the frame's own length;
 //     B) an ERROR frame raises DEVICE_ERROR and keeps its payload -- one byte
 //        (05 for a function code the controller lacks) or two (31 01);
-//     C) a request after it clears the kept error code; read() is the same
-//        frame as request(01);
+//     C) the next result carries no error code; a read is the same frame
+//        as request(01); a write's acknowledgement for a read is ERROR;
 //     D) guards: code 0 and codes above 1F are refused;
-//   P300 KW detour (VS2Engine::kwTelegram()):
+//   P300 KW detour (a Lane::KW request on the P300 exchange):
 //     E) any type byte goes out on the ENQ, the answer is <len> raw bytes;
 //     F) a telegram with payload carries it and completes on one ack byte;
 //        it chains without the GFA pause;
@@ -68,6 +68,32 @@ template<class E> void hook(E &e) {
       });
 }
 
+// A P300 DEVICE_ERROR's error code, from its result; empty on any other.
+Bytes g_error_code;
+bool g_code_seen = false;
+
+template<class E> void hook_p300(E &e) {
+  kw_calls::wire(
+      e,
+      [](const uint8_t *d, uint8_t len, uint16_t address) {
+        ++g_responses;
+        g_payload.assign(d, d + len);
+        g_address = address;
+        g_error_code.clear();
+      },
+      [](optolink::OptolinkResult r, uint16_t) {
+        ++g_errors;
+        g_last_error = r;
+        if (!g_code_seen)
+          g_error_code.clear();
+        g_code_seen = false;
+      },
+      [](const uint8_t *code, uint8_t n) {
+        g_error_code.assign(code, code + n);
+        g_code_seen = true;
+      });
+}
+
 // A P300 frame with its checksum: the sum of every byte after 0x41.
 Bytes p300(Bytes body) {
   uint8_t cs = 0;
@@ -85,7 +111,7 @@ Bytes acked(const Bytes &frame) {
   return out;
 }
 
-bool handshake(optolink::VS2Engine &e, FakeOptolink &io) {
+bool handshake(optolink::P300Exchange<FakeOptolink> &e, FakeOptolink &io) {
   pump(e);
   const bool eot = io.written() == Bytes({0x04});
   io.clear_written();
@@ -101,14 +127,14 @@ bool handshake(optolink::VS2Engine &e, FakeOptolink &io) {
 void p300_cases() {
   std::printf("-- P300 --\n");
   FakeOptolink io;
-  optolink::VS2Engine e(&io);
-  hook(e);
+  optolink::P300Exchange<FakeOptolink> e(&io);
+  hook_p300(e);
   e.begin();
   check(handshake(e, io), "P300 link up");
 
   // --- A ------------------------------------------------------------------
   int responses = g_responses;
-  check(e.request(0x05, 0x1000, 2), "A: request(05, 1000, 2) accepted");
+  check(kw_calls::request(e, 0x05, 0x1000, 2), "A: request(05, 1000, 2) accepted");
   pump(e);
   check(io.written() == p300({0x05, 0x00, 0x05, 0x10, 0x00, 0x02}), "A: 41 05 00 05 10 00 02 1C");
   io.clear_written();
@@ -120,66 +146,62 @@ void p300_cases() {
 
   // --- B ------------------------------------------------------------------
   int errors = g_errors;
-  check(e.request(0x09, 0x4050, 1), "B: request(09, 4050, 1) accepted");
+  check(kw_calls::request(e, 0x09, 0x4050, 1), "B: request(09, 4050, 1) accepted");
   pump(e);
   check(io.written() == p300({0x05, 0x00, 0x09, 0x40, 0x50, 0x01}), "B: 41 05 00 09 40 50 01 9F");
   io.clear_written();
   io.feed(acked(p300({0x06, 0x03, 0x09, 0x40, 0x50, 0x01, 0x05})));
   pump(e);
-  uint8_t n = 0;
-  const uint8_t *code = e.errorPayload(n);
   check(g_errors == errors + 1 && g_last_error == optolink::OptolinkResult::DEVICE_ERROR,
         "B: the ERROR frame is DEVICE_ERROR");
-  check(n == 1 && code[0] == 0x05, "B: error payload 05");
+  check(g_error_code == Bytes({0x05}), "B: error code 05");
   io.clear_written();
 
   errors = g_errors;
-  check(e.request(0x05, 0xFF05, 16), "B: request(05, FF05, 16) accepted");
+  check(kw_calls::request(e, 0x05, 0xFF05, 16), "B: request(05, FF05, 16) accepted");
   pump(e);
   io.clear_written();
   // DataLength 16, two payload bytes: the frame decides.
   io.feed(acked(p300({0x07, 0x03, 0x05, 0xFF, 0x05, 0x10, 0x31, 0x01})));
   pump(e);
-  code = e.errorPayload(n);
-  check(g_errors == errors + 1 && n == 2 && code[0] == 0x31 && code[1] == 0x01, "B: error payload 31 01");
+  check(g_errors == errors + 1 && g_error_code == Bytes({0x31, 0x01}), "B: error code 31 01");
   io.clear_written();
 
   // --- C ------------------------------------------------------------------
   responses = g_responses;
-  check(e.read(0x00F8, 1), "C: read() accepted");
-  e.errorPayload(n);
-  check(n == 0, "C: a new request clears the error payload");
+  check(kw_calls::read(e, 0x00F8, 1), "C: read() accepted");
   pump(e);
   check(io.written() == p300({0x05, 0x00, 0x01, 0x00, 0xF8, 0x01}), "C: read() is request(01)'s frame");
   io.clear_written();
   io.feed(acked(p300({0x06, 0x01, 0x01, 0x00, 0xF8, 0x01, 0x20})));
   pump(e);
   check(g_responses == responses + 1 && g_payload == Bytes({0x20}), "C: answered");
+  check(g_error_code.empty(), "C: its result carries no error code");
   io.clear_written();
 
   // An answer with another function code -- a write's acknowledgement for a
-  // read -- is no answer: ERROR, nothing delivered (found by fuzz_raw_engines).
+  // read -- is no answer: ERROR, nothing delivered.
   responses = g_responses;
   errors = g_errors;
-  check(e.read(0x00F8, 1), "C: read() accepted");
+  check(kw_calls::read(e, 0x00F8, 1), "C: read() accepted");
   pump(e);
   io.clear_written();
   io.feed(acked(p300({0x05, 0x01, 0x02, 0x00, 0xF8, 0x01})));
   pump(e);
   check(g_responses == responses && g_errors == errors + 1 && g_last_error == optolink::OptolinkResult::ERROR,
         "C: a write ack for a read is an ERROR");
-  check(!e.isBusy(), "C: and the engine is free");
+  check(!e.busy(), "C: and the exchange is free");
   io.clear_written();
 
   // --- D ------------------------------------------------------------------
-  check(!e.request(0x00, 0x0000, 1), "D: code 0 refused");
-  check(!e.request(0x20, 0x0000, 1), "D: code 20 refused");
-  check(!e.request(0x02, 0x0000, 1), "D: a write code without payload refused");
-  check(!e.isBusy(), "D: nothing in flight");
+  check(!kw_calls::request(e, 0x00, 0x0000, 1), "D: code 0 refused");
+  check(!kw_calls::request(e, 0x20, 0x0000, 1), "D: code 20 refused");
+  check(!kw_calls::request(e, 0x02, 0x0000, 1), "D: a write code without payload refused");
+  check(!e.busy(), "D: nothing in flight");
 
   // --- E ------------------------------------------------------------------
   responses = g_responses;
-  check(e.kwTelegram(0x7B, 0x0800, 2), "E: kwTelegram(7B, 0800, 2) accepted");
+  check(kw_calls::kw_telegram(e, 0x7B, 0x0800, 2), "E: kwTelegram(7B, 0800, 2) accepted");
   pump(e);
   check(io.written() == Bytes({0x04}), "E: EOT leaves P300");
   io.clear_written();
@@ -195,21 +217,22 @@ void p300_cases() {
   // --- F ------------------------------------------------------------------
   responses = g_responses;
   const uint8_t data[] = {0x0A, 0x0B};
-  check(e.kwTelegram(0xF4, 0x2306, 2, data), "F: kwTelegram(F4, 2306, 0A 0B) accepted");
+  check(kw_calls::kw_telegram(e, 0xF4, 0x2306, 2, data), "F: kwTelegram(F4, 2306, 0A 0B) accepted");
   pump(e);
   check(io.written() == Bytes({0xF4, 0x23, 0x06, 0x02, 0x0A, 0x0B}), "F: chained at once, payload carried");
   io.clear_written();
   io.feed({0x00});
   pump(e);
   check(g_responses == responses + 1 && g_payload == Bytes({0x00}), "F: completes on the one ack byte");
-  check(!e.kwTelegram(0xF4, 0x2306, optolink::VS2Engine::KW_MAX_PAYLOAD + 1, data),
-        "F: payload above KW_MAX_PAYLOAD refused");
+  // A request copies its payload, so the buffer holds what it claims.
+  const uint8_t too_long[optolink::P300_KW_MAX_PAYLOAD + 1] = {};
+  check(!kw_calls::kw_telegram(e, 0xF4, 0x2306, sizeof(too_long), too_long), "F: payload above KW_MAX_PAYLOAD refused");
 
   // A non-zero acknowledgement is no acknowledgement: DEVICE_ERROR, and back
   // to P300 through RESET.
   responses = g_responses;
   errors = g_errors;
-  check(e.kwTelegram(0xF4, 0x2306, 1, data), "F: another write on the session accepted");
+  check(kw_calls::kw_telegram(e, 0xF4, 0x2306, 1, data), "F: another write on the session accepted");
   pump(e);
   io.clear_written();
   io.feed({0x05});
@@ -340,9 +363,10 @@ void frame_limit_cases() {
   check(!optolink::gwg_encode(0x99, 0x10, max + 1, data, false, t), "GWG: one byte more refused");
 
   FakeOptolink io;
-  optolink::VS2Engine vs2(&io);
-  check(!vs2.read(0x2000, max + 1) && !vs2.request(0x05, 0x2000, max + 1), "P300: a read of MAX_PAYLOAD + 1 refused");
-  check(vs2.read(0x2000, max), "P300: a read of MAX_PAYLOAD accepted");
+  optolink::P300Exchange<FakeOptolink> vs2(&io);
+  check(!kw_calls::read(vs2, 0x2000, max + 1) && !kw_calls::request(vs2, 0x05, 0x2000, max + 1),
+        "P300: a read of MAX_PAYLOAD + 1 refused");
+  check(kw_calls::read(vs2, 0x2000, max), "P300: a read of MAX_PAYLOAD accepted");
   optolink::KwExchange<FakeOptolink, kw_calls::kNoPause> kw(&io);
   check(!kw_calls::read(kw, 0x2000, max + 1) && kw_calls::read(kw, 0x2000, max), "KW: the same limit");
   optolink::GWGEngine gwg_engine(&io);

@@ -1,4 +1,4 @@
-# VS2 transaction harness — fixture folded from live vitohome capture
+# P300 transaction harness — fixture folded from live vitohome capture
 
 Host-side regression gate for the part of the engine upstream never unit-tested:
 the request/ACK/response/fragment-reassembly choreography. It composes with the
@@ -54,7 +54,7 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
   UART fragmentation.
 - `tidy_headers.cpp` — not a test: the translation unit through which
   `scripts/clang_tidy.sh` analyses the hub headers that build without ESPHome.
-- `test_vs2_transaction.cpp` — data-driven runner: handshake into IDLE, then per
+- `test_p300_transaction.cpp` — data-driven runner: handshake into IDLE, then per
   vector replay request + chunked response and assert wire + payload.
 - `proof_hub_requests.cpp` — the hub's requests (`read_request()`,
   `write_request()`) on its engine (`SelectedEngine`), once per protocol.
@@ -76,7 +76,7 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
   both GWG EOT positions; the P300 parser byte by byte on generated streams.
 - `build_and_run.sh` — host compile + run. Optional `$1` is the component root
   containing `optolink/` (default `../../components/vitohome`); it compiles the
-  P300 translation units (`constants`, `datapoint/*`, `protocol/vs2/*`).
+  P300 harnesses with `constants` and the header-only P300 exchange.
 - `fuzz_parser_vs2.cpp` — fuzz target for `P300Parser::parse()`, in two builds
   from one source: a deterministic corpus replay (g++, run by CI) and a
   libFuzzer target (clang, run by hand). Carries the oracles.
@@ -177,7 +177,7 @@ interesting part — see the comment in `check_complete_frame()`. The parser
 skips payload-length validation for the two frame shapes carrying no inline
 payload, so a `READ`+`REQUEST` frame can complete claiming `dataLength() == 255`
 with only six bytes written and a non-null `data()`. Nothing can reach that
-today, because `VS2Engine::_receive()` forwards only RESPONSE frames. That
+today, because the P300 exchange delivers only RESPONSE frames. That
 guard was added for correctness (#9); it turns out to also be what keeps a
 consumer inside the packet buffer, which is recorded nowhere else.
 
@@ -201,7 +201,7 @@ the parser's 42 branches (95.2% taken at least once) and 90.4% of lines, when
 it was `parser_vs2.cpp`; the state machine moved unchanged into the codec
 (`proof_codec_equality.cpp`). libFuzzer's edge count plateaus at 80, so the
 search saturates this parser quickly. The uncovered remainder is `reset()`,
-which is engine-driven and covered by `proof_vs2_guards.cpp`.
+which is engine-driven and covered by `proof_p300_guards.cpp`.
 
 ### The `decode` target
 
@@ -441,14 +441,14 @@ Add as a host gate beside the decode tests (it is the host test that compiles th
 actual P300 engine, not just `decode.h`):
 
 ```yaml
-- name: VS2 transaction harness
+- name: P300 transaction harness
   working-directory: tests/native
   run: bash build_and_run.sh
 ```
 
 The script exits non-zero on any vector failure. It compiles only the P300 path —
-`constants` / `datapoint/*` / `protocol/vs2/vs2` and the header-only codecs — since the
-VS1/GWG translation units are deferred protocols these vectors do not reference.
+`constants` and the header-only P300 exchange and codecs — since the GWG
+translation units are not referenced by these vectors.
 
 ## Extending
 

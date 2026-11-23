@@ -1,4 +1,4 @@
-// P300 open frame (VS2Engine::frame(), the raw lane's `p300 f`).
+// P300 open frame (optolink_p300.h, the raw lane's `p300 f`).
 //
 // Pinned below:
 //   (1) a frame queued before the session is up waits for it, then goes out
@@ -20,11 +20,10 @@
 #include <vector>
 
 #include "fake_optolink.h"
-#include "protocol_select.h"
+#include "kw_calls.h"
 
 using namespace esphome::vitohome;
-using Engine = optolink::OptolinkEngine<SelectedProtocol>;
-using optolink::VS2Engine;
+using Engine = optolink::P300Exchange<FakeOptolink>;
 
 namespace {
 int g_responses = 0;
@@ -55,15 +54,17 @@ int main() {
 
   FakeOptolink uart;
   Engine engine(&uart);
-  engine.onResponse([](const uint8_t *data, uint8_t length, uint16_t address) {
-    g_responses++;
-    g_data.assign(data, data + length);
-    g_address = address;
-  });
-  engine.onError([](optolink::OptolinkResult result, uint16_t) {
-    g_errors++;
-    g_error = result;
-  });
+  kw_calls::wire(
+      engine,
+      [](const uint8_t *data, uint8_t length, uint16_t address) {
+        g_responses++;
+        g_data.assign(data, data + length);
+        g_address = address;
+      },
+      [](optolink::OptolinkResult result, uint16_t) {
+        g_errors++;
+        g_error = result;
+      });
   engine.begin();
 
   int failures = 0;
@@ -78,8 +79,9 @@ int main() {
   const std::vector<uint8_t> answer = {0x06, 0x41, 0x07, 0x01, 0x01, 0x00, 0xF8, 0x02, 0x20, 0xCB, 0xEE};
 
   // --- (1)-(3) before the session, a fixed answer ---------------------------
-  check(engine.frame(read.data(), static_cast<uint8_t>(read.size()), 1), "frame accepted before the session");
-  check(!engine.frame(read.data(), static_cast<uint8_t>(read.size()), 1), "second frame refused while busy");
+  check(kw_calls::frame(engine, read.data(), static_cast<uint8_t>(read.size()), 1),
+        "frame accepted before the session");
+  check(!kw_calls::frame(engine, read.data(), static_cast<uint8_t>(read.size()), 1), "second frame refused while busy");
   pump(engine);
   check(uart.written() == kEot, "nothing but the EOT before the session is up");
   uart.clear_written();
@@ -99,17 +101,17 @@ int main() {
   uart.clear_written();
 
   // --- (4) collect mode -----------------------------------------------------
-  check(engine.frame(read.data(), static_cast<uint8_t>(read.size()), 0), "collect frame accepted");
+  check(kw_calls::frame(engine, read.data(), static_cast<uint8_t>(read.size()), 0), "collect frame accepted");
   pump(engine);
   check(uart.written() == read, "sent at once from the idle session");
   uart.clear_written();
   uart.feed({0x06});
   pump(engine);
-  optolink::optolink_test_clock_advance(VS2Engine::FRAME_QUIET_MS - 100);
+  optolink::optolink_test_clock_advance(optolink::P300_FRAME_QUIET_MS - 100);
   uart.feed(std::vector<uint8_t>(answer.begin() + 1, answer.end()));
   pump(engine);
   check(g_responses == 1, "still collecting while bytes keep coming");
-  optolink::optolink_test_clock_advance(VS2Engine::FRAME_QUIET_MS + 1);
+  optolink::optolink_test_clock_advance(optolink::P300_FRAME_QUIET_MS + 1);
   pump(engine);
   check(g_responses == 2 && g_data == answer && g_errors == 0, "quiet line ends it: ACK and frame, raw");
   check(uart.written() == kEot, "then RESET");
@@ -118,7 +120,7 @@ int main() {
   uart.clear_written();
 
   // --- (5) an ordinary read -------------------------------------------------
-  check(engine.read(0x00F8, 2), "read accepted after a frame");
+  check(kw_calls::read(engine, 0x00F8, 2), "read accepted after a frame");
   pump(engine);
   check(uart.written() == read, "the engine's read is the frame above");
   uart.feed(answer);
@@ -128,49 +130,51 @@ int main() {
   uart.clear_written();
 
   // --- (6) collect cap ------------------------------------------------------
-  check(engine.frame(read.data(), static_cast<uint8_t>(read.size()), 0), "collect frame accepted (cap)");
+  check(kw_calls::frame(engine, read.data(), static_cast<uint8_t>(read.size()), 0), "collect frame accepted (cap)");
   pump(engine);
   uart.clear_written();
-  std::vector<uint8_t> flood(VS2Engine::FRAME_MAX + 20);
+  std::vector<uint8_t> flood(optolink::P300_OPEN_FRAME_MAX + 20);
   for (std::size_t i = 0; i < flood.size(); ++i)
     flood[i] = static_cast<uint8_t>(i);
   uart.feed(flood);
   pump(engine);
-  optolink::optolink_test_clock_advance(VS2Engine::FRAME_QUIET_MS + 1);
+  optolink::optolink_test_clock_advance(optolink::P300_FRAME_QUIET_MS + 1);
   pump(engine);
-  check(g_responses == 4 && g_data.size() == VS2Engine::FRAME_MAX && g_data.back() == VS2Engine::FRAME_MAX - 1,
+  check(g_responses == 4 && g_data.size() == optolink::P300_OPEN_FRAME_MAX &&
+            g_data.back() == optolink::P300_OPEN_FRAME_MAX - 1,
         "a flood is cut at FRAME_MAX, the first bytes kept");
   uart.clear_written();
   handshake(engine, uart);
   uart.clear_written();
 
   // --- (7) no answer --------------------------------------------------------
-  check(engine.frame(read.data(), static_cast<uint8_t>(read.size()), 0), "collect frame accepted (silent)");
+  check(kw_calls::frame(engine, read.data(), static_cast<uint8_t>(read.size()), 0), "collect frame accepted (silent)");
   pump(engine);
-  optolink::optolink_test_clock_advance(VS2Engine::FRAME_QUIET_MS + 1);
+  optolink::optolink_test_clock_advance(optolink::P300_FRAME_QUIET_MS + 1);
   pump(engine);
   check(g_responses == 4 && g_errors == 1 && g_error == optolink::OptolinkResult::TIMEOUT, "silence is a TIMEOUT");
   uart.clear_written();
   handshake(engine, uart);
   uart.clear_written();
 
-  check(engine.frame(read.data(), static_cast<uint8_t>(read.size()), 4), "fixed frame accepted (short)");
+  check(kw_calls::frame(engine, read.data(), static_cast<uint8_t>(read.size()), 4), "fixed frame accepted (short)");
   pump(engine);
   uart.feed({0x06, 0x41});
   pump(engine);
-  optolink::optolink_test_clock_advance(VS2Engine::FRAME_QUIET_MS + 1);
+  optolink::optolink_test_clock_advance(optolink::P300_FRAME_QUIET_MS + 1);
   pump(engine);
   check(g_responses == 4 && g_errors == 2 && g_error == optolink::OptolinkResult::TIMEOUT,
         "a short fixed answer is a TIMEOUT");
   uart.clear_written();
 
   // --- (8) a slow handshake -------------------------------------------------
-  check(engine.frame(read.data(), static_cast<uint8_t>(read.size()), 0), "collect frame accepted (slow handshake)");
+  check(kw_calls::frame(engine, read.data(), static_cast<uint8_t>(read.size()), 0),
+        "collect frame accepted (slow handshake)");
   pump(engine);
-  optolink::optolink_test_clock_advance(VS2Engine::HANDSHAKE_RETRY_MS - 100);
+  optolink::optolink_test_clock_advance(optolink::P300_HANDSHAKE_RETRY_MS - 100);
   uart.feed({0x05});
   pump(engine);
-  optolink::optolink_test_clock_advance(VS2Engine::REQUEST_TIMEOUT_MS - VS2Engine::HANDSHAKE_RETRY_MS);
+  optolink::optolink_test_clock_advance(optolink::P300_WATCHDOG_MS - optolink::P300_HANDSHAKE_RETRY_MS);
   uart.clear_written();
   uart.feed({0x06});
   pump(engine);
@@ -179,7 +183,7 @@ int main() {
   uart.feed({0x06});
   pump(engine);
   check(g_errors == 2, "no watchdog TIMEOUT while the answer comes");
-  optolink::optolink_test_clock_advance(VS2Engine::FRAME_QUIET_MS + 1);
+  optolink::optolink_test_clock_advance(optolink::P300_FRAME_QUIET_MS + 1);
   pump(engine);
   check(g_responses == 5 && g_errors == 2 && g_data == std::vector<uint8_t>({0x06}),
         "its answer is delivered past the first watchdog deadline");
@@ -187,12 +191,13 @@ int main() {
   handshake(engine, uart);
 
   // --- (9) argument checks --------------------------------------------------
-  std::vector<uint8_t> long_frame(VS2Engine::FRAME_MAX + 1, 0x41);
-  check(!engine.frame(nullptr, 3, 1), "null bytes refused");
-  check(!engine.frame(read.data(), 0, 1), "zero bytes refused");
-  check(!engine.frame(long_frame.data(), static_cast<uint8_t>(long_frame.size()), 1), "longer than FRAME_MAX refused");
-  check(!engine.frame(read.data(), 8, VS2Engine::FRAME_MAX + 1), "answer past FRAME_MAX refused");
-  check(engine.read(0x00F8, 2), "engine still idle after the refusals");
+  std::vector<uint8_t> long_frame(optolink::P300_OPEN_FRAME_MAX + 1, 0x41);
+  check(!kw_calls::frame(engine, nullptr, 3, 1), "null bytes refused");
+  check(!kw_calls::frame(engine, read.data(), 0, 1), "zero bytes refused");
+  check(!kw_calls::frame(engine, long_frame.data(), static_cast<uint8_t>(long_frame.size()), 1),
+        "longer than FRAME_MAX refused");
+  check(!kw_calls::frame(engine, read.data(), 8, optolink::P300_OPEN_FRAME_MAX + 1), "answer past FRAME_MAX refused");
+  check(kw_calls::read(engine, 0x00F8, 2), "engine still idle after the refusals");
 
   std::printf("p300 frame: %d failure(s)\n", failures);
   return failures == 0 ? 0 : 1;

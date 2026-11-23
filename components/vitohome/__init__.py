@@ -300,7 +300,7 @@ _RPC_CHECK_DOMAINS = (*_RPC_DOMAINS, "button")
 # read in ITS address space: the KW telegram 0x6B instead of the read's 0xF7.
 # Under P300 the engine drops the link to KW for it and re-establishes P300
 # afterwards, since a P300 controller refuses 0x6B as a function code
-# (VS2Engine::gfaRead()); that detour costs up to two ENQ waits (about 2 s
+# (optolink_p300.h); that detour costs up to two ENQ waits (about 2 s
 # each) per run of GFA reads. Vitosoft marks such
 # datapoints FCRead GFA_READ -- the burner control's P-parameters at 0x4000 + n
 # (fan speed, ionisation current, burner phase, ...) and its coding parameters

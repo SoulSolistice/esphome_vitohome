@@ -1,15 +1,12 @@
 #!/usr/bin/env bash
-# Host build + run of the P300 (VS2) transaction harness against the in-tree
-# vendored Optolink engine (components/vitohome/optolink/).
+# Host build + run of the P300 transaction harness against the component's
+# P300 exchange (components/vitohome/optolink_p300.h).
 #
-# ROOT = component root that contains optolink/. The test includes the engine as
-#   #include "optolink/optolink.h"
-# so the component dir is on the include path; the engine's own headers use
-# paths relative to their own location, which resolve from there.
+# ROOT = the component root; it and optolink/ are on the include path.
 #
-# This first harness compiles only the P300 path (OptolinkEngine<P300> ==
-# VS2Engine) for the transaction vectors; build_and_run_protocols.sh (chained at
-# the end) compiles the adapter against all three engines.
+# This first harness runs the transaction vectors through the P300 exchange;
+# build_and_run_protocols.sh (chained at the end) builds every protocol's
+# engine.
 #
 # EVERY g++ line here carries -Wall -Wextra -Werror. The -Werror is not
 # decoration: without it these compiles emit diagnostics and exit 0, so a new
@@ -48,13 +45,12 @@ ROOT="${1:-../../components/vitohome}"
 OPTO="$ROOT/optolink"
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" \
   -I"$ROOT" -I"$OPTO" \
-  test_vs2_transaction.cpp \
+  test_p300_transaction.cpp \
   "$OPTO/constants.cpp" \
-  "$OPTO/protocol/vs2/vs2.cpp" \
-  -o vs2_transaction_harness
+  -o p300_transaction_harness
 # Engine debug logging is compiled out on host (logging.h is gated on
 # VITOHOME_DEBUG_OPTOLINK && ESP_PLATFORM), so stdout is the harness only.
-./vs2_transaction_harness
+./p300_transaction_harness
 
 # Parser regression: a zero-payload P300 frame must not walk past the frame
 # buffer (P300Parser, optolink_codec_p300.h). Built under AddressSanitizer and
@@ -68,9 +64,9 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" \
 
 # Remote procedure call (P300 function code 0x07): the parameter rides in the
 # request, the answer is as long as its frame says, and reads/writes keep their
-# guards. Through the engine, so the wire bytes are checked as well as the parse.
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}"   -I"$ROOT" -I"$OPTO"   proof_vs2_rpc.cpp   "$OPTO/constants.cpp"   "$OPTO/protocol/vs2/vs2.cpp"   -o proof_vs2_rpc
-./proof_vs2_rpc
+# guards. Through the exchange, so the wire bytes are checked as well as the parse.
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -I"$ROOT" -I"$OPTO" proof_p300_rpc.cpp "$OPTO/constants.cpp" -o proof_p300_rpc
+./proof_p300_rpc
 
 # Decode proof: multi-byte field extraction from a wide block read (the
 # P300-portable pattern gen_catalog emits for interior fields).

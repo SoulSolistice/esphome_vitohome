@@ -2,10 +2,10 @@
 #ifndef VITOHOME_OPTOLINK_ADAPTER_H
 #define VITOHOME_OPTOLINK_ADAPTER_H
 
-// The P300 and GWG engines behind the exchange's interface (optolink_exchange.h):
+// The GWG engine behind the exchange's interface (optolink_exchange.h):
 // submit() takes a Request, one Result reports how it ended, and the engine's
-// getters become its fields. They stay until their links replace them, P300
-// in stage 4 and GWG in stage 5 (design-optolink-layers.md, section 10).
+// getters become its fields. It stays until the GWG link replaces it in stage
+// 5 (design-optolink-layers.md, section 10).
 
 #include <cstdint>
 #include <functional>
@@ -15,71 +15,6 @@
 #include "optolink_types.h"
 
 namespace esphome::vitohome::optolink {
-
-template<class Port> class P300Adapter {
- public:
-  using ResultCallback = std::function<void(const Result &)>;
-
-  explicit P300Adapter(Port *port) : engine_(port) {
-    engine_.onResponse([this](const uint8_t *data, uint8_t length, uint16_t address) {
-      Result result{};
-      result.status = OptolinkResult::OK;
-      result.address = address;
-      result.data = data;
-      result.length = length;
-      this->deliver_(result);
-    });
-    engine_.onError([this](OptolinkResult status, uint16_t address) {
-      Result result{};
-      result.status = status;
-      result.address = address;
-      if (status == OptolinkResult::DEVICE_ERROR) {
-        result.error_code = engine_.errorPayload(result.error_code_length);
-        if (result.error_code_length == 0)
-          result.error_code = nullptr;
-      }
-      this->deliver_(result);
-    });
-  }
-  P300Adapter(const P300Adapter &) = delete;
-  P300Adapter &operator=(const P300Adapter &) = delete;
-
-  void on_result(ResultCallback callback) { on_result_ = std::move(callback); }
-  bool begin() { return engine_.begin(); }
-  void loop() { engine_.loop(); }
-  void end() { engine_.end(); }
-  bool busy() const { return engine_.isBusy(); }
-  bool wants_fast_loop() const { return false; }
-  // No timing points on this engine.
-  bool set_timing(TimingPoint, uint32_t &) { return false; }
-  uint32_t timing(TimingPoint) const { return 0; }
-  uint32_t timing_default(TimingPoint) const { return 0; }
-
-  // A KW request takes the engine's detour to KW and back.
-  bool submit(const Request &request) {
-    const uint8_t *payload = request.has_payload ? request.payload : nullptr;
-    switch (request.lane) {
-      case Lane::P300:
-        return engine_.request(request.code, request.address, request.length, payload);
-      case Lane::KW:
-        return engine_.kwTelegram(request.code, request.address, request.length, payload);
-      case Lane::FRAME:
-        return engine_.frame(request.payload, request.length, request.answer_length);
-      case Lane::GWG:
-      default:
-        return false;
-    }
-  }
-
- private:
-  void deliver_(const Result &result) {
-    if (on_result_)
-      on_result_(result);
-  }
-
-  VS2Engine engine_;
-  ResultCallback on_result_;
-};
 
 template<class Port> class GwgAdapter {
  public:

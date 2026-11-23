@@ -174,7 +174,7 @@ inline constexpr uint8_t kSeed_gfa_refused[] = {
     0x41, 0x06, 0x03, 0x6B, 0x40, 0x50, 0x01, 0x05, 0x0A,
 };
 
-// A raw request's answer (VS2Engine::request(), queue_raw_op()): function code
+// A raw request's answer (a Lane::P300 request, queue_raw_op()): function code
 // 05 EEPROM_READ, accepted because the request expects it, its payload sized
 // by the frame.
 inline constexpr uint8_t kSeed_raw_fc05_resp[] = {

@@ -131,7 +131,7 @@ case "$TARGET" in
   raw_engines)
     SRC="fuzz_raw_engines.cpp"
     HEADER="fuzz_corpus_raw_engines.h"
-    EXTRA=("$OPTO/constants.cpp" "$OPTO/protocol/vs2/vs2.cpp" "$OPTO/protocol/gwg/gwg.cpp")
+    EXTRA=("$OPTO/constants.cpp" "$OPTO/protocol/gwg/gwg.cpp")
     ;;
   gwg_session)
     SRC="fuzz_gwg_session.cpp"
@@ -141,12 +141,12 @@ case "$TARGET" in
   kw_session)
     SRC="fuzz_kw_session.cpp"
     HEADER="fuzz_corpus_kw_session.h"
-    EXTRA=("$OPTO/constants.cpp" "$OPTO/protocol/vs2/vs2.cpp")
+    EXTRA=("$OPTO/constants.cpp")
     ;;
   sim_session)
     SRC="fuzz_sim_session.cpp"
     HEADER="fuzz_corpus_sim_session.h"
-    EXTRA=("$OPTO/constants.cpp" "$OPTO/protocol/vs2/vs2.cpp" "$OPTO/protocol/gwg/gwg.cpp")
+    EXTRA=("$OPTO/constants.cpp" "$OPTO/protocol/gwg/gwg.cpp")
     ;;
   diff_engines)
     # Each session harness built twice as a side (diff_hooks.h), against the
@@ -154,7 +154,7 @@ case "$TARGET" in
     SRC="fuzz_diff_engines.cpp"
     HEADER="fuzz_corpus_diff.h"
     REF="reference/optolink"
-    EXTRA=("$OPTO/constants.cpp" "$OPTO/protocol/vs2/vs2.cpp" "$OPTO/protocol/gwg/gwg.cpp")
+    EXTRA=("$OPTO/constants.cpp" "$OPTO/protocol/gwg/gwg.cpp")
     EXTRA+=("$REF/constants.cpp" "$REF/protocol/vs2/vs2.cpp" "$REF/protocol/vs2/parser_vs2.cpp"
       "$REF/protocol/vs2/packet_vs2.cpp" "$REF/protocol/vs1/vs1.cpp" "$REF/protocol/vs1/packet_vs1.cpp"
       "$REF/protocol/gwg/gwg.cpp" "$REF/protocol/gwg/packet_gwg.cpp")

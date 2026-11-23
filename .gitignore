@@ -55,7 +55,7 @@ build/
 *.elf
 # The native test scripts emit extensionless host binaries next to their
 # sources; ignore them by name (g++ -o <name> in build_and_run*.sh).
-tests/native/vs2_transaction_harness
+tests/native/p300_transaction_harness
 tests/native/engine_proof
 tests/native/gwg_poke
 tests/native/gwg_read
@@ -65,7 +65,7 @@ tests/native/gwg_access_mode
 tests/native/gwg_write_access
 tests/native/gwg_burst
 tests/native/gwg_eeprom_pairs
-tests/native/vs2_guards
+tests/native/p300_guards
 tests/native/vs1_write
 tests/native/vs1_chain
 tests/native/test_decode

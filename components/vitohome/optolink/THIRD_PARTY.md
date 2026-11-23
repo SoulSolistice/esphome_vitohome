@@ -1008,8 +1008,24 @@ These are intentional divergences from upstream `edc059a7`:
     runs fast while a write waits. The ENQ hold counts from the moment
     the write is due. Proof: `proof_kw_timing.cpp`, `test_link_timing.py`.
 
+47. **`VS2Engine` removed (structural, no wire change).** `protocol/vs2/`
+    is gone. P300 runs on the project's own `optolink_p300.h`, which
+    reproduces `VS2Engine` pass by pass: the session and its keepalive, a
+    telegram with its ACKs, the KW detour and the open frame, on the
+    `Request`/`Result` interface; `P300Adapter` went with it. The P300
+    proofs are now `proof_p300_*.cpp` and `test_p300_transaction.cpp`; the
+    items above still name the old files. Proof: the differential target,
+    the P300 exchange against the reference `VS2Engine` (157 seeds, among
+    them an error frame longer than the kept code, a KW write over the detour
+    answered 01, and a chained GFA read at exactly the 25 ms pause), and
+    `proof_hub_requests.cpp`, the hub's requests against the reference
+    engine's calls. The harnesses now loop the engine once before a script
+    starts, so a P300 engine's first EOT goes out before the device's first
+    byte; before, RESET drained that byte, and most P300 seeds ended in a
+    timeout on both sides.
+
 Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called), 39 (when its gap is set), 40, 41, 45 and 46 are the only intentional changes to on-wire/runtime
-protocol behavior; items 13-16, 42, 43 and 44 are structural (no behavior change from any call
+protocol behavior; items 13-16, 42, 43, 44 and 47 are structural (no behavior change from any call
 site that exists -- item 16 altered bytes only on a RESPONSE-construction path
 nothing exercised, now removed); item 17 changes only construction-failure handling
 (abort -> fail-soft), not protocol or normal-path behavior; item 20 is a

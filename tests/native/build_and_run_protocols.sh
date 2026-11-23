@@ -38,8 +38,16 @@ SAN="${SAN-"-fsanitize=address,undefined -fno-sanitize-recover=all"}"
 read -r -a SAN_FLAGS <<<"$SAN"
 SRCS=(
   "$OPTO/constants.cpp"
-  "$OPTO/protocol/vs2/vs2.cpp"
   "$OPTO/protocol/gwg/gwg.cpp"
+)
+# The reference engines (reference/, README.md there): the differential
+# target, and the P300 hub requests against the reference VS2Engine.
+REF="reference/optolink"
+REF_P300=(
+  "$REF/constants.cpp"
+  "$REF/protocol/vs2/vs2.cpp"
+  "$REF/protocol/vs2/parser_vs2.cpp"
+  "$REF/protocol/vs2/packet_vs2.cpp"
 )
 
 echo "== protocol engine: compile + link for each protocol =="
@@ -66,7 +74,10 @@ done
 echo "== hub requests against the engine calls they replace, per protocol =="
 for sel in "P300:" "KW:-DVITOHOME_PROTOCOL_KW" "GWG:-DVITOHOME_PROTOCOL_GWG"; do
   flag="${sel#*:}"
-  g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread ${flag:+"$flag"} -I"$ROOT" -I"$OPTO"     proof_hub_requests.cpp "${SRCS[@]}" -o hub_requests
+  old=()
+  [ -z "$flag" ] && old=("${REF_P300[@]}")
+  g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread ${flag:+"$flag"} -I"$ROOT" -I"$OPTO" \
+    proof_hub_requests.cpp "${SRCS[@]}" "${old[@]}" -o hub_requests
   ./hub_requests
 done
 
@@ -104,7 +115,6 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OP
 echo "== differential: live engines against the reference copy (fuzz_diff_engines.cpp) =="
 # Each session harness twice, once per side; the reference engines are the
 # frozen copy in reference/ (README.md there).
-REF="reference/optolink"
 REF_SRCS=(
   "$REF/constants.cpp"
   "$REF/protocol/vs2/vs2.cpp"
@@ -216,15 +226,15 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTO
   proof_kw_gfa.cpp "${SRCS[@]}" -o kw_gfa
 ./kw_gfa
 
-echo "== VS2/P300 GFA read: the KW detour (#27) =="
+echo "== P300 GFA read: the KW detour (#27) =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
-  proof_vs2_gfa.cpp "${SRCS[@]}" -o vs2_gfa
-./vs2_gfa
+  proof_p300_gfa.cpp "${SRCS[@]}" -o p300_gfa
+./p300_gfa
 
-echo "== VS2 guards: ERROR-type frames + parser reset (#9 / #10) =="
+echo "== P300 guards: ERROR-type frames + parser reset (#9 / #10) =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
-  proof_vs2_guards.cpp "${SRCS[@]}" -o vs2_guards
-./vs2_guards
+  proof_p300_guards.cpp "${SRCS[@]}" -o p300_guards
+./p300_guards
 
 echo "== GWG sync poke: must be OFF by default =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \

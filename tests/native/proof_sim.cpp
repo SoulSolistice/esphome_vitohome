@@ -5,7 +5,7 @@
 // engines as they are, and the simulators as models of the units we know.
 //
 //   K  KW: the KW exchange and SimVitotronic in KW
-//   P  P300: VS2Engine and SimVitotronic, the KW detour included
+//   P  P300: the P300 exchange and SimVitotronic, the KW detour included
 //   G  GWG: GWGEngine and SimGwg
 //
 // The clock is frozen; every scenario advances it 1 ms per engine pass.
@@ -40,6 +40,8 @@ struct Outcome {
   std::vector<uint8_t> data;
   uint16_t address = 0;
   OptolinkResult error = OptolinkResult::CONTINUE;
+  // P300: the error frame's code of the last DEVICE_ERROR.
+  std::vector<uint8_t> error_code;
   int done() const { return responses + errors; }
 };
 
@@ -56,6 +58,23 @@ template<class E> void wire(E &e, Outcome &o) {
         o.error = result;
         o.address = address;
       });
+  e.begin();
+}
+
+template<class E> void wire_p300(E &e, Outcome &o) {
+  kw_calls::wire(
+      e,
+      [&o](const uint8_t *data, uint8_t length, uint16_t address) {
+        ++o.responses;
+        o.data.assign(data, data != nullptr ? data + length : data);
+        o.address = address;
+      },
+      [&o](OptolinkResult result, uint16_t address) {
+        ++o.errors;
+        o.error = result;
+        o.address = address;
+      },
+      [&o](const uint8_t *code, uint8_t n) { o.error_code.assign(code, code + n); });
   e.begin();
 }
 
@@ -259,10 +278,10 @@ void p300() {
     c.unserved = {{0x7000, 0x70FF}};
     c.rpc_answer = {0x01, 0x02, 0x03};
     sim::SimVitotronic dev(c);
-    optolink::VS2Engine e(&dev);
+    optolink::P300Exchange<sim::SimVitotronic> e(&dev);
     Outcome o;
-    wire(e, o);
-    e.read(0x00F8, 4);
+    wire_p300(e, o);
+    kw_calls::read(e, 0x00F8, 4);
     finish(e, o, 5000);
     check(o.responses == 1 && bytes_are(o.data, {0x20, 0xCB, 0x03, 0x51}) && dev.in_p300(),
           "P1: the ident, after the session handshake");
@@ -271,35 +290,33 @@ void p300() {
           "P1:   04, 16 00 00, then 41 05 00 01 00 F8 04 02");
 
     const uint8_t value = 0x25;
-    e.write(0x2306, &value, 1);
+    kw_calls::write(e, 0x2306, &value, 1);
     finish(e, o, 5000);
-    e.read(0x2306, 1);
+    kw_calls::read(e, 0x2306, 1);
     finish(e, o, 5000);
     check(o.responses == 3 && bytes_are(o.data, {0x25}), "P2: a write, read back");
 
     const uint8_t parameter[2] = {0xAA, 0xBB};
-    e.rpc(0x0B00, parameter, 2);
+    kw_calls::rpc(e, 0x0B00, parameter, 2);
     finish(e, o, 5000);
     check(o.responses == 4 && bytes_are(o.data, {0x01, 0x02, 0x03}), "P3: a procedure call returns rpc_answer");
 
-    e.read(0x7010, 2);
+    kw_calls::read(e, 0x7010, 2);
     finish(e, o, 5000);
-    uint8_t n = 0;
-    const uint8_t *payload = e.errorPayload(n);
-    check(o.errors == 1 && o.error == OptolinkResult::DEVICE_ERROR && n == 1 && payload[0] == 0x01,
+    check(o.errors == 1 && o.error == OptolinkResult::DEVICE_ERROR && bytes_are(o.error_code, {0x01}),
           "P4: an unserved address: an error frame with code 01");
 
     dev.gfa.set(0x4050, 0x24);
-    e.gfaRead(0x4050, 1);
+    kw_calls::gfa_read(e, 0x4050, 1);
     finish(e, o, 8000);
     check(o.responses == 5 && bytes_are(o.data, {0x24}), "P5: a GFA read over the KW detour");
     idle(e, 1000);
-    e.read(0x00F8, 4);
+    kw_calls::read(e, 0x00F8, 4);
     finish(e, o, 8000);
     check(o.responses == 6 && dev.in_p300(), "P5:   then the session is back for a P300 read");
 
     const std::size_t before = dev.written().size();
-    idle(e, optolink::VS2Engine::KEEPALIVE_INTERVAL_MS + 500);
+    idle(e, optolink::P300_KEEPALIVE_MS + 500);
     const std::vector<uint8_t> tail(dev.written().begin() + static_cast<std::ptrdiff_t>(before), dev.written().end());
     check(contains(tail, {0x16, 0x00, 0x00}) && dev.in_p300(), "P6: an idle session gets a keepalive and stays");
   }
@@ -307,14 +324,14 @@ void p300() {
     sim::VitotronicConfig c;
     c.quirks.swallow_ack = true;
     sim::SimVitotronic dev(c);
-    optolink::VS2Engine e(&dev);
+    optolink::P300Exchange<sim::SimVitotronic> e(&dev);
     Outcome o;
-    wire(e, o);
-    e.read(0x00F8, 4);
+    wire_p300(e, o);
+    kw_calls::read(e, 0x00F8, 4);
     finish(e, o, 10000);
     check(o.errors == 1 && o.error == OptolinkResult::TIMEOUT, "P7: swallow_ack: no 06, the read times out");
     dev.quirks().swallow_ack = false;
-    e.read(0x00F8, 4);
+    kw_calls::read(e, 0x00F8, 4);
     finish(e, o, 10000);
     check(o.responses == 1, "P7:   and the next one, with the 06 back, is answered");
   }
@@ -322,10 +339,10 @@ void p300() {
     sim::VitotronicConfig c;
     c.quirks.answer_missing = 1;
     sim::SimVitotronic dev(c);
-    optolink::VS2Engine e(&dev);
+    optolink::P300Exchange<sim::SimVitotronic> e(&dev);
     Outcome o;
-    wire(e, o);
-    e.read(0x00F8, 4);
+    wire_p300(e, o);
+    kw_calls::read(e, 0x00F8, 4);
     finish(e, o, 10000);
     check(o.errors == 1 && o.error == OptolinkResult::TIMEOUT, "P8: answer_missing: a frame without its checksum");
   }

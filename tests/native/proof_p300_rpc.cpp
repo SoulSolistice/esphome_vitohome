@@ -1,6 +1,6 @@
 // Proof for the P300 remote procedure call (FunctionCode::RPC, 0x07).
 //
-// What the engine has to get right, and what this checks:
+// What the exchange has to get right, and what this checks:
 //   A) The request carries the parameter inline, with DataLength = the
 //      parameter's length: 41 06 00 07 A0 10 01 05 <cs> for a one-byte call.
 //   B) An answer whose DataLength counts the returned bytes is delivered whole.
@@ -14,13 +14,13 @@
 //   E) Reads and writes are untouched: a zero-length READ is still refused,
 //      and a WRITE without data still is.
 //
-// Built by build_and_run.sh under ASan/UBSan with the VS2 engine sources.
+// Built by build_and_run.sh under ASan/UBSan.
 
 #include <cstdio>
 #include <vector>
 
 #include "fake_optolink.h"
-#include "optolink/optolink.h"
+#include "kw_calls.h"
 
 namespace optolink = esphome::vitohome::optolink;
 using optolink::P300Parse;
@@ -55,15 +55,17 @@ struct Result {
 // after its ACK.
 static Result run(uint16_t address, const std::vector<uint8_t> &parameter, const std::vector<uint8_t> &answer) {
   FakeOptolink io;
-  optolink::OptolinkEngine<optolink::P300> vito(&io);
+  optolink::P300Exchange<FakeOptolink> vito(&io);
   Result r;
-  vito.onResponse([&](const uint8_t *data, uint8_t length, uint16_t addr) {
-    if (data)
-      r.payload.assign(data, data + length);
-    r.answered = true;
-    r.address = addr;
-  });
-  vito.onError([&](optolink::OptolinkResult, uint16_t) { r.failed = true; });
+  kw_calls::wire(
+      vito,
+      [&](const uint8_t *data, uint8_t length, uint16_t addr) {
+        if (data)
+          r.payload.assign(data, data + length);
+        r.answered = true;
+        r.address = addr;
+      },
+      [&](optolink::OptolinkResult, uint16_t) { r.failed = true; });
   vito.begin();
   auto pump = [&](int n) {
     for (int i = 0; i < n; ++i)
@@ -76,7 +78,8 @@ static Result run(uint16_t address, const std::vector<uint8_t> &parameter, const
   pump(3);
   io.clear_written();
 
-  if (!vito.rpc(address, parameter.empty() ? nullptr : parameter.data(), static_cast<uint8_t>(parameter.size()))) {
+  if (!kw_calls::rpc(vito, address, parameter.empty() ? nullptr : parameter.data(),
+                     static_cast<uint8_t>(parameter.size()))) {
     r.failed = true;
     return r;
   }
@@ -90,7 +93,7 @@ static Result run(uint16_t address, const std::vector<uint8_t> &parameter, const
 }
 
 int main() {
-  std::printf("== VS2 remote procedure call ==\n");
+  std::printf("== P300 remote procedure call ==\n");
   const std::vector<uint8_t> entry{0x11, 0x22, 0x33, 0x44, 0x55, 0x66};
 
   // A + B: one-byte parameter, answer counted by DataLength.
@@ -163,6 +166,6 @@ int main() {
     check(!o.answered, "F: one byte more is not delivered");
   }
 
-  std::printf("vs2 rpc proof: %d failure(s)\n", g_fail);
+  std::printf("P300 rpc proof: %d failure(s)\n", g_fail);
   return g_fail == 0 ? 0 : 1;
 }

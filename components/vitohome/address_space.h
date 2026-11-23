@@ -26,7 +26,7 @@ enum class AddressSpace : uint8_t {
   // ESP8266 Arduino core defines that as a macro.
   OWN = 0,
   // The burner control (Vitosoft GFA_READ): the KW telegram 0x6B. Read-only.
-  // Over P300 the engine detours to KW for it (VS2Engine::gfaRead()).
+  // Over P300 the exchange detours to KW for it (optolink_p300.h).
   GFA,
   // A P300 remote procedure call (function code 0x07), with the entity's
   // `prefix:` as its parameter. Read-only as a datapoint; an action button

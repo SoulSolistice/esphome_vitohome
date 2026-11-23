@@ -266,7 +266,7 @@ RawScriptTiming VitoHomeComponent::raw_script_timing_() const {
 #elif defined(VITOHOME_PROTOCOL_KW)
   const uint32_t quiet = optolink::KW_LINK_PARAMS.answer_timeout_ms;
 #else
-  const uint32_t quiet = optolink::VS2Engine::FRAME_QUIET_MS;
+  const uint32_t quiet = optolink::P300_FRAME_QUIET_MS;
 #endif
   static_assert(RAW_SCRIPT_DEADLINE_MS < IN_FLIGHT_WATCHDOG_MS, "a script must end before the hub's watchdog");
   return RawScriptTiming{RAW_SCRIPT_ENQ_TIMEOUT_MS, quiet, RAW_SCRIPT_DEADLINE_MS};

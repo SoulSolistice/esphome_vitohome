@@ -109,11 +109,11 @@ void check_complete_frame(const P300Frame &p, uint8_t checksum_byte) {
   // (2) and (3) are scoped to RESPONSE frames ON PURPOSE, and the scope is the
   // interesting part.
   //
-  // VS2Engine::_receive() forwards a completed frame to the response callback
-  // only when packetType() == RESPONSE; anything else goes to onError as
-  // DEVICE_ERROR (THIRD_PARTY.md #9). That guard was added for correctness --
-  // upstream published an ERROR frame's payload as if it were data -- but it
-  // is also what keeps a consumer inside the packet buffer, and that second
+  // The P300 exchange (optolink_p300.h) delivers a completed frame as an
+  // answer only when packetType() == RESPONSE; anything else ends the request
+  // with DEVICE_ERROR (THIRD_PARTY.md #9). That guard is there for
+  // correctness -- an ERROR frame's payload is no data -- but it is also
+  // what keeps a consumer inside the packet buffer, and that second
   // job is undocumented anywhere else.
   //
   // The reason: the parser skips the payload-length validation entirely for
@@ -129,7 +129,7 @@ void check_complete_frame(const P300Frame &p, uint8_t checksum_byte) {
     return;
 
   if (p.data() != nullptr) {
-    // The length VS2Engine::_tryOnResponse() hands the consumer: DataLength,
+    // The length the P300 exchange hands the consumer: DataLength,
     // except for an RPC answer, whose size is the frame's own payload
     // (payloadLength()) -- the parser keeps an RPC answer's DataLength as
     // received and does not trust it (THIRD_PARTY.md #26) -- and for the
@@ -160,7 +160,7 @@ void check_complete_frame(const P300Frame &p, uint8_t checksum_byte) {
 }  // namespace
 
 // One fuzz input == one byte stream arriving on the UART. It is fed to a
-// SINGLE parser without resetting between frames, which is how VS2Engine holds
+// SINGLE parser without resetting between frames, which is how the exchange holds
 // it: a long-lived parser that must resynchronise on its own after every
 // garbled frame. That is where the interesting sequences live -- a truncated
 // frame followed by a good one, a false start byte inside a payload, a
@@ -168,8 +168,8 @@ void check_complete_frame(const P300Frame &p, uint8_t checksum_byte) {
 namespace {
 
 // An ERROR frame's payload is the controller's error code, sized by the frame
-// (P300Parser, PAYLOADLENGTH); VS2Engine::_receive() copies up to
-// ERROR_PAYLOAD_MAX bytes of it from payload(). It must lie inside the buffer.
+// (P300Parser, PAYLOADLENGTH); the P300 exchange copies up to
+// P300_ERROR_CODE_MAX bytes of it from payload(). It must lie inside the buffer.
 void check_error_frame(const P300Frame &p) {
   if (p.packet_type() != PacketType::ERROR)
     return;
@@ -226,7 +226,7 @@ void run_once(const uint8_t *data, std::size_t size, uint8_t expect) {
 
 // Every input runs twice: as the engine's own reads, writes and calls see the
 // line (no other function code expected), and as a raw request
-// (VS2Engine::request()) for the function code in the low five bits of byte
+// (a Lane::P300 request) for the function code in the low five bits of byte
 // 3 -- the flags byte of a frame that starts the input -- would, so the
 // fuzzer explores every code's frames.
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, std::size_t size) {

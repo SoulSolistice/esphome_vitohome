@@ -22,7 +22,6 @@ P300 / KW / GWG and a small trait that maps each tag to its engine class.
 #include "datapoint/converter.h"
 #include "datapoint/datapoint.h"
 #include "protocol/gwg/gwg.h"
-#include "protocol/vs2/vs2.h"
 
 namespace esphome::vitohome::optolink {
 
@@ -33,17 +32,14 @@ struct GWG {};
 
 namespace internals {
 template<class PROTOCOLVERSION> struct ProtocolEngine;
-template<> struct ProtocolEngine<P300> {
-  using type = optolink::VS2Engine;
-};
 template<> struct ProtocolEngine<GWG> {
   using type = optolink::GWGEngine;
 };
 }  // namespace internals
 
-// The P300 and GWG engines by protocol tag; the constructor takes the port
-// pointer (optolink_port.h). KW runs on optolink_kw.h, and the hub on
-// protocol_select.h's Engine.
+// The GWG engine by protocol tag; the constructor takes the port pointer
+// (optolink_port.h). KW and P300 run on optolink_kw.h and optolink_p300.h,
+// and the hub on protocol_select.h's SelectedEngine.
 template<class PROTOCOLVERSION> using OptolinkEngine = typename internals::ProtocolEngine<PROTOCOLVERSION>::type;
 
 }  // namespace esphome::vitohome::optolink

@@ -3,6 +3,7 @@
 #include "optolink/optolink.h"
 #include "optolink_adapter.h"
 #include "optolink_kw.h"
+#include "optolink_p300.h"
 
 namespace esphome::vitohome {
 
@@ -12,8 +13,8 @@ namespace esphome::vitohome {
 // interpreted.
 //
 // SelectedEngine<Port> is the selected protocol's exchange: submit() a
-// Request, one Result per request (optolink_exchange.h). KW runs on its own;
-// P300 and GWG on their old engines behind optolink_adapter.h.
+// Request, one Result per request (optolink_exchange.h). KW and P300 run on
+// their own stacks, GWG on its old engine behind optolink_adapter.h.
 #if defined(VITOHOME_PROTOCOL_KW)
 using SelectedProtocol = optolink::KW;
 template<class Port> using SelectedEngine = optolink::KwExchange<Port>;
@@ -27,13 +28,13 @@ template<class Port> using SelectedEngine = optolink::GwgAdapter<Port>;
 inline constexpr const char *PROTOCOL_NAME = "GWG";
 #else
 using SelectedProtocol = optolink::P300;
-template<class Port> using SelectedEngine = optolink::P300Adapter<Port>;
+template<class Port> using SelectedEngine = optolink::P300Exchange<Port>;
 inline constexpr const char *PROTOCOL_NAME = "P300 (VS2)";
 // Only P300 has a remote procedure call telegram (function code 0x07).
 // Guards every use of it.
 #define VITOHOME_HAS_RPC
 // See the KW branch. A P300 controller refuses 0x6B as a function code, so
-// the engine detours to KW for the telegram.
+// the exchange detours to KW for the telegram.
 #define VITOHOME_HAS_GFA
 #endif
 
