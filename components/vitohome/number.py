@@ -1,3 +1,5 @@
+import logging
+
 import esphome.codegen as cg
 from esphome.components import number
 import esphome.config_validation as cv
@@ -39,9 +41,15 @@ from . import (
 
 DEPENDENCIES = ["vitohome"]
 
+_LOGGER = logging.getLogger(__name__)
+
 # value = raw * scale + value_offset, for a datapoint whose zero is not raw 0
 # (a 4-bit coding field 0..15 that means 35..110 °C: mult5, value_offset 35).
 CONF_VALUE_OFFSET = "value_offset"
+# A scale no converter preset carries (Vitosoft MultOffset factor 3, 1/64, ...).
+CONF_SCALE = "scale"
+# Tolerance for "a whole number of raw steps"; the scale is a decimal, not exact.
+_GRID_EPS = 1e-6
 
 VitoNumber = vitohome_ns.class_("VitoNumber", number.Number, cg.Component)
 
@@ -71,6 +79,46 @@ def _validate_converter_field_width(config):
 _WRITABLE_CONVERTERS = {k: v for k, v in CONVERTERS.items() if v.encodable}
 
 
+def _effective_scale(config) -> float:
+    return config.get(CONF_SCALE, converter_scale(config[CONF_CONVERTER]))
+
+
+def _validate_scale(config):
+    """`scale` replaces a converter preset, it does not stack on one."""
+    if CONF_SCALE in config and config[CONF_CONVERTER] != "noconv":
+        raise cv.Invalid(
+            f"scale cannot be combined with converter '{config[CONF_CONVERTER]}', which sets its own scale",
+            path=[CONF_SCALE],
+        )
+    return config
+
+
+def _off_grid(value: float, scale: float) -> bool:
+    steps = value / scale
+    return abs(steps - round(steps)) > _GRID_EPS
+
+
+def _validate_raw_grid(config):
+    """min_value and step must land on whole raw steps, or the frontend offers
+    values between two raw values that the write rounds away. An error with
+    `scale`; with a converter preset only a warning, for existing configs."""
+    scale = _effective_scale(config)
+    offset = config[CONF_VALUE_OFFSET]
+    bad = [
+        (key, config[key])
+        for key, v in ((CONF_STEP, config[CONF_STEP]), (CONF_MIN_VALUE, config[CONF_MIN_VALUE] - offset))
+        if _off_grid(v, scale)
+    ]
+    if not bad:
+        return config
+    key, value = bad[0]
+    msg = f"{key} ({value:g}) is not a whole number of raw steps (scale {scale:g}, value_offset {offset:g})"
+    if CONF_SCALE in config:
+        raise cv.Invalid(msg, path=[key])
+    _LOGGER.warning("%s: %s", config[CONF_NAME], msg)
+    return config
+
+
 def _validate_encodable_range(config):
     """Reject min/max that cannot be represented on the wire.
 
@@ -81,7 +129,7 @@ def _validate_encodable_range(config):
     un-encodable bound is an ``esphome config`` error rather than a runtime
     "value not written" log.
     """
-    scale = converter_scale(config[CONF_CONVERTER])
+    scale = _effective_scale(config)
     offset = config[CONF_VALUE_OFFSET]
     is_signed = resolve_signed(config)
     width = field_width(config)
@@ -95,7 +143,7 @@ def _validate_encodable_range(config):
                 raise cv.Invalid(
                     f"{key} ({config[key]}) -> raw {raw} does not fit bit_mask "
                     f"0x{config[CONF_BIT_MASK]:02X} (field values 0..{top}) with converter "
-                    f"'{config[CONF_CONVERTER]}' (scale {scale}, value_offset {offset:g})",
+                    f"'{config[CONF_CONVERTER]}' (scale {scale:g}, value_offset {offset:g})",
                     path=[key],
                 )
             continue
@@ -104,7 +152,7 @@ def _validate_encodable_range(config):
             raise cv.Invalid(
                 f"{key} ({config[key]}) -> raw {raw} does not fit {width} "
                 f"{kind} byte(s) with converter '{config[CONF_CONVERTER]}' "
-                f"(scale {scale}, value_offset {offset:g}). Pick a different length/converter or bound.",
+                f"(scale {scale:g}, value_offset {offset:g}). Pick a different length/converter or bound.",
                 path=[key],
             )
     if config[CONF_MIN_VALUE] > config[CONF_MAX_VALUE]:
@@ -127,6 +175,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_BYTE_LENGTH): cv.int_range(min=1, max=4),
             cv.Optional(CONF_CONVERTER, default="noconv"): cv.enum(_WRITABLE_CONVERTERS, lower=True),
             cv.Optional(CONF_VALUE_OFFSET, default=0.0): cv.float_,
+            cv.Optional(CONF_SCALE): cv.float_range(min=0.0, min_included=False),
             cv.Optional(CONF_SIGNED): cv.boolean,
             # Writes become a read-modify-write of the one byte (vitohome.h,
             # rmw_pending_); see validate_bit_field for the shape rules.
@@ -142,7 +191,9 @@ CONFIG_SCHEMA = cv.All(
     validate_block_extraction((1, 2, 3, 4)),
     _validate_converter_field_width,
     validate_bit_field(writable=True),
+    _validate_scale,
     _validate_encodable_range,
+    _validate_raw_grid,
 )
 
 
@@ -164,7 +215,7 @@ async def to_code(config):
     cg.add(var.set_datapoint(datapoint_expression(config[CONF_NAME], read_addr, config[CONF_LENGTH])))
     emit_write_target(var, config, read_addr, write_addr)
     # scale_literal emits a C++ *double* literal (see sensor.py / __init__.py).
-    cg.add(var.set_scale(scale_literal(config[CONF_CONVERTER])))
+    cg.add(var.set_scale(scale_literal(config.get(CONF_SCALE, config[CONF_CONVERTER]))))
     if config[CONF_VALUE_OFFSET]:
         cg.add(var.set_value_offset(cg.RawExpression(repr(float(config[CONF_VALUE_OFFSET])))))
     cg.add(var.set_signed(resolve_signed(config)))

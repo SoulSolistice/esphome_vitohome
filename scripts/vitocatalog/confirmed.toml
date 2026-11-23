@@ -1,0 +1,22 @@
+# Hardware findings: what real units showed where the Vitosoft export is
+# incomplete or wrong. The generator applies each one to the device tokens it
+# names, and only to those (format: confirmed.py). Add a token to `devices`
+# after a unit of that type confirmed the finding too, or say above the entry
+# why the finding holds for it without one.
+
+# Confirmed on one BES unit. Every GWG device with this row shares it, and
+# little-endian the same bytes read 150-165 bar.
+[[finding]]
+tech = "GWG_Wasserdruck"
+action = "change"
+devices = [
+  "GWG_VBEM_00", "GWG_VBEM_03", "GWG_VBEM_21", "GWG_VBEM_35", "GWG_VBEM_36",
+  "GWG_VBES_00", "GWG_VBES_03", "GWG_VBES_21", "GWG_VBES_35", "GWG_VBES_36",
+  "GWG_VBT2_00", "GWG_VBT2_03", "GWG_VBT2_21", "GWG_VBT2_35", "GWG_VBT2_36",
+  "GWG_VWMS_00", "GWG_VWMS_03", "GWG_VWMS_21", "GWG_VWMS_35", "GWG_VWMS_36",
+]
+checked = "read"
+what = "big-endian: raw 01 71..01 7C is 1.27-1.33 bar, rising with the boiler temperature"
+unit = "0x2053 HW=0x01 SW=0x1E (BES)"
+source = "SoulSolistice/esphome_vitohome#35"
+set = { big_endian = true }

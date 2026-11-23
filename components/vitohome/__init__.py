@@ -442,7 +442,7 @@ def converter_scale(name: str) -> float:
     return CONVERTERS[name].scale
 
 
-def scale_literal(name: str) -> cg.RawExpression:
+def scale_literal(name_or_scale: str | float) -> cg.RawExpression:
     """The converter scale as a C++ *double* literal expression.
 
     Passing the Python float straight into codegen makes ESPHome emit a float32
@@ -452,9 +452,11 @@ def scale_literal(name: str) -> cg.RawExpression:
     value, silently narrowing the "read in uint64, scale in double, narrow last"
     guarantee. ``repr()`` of a Python float is the shortest decimal that
     round-trips, and C++ parses an unsuffixed literal as double, so the C++
-    constant is bit-identical to the Python double.
+    constant is bit-identical to the Python double. Takes a converter name or
+    a scale value.
     """
-    return cg.RawExpression(repr(float(CONVERTERS[name].scale)))
+    scale = CONVERTERS[name_or_scale].scale if isinstance(name_or_scale, str) else name_or_scale
+    return cg.RawExpression(repr(float(scale)))
 
 
 def llround(x: float) -> int:

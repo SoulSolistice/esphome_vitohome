@@ -60,6 +60,14 @@ zero is not raw 0: value = raw × scale + `value_offset`, and a write stages
 GWG coding (05), a 4-bit field 0..15 that means 35..110 °C, is `converter:
 mult5`, `value_offset: 35`. A `sensor` gets the same with an `offset:` filter.
 
+**Scale.** A `number` takes `scale` in place of a converter when no preset
+carries the factor: value = raw × `scale` + `value_offset`. V100CC1x coding
+K92, a run-on time of raw × 3 s, is `scale: 3`, 0..765 step 3. `scale` must
+be positive and cannot be combined with a converter other than `noconv`.
+`step` and `min_value` − `value_offset` must be whole multiples of the scale,
+or the frontend offers values the write rounds to the next raw step. With
+`scale` that is an error; with a converter preset only a warning.
+
 **Byte order.** Payloads are little-endian by default. `rotatebytes` (Vitosoft `RotateBytes`) is the exception: the same bytes are assembled **big-endian** before scaling (`decode.h::read_be` / `decode_scaled_be`). It is read-only and currently used for 2-byte coding values (`GWG_Codierstecker_Kennziffer`).
 
 ## Decode by platform
@@ -69,7 +77,7 @@ A `converter:` is one of several ways a value is read. The full set:
 | platform | how the value is read | key options |
 |---|---|---|
 | `sensor` | scaled integer | `converter`, `length`, `signed`, `byte_offset`, `byte_length`, `bit_mask` |
-| `number` (write) | scaled integer, encodable converters only | `converter`, `value_offset`, `length`, `min_value` / `max_value` / `step`, `state_address`, `byte_offset`, `byte_length`, `bit_mask` |
+| `number` (write) | scaled integer, encodable converters only | `converter` or `scale`, `value_offset`, `length`, `min_value` / `max_value` / `step`, `state_address`, `byte_offset`, `byte_length`, `bit_mask` |
 | `binary_sensor` | any bit of `bit_mask` set | `bit_mask`, `length`, `byte_offset` |
 | `text_sensor` `type: ascii` | raw bytes as an ASCII string | `length` |
 | `text_sensor` `type: utf16` | raw bytes as a UTF-16LE string | `length` (even) |
@@ -422,8 +430,8 @@ reach the device:
 - With `bit_mask`, the mask must be contiguous, the field one byte, every value
   within the field, and on writable platforms the read and write register the
   same (see *Bit fields* above).
-- For a writable `number`, the encodable range derived from the converter,
-  `value_offset` and `length` is checked against `min_value` / `max_value`, using the same range
+- For a writable `number`, the encodable range derived from the converter or
+  `scale`, `value_offset` and `length` is checked against `min_value` / `max_value`, using the same range
   check the C++ encode path applies at runtime — so the config-time check and
   the on-device guard agree.
 

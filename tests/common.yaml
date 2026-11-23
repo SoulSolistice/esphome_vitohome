@@ -167,6 +167,16 @@ number:
     unit_of_measurement: "C"
     mode: box
     update_interval: 3600s
+  # A factor no converter preset carries: raw * 3 s, raw 0..255.
+  - platform: vitohome
+    name: "Test Scale Number"
+    address: 0x8712
+    length: 1
+    scale: 3
+    min_value: 0
+    max_value: 765
+    step: 3
+    unit_of_measurement: "s"
   # block mode (the pump-speed shape, Neptun_ZP_Drehzahl): byte 1 of the 2-byte
   # block at 0x7953, without state_address. A write reads the whole block,
   # replaces byte 1 and writes both bytes back (whole-block read-modify-write).
