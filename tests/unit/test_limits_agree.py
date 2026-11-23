@@ -26,6 +26,8 @@ from vitocatalog import constants as generator  # noqa: E402
 from components.vitohome import (  # noqa: E402
     ANSWER_TO_NEXT_MAX_MS,
     ENQ_TO_SEND_MAX_MS,
+    ENQ_TO_SYNC_MAX_MS,
+    FRAME_TO_ACK_MAX_MS,
     MAX_P300_READ_LENGTH,
     MAX_RMW_BLOCK,
     RPC_PREFIX_MAX,
@@ -53,6 +55,8 @@ def _cpp_constant(header: str, name: str) -> int:
         # The link_timing bounds: the YAML refuses what the link would clamp.
         (ENQ_TO_SEND_MAX_MS, "optolink_types.h", "ENQ_TO_SEND_MAX_MS"),
         (ANSWER_TO_NEXT_MAX_MS, "optolink_types.h", "ANSWER_TO_NEXT_MAX_MS"),
+        (ENQ_TO_SYNC_MAX_MS, "optolink_types.h", "ENQ_TO_SYNC_MAX_MS"),
+        (FRAME_TO_ACK_MAX_MS, "optolink_types.h", "FRAME_TO_ACK_MAX_MS"),
     ],
 )
 def test_component_limit_matches_the_hub(python_value, header, cpp_name):

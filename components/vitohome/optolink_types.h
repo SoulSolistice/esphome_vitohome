@@ -56,22 +56,55 @@ struct Telegram {
 };
 
 // The moments a link holds a write back (design-optolink-layers.md, section
-// 13), each settable up to its bound.
+// 13), each settable up to its bound. KW has the first two, P300 all four.
 enum class TimingPoint : uint8_t {
-  // The device's ENQ read -> the 01 and the telegram.
+  // The device's ENQ read -> the 01 and the telegram; P300: on the KW
+  // detour.
   ENQ_TO_SEND,
-  // An answer -> the next telegram chained onto it; a GFA read keeps at
-  // least its own 25 ms.
+  // KW: an answer -> the next telegram chained onto it; a GFA read keeps at
+  // least its own 25 ms. P300: our ACK of an answer -> the next telegram.
   ANSWER_TO_NEXT,
+  // P300: the device's ENQ after our EOT -> our 16 00 00.
+  ENQ_TO_SYNC,
+  // P300: the device's answer frame complete -> our ACK.
+  FRAME_TO_ACK,
 };
+inline constexpr uint8_t TIMING_POINTS = 4;
 
-// The bounds: well inside what a VScotHO1_72 takes (200 ms after its ENQ,
-// 0.91 s after its answer) and inside the KW link's 500 ms chain window.
+// The bounds: well inside what a VScotHO1_72 takes (200 ms after its KW
+// ENQ, 0.91 s after a KW answer) and inside the KW link's 500 ms chain
+// window. Together far inside the 4 s watchdog of a request.
 inline constexpr uint32_t ENQ_TO_SEND_MAX_MS = 100;
 inline constexpr uint32_t ANSWER_TO_NEXT_MAX_MS = 400;
+inline constexpr uint32_t ENQ_TO_SYNC_MAX_MS = 100;
+inline constexpr uint32_t FRAME_TO_ACK_MAX_MS = 400;
 
 constexpr uint32_t timing_max(TimingPoint point) {
-  return point == TimingPoint::ENQ_TO_SEND ? ENQ_TO_SEND_MAX_MS : ANSWER_TO_NEXT_MAX_MS;
+  switch (point) {
+    case TimingPoint::ENQ_TO_SEND:
+      return ENQ_TO_SEND_MAX_MS;
+    case TimingPoint::ANSWER_TO_NEXT:
+      return ANSWER_TO_NEXT_MAX_MS;
+    case TimingPoint::ENQ_TO_SYNC:
+      return ENQ_TO_SYNC_MAX_MS;
+    case TimingPoint::FRAME_TO_ACK:
+    default:
+      return FRAME_TO_ACK_MAX_MS;
+  }
+}
+
+constexpr const char *timing_name(TimingPoint point) {
+  switch (point) {
+    case TimingPoint::ENQ_TO_SEND:
+      return "ENQ_TO_SEND";
+    case TimingPoint::ANSWER_TO_NEXT:
+      return "ANSWER_TO_NEXT";
+    case TimingPoint::ENQ_TO_SYNC:
+      return "ENQ_TO_SYNC";
+    case TimingPoint::FRAME_TO_ACK:
+    default:
+      return "FRAME_TO_ACK";
+  }
 }
 
 // Which telegram a request is: a protocol's own, or an open frame sent as

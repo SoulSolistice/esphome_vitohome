@@ -11,17 +11,20 @@
 //   RESET        the parser reset, the line drained, 04 -> RESET_ACK
 //   RESET_ACK    05 -> INIT, or a KW telegram pending goes out on it;
 //                3 s without -> RESET
-//   INIT         16 00 00 -> INIT_ACK
+//   INIT         16 00 00, ENQ_TO_SYNC after the 05 -> INIT_ACK
 //   INIT_ACK     06 -> IDLE; any other byte, or 3 s -> RESET
 //   IDLE         3 s since the last activity -> INIT (the keepalive); a KW
 //                telegram -> KW_DROP, an open frame -> FRAME_SEND, a
-//                telegram -> the line drained, 41 .. CS in this pass
+//                telegram -> the line drained, 41 .. CS in this pass;
+//                ANSWER_TO_NEXT after our 06
 //   SEND_ACK     one byte per pass: 06 -> RECEIVE, 15 -> IDLE and NACK
 //   RECEIVE      the answer through the parser (P300Parser)
-//   RECEIVE_ACK  06 -> IDLE
+//   RECEIVE_ACK  06, FRAME_TO_ACK after the frame -> IDLE
 //   KW_DROP      the parser reset, the line drained, 04 -> KW_ENQ
-//   KW_ENQ       05 -> 01 and the telegram in this pass; 3 s without ->
-//                RESET and TIMEOUT
+//   KW_ENQ       05 -> 01 and the telegram in this pass, or KW_HOLD; 3 s
+//                without -> RESET and TIMEOUT
+//   KW_HOLD      the line drained; ENQ_TO_SEND after the 05 -> 01 and the
+//                telegram
 //   KW_RECEIVE   <len> bytes, or one acknowledgement byte after a payload;
 //                1 s of silence, checked before the drain -> RESET and TIMEOUT
 //   KW_CHAIN     the next KW telegram (a GFA read 25 ms after the answer), a
@@ -31,6 +34,11 @@
 //                length or 500 ms of quiet -> RESET
 //   watchdog     4 s busy, from the submit, the KW drop, each KW telegram or
 //                an open frame's send -> RESET and TIMEOUT
+//
+// The timing points (TimingPoint) are 0 by default: the pacing without them,
+// the next pass for ENQ_TO_SYNC, FRAME_TO_ACK and ANSWER_TO_NEXT, the ENQ's
+// own pass for ENQ_TO_SEND. A held write goes out in the first pass at or
+// after its moment, and the loop runs fast meanwhile.
 //
 // The request stays busy during its result callback, so a submit from inside
 // it is refused.
@@ -84,10 +92,17 @@ template<class Port> class P300Exchange {
     busy_ = false;
   }
   bool busy() const { return busy_; }
-  bool wants_fast_loop() const { return false; }
-  // No timing points yet.
-  bool set_timing(TimingPoint, uint32_t &) { return false; }
-  uint32_t timing(TimingPoint) const { return 0; }
+  // Whether a write waits on a timing point; in IDLE only with a request.
+  bool wants_fast_loop() const { return waiting_ && (state_ != State::IDLE || busy_); }
+
+  // A timing point, `ms` clamped to its bound.
+  bool set_timing(TimingPoint point, uint32_t &ms) {
+    if (ms > timing_max(point))
+      ms = timing_max(point);
+    timing_[static_cast<uint8_t>(point)] = ms;
+    return true;
+  }
+  uint32_t timing(TimingPoint point) const { return timing_[static_cast<uint8_t>(point)]; }
   uint32_t timing_default(TimingPoint) const { return 0; }
 
   // A P300 telegram by function code, a KW telegram over the detour, or an
@@ -151,6 +166,9 @@ template<class Port> class P300Exchange {
       case State::KW_ENQ:
         this->kw_enq_();
         break;
+      case State::KW_HOLD:
+        this->kw_hold_();
+        break;
       case State::KW_SEND:
         this->kw_send_();
         break;
@@ -191,6 +209,7 @@ template<class Port> class P300Exchange {
     RECEIVE_ACK,
     KW_DROP,
     KW_ENQ,
+    KW_HOLD,
     KW_SEND,
     KW_RECEIVE,
     KW_CHAIN,
@@ -253,10 +272,24 @@ template<class Port> class P300Exchange {
     request_ms_ = now_;
   }
 
-  // Every state that counts bytes starts at 0.
+  // Every state that counts bytes starts at 0, and without a held write.
   void set_state_(State state) {
     state_ = state;
     count_ = 0;
+    hold_ms_ = 0;
+    waiting_ = false;
+  }
+
+  // The state's write held back by `point` from now.
+  void hold_(TimingPoint point) {
+    hold_from_ms_ = now_;
+    hold_ms_ = timing_[static_cast<uint8_t>(point)];
+    waiting_ = hold_ms_ != 0;
+  }
+  // Whether the held write must wait still.
+  bool held_() {
+    waiting_ = now_ - hold_from_ms_ < hold_ms_;
+    return waiting_;
   }
 
   void drain_() {
@@ -281,16 +314,19 @@ template<class Port> class P300Exchange {
       // After the EOT the device speaks KW: a KW telegram waiting goes out on
       // this ENQ, not after a handshake the detour would drop again.
       if (busy_ && kw_) {
-        this->kw_start_(true);
+        this->kw_enq_read_();
         return;
       }
       this->set_state_(State::INIT);
+      this->hold_(TimingPoint::ENQ_TO_SYNC);
     } else if (now_ - last_ms_ > P300_HANDSHAKE_RETRY_MS) {
       this->set_state_(State::RESET);
     }
   }
 
   void init_() {
+    if (count_ == 0 && this->held_())
+      return;
     count_ = static_cast<uint8_t>(count_ + port_->write(&SYNC[count_], static_cast<uint8_t>(sizeof(SYNC) - count_)));
     if (count_ == sizeof(SYNC)) {
       last_ms_ = now_;
@@ -307,6 +343,12 @@ template<class Port> class P300Exchange {
   }
 
   void idle_() {
+    // Nothing waits without a request.
+    if (!busy_) {
+      waiting_ = false;
+    } else if (this->held_()) {
+      return;
+    }
     const bool keepalive = now_ - last_ms_ > P300_KEEPALIVE_MS;
     if (busy_) {
       if (kw_) {
@@ -403,6 +445,7 @@ template<class Port> class P300Exchange {
     // Every complete frame is acknowledged. A response to another function
     // code is ERROR, the error frame DEVICE_ERROR with its payload.
     this->set_state_(State::RECEIVE_ACK);
+    this->hold_(TimingPoint::FRAME_TO_ACK);
     if (response && fc != p300_function(telegram_)) {
       this->fail_(OptolinkResult::ERROR);
     } else if (response) {
@@ -418,9 +461,12 @@ template<class Port> class P300Exchange {
   }
 
   void receive_ack_() {
+    if (this->held_())
+      return;
     if (port_->write(&ACK, 1) == 1) {
       last_ms_ = now_;
       this->set_state_(State::IDLE);
+      this->hold_(TimingPoint::ANSWER_TO_NEXT);
     }
   }
 
@@ -442,11 +488,28 @@ template<class Port> class P300Exchange {
     if (port_->available()) {
       // Anything but the ENQ is left over from P300 and dropped.
       if (port_->read() == ENQ)
-        this->kw_start_(true);
+        this->kw_enq_read_();
     } else if (now_ - last_ms_ > P300_KW_ENQ_TIMEOUT_MS) {
       this->set_state_(State::RESET);
       this->fail_(OptolinkResult::TIMEOUT);
     }
+  }
+
+  // The device's ENQ for the KW telegram: answered in this pass, or held.
+  void kw_enq_read_() {
+    if (timing_[static_cast<uint8_t>(TimingPoint::ENQ_TO_SEND)] == 0) {
+      this->kw_start_(true);
+      return;
+    }
+    this->set_state_(State::KW_HOLD);
+    this->hold_(TimingPoint::ENQ_TO_SEND);
+  }
+
+  // What the device sends meanwhile is no answer.
+  void kw_hold_() {
+    this->drain_();
+    if (!this->held_())
+      this->kw_start_(true);
   }
 
   // The KW telegram, with the 01 in front when it answers an ENQ, sent in the
@@ -507,10 +570,11 @@ template<class Port> class P300Exchange {
         return;
       }
       if (busy_ && kw_) {
-        this->kw_start_(true);
+        this->kw_enq_read_();
       } else {
         last_ms_ = now_;
         this->set_state_(State::INIT);
+        this->hold_(TimingPoint::ENQ_TO_SYNC);
       }
       return;
     }
@@ -590,6 +654,11 @@ template<class Port> class P300Exchange {
   uint32_t request_ms_{0};
   // Bytes written or read within the state.
   uint8_t count_{0};
+  // The timing points, and the state's held write: from when, how long.
+  uint32_t timing_[TIMING_POINTS]{};
+  uint32_t hold_from_ms_{0};
+  uint32_t hold_ms_{0};
+  bool waiting_{false};
   P300Parser parser_;
   uint16_t address_{0};
   uint8_t length_{0};

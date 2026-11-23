@@ -94,14 +94,24 @@ template<class Port> class EnqLink {
     pending_ = true;
     retries_left_ = params_.silence_retries;
   }
-  // A timing point, clamped to its bound in `ms`.
-  void set_timing(TimingPoint point, uint32_t &ms) {
+  // A timing point, clamped to its bound in `ms`; false for the P300 ones.
+  bool set_timing(TimingPoint point, uint32_t &ms) {
+    if (point != TimingPoint::ENQ_TO_SEND && point != TimingPoint::ANSWER_TO_NEXT)
+      return false;
     if (ms > timing_max(point))
       ms = timing_max(point);
     (point == TimingPoint::ENQ_TO_SEND ? params_.enq_to_send_ms : params_.answer_to_next_ms) = ms;
+    return true;
   }
   uint32_t timing(TimingPoint point) const {
-    return point == TimingPoint::ENQ_TO_SEND ? params_.enq_to_send_ms : params_.answer_to_next_ms;
+    switch (point) {
+      case TimingPoint::ENQ_TO_SEND:
+        return params_.enq_to_send_ms;
+      case TimingPoint::ANSWER_TO_NEXT:
+        return params_.answer_to_next_ms;
+      default:
+        return 0;
+    }
   }
   // A telegram waits for its moment: on a held ENQ or on a chain.
   bool write_waits() const { return pending_ && (state_ == State::ENQ_HELD || state_ == State::CHAINED); }

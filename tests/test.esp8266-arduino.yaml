@@ -38,3 +38,12 @@ packages:
   unsafe_raw:
     vitohome:
       unsafe_raw_writes: true
+  # The P300 link's timing points through the codegen; a setting other than
+  # the default is logged as a warning at boot.
+  link_timing:
+    vitohome:
+      link_timing:
+        enq_to_sync: 10ms
+        frame_to_ack: 5ms
+        answer_to_next: 20ms
+        enq_to_send: 15ms

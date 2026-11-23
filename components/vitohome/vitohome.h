@@ -213,10 +213,11 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   uint32_t gwg_enq_ack_gap_ms() const { return this->gwg_enq_ack_gap_ms_; }
 
   // A timing point of the link: how long it holds a write back after its
-  // moment (TimingPoint, optolink_types.h). KW only so far, where
-  // ENQ_TO_SEND is 20 ms and ANSWER_TO_NEXT 25 ms; a value past the bound
-  // is clamped, and any value other than the default is logged as a
-  // warning. False on a protocol without them. Settable live:
+  // moment (TimingPoint, optolink_types.h). KW has ENQ_TO_SEND (20 ms) and
+  // ANSWER_TO_NEXT (25 ms); P300 those two and ENQ_TO_SYNC and FRAME_TO_ACK,
+  // all 0, the pacing without them. A value past the bound is clamped, and
+  // any value other than the default is logged as a warning. False for a
+  // point the link lacks (GWG has none). Settable live:
   //
   //   id(vito).set_link_timing(vitohome::TimingPoint::ENQ_TO_SEND, 30);
   bool set_link_timing(TimingPoint point, uint32_t ms);

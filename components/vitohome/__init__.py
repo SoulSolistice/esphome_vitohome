@@ -94,9 +94,20 @@ CONF_RAW_QUEUE_SIZE = "raw_queue_size"
 CONF_LINK_TIMING = "link_timing"
 CONF_ENQ_TO_SEND = "enq_to_send"
 CONF_ANSWER_TO_NEXT = "answer_to_next"
-# The bounds of optolink_types.h (ENQ_TO_SEND_MAX_MS, ANSWER_TO_NEXT_MAX_MS).
+CONF_ENQ_TO_SYNC = "enq_to_sync"
+CONF_FRAME_TO_ACK = "frame_to_ack"
+# The bounds of optolink_types.h (ENQ_TO_SEND_MAX_MS and the others).
 ENQ_TO_SEND_MAX_MS = 100
 ANSWER_TO_NEXT_MAX_MS = 400
+ENQ_TO_SYNC_MAX_MS = 100
+FRAME_TO_ACK_MAX_MS = 400
+# Each key's TimingPoint and bound, and the protocols whose link has it.
+LINK_TIMING_POINTS = {
+    CONF_ENQ_TO_SEND: ("ENQ_TO_SEND", ENQ_TO_SEND_MAX_MS, ("KW", "P300")),
+    CONF_ANSWER_TO_NEXT: ("ANSWER_TO_NEXT", ANSWER_TO_NEXT_MAX_MS, ("KW", "P300")),
+    CONF_ENQ_TO_SYNC: ("ENQ_TO_SYNC", ENQ_TO_SYNC_MAX_MS, ("P300",)),
+    CONF_FRAME_TO_ACK: ("FRAME_TO_ACK", FRAME_TO_ACK_MAX_MS, ("P300",)),
+}
 # The generic raw operation (VitoHomeComponent::queue_raw_op(), raw_op.h): any
 # telegram of any layer, for reverse engineering. Off by default; the second
 # switch adds the operations that may change the controller (RawClass UNSAFE).
@@ -125,14 +136,11 @@ WEEKDAY_BASES = (WEEKDAY_BASE_AUTO, "sunday_0", "monday_0", "monday_1")
 
 LINK_TIMING_SCHEMA = cv.Schema(
     {
-        cv.Optional(CONF_ENQ_TO_SEND): cv.All(
+        cv.Optional(key): cv.All(
             cv.positive_time_period_milliseconds,
-            cv.Range(max=cv.TimePeriod(milliseconds=ENQ_TO_SEND_MAX_MS)),
-        ),
-        cv.Optional(CONF_ANSWER_TO_NEXT): cv.All(
-            cv.positive_time_period_milliseconds,
-            cv.Range(max=cv.TimePeriod(milliseconds=ANSWER_TO_NEXT_MAX_MS)),
-        ),
+            cv.Range(max=cv.TimePeriod(milliseconds=bound)),
+        )
+        for key, (_, bound, _) in LINK_TIMING_POINTS.items()
     }
 )
 
@@ -1059,12 +1067,21 @@ def poll_update_interval(value):
 
 
 def _validate_link_timing(config):
-    """``link_timing`` sets the KW link's pauses; the P300 and GWG engines have none yet."""
-    if CONF_LINK_TIMING in config and str(config[CONF_PROTOCOL]) != "KW":
+    """``link_timing`` sets the link's pauses: KW and P300 each have their own, GWG none yet."""
+    if CONF_LINK_TIMING not in config:
+        return config
+    protocol = str(config[CONF_PROTOCOL])
+    if protocol == "GWG":
         raise cv.Invalid(
-            f"'{CONF_LINK_TIMING}' is for 'protocol: KW' only so far",
+            f"'{CONF_LINK_TIMING}' is for 'protocol: KW' and 'protocol: P300' only so far",
             path=[CONF_LINK_TIMING],
         )
+    for key in config[CONF_LINK_TIMING]:
+        if protocol not in LINK_TIMING_POINTS[key][2]:
+            raise cv.Invalid(
+                f"'{key}' is a P300 timing point; the {protocol} link has none",
+                path=[CONF_LINK_TIMING, key],
+            )
     return config
 
 
@@ -1701,7 +1718,7 @@ async def to_code(config):
     # unconditionally so the generated main.cpp states the size it runs with.
     cg.add(var.set_raw_queue_capacity(config[CONF_RAW_QUEUE_SIZE]))
     timing_point = vitohome_ns.namespace("optolink").enum("TimingPoint", is_class=True)
-    for key, point in ((CONF_ENQ_TO_SEND, "ENQ_TO_SEND"), (CONF_ANSWER_TO_NEXT, "ANSWER_TO_NEXT")):
+    for key, (point, _, _) in LINK_TIMING_POINTS.items():
         if key in config.get(CONF_LINK_TIMING, {}):
             cg.add(var.set_link_timing(getattr(timing_point, point), config[CONF_LINK_TIMING][key].total_milliseconds))
     if config[CONF_RAW_ACCESS] == RAW_ACCESS_UNRESTRICTED:

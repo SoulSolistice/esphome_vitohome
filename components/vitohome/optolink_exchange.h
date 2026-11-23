@@ -51,14 +51,19 @@ template<class Codec, class Link> class Exchange {
   // stretch the pause.
   bool wants_fast_loop() const { return link_.write_waits(); }
 
-  // A timing point, `ms` clamped to its bound; false where the link has none.
-  bool set_timing(TimingPoint point, uint32_t &ms) {
-    link_.set_timing(point, ms);
-    return true;
-  }
+  // A timing point, `ms` clamped to its bound; false for a point the link
+  // lacks.
+  bool set_timing(TimingPoint point, uint32_t &ms) { return link_.set_timing(point, ms); }
   uint32_t timing(TimingPoint point) const { return link_.timing(point); }
   uint32_t timing_default(TimingPoint point) const {
-    return point == TimingPoint::ENQ_TO_SEND ? defaults_.enq_to_send_ms : defaults_.answer_to_next_ms;
+    switch (point) {
+      case TimingPoint::ENQ_TO_SEND:
+        return defaults_.enq_to_send_ms;
+      case TimingPoint::ANSWER_TO_NEXT:
+        return defaults_.answer_to_next_ms;
+      default:
+        return 0;
+    }
   }
 
   bool submit(const Request &request) {

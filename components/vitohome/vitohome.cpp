@@ -139,8 +139,8 @@ void VitoHomeComponent::setup() {
   }
 
   // A timing point someone set is never silent: in every log uploaded.
-  this->warn_link_timing_(TimingPoint::ENQ_TO_SEND);
-  this->warn_link_timing_(TimingPoint::ANSWER_TO_NEXT);
+  for (uint8_t i = 0; i < optolink::TIMING_POINTS; ++i)
+    this->warn_link_timing_(static_cast<TimingPoint>(i));
 
   // Start-up window for the first answer: max(PROTOCOL_VERIFY_MIN_MS, 3 * hub
   // interval), saturated at INT32_MAX for loop()'s signed-difference deadline
@@ -307,7 +307,7 @@ void VitoHomeComponent::arm_watchdog_(uint8_t telegrams) {
 bool VitoHomeComponent::set_link_timing(TimingPoint point, uint32_t ms) {
   const uint32_t asked = ms;
   if (!this->vito_.set_timing(point, ms)) {
-    ESP_LOGW(TAG, "set_link_timing: the %s link has no timing points yet", PROTOCOL_NAME);
+    ESP_LOGW(TAG, "set_link_timing: the %s link has no %s", PROTOCOL_NAME, optolink::timing_name(point));
     return false;
   }
   if (ms != asked)
@@ -324,7 +324,7 @@ void VitoHomeComponent::warn_link_timing_(TimingPoint point) const {
   if (ms == standard)
     return;
   ESP_LOGW(TAG, "diagnostic link timing active: %s %" PRIu32 " ms (default %" PRIu32 " ms)",
-           point == TimingPoint::ENQ_TO_SEND ? "ENQ_TO_SEND" : "ANSWER_TO_NEXT", ms, standard);
+           optolink::timing_name(point), ms, standard);
 }
 
 void VitoHomeComponent::set_gwg_write_eot_before_payload(bool eot_first) {
@@ -662,9 +662,15 @@ void VitoHomeComponent::dump_config() {
                 "  Entities: %zu\n"
                 "  Raw queue capacity: %zu",
                 PROTOCOL_NAME, this->entities_.size(), this->raw_queue_capacity_);
-#ifdef VITOHOME_PROTOCOL_KW
+#if defined(VITOHOME_PROTOCOL_KW)
   ESP_LOGCONFIG(TAG, "  Link timing: ENQ to send %" PRIu32 " ms, answer to next %" PRIu32 " ms",
                 this->vito_.timing(TimingPoint::ENQ_TO_SEND), this->vito_.timing(TimingPoint::ANSWER_TO_NEXT));
+#elif !defined(VITOHOME_PROTOCOL_GWG)
+  ESP_LOGCONFIG(TAG,
+                "  Link timing: ENQ to SYNC %" PRIu32 " ms, frame to ACK %" PRIu32 " ms, ACK to next %" PRIu32
+                " ms, ENQ to send (KW detour) %" PRIu32 " ms",
+                this->vito_.timing(TimingPoint::ENQ_TO_SYNC), this->vito_.timing(TimingPoint::FRAME_TO_ACK),
+                this->vito_.timing(TimingPoint::ANSWER_TO_NEXT), this->vito_.timing(TimingPoint::ENQ_TO_SEND));
 #endif
 
   if (this->ident_state_ == IdentState::DONE) {

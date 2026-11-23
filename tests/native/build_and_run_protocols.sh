@@ -236,6 +236,10 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OP
   proof_p300_guards.cpp "${SRCS[@]}" -o p300_guards
 ./p300_guards
 
+echo "== P300 link timing: the four timing points =="
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO"   proof_p300_timing.cpp "${SRCS[@]}" -o p300_timing
+./p300_timing
+
 echo "== GWG sync poke: must be OFF by default =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
   proof_gwg_poke.cpp "${SRCS[@]}" -o gwg_poke

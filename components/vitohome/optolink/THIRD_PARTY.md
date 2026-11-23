@@ -1024,7 +1024,20 @@ These are intentional divergences from upstream `edc059a7`:
     byte; before, RESET drained that byte, and most P300 seeds ended in a
     timeout on both sides.
 
-Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called), 39 (when its gap is set), 40, 41, 45 and 46 are the only intentional changes to on-wire/runtime
+48. **P300 timing points (behavioral divergence when set).** The P300
+    exchange holds four writes back by a settable number of ms: our
+    `16 00 00` after the device's ENQ (`ENQ_TO_SYNC`), our ACK after its
+    answer frame (`FRAME_TO_ACK`), the next telegram after our ACK
+    (`ANSWER_TO_NEXT`) and, on the KW detour, the `01` and the telegram
+    after the ENQ (`ENQ_TO_SEND`). All four are 0 by default, the pacing of
+    item 47; the differential target holds that to the reference
+    `VS2Engine`. Bounded at 100, 400, 400 and 100 ms; settable from YAML
+    (`link_timing:`, now KW and P300) and live (`set_link_timing()`), logged
+    as a warning when set. The loop runs fast while a write waits, and the
+    device's bytes during the detour's hold are dropped. Proof:
+    `proof_p300_timing.cpp`, `test_link_timing.py`.
+
+Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called), 39 (when its gap is set), 40, 41, 45, 46 and 48 (when set) are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16, 42, 43, 44 and 47 are structural (no behavior change from any call
 site that exists -- item 16 altered bytes only on a RESPONSE-construction path
 nothing exercised, now removed); item 17 changes only construction-failure handling
