@@ -186,6 +186,30 @@ def test_add_takes_set_overrides():
     assert cat._events["3"].access_type == 3
 
 
+def test_a_list_of_tech_ids_is_one_finding_each():
+    entry = {**_BASE, "tech": ["GWG_K45Max", "GWG_Wasserdruck"], "action": "drop", "devices": ["GWG_A"]}
+    found = confirmed.parse({"finding": [entry]})
+    assert [f.tech for f in found] == ["GWG_K45Max", "GWG_Wasserdruck"]
+    assert all(f.action == "drop" and f.devices == ("GWG_A",) for f in found)
+    cat = _catalog()
+    cat.use_findings(found)
+    assert not {"GWG_K45Max", "GWG_Wasserdruck"} & set(_by_tech(cat.events_for("GWG_A")))
+
+
+@pytest.mark.parametrize(
+    ("over", "message"),
+    [
+        ({"tech": ["GWG_K45Max"], "action": "change", "set": {"access_type": 1}}, "drop and confirm only"),
+        ({"tech": [], "action": "drop"}, "non-empty list"),
+        ({"tech": ["GWG_K45Max", "GWG_K45Max"], "action": "drop"}, "an id twice"),
+    ],
+)
+def test_a_list_of_tech_ids_is_refused_where_it_does_not_fit(over, message):
+    entry = {**_BASE, "devices": ["GWG_A"], **over}
+    with pytest.raises(FindingError, match=message):
+        confirmed.parse({"finding": [entry]})
+
+
 def test_drop_removes_the_datapoint():
     cat = _catalog()
     cat.use_findings([_finding(tech="GWG_K45Max", action="drop", devices=["GWG_A"])])
@@ -340,6 +364,11 @@ def test_shipped_findings_are_in_their_catalogs():
     catalog of each device it names (the catalogs are regenerated with it)."""
     for f in confirmed.load():
         if f.action == "drop":
+            for dev in f.devices:
+                for lang in ("de", "en"):
+                    path = os.path.join(_REPO_ROOT, "example", "catalogs", lang, f"{dev.lower()}.yaml")
+                    with open(path, encoding="utf-8") as fh:
+                        assert f"id: {f.tech}\n" not in fh.read(), f"{f.tech} still in {lang}/{dev.lower()}.yaml"
             continue
         for dev in f.devices:
             for lang in ("de", "en"):

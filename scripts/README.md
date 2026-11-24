@@ -190,7 +190,8 @@ has on no device: `set` gives at least `address`, `conversion`, `access_type`,
 display name per language (`{ de = "..", en = ".." }`). A define whose tech id
 the export knows is refused, so a row Vitosoft has is always taken from there,
 and so is one on bytes the device already reads. `change` overrides fields of
-one it has, `drop` removes it. An added or defined entity whose name the
+one it has, `drop` removes it. A `drop` or `confirm` may name a list of
+tech ids, `tech = ["..", ".."]`, one finding each. An added or defined entity whose name the
 device already uses takes the `(id)` qualifier; the existing one keeps its
 name. The generator applies each finding only to the device tokens it
 names. Add a token after a unit of that type confirmed the finding too, or

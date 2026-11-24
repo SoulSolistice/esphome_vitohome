@@ -13,7 +13,8 @@ for another: a token without its own confirmation needs a reason in the TOML.
 
 Each ``[[finding]]`` table:
 
-    tech      technical id of the datapoint (the catalog's ``id:``)
+    tech      technical id of the datapoint (the catalog's ``id:``); a drop
+              or confirm may name a list, one finding per id
     action    "confirm" (mark one the device has as checked on hardware),
               "add" (link a Vitosoft datapoint of another device to it),
               "define" (one the export has on no device),
@@ -75,6 +76,9 @@ SETTABLE: dict[str, tuple[type, ...]] = {
     "conv_offset": (int, float),
     "big_endian": (bool,),
 }
+
+# The actions whose `tech` may be a list: they carry nothing per datapoint.
+LIST_ACTIONS = ("drop", "confirm")
 
 # What a define must state: where the value is and how it is read.
 DEFINE_REQUIRED = ("address", "conversion", "access_type", "block_length", "byte_length", "byte_position", "fc_read")
@@ -174,6 +178,20 @@ def _parse(entry: dict, where: str) -> Finding:
     )
 
 
+def _expand(entry, where: str) -> list:
+    """An entry whose tech is a list, as one entry per tech id."""
+    if not isinstance(entry, dict) or not isinstance(entry.get("tech"), list):
+        return [entry]
+    techs = entry["tech"]
+    if entry.get("action") not in LIST_ACTIONS:
+        raise FindingError(f"{where}: a list of tech ids applies to {' and '.join(LIST_ACTIONS)} only")
+    if not (techs and all(isinstance(t, str) and t.strip() for t in techs)):
+        raise FindingError(f"{where}: tech must be a non-empty list of tech ids")
+    if len(set(techs)) != len(techs):
+        raise FindingError(f"{where}: tech lists an id twice")
+    return [{**entry, "tech": t} for t in techs]
+
+
 def parse(doc: dict, origin: str = "<findings>") -> list[Finding]:
     """The findings of a parsed TOML document; FindingError on any defect.
     One (tech, device) pair may be named by one finding only, so the order of
@@ -184,7 +202,10 @@ def parse(doc: dict, origin: str = "<findings>") -> list[Finding]:
     entries = doc.get("finding", [])
     if not isinstance(entries, list):
         raise FindingError(f"{origin}: finding must be an array of tables ([[finding]])")
-    out = [_parse(e, f"{origin}: finding {i + 1}") for i, e in enumerate(entries)]
+    out = []
+    for i, e in enumerate(entries):
+        where = f"{origin}: finding {i + 1}"
+        out.extend(_parse(one, where) for one in _expand(e, where))
     seen: dict[tuple[str, str], int] = {}
     for i, f in enumerate(out):
         for dev in f.devices:
