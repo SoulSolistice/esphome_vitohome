@@ -140,6 +140,8 @@ int main() {
     io.feed({0x15});
     pump(e);
     expect(trace, "*nack IDLE", "P300: NACKed");
+    // Past the quiet a NACK asks for, so the restart's EOT goes at once.
+    advance(e, optolink::P300_QUIET_MS);
     e.begin();
     pump(e);
     expect(trace, "RESET RESET_ACK", "P300: a restart, its EOT");

@@ -1086,10 +1086,11 @@ These are intentional divergences from upstream `edc059a7`:
     native suite, and the ESP8266 and ESP-IDF test builds.
 
 52. **P300: the EOT again after the device's 15 (behavioral divergence).**
-    After its NACK a VScotHO1_72 refuses the next byte it gets, an EOT too,
-    with a `15` about 258 ms later, and takes the byte after that
-    (2026-11-24: an EOT 1-255 ms after a NACKed timed frame, and the
-    telegrams after a NACK). `VS2Engine` ignored that `15` and sent the EOT
+    After its NACK a VScotHO1_72 sends one more `15`, about 260 ms after
+    the last byte it received; an EOT or a telegram that comes before that
+    `15` is lost, one after it is taken (2026-11-24: an EOT 1-255 ms after
+    a NACKed timed frame, the recorder's dumps, the telegrams after a
+    NACK). `VS2Engine` ignored that `15` and sent the EOT
     again after 3 s, so the request queued at a restart after a NACK ran
     into its 4 s watchdog (2 of 2 on the unit). Now a `15` in `RESET_ACK`
     or `KW_ENQ` sends the EOT again once the line has been quiet for
@@ -1100,7 +1101,16 @@ These are intentional divergences from upstream `edc059a7`:
     later. The differential target runs the live side without it
     (`P300Exchange<Port, 0, 0>`). Proof: `proof_p300_eot_refused.cpp`.
 
-Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called), 39 (when its gap is set), 40, 41, 45, 46, 48 (when set), 49 and 52 are the only intentional changes to on-wire/runtime
+53. **P300: the telegram after a NACK waits out the device's last 15
+    (behavioral divergence).** The same `15` lost the telegram that
+    `VS2Engine` sent right after a NACK, so a NACK came in pairs (0032
+    stress run, 09:41:26: 0x0816 sent 1 ms after the NACK of 0x2500 and
+    NACKed; the telegram 47 ms after the device's last `15` answered).
+    After a NACK the next telegram, or a restart's EOT, waits until the
+    line has been quiet for `P300_QUIET_MS`. The differential target runs
+    the live side without it. Proof: `proof_p300_eot_refused.cpp` (A, H).
+
+Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called), 39 (when its gap is set), 40, 41, 45, 46, 48 (when set), 49, 52 and 53 are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16, 42, 43, 44, 47, 50 and 51 are structural (no behavior change from any call
 site that exists -- item 16 altered bytes only on a RESPONSE-construction path
 nothing exercised, now removed); item 17 changes only construction-failure handling

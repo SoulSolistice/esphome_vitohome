@@ -1,9 +1,9 @@
-// The P300 exchange's EOT after the device's 15 (optolink_p300.h, RESET,
-// RESET_ACK, KW_DROP, KW_ENQ), on a frozen clock. After its NACK a
-// VScotHO1_72 refuses the next byte, an EOT too, with a 15 about 258 ms
-// later (2026-11-24). Pinned below:
-//   A) a restart after a NACK: the EOT refused, the device's two 15s, the
-//      EOT again QuietMs after the last; the read queued meanwhile answered
+// The P300 exchange's next write after the device's 15 (optolink_p300.h,
+// RESET, RESET_ACK, IDLE, KW_DROP, KW_ENQ), on a frozen clock. After its
+// NACK a VScotHO1_72 sends one more 15 about 260 ms after the last byte it
+// received, and loses what comes before it (2026-11-24). Pinned below:
+//   A) a restart after a NACK: the EOT waits out the device's 15s, then
+//      goes QuietMs after the last; the read queued meanwhile answered
 //      inside its watchdog;
 //   B) with QuietMs 0 (VS2Engine, which the differential target compares
 //      against) the 15 is ignored, the EOT goes again after 3 s and the read
@@ -14,7 +14,9 @@
 //      the 05;
 //   F) a device that refuses every EOT: TIMEOUT 4 s after the first drop,
 //      not later;
-//   G) with QuietMs 0 the detour's 15 is ignored: TIMEOUT after the ENQ wait.
+//   G) with QuietMs 0 the detour's 15 is ignored: TIMEOUT after the ENQ wait;
+//   H) the telegram after a NACK waits until QuietMs after the device's last
+//      15 and is answered; with QuietMs 0 it goes out at once.
 //
 // Built by build_and_run_protocols.sh.
 
@@ -111,8 +113,7 @@ int main() {
     e.begin();
     check(kw_calls::read(e, 0x5525, 2), "A: the next read queued at the restart");
     pump(e);
-    check(io.written() == Bytes({0x04}), "A: the restart's EOT at once");
-    io.clear_written();
+    check(io.written().empty(), "A: the restart's EOT waits out the NACK");
     advance(e, 34);
     io.feed({0x15});
     pump(e);
@@ -287,6 +288,44 @@ int main() {
     check(io.written().empty(), "G: QuietMs 0: the 15 ignored");
     advance(e, optolink::P300_KW_ENQ_TIMEOUT_MS);
     check(seen.count == 1 && seen.status == OptolinkResult::TIMEOUT, "G: TIMEOUT after the ENQ wait");
+  }
+
+  // --- H ------------------------------------------------------------------
+  {
+    FakeOptolink io;
+    Engine e(&io);
+    Seen seen;
+    watch(e, seen);
+    e.begin();
+    check(handshake(e, io), "H: P300 link up");
+    check(nacked_read(e, io, seen), "H: a read NACKed");
+    check(kw_calls::read(e, 0x5525, 2), "H: the next read queued at once");
+    pump(e);
+    check(io.written().empty(), "H: not sent into the device's 15s");
+    advance(e, 7);
+    io.feed({0x15});
+    pump(e);
+    advance(e, 255);
+    io.feed({0x15});
+    pump(e);
+    advance(e, optolink::P300_QUIET_MS - 1);
+    check(io.written().empty(), "H: nothing before QuietMs after the last 15");
+    advance(e, 1);
+    check(io.written() == Bytes({0x41, 0x05, 0x00, 0x01, 0x55, 0x25, 0x02, 0x82}), "H: the read at QuietMs");
+    io.feed(kAnswer5525);
+    pump(e);
+    check(seen.count == 2 && seen.status == OptolinkResult::OK, "H: answered OK");
+
+    FakeOptolink io0;
+    EngineOld e0(&io0);
+    Seen seen0;
+    watch(e0, seen0);
+    e0.begin();
+    check(handshake(e0, io0), "H: QuietMs 0: P300 link up");
+    check(nacked_read(e0, io0, seen0), "H: QuietMs 0: a read NACKed");
+    check(kw_calls::read(e0, 0x5525, 2), "H: QuietMs 0: the next read queued");
+    pump(e0);
+    check(!io0.written().empty() && io0.written()[0] == 0x41, "H: QuietMs 0: sent at once");
   }
 
   std::printf("p300 eot refused: %d failure(s)\n", g_fail);

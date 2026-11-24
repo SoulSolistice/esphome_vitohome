@@ -16,8 +16,8 @@
 //   INIT_ACK     06 -> IDLE; any other byte, or 3 s -> RESET
 //   IDLE         3 s since the last activity -> INIT (the keepalive); a KW
 //                telegram -> KW_DROP, an open frame -> FRAME_SEND, a
-//                telegram -> the line drained, 41 .. CS in this pass;
-//                ANSWER_TO_NEXT after our 06
+//                telegram -> the line drained, quiet for QuietMs after a
+//                NACK, 41 .. CS in this pass; ANSWER_TO_NEXT after our 06
 //   SEND_ACK     one byte per pass: 06 -> RECEIVE, 15 -> IDLE and NACK
 //   RECEIVE      the answer through the parser (P300Parser)
 //   RECEIVE_ACK  06, FRAME_TO_ACK after the frame -> IDLE
@@ -40,11 +40,13 @@
 //                telegram, its retry or an open frame's send -> RESET and
 //                TIMEOUT
 //
-// After its NACK a VScotHO1_72 refuses the next byte it gets, an EOT too:
-// 15 about 258 ms later. The byte after that it takes (2026-11-24, an EOT
-// 1-255 ms after a NACKed timed frame, and the telegrams after a NACK).
-// The EOT goes out again once that 15 is past, instead of 3 s later; a
-// request waiting meanwhile would run into its watchdog.
+// After its NACK a VScotHO1_72 sends one more 15, about 260 ms after the
+// last byte it received; an EOT or a telegram that comes before that 15 is
+// lost, one after it is taken (2026-11-24: EOTs 1-255 ms after a NACKed
+// timed frame, the recorder's dumps, the telegrams after a NACK). So the
+// next write after a 15 waits until the line has been quiet for QuietMs:
+// the EOT, instead of 3 s later, in which a request waiting meanwhile ran
+// into its watchdog, and the next telegram, which was NACKed too.
 //
 // The timing points (TimingPoint) are 0 by default: the pacing without them,
 // the next pass for ENQ_TO_SYNC, FRAME_TO_ACK and ANSWER_TO_NEXT, the ENQ's
@@ -445,7 +447,8 @@ class P300Exchange {
       if (!keepalive) {
         // A byte left on the line would be read as the device's ACK or the
         // start of its frame. The whole telegram goes out in this pass.
-        this->drain_();
+        if (this->line_busy_())
+          return;
         this->set_state_(State::SEND_START);
         this->send_start_();
         return;
@@ -493,6 +496,7 @@ class P300Exchange {
       this->set_state_(State::RECEIVE);
     } else if (b == NACK) {
       sink_.fact(LinkFact::NACK);
+      this->note_heard_();
       this->set_state_(State::IDLE);
       this->fail_(OptolinkResult::NACK);
     }
