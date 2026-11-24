@@ -1,0 +1,109 @@
+# =============================================================================
+# vitohome field program: KW probe, version 1
+# =============================================================================
+# What the KW link and the controller take, one setting at a time. Press
+# "Probe: run" (about 15 min); each step logs one `stats v1 KW <label> ...`
+# line (README.md here). Read-only: every telegram is a read; the timed frames
+# are reads written out.
+#
+#   base               20 reads of the identification
+#   enq_to_send:<ms>   the ENQ -> our 01, 0..100 ms (default 20), 20 reads
+#   answer_to_next:<ms> an answer -> the next telegram chained onto it,
+#                      0..400 ms (default 25), 16 reads queued at once
+#   length:<n>         reads of 1..16 bytes at block_address, 10 each
+#   gfa                10 GFA reads (6B) of the burner control, chained
+#   missing            5 reads of an address the unit does not serve
+#   timed:<ms>         a read written out <ms> after the ENQ, 5..250 ms,
+#                      3 each: how late the controller still takes it
+#
+# The datapoints are vars (defaults below); give your own in the include.
+# =============================================================================
+
+defaults:
+  uart_id: optolink_uart
+  vitohome_source: github://SoulSolistice/esphome_vitohome@main
+  # Raw-spec hex (raw_op.h): no 0x.
+  ident_address: "00F8"
+  ident_length: "4"
+  block_address: "00F8"
+  gfa_address: "7650"
+  gfa_length: "1"
+  missing_address: "FFFF"
+  diag_program: probe-kw/1
+
+packages:
+  common: !include common.yaml
+  runner: !include common-probe.yaml
+
+external_components:
+  - source: ${vitohome_source}
+    components: [vitohome]
+    refresh: 0s
+
+vitohome:
+  id: vito
+  uart_id: ${uart_id}
+  protocol: KW
+  identify_device: true
+  raw_queue_size: 16
+  # Timed frames need both; the program sends only the reads below.
+  raw_access: unrestricted
+  unsafe_raw_writes: true
+
+script:
+  - id: probe_load
+    mode: single
+    then:
+      - lambda: |-
+          struct Step {
+            const char *label;
+            int point;
+            int value;
+            const char *spec;
+            int count;
+            bool burst;
+          };
+          static constexpr int SEND = static_cast<int>(vitohome::TimingPoint::ENQ_TO_SEND);
+          static constexpr int NEXT = static_cast<int>(vitohome::TimingPoint::ANSWER_TO_NEXT);
+          static constexpr const char *READ = "kw r F7 ${ident_address} ${ident_length}";
+          static const Step steps[] = {
+              {"base", -1, 0, READ, 20, false},
+              {"enq_to_send:0", SEND, 0, READ, 20, false},
+              {"enq_to_send:10", SEND, 10, READ, 20, false},
+              {"enq_to_send:20", SEND, 20, READ, 20, false},
+              {"enq_to_send:40", SEND, 40, READ, 20, false},
+              {"enq_to_send:70", SEND, 70, READ, 20, false},
+              {"enq_to_send:100", SEND, 100, READ, 20, false},
+              {"answer_to_next:0", NEXT, 0, READ, 16, true},
+              {"answer_to_next:10", NEXT, 10, READ, 16, true},
+              {"answer_to_next:25", NEXT, 25, READ, 16, true},
+              {"answer_to_next:50", NEXT, 50, READ, 16, true},
+              {"answer_to_next:100", NEXT, 100, READ, 16, true},
+              {"answer_to_next:200", NEXT, 200, READ, 16, true},
+              {"answer_to_next:400", NEXT, 400, READ, 16, true},
+              {"length:1", -1, 0, "kw r F7 ${block_address} 1", 10, false},
+              {"length:2", -1, 0, "kw r F7 ${block_address} 2", 10, false},
+              {"length:4", -1, 0, "kw r F7 ${block_address} 4", 10, false},
+              {"length:8", -1, 0, "kw r F7 ${block_address} 8", 10, false},
+              {"length:16", -1, 0, "kw r F7 ${block_address} 16", 10, false},
+              {"gfa", -1, 0, "kw r 6B ${gfa_address} ${gfa_length}", 10, true},
+              {"missing", -1, 0, "kw r F7 ${missing_address} 1", 5, false},
+              {"timed:5", -1, 0, "kw f ~5 01 F7 ${ident_address} 02 / 2", 3, false},
+              {"timed:20", -1, 0, "kw f ~20 01 F7 ${ident_address} 02 / 2", 3, false},
+              {"timed:50", -1, 0, "kw f ~50 01 F7 ${ident_address} 02 / 2", 3, false},
+              {"timed:100", -1, 0, "kw f ~100 01 F7 ${ident_address} 02 / 2", 3, false},
+              {"timed:150", -1, 0, "kw f ~150 01 F7 ${ident_address} 02 / 2", 3, false},
+              {"timed:200", -1, 0, "kw f ~200 01 F7 ${ident_address} 02 / 2", 3, false},
+              {"timed:250", -1, 0, "kw f ~250 01 F7 ${ident_address} 02 / 2", 3, false},
+          };
+          id(probe_steps) = sizeof(steps) / sizeof(steps[0]);
+          const Step &s = steps[id(probe_index) < id(probe_steps) ? id(probe_index) : 0];
+          id(probe_label) = s.label;
+          id(probe_point) = s.point;
+          id(probe_window) = -1;
+          id(probe_value) = s.value;
+          id(probe_baud) = 0;
+          id(probe_spec) = s.spec;
+          id(probe_count) = s.count;
+          id(probe_burst) = s.burst;
+          id(probe_restart) = false;

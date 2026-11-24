@@ -1,0 +1,128 @@
+# =============================================================================
+# vitohome field program: GWG probe, version 1
+# =============================================================================
+# What the GWG link and the controller take, one setting at a time. Press
+# "Probe: run" (about 20 min); each step logs one `stats v1 GWG <label> ...`
+# line (README.md here). Read-only: every telegram is a read; the timed frames
+# are reads written out.
+#
+#   base                  20 reads of the identification (virtual F8)
+#   enq_to_send:<ms>      the ENQ -> our 01, 0..100 ms (default 0), 20 reads
+#   ack_to_telegram:<ms>  our 01 -> the rest of the telegram, 0..80 ms
+#                         (default 0), 20 reads
+#   answer_deadline:<ms>  the silence that ends an answer, 100..1000 ms
+#                         (default 250), 20 reads
+#   burst                 16 reads queued at once: the burst window
+#   physical, eeprom, be, port
+#                         10 reads in each access mode, one address each
+#   baud:<rate>           20 reads at 4400..5200 baud (default 4800)
+#   timed:<ms>            a read written out <ms> after the ENQ, 5..200 ms,
+#                         3 each: how late the controller still takes it
+#
+# The datapoints are vars (defaults below); give your own in the include.
+# =============================================================================
+
+defaults:
+  uart_id: optolink_uart
+  vitohome_source: github://SoulSolistice/esphome_vitohome@main
+  # Raw-spec hex (raw_op.h): no 0x. One byte on GWG.
+  ident_address: "F8"
+  ident_length: "4"
+  # vcontrold getTempA (outside), and the burner hours in EEPROM.
+  physical_address: "05"
+  eeprom_address: "17"
+  be_address: "00"
+  port_address: "00"
+  diag_program: probe-gwg/1
+
+packages:
+  common: !include common.yaml
+  runner: !include common-probe.yaml
+
+external_components:
+  - source: ${vitohome_source}
+    components: [vitohome]
+    refresh: 0s
+
+vitohome:
+  id: vito
+  uart_id: ${uart_id}
+  protocol: GWG
+  identify_device: true
+  raw_queue_size: 16
+  # Timed frames need both; the program sends only the reads below.
+  raw_access: unrestricted
+  unsafe_raw_writes: true
+
+script:
+  - id: probe_load
+    mode: single
+    then:
+      - lambda: |-
+          struct Step {
+            const char *label;
+            int point;
+            int window;
+            int value;
+            int baud;
+            const char *spec;
+            int count;
+            bool burst;
+          };
+          static constexpr int SEND = static_cast<int>(vitohome::TimingPoint::ENQ_TO_SEND);
+          static constexpr int GAP = static_cast<int>(vitohome::TimingPoint::ACK_TO_TELEGRAM);
+          static constexpr int DEADLINE = static_cast<int>(vitohome::LinkWindow::ANSWER_DEADLINE);
+          static constexpr const char *READ = "gwg r C7 ${ident_address} ${ident_length}";
+          static const Step steps[] = {
+              {"base", -1, -1, 0, 0, READ, 20, false},
+              {"enq_to_send:0", SEND, -1, 0, 0, READ, 20, false},
+              {"enq_to_send:10", SEND, -1, 10, 0, READ, 20, false},
+              {"enq_to_send:20", SEND, -1, 20, 0, READ, 20, false},
+              {"enq_to_send:40", SEND, -1, 40, 0, READ, 20, false},
+              {"enq_to_send:70", SEND, -1, 70, 0, READ, 20, false},
+              {"enq_to_send:100", SEND, -1, 100, 0, READ, 20, false},
+              {"ack_to_telegram:0", GAP, -1, 0, 0, READ, 20, false},
+              {"ack_to_telegram:5", GAP, -1, 5, 0, READ, 20, false},
+              {"ack_to_telegram:10", GAP, -1, 10, 0, READ, 20, false},
+              {"ack_to_telegram:20", GAP, -1, 20, 0, READ, 20, false},
+              {"ack_to_telegram:40", GAP, -1, 40, 0, READ, 20, false},
+              {"ack_to_telegram:80", GAP, -1, 80, 0, READ, 20, false},
+              {"answer_deadline:100", -1, DEADLINE, 100, 0, READ, 20, false},
+              {"answer_deadline:250", -1, DEADLINE, 250, 0, READ, 20, false},
+              {"answer_deadline:400", -1, DEADLINE, 400, 0, READ, 20, false},
+              {"answer_deadline:700", -1, DEADLINE, 700, 0, READ, 20, false},
+              {"answer_deadline:1000", -1, DEADLINE, 1000, 0, READ, 20, false},
+              {"burst", -1, -1, 0, 0, READ, 16, true},
+              {"physical", -1, -1, 0, 0, "gwg r CB ${physical_address} 1", 10, false},
+              {"eeprom", -1, -1, 0, 0, "gwg r AE ${eeprom_address} 1", 10, false},
+              {"be", -1, -1, 0, 0, "gwg r 9E ${be_address} 1", 10, false},
+              {"port", -1, -1, 0, 0, "gwg r 6E ${port_address} 1", 10, false},
+              {"baud:4400", -1, -1, 0, 4400, READ, 20, false},
+              {"baud:4500", -1, -1, 0, 4500, READ, 20, false},
+              {"baud:4600", -1, -1, 0, 4600, READ, 20, false},
+              {"baud:4700", -1, -1, 0, 4700, READ, 20, false},
+              {"baud:4800", -1, -1, 0, 4800, READ, 20, false},
+              {"baud:4900", -1, -1, 0, 4900, READ, 20, false},
+              {"baud:5000", -1, -1, 0, 5000, READ, 20, false},
+              {"baud:5100", -1, -1, 0, 5100, READ, 20, false},
+              {"baud:5200", -1, -1, 0, 5200, READ, 20, false},
+              {"timed:5", -1, -1, 0, 0, "gwg f ~5 01 C7 ${ident_address} 01 04 / 1", 3, false},
+              {"timed:20", -1, -1, 0, 0, "gwg f ~20 01 C7 ${ident_address} 01 04 / 1", 3, false},
+              {"timed:40", -1, -1, 0, 0, "gwg f ~40 01 C7 ${ident_address} 01 04 / 1", 3, false},
+              {"timed:60", -1, -1, 0, 0, "gwg f ~60 01 C7 ${ident_address} 01 04 / 1", 3, false},
+              {"timed:80", -1, -1, 0, 0, "gwg f ~80 01 C7 ${ident_address} 01 04 / 1", 3, false},
+              {"timed:100", -1, -1, 0, 0, "gwg f ~100 01 C7 ${ident_address} 01 04 / 1", 3, false},
+              {"timed:150", -1, -1, 0, 0, "gwg f ~150 01 C7 ${ident_address} 01 04 / 1", 3, false},
+              {"timed:200", -1, -1, 0, 0, "gwg f ~200 01 C7 ${ident_address} 01 04 / 1", 3, false},
+          };
+          id(probe_steps) = sizeof(steps) / sizeof(steps[0]);
+          const Step &s = steps[id(probe_index) < id(probe_steps) ? id(probe_index) : 0];
+          id(probe_label) = s.label;
+          id(probe_point) = s.point;
+          id(probe_window) = s.window;
+          id(probe_value) = s.value;
+          id(probe_baud) = s.baud;
+          id(probe_spec) = s.spec;
+          id(probe_count) = s.count;
+          id(probe_burst) = s.burst;
+          id(probe_restart) = false;

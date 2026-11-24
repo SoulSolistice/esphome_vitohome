@@ -1978,6 +1978,24 @@ of 8-byte entries (`vito_recorder.h`):
 - **Import:** `tests/native/sim/import_frames.py` reads the first dump of a
   log into a trace for the simulator tests.
 
+**The link's counts** (`vito_stats.h`, always compiled in): every request's
+result by status, its time from dispatch to result, the timed frames, and
+the link's facts, through the same `LinkSink` the recorder takes; the hub
+hands the trace on to the recorder when it records. `log_stats(label)` logs
+them as one `stats v1 <protocol> <label> key=value ...` line with every key
+on every line, `reset_stats()` starts over.
+
+**Field programs** (`example/diagnostics/`): a probe and an audit per
+protocol, ESPHome packages a user's own file includes. The datapoints are
+package vars with defaults every unit of the protocol serves (the
+identification the hub reads at boot), so the program stays fixed and
+reports compare. The probe steps through a table: a setting (a timing point,
+a link window, the baud rate), optionally a timed frame to restart the link,
+then a number of raw reads, one at a time or queued at once, and a `stats`
+line per step. The audit polls at the defaults and logs the counts since
+boot every 10 minutes, with the recorder dumping each failure.
+`scripts/vitohome_report.py` reads a log into a table and compares two.
+
 ESPHome's `uart/event` takes the bytes off the line itself, and
 `add_debug_callback()` sees them at the same moment as the port, one
 `std::function` call per byte. No hook gives the time a byte arrived.
@@ -2278,6 +2296,9 @@ rest.
 **Engine and recorder**
 
 - **Recorder:** a `freeze_on: resync` trigger.
+- **Field programs, on the device:** a probe runner in the hub that steps
+  a sweep itself and keeps per-step results, for when a probe's log over the
+  API drops lines or an ESP8266 runs short of RAM for the YAML runner.
 - **Sharing the UART** with `uart_mux`, `serial_proxy` or `tcp_uart`: the
   engine owns the port, so another user needs a way to pause and resume it.
 - **A NACK retry on P300.** The telegram after a NACK now waits out the

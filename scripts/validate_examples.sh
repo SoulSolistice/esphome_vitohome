@@ -61,7 +61,6 @@ EX="example"
 if [ ! -f "$EX/secrets.yaml" ]; then
   cp "$EX/secrets.example.yaml" "$EX/secrets.yaml"
   CREATED_SECRETS=1
-  trap 'rm -f "$EX/secrets.yaml"' EXIT
 else
   CREATED_SECRETS=0
 fi
@@ -115,8 +114,59 @@ for f in "$EX"/*.yaml; do
   fi
 done
 
+# --- field programs (example/diagnostics/) ---------------------------------
+# Packages by design (README.md there): each is validated inside the file a
+# user writes around it, on an ESP32 and an ESP8266, with the local component.
+programs=0
+DIAG_TMP="$(mktemp -d)"
+trap 'rm -rf "$DIAG_TMP"; [ "$CREATED_SECRETS" = 1 ] && rm -f "$EX/secrets.yaml"' EXIT
+for f in "$EX"/diagnostics/probe-*.yaml "$EX"/diagnostics/audit-*.yaml; do
+  base="$(basename "$f" .yaml)"
+  for board in esp32 esp8266; do
+    if [ "$board" = esp32 ]; then
+      platform=$'esp32:\n  board: esp32dev\n  framework:\n    type: esp-idf'
+      pins=$'  rx_pin: GPIO16\n  tx_pin: GPIO17'
+    else
+      platform=$'esp8266:\n  board: d1_mini'
+      pins=$'  rx_pin: GPIO3\n  tx_pin: GPIO1'
+    fi
+    wrapper="$DIAG_TMP/$base-$board.yaml"
+    cat >"$wrapper" <<EOF
+esphome:
+  name: diag-$base
+$platform
+wifi:
+  ssid: test
+  password: testtest12
+api:
+logger:
+  baud_rate: 0
+uart:
+  id: optolink_uart
+$pins
+  baud_rate: 4800
+  data_bits: 8
+  parity: EVEN
+  stop_bits: 2
+packages:
+  program: !include
+    file: $(pwd)/$f
+    vars:
+      vitohome_source: $(pwd)/components
+EOF
+    programs=$((programs + 1))
+    if out="$(esphome config "$wrapper" 2>&1)"; then
+      echo "PASS  diagnostics/$base.yaml ($board)"
+    else
+      echo "FAIL  diagnostics/$base.yaml ($board)"
+      printf '%s\n' "$out" | sed 's/^/    /'
+      failures=$((failures + 1))
+    fi
+  done
+done
+
 echo "---"
-echo "standalone validated: $standalone   fragments skipped: $fragments   failures: $failures"
+echo "standalone validated: $standalone   fragments skipped: $fragments   programs validated: $programs   failures: $failures"
 
 if [ "$standalone" -eq 0 ]; then
   echo "ERROR: no standalone configs found in $EX/ -- the gate matched nothing, which"

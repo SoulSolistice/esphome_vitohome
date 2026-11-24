@@ -1,0 +1,144 @@
+# =============================================================================
+# vitohome field program: P300 probe, version 1
+# =============================================================================
+# What the P300 link and the controller take, one setting at a time. Press
+# "Probe: run" (about 20 min); each step logs one `stats v1 P300 <label> ...`
+# line (README.md here). Read-only: every telegram is a read, or the
+# session's own bytes (EOT, SYNC, ACK) in the timed frames.
+#
+# Through the link (the timing points, all 0 by default):
+#   base                 20 reads of the identification
+#   answer_to_next:<ms>  our 06 -> the next 41, 0..200 ms, 16 reads queued
+#   frame_to_ack:<ms>    the answer frame -> our 06, 0..400 ms, 16 queued
+#   enq_to_sync:<ms>     the ENQ after our EOT -> our 16 00 00, 0..200 ms,
+#                        the link restarted first, then 10 reads
+#   enq_to_send:<ms>     the ENQ -> our 01 on the KW detour, 0..100 ms,
+#                        10 GFA reads
+#   length:<n>           reads of 1..16 bytes at block_address, 10 each
+#   missing              5 reads of an address the unit does not serve: the
+#                        device error path
+# Timed frames (the link parked, the bytes at the times given):
+#   t_ack_to_next:<ms>   our 06 after an answer -> a second read, 0..40 ms
+#   t_frame_to_ack:<ms>  the read -> our 06, 60..255 ms
+#   t_enq_to_sync:<ms>   our EOT -> our 16 00 00, 5..255 ms
+#   t_start_gap:<ms>     the 41 -> the rest of the read, 200..250 ms
+#
+# The datapoints are vars (defaults below); give your own in the include.
+# =============================================================================
+
+defaults:
+  uart_id: optolink_uart
+  vitohome_source: github://SoulSolistice/esphome_vitohome@main
+  # Raw-spec hex (raw_op.h): no 0x.
+  ident_address: "00F8"
+  ident_length: "4"
+  block_address: "00F8"
+  gfa_address: "7650"
+  gfa_length: "1"
+  missing_address: "FFFF"
+  diag_program: probe-p300/1
+
+packages:
+  common: !include common.yaml
+  runner: !include common-probe.yaml
+
+external_components:
+  - source: ${vitohome_source}
+    components: [vitohome]
+    refresh: 0s
+
+vitohome:
+  id: vito
+  uart_id: ${uart_id}
+  protocol: P300
+  identify_device: true
+  raw_queue_size: 16
+  # Timed frames need both; the program sends only the frames below.
+  raw_access: unrestricted
+  unsafe_raw_writes: true
+
+script:
+  - id: probe_load
+    mode: single
+    then:
+      - lambda: |-
+          struct Step {
+            const char *label;
+            int point;
+            int value;
+            const char *spec;
+            int count;
+            bool burst;
+            bool restart;
+          };
+          static constexpr int SEND = static_cast<int>(vitohome::TimingPoint::ENQ_TO_SEND);
+          static constexpr int NEXT = static_cast<int>(vitohome::TimingPoint::ANSWER_TO_NEXT);
+          static constexpr int SYNC = static_cast<int>(vitohome::TimingPoint::ENQ_TO_SYNC);
+          static constexpr int ACK = static_cast<int>(vitohome::TimingPoint::FRAME_TO_ACK);
+          static constexpr const char *READ = "p300 r 01 ${ident_address} ${ident_length}";
+          static constexpr const char *GFA = "kw r 6B ${gfa_address} ${gfa_length}";
+          static const Step steps[] = {
+              {"base", -1, 0, READ, 20, false, false},
+              {"answer_to_next:0", NEXT, 0, READ, 16, true, false},
+              {"answer_to_next:10", NEXT, 10, READ, 16, true, false},
+              {"answer_to_next:25", NEXT, 25, READ, 16, true, false},
+              {"answer_to_next:50", NEXT, 50, READ, 16, true, false},
+              {"answer_to_next:100", NEXT, 100, READ, 16, true, false},
+              {"answer_to_next:200", NEXT, 200, READ, 16, true, false},
+              {"frame_to_ack:0", ACK, 0, READ, 16, true, false},
+              {"frame_to_ack:25", ACK, 25, READ, 16, true, false},
+              {"frame_to_ack:50", ACK, 50, READ, 16, true, false},
+              {"frame_to_ack:100", ACK, 100, READ, 16, true, false},
+              {"frame_to_ack:200", ACK, 200, READ, 16, true, false},
+              {"frame_to_ack:400", ACK, 400, READ, 16, true, false},
+              {"enq_to_sync:0", SYNC, 0, READ, 10, false, true},
+              {"enq_to_sync:20", SYNC, 20, READ, 10, false, true},
+              {"enq_to_sync:50", SYNC, 50, READ, 10, false, true},
+              {"enq_to_sync:100", SYNC, 100, READ, 10, false, true},
+              {"enq_to_sync:200", SYNC, 200, READ, 10, false, true},
+              {"enq_to_send:0", SEND, 0, GFA, 10, false, false},
+              {"enq_to_send:20", SEND, 20, GFA, 10, false, false},
+              {"enq_to_send:50", SEND, 50, GFA, 10, false, false},
+              {"enq_to_send:100", SEND, 100, GFA, 10, false, false},
+              {"length:1", -1, 0, "p300 r 01 ${block_address} 1", 10, false, false},
+              {"length:2", -1, 0, "p300 r 01 ${block_address} 2", 10, false, false},
+              {"length:4", -1, 0, "p300 r 01 ${block_address} 4", 10, false, false},
+              {"length:8", -1, 0, "p300 r 01 ${block_address} 8", 10, false, false},
+              {"length:16", -1, 0, "p300 r 01 ${block_address} 16", 10, false, false},
+              {"missing", -1, 0, "p300 r 01 ${missing_address} 1", 5, false, false},
+              {"t_ack_to_next:0", -1, 0, "p300 f 41 {05 00 01 ${ident_address} 04} ~100 06 41 {05 00 01 ${block_address} 02} / p300", 3, false, false},
+              {"t_ack_to_next:2", -1, 0, "p300 f 41 {05 00 01 ${ident_address} 04} ~100 06 ~2 41 {05 00 01 ${block_address} 02} / p300", 3, false, false},
+              {"t_ack_to_next:5", -1, 0, "p300 f 41 {05 00 01 ${ident_address} 04} ~100 06 ~5 41 {05 00 01 ${block_address} 02} / p300", 3, false, false},
+              {"t_ack_to_next:10", -1, 0, "p300 f 41 {05 00 01 ${ident_address} 04} ~100 06 ~10 41 {05 00 01 ${block_address} 02} / p300", 3, false, false},
+              {"t_ack_to_next:20", -1, 0, "p300 f 41 {05 00 01 ${ident_address} 04} ~100 06 ~20 41 {05 00 01 ${block_address} 02} / p300", 3, false, false},
+              {"t_ack_to_next:40", -1, 0, "p300 f 41 {05 00 01 ${ident_address} 04} ~100 06 ~40 41 {05 00 01 ${block_address} 02} / p300", 3, false, false},
+              {"t_frame_to_ack:60", -1, 0, "p300 f 41 {05 00 01 ${ident_address} 04} ~60 06 ~20 41 {05 00 01 ${block_address} 02} / p300", 3, false, false},
+              {"t_frame_to_ack:100", -1, 0, "p300 f 41 {05 00 01 ${ident_address} 04} ~100 06 ~20 41 {05 00 01 ${block_address} 02} / p300", 3, false, false},
+              {"t_frame_to_ack:150", -1, 0, "p300 f 41 {05 00 01 ${ident_address} 04} ~150 06 ~20 41 {05 00 01 ${block_address} 02} / p300", 3, false, false},
+              {"t_frame_to_ack:200", -1, 0, "p300 f 41 {05 00 01 ${ident_address} 04} ~200 06 ~20 41 {05 00 01 ${block_address} 02} / p300", 3, false, false},
+              {"t_frame_to_ack:255", -1, 0, "p300 f 41 {05 00 01 ${ident_address} 04} ~255 06 ~20 41 {05 00 01 ${block_address} 02} / p300", 3, false, false},
+              {"t_enq_to_sync:5", -1, 0, "p300 f 04 ~5 16 00 00 / 1", 2, false, false},
+              {"t_enq_to_sync:20", -1, 0, "p300 f 04 ~20 16 00 00 / 1", 2, false, false},
+              {"t_enq_to_sync:40", -1, 0, "p300 f 04 ~40 16 00 00 / 1", 2, false, false},
+              {"t_enq_to_sync:80", -1, 0, "p300 f 04 ~80 16 00 00 / 1", 2, false, false},
+              {"t_enq_to_sync:120", -1, 0, "p300 f 04 ~120 16 00 00 / 1", 2, false, false},
+              {"t_enq_to_sync:160", -1, 0, "p300 f 04 ~160 16 00 00 / 1", 2, false, false},
+              {"t_enq_to_sync:200", -1, 0, "p300 f 04 ~200 16 00 00 / 1", 2, false, false},
+              {"t_enq_to_sync:255", -1, 0, "p300 f 04 ~255 16 00 00 / 1", 2, false, false},
+              {"t_start_gap:200", -1, 0, "p300 f 41 ~200 {05 00 01 ${ident_address} 04} / p300", 2, false, false},
+              {"t_start_gap:220", -1, 0, "p300 f 41 ~220 {05 00 01 ${ident_address} 04} / p300", 2, false, false},
+              {"t_start_gap:240", -1, 0, "p300 f 41 ~240 {05 00 01 ${ident_address} 04} / p300", 2, false, false},
+              {"t_start_gap:250", -1, 0, "p300 f 41 ~250 {05 00 01 ${ident_address} 04} / p300", 2, false, false},
+          };
+          id(probe_steps) = sizeof(steps) / sizeof(steps[0]);
+          const Step &s = steps[id(probe_index) < id(probe_steps) ? id(probe_index) : 0];
+          id(probe_label) = s.label;
+          id(probe_point) = s.point;
+          id(probe_window) = -1;
+          id(probe_value) = s.value;
+          id(probe_baud) = 0;
+          id(probe_spec) = s.spec;
+          id(probe_count) = s.count;
+          id(probe_burst) = s.burst;
+          id(probe_restart) = s.restart;
+          id(probe_restart_spec) = "p300 f 41 {05 00 01 ${ident_address} 02} / p300";

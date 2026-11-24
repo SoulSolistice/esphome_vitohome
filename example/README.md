@@ -39,6 +39,15 @@ secrets.
 | `vitohome-scanner-raw.yaml` | The raw-lane console: one-off `queue_raw_read`/`queue_raw_write`, raw hex with exact 64-bit integer views (no float32 narrowing), and a range sweep from an HA action. Use it to probe addresses. |
 | `vitohome-gwg-kmbus-probe.yaml` | GWG KM-bus framing (issue #35): one button sends five candidate frames for two addresses as open frames (`gwg f`, a KM-bus CRC appended where asked), another sends a frame typed in. Untested bytes, so it sets `unsafe_raw_writes`; flash it in place of your config while probing. |
 
+## Field programs — `diagnostics/`
+
+A probe and an audit per protocol, as packages your own file includes: a
+fixed program whose datapoints are vars, so reports from every unit compare.
+The probe sweeps the link's settings one at a time; the audit runs the
+defaults overnight. Each logs `stats v1` lines, which
+`scripts/vitohome_report.py` turns into a table. See
+[`diagnostics/README.md`](diagnostics/README.md).
+
 ## Supporting file
 
 | File | Purpose |

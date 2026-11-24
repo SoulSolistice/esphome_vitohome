@@ -1,0 +1,147 @@
+# The probe's runner, shared by probe-kw/p300/gwg.yaml (README.md here). Each
+# of those defines `probe_load`, which fills the step globals for
+# probe_index from its table and sets probe_steps; this file runs the steps:
+#
+#   1. the step's setting: a timing point, a link window or the baud rate,
+#      the value before it kept;
+#   2. with `restart`, a timed frame first: the link starts and syncs anew
+#      under the setting;
+#   3. the counts reset, then `count` raw operations of `spec`, one at a
+#      time, or with `burst` all queued at once (chained by the link);
+#   4. one `stats v1 <protocol> <label> ...` line, the setting restored.
+
+globals:
+  - id: probe_index
+    type: int
+    initial_value: "0"
+  - id: probe_steps
+    type: int
+    initial_value: "0"
+  - id: probe_label
+    type: std::string
+  - id: probe_spec
+    type: std::string
+  - id: probe_restart_spec
+    type: std::string
+  - id: probe_count
+    type: int
+    initial_value: "0"
+  - id: probe_burst
+    type: bool
+    initial_value: "false"
+  - id: probe_restart
+    type: bool
+    initial_value: "false"
+  # TimingPoint or LinkWindow (optolink_types.h), -1 for none.
+  - id: probe_point
+    type: int
+    initial_value: "-1"
+  - id: probe_window
+    type: int
+    initial_value: "-1"
+  - id: probe_value
+    type: int
+    initial_value: "0"
+  - id: probe_baud
+    type: int
+    initial_value: "0"
+  - id: probe_saved
+    type: uint32_t
+    initial_value: "0"
+
+script:
+  - id: probe_step
+    mode: single
+    then:
+      - lambda: |-
+          if (id(probe_point) >= 0) {
+            const auto point = static_cast<vitohome::TimingPoint>(id(probe_point));
+            id(probe_saved) = id(vito).link_timing(point);
+            id(vito).set_link_timing(point, id(probe_value));
+          } else if (id(probe_window) >= 0) {
+            const auto window = static_cast<vitohome::LinkWindow>(id(probe_window));
+            id(probe_saved) = id(vito).link_window(window);
+            id(vito).set_link_window(window, id(probe_value));
+          } else if (id(probe_baud) > 0) {
+            id(probe_saved) = id(${uart_id}).get_baud_rate();
+            id(${uart_id}).set_baud_rate(id(probe_baud));
+            id(${uart_id}).load_settings(false);
+          }
+      - delay: 2s
+      - if:
+          condition:
+            lambda: return id(probe_restart);
+          then:
+            - lambda: id(vito).reset_stats();
+            - vitohome.raw_op:
+                spec: !lambda return id(probe_restart_spec);
+            - wait_until:
+                condition:
+                  lambda: return id(vito).stats().ended() >= 1;
+                timeout: 15s
+            - delay: 2s
+      - lambda: id(vito).reset_stats();
+      - repeat:
+          count: !lambda return id(probe_count);
+          then:
+            - vitohome.raw_op:
+                spec: !lambda return id(probe_spec);
+            - if:
+                condition:
+                  lambda: return !id(probe_burst);
+                then:
+                  - wait_until:
+                      condition:
+                        lambda: return id(vito).stats().ended() > iteration;
+                      timeout: 20s
+      - wait_until:
+          condition:
+            lambda: return id(vito).stats().ended() >= static_cast<uint32_t>(id(probe_count));
+          timeout: 120s
+      - lambda: |-
+          id(vito).log_stats(id(probe_label));
+          if (id(probe_point) >= 0) {
+            id(vito).set_link_timing(static_cast<vitohome::TimingPoint>(id(probe_point)), id(probe_saved));
+          } else if (id(probe_window) >= 0) {
+            id(vito).set_link_window(static_cast<vitohome::LinkWindow>(id(probe_window)), id(probe_saved));
+          } else if (id(probe_baud) > 0) {
+            id(${uart_id}).set_baud_rate(id(probe_saved));
+            id(${uart_id}).load_settings(false);
+          }
+      - delay: 2s
+
+  - id: probe_run
+    mode: single
+    then:
+      - script.execute: diag_header
+      - lambda: |-
+          id(probe_index) = 0;
+          id(probe_steps) = 0;
+      - script.execute: probe_load
+      - script.wait: probe_load
+      - logger.log:
+          level: INFO
+          tag: diag
+          format: "probe v1 start steps=%d"
+          args: [id(probe_steps)]
+      - while:
+          condition:
+            lambda: return id(probe_index) < id(probe_steps);
+          then:
+            - script.execute: probe_load
+            - script.wait: probe_load
+            - script.execute: probe_step
+            - script.wait: probe_step
+            - lambda: id(probe_index) += 1;
+      - script.execute: diag_header
+      - logger.log:
+          level: INFO
+          tag: diag
+          format: "probe v1 done steps=%d"
+          args: [id(probe_steps)]
+
+button:
+  - platform: template
+    name: "Probe: run"
+    on_press:
+      - script.execute: probe_run

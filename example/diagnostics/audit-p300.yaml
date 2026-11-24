@@ -1,0 +1,105 @@
+# =============================================================================
+# vitohome field program: P300 audit, version 1
+# =============================================================================
+# The P300 link at its defaults under a steady poll load, for hours: run it
+# overnight and send the log (README.md here). Every `stats_interval` it logs
+# the report header and `stats v1 P300 audit ...`, the counts since boot; every
+# retry, timeout and error freezes the recorder, which dumps its last entries
+# at once. Read-only.
+#
+# Each poll cycle (`poll_interval`) reads the identification bytes and a
+# block, back to back in the session, and the burner control (GFA) over the
+# KW detour. Sensors in your own file are polled as well.
+#
+# The datapoints are vars (defaults below); give your own in the include.
+# =============================================================================
+
+defaults:
+  uart_id: optolink_uart
+  vitohome_source: github://SoulSolistice/esphome_vitohome@main
+  poll_interval: 5s
+  stats_interval: 10min
+  # 8 bytes an entry; ESP32: up to 512 with persist, 4096 without.
+  recorder_size: "256"
+  # ESP32 only (not C2/C61): the ring kept across a restart.
+  recorder_persist: "false"
+  log_frames: "false"
+  ident_address: "0x00F8"
+  block_address: "0x00F8"
+  block_length: "8"
+  gfa_address: "0x7650"
+  diag_program: audit-p300/1
+
+packages:
+  common: !include common.yaml
+
+external_components:
+  - source: ${vitohome_source}
+    components: [vitohome]
+    refresh: 0s
+
+vitohome:
+  id: vito
+  uart_id: ${uart_id}
+  protocol: P300
+  update_interval: ${poll_interval}
+  identify_device: true
+  log_frames: ${log_frames}
+  recorder:
+    size: ${recorder_size}
+    freeze_on: [retry, timeout, error]
+    dump_on_freeze: true
+    persist: ${recorder_persist}
+
+sensor:
+  - platform: vitohome
+    id: audit_ident
+    name: "Audit ident"
+    internal: true
+    address: ${ident_address}
+    length: 2
+    converter: noconv
+  - platform: vitohome
+    id: audit_ident_2
+    name: "Audit ident 2"
+    internal: true
+    address: 0x00FA
+    length: 1
+    converter: noconv
+  - platform: vitohome
+    id: audit_ident_3
+    name: "Audit ident 3"
+    internal: true
+    address: 0x00FB
+    length: 1
+    converter: noconv
+  - platform: vitohome
+    id: audit_gfa
+    name: "Audit GFA"
+    internal: true
+    address: ${gfa_address}
+    length: 1
+    converter: noconv
+    access: gfa
+
+text_sensor:
+  # More than a number holds: the block as hex.
+  - platform: vitohome
+    id: audit_block
+    name: "Audit block"
+    internal: true
+    type: raw
+    address: ${block_address}
+    length: ${block_length}
+
+interval:
+  - interval: ${stats_interval}
+    then:
+      - script.execute: diag_header
+      - lambda: id(vito).log_stats("audit");
+
+button:
+  - platform: vitohome
+    vitohome_id: vito
+    type: recorder_dump
+    name: "Recorder dump"

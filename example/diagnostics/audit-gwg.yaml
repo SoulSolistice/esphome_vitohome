@@ -1,0 +1,108 @@
+# =============================================================================
+# vitohome field program: GWG audit, version 1
+# =============================================================================
+# The GWG link at its defaults under a steady poll load, for hours: run it
+# overnight and send the log (README.md here). Every `stats_interval` it logs
+# the report header and `stats v1 GWG audit ...`, the counts since boot; every
+# retry, timeout and error freezes the recorder, which dumps its last entries
+# at once. Read-only.
+#
+# Each poll cycle (`poll_interval`) reads the identification (virtual) and one
+# address in each of the physical, EEPROM, BE and port modes. Sensors in your
+# own file are polled as well.
+#
+# The datapoints are vars (defaults below); give your own in the include.
+# =============================================================================
+
+defaults:
+  uart_id: optolink_uart
+  vitohome_source: github://SoulSolistice/esphome_vitohome@main
+  poll_interval: 5s
+  stats_interval: 10min
+  # 8 bytes an entry; ESP32: up to 512 with persist, 4096 without.
+  recorder_size: "256"
+  # ESP32 only (not C2/C61): the ring kept across a restart.
+  recorder_persist: "false"
+  log_frames: "false"
+  ident_address: "0xF8"
+  # vcontrold getTempA (outside), and the burner hours in EEPROM.
+  physical_address: "0x05"
+  eeprom_address: "0x17"
+  be_address: "0x00"
+  port_address: "0x00"
+  diag_program: audit-gwg/1
+
+packages:
+  common: !include common.yaml
+
+external_components:
+  - source: ${vitohome_source}
+    components: [vitohome]
+    refresh: 0s
+
+vitohome:
+  id: vito
+  uart_id: ${uart_id}
+  protocol: GWG
+  update_interval: ${poll_interval}
+  identify_device: true
+  log_frames: ${log_frames}
+  recorder:
+    size: ${recorder_size}
+    freeze_on: [retry, timeout, error]
+    dump_on_freeze: true
+    persist: ${recorder_persist}
+
+sensor:
+  - platform: vitohome
+    id: audit_ident
+    name: "Audit ident"
+    internal: true
+    address: ${ident_address}
+    access: virtual
+    length: 4
+    converter: noconv
+  - platform: vitohome
+    id: audit_physical
+    name: "Audit physical"
+    internal: true
+    address: ${physical_address}
+    access: physical
+    length: 1
+    converter: noconv
+  - platform: vitohome
+    id: audit_eeprom
+    name: "Audit EEPROM"
+    internal: true
+    address: ${eeprom_address}
+    access: eeprom
+    length: 1
+    converter: noconv
+  - platform: vitohome
+    id: audit_be
+    name: "Audit BE"
+    internal: true
+    address: ${be_address}
+    access: be
+    length: 1
+    converter: noconv
+  - platform: vitohome
+    id: audit_port
+    name: "Audit port"
+    internal: true
+    address: ${port_address}
+    access: port
+    length: 1
+    converter: noconv
+
+interval:
+  - interval: ${stats_interval}
+    then:
+      - script.execute: diag_header
+      - lambda: id(vito).log_stats("audit");
+
+button:
+  - platform: vitohome
+    vitohome_id: vito
+    type: recorder_dump
+    name: "Recorder dump"

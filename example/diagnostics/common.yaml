@@ -1,0 +1,31 @@
+# Shared by every field program (README.md here): the identification, the
+# report header and the buttons. Included by the program packages, not by
+# your own file.
+
+text_sensor:
+  - platform: vitohome
+    vitohome_id: vito
+    type: device_id
+    id: diag_device_id
+    name: "Device ID"
+
+script:
+  # The line that names the run: program, protocol, ESPHome and vitohome
+  # source, and the identification (README.md, "Report lines").
+  - id: diag_header
+    mode: queued
+    then:
+      - lambda: |-
+          ESP_LOGI("diag", "report v1 program=${diag_program} protocol=%s esphome=%s source=${vitohome_source} device=\"%s\"",
+                   vitohome::PROTOCOL_TAG, ESPHOME_VERSION, id(diag_device_id).state.c_str());
+
+button:
+  - platform: restart
+    name: "Restart"
+    entity_category: diagnostic
+  - platform: template
+    name: "Report now"
+    entity_category: diagnostic
+    on_press:
+      - script.execute: diag_header
+      - lambda: id(vito).log_stats("now");
