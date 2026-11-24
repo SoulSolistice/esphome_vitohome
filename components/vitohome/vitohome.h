@@ -25,6 +25,7 @@
 #include "ring_buffer.h"
 #include "vito_clock.h"
 #include "vito_datapoint.h"
+#include "vito_stats.h"
 #include "vito_entity.h"
 #ifdef VITOHOME_RECORDER
 #include "vito_recorder.h"
@@ -128,6 +129,14 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // Clears the recorder, frozen or not, and records again; drops a ring kept
   // from before the restart.
   void recorder_arm();
+
+  // The link's counts since boot or reset_stats() (vito_stats.h), one line at
+  // INFO under vitohome.stats: `stats v1 <protocol> <label> s=.. n=.. ok=..`.
+  // `label`: one word, no spaces.
+  void log_stats(const char *label = "-");
+  void log_stats(const std::string &label) { this->log_stats(label.c_str()); }
+  void reset_stats();
+  const VitoStats &stats() const { return this->stats_; }
 
   // Slots of the raw lane (scan console), allocated in setup(); see
   // RAW_QUEUE_DEFAULT.
@@ -455,6 +464,10 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
  private:
   ESPHomeUARTInterface iface_;
+  VitoStats stats_;
+  // The exchange's LinkSink: the facts into stats_, everything into the
+  // recorder when it records.
+  static void link_trace_(void *context, optolink::LinkTrace trace, uint8_t value, uint16_t arg);
   uint16_t recorder_size_{0};
   uint16_t recorder_after_{0};
   uint8_t recorder_freeze_on_{0};

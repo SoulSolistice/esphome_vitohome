@@ -99,6 +99,10 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" \
 g++ -std=c++17 -Wall -Wextra -Werror -Wformat=2 "${SAN_FLAGS[@]}" -I"$ROOT" proof_recorder.cpp -o proof_recorder
 ./proof_recorder
 
+# vito_stats.h: the link counts and their stats line.
+g++ -std=c++17 -Wall -Wextra -Werror -Wformat=2 "${SAN_FLAGS[@]}" -I"$ROOT" proof_stats.cpp -o proof_stats
+./proof_stats
+
 # P300 parser fuzz corpus, replayed deterministically. Same source file the
 # libFuzzer target is built from (fuzz.sh), minus the fuzzer driver: here it
 # walks the committed seeds in fuzz_corpus_vs2.h, so the oracles CI enforces

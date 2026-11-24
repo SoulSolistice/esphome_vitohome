@@ -24,6 +24,8 @@ struct GWG {};
 using SelectedProtocol = optolink::KW;
 template<class Port> using SelectedEngine = optolink::KwExchange<Port>;
 inline constexpr const char *PROTOCOL_NAME = "KW (VS1)";
+// One word, for lines a script reads.
+inline constexpr const char *PROTOCOL_TAG = "KW";
 // KW and P300 read the burner control (the KW telegram 0x6B, Vitosoft's
 // GFA_READ); GWG has no such telegram. Guards every use of it.
 #define VITOHOME_HAS_GFA
@@ -31,10 +33,12 @@ inline constexpr const char *PROTOCOL_NAME = "KW (VS1)";
 using SelectedProtocol = optolink::GWG;
 template<class Port> using SelectedEngine = optolink::GwgExchange<Port>;
 inline constexpr const char *PROTOCOL_NAME = "GWG";
+inline constexpr const char *PROTOCOL_TAG = "GWG";
 #else
 using SelectedProtocol = optolink::P300;
 template<class Port> using SelectedEngine = optolink::P300Exchange<Port>;
 inline constexpr const char *PROTOCOL_NAME = "P300 (VS2)";
+inline constexpr const char *PROTOCOL_TAG = "P300";
 // Only P300 has a remote procedure call telegram (function code 0x07).
 // Guards every use of it.
 #define VITOHOME_HAS_RPC

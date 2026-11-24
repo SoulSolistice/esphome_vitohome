@@ -297,6 +297,7 @@ void VitoHomeComponent::raw_script_loop_() {
   if (!this->raw_script_.loop())
     return;
   this->raw_script_hold_.stop();
+  this->stats_.script(this->raw_script_.result().status == RawScriptStatus::OK);
 #ifdef VITOHOME_RECORDER
   this->recorder_.result(raw_script_result_status(this->raw_script_.result().status), 0, true);
 #endif

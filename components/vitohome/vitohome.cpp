@@ -179,12 +179,14 @@ void VitoHomeComponent::setup() {
   if (this->recorder_.allocate(this->recorder_size_, this->recorder_after_, this->recorder_freeze_on_, clock, store)) {
     this->iface_.set_recorder(&this->recorder_);
     this->recorder_.set_state_names(&SelectedEngine<ESPHomeUARTInterface>::state_name);
-    this->vito_.set_sink(optolink::LinkSink{&VitoRecorder::link_trace, &this->recorder_});
   } else {
     ESP_LOGW(TAG, "recorder: %u entries could not be allocated; recording off",
              static_cast<unsigned>(this->recorder_size_));
   }
 #endif
+
+  this->vito_.set_sink(optolink::LinkSink{&VitoHomeComponent::link_trace_, this});
+  this->stats_.reset(millis());
 
   if (!this->vito_.begin()) {
     ESP_LOGE(TAG, "optolink engine begin() failed");
@@ -952,7 +954,31 @@ bool VitoHomeComponent::send_raw_frame_(const uint8_t *bytes, uint8_t len, uint8
 // `result.address` is the one in the device's answer on P300, the request's
 // on KW and GWG. The hub knows what is in flight (in_flight_op_, in_flight_);
 // the address only cross-checks it.
+void VitoHomeComponent::link_trace_(void *context, optolink::LinkTrace trace, uint8_t value, uint16_t arg) {
+  auto *self = static_cast<VitoHomeComponent *>(context);
+  if (trace == optolink::LinkTrace::FACT)
+    self->stats_.fact(value);
+#ifdef VITOHOME_RECORDER
+  if (self->recorder_.enabled())
+    VitoRecorder::link_trace(&self->recorder_, trace, value, arg);
+#else
+  (void) arg;
+#endif
+}
+
+static const char *const TAG_STATS = "vitohome.stats";
+
+void VitoHomeComponent::log_stats(const char *label) {
+  char line[400];
+  this->stats_.format(line, sizeof(line), millis());
+  ESP_LOGI(TAG_STATS, "stats v1 %s %s %s", PROTOCOL_TAG, label != nullptr && label[0] != '\0' ? label : "-", line);
+}
+
+void VitoHomeComponent::reset_stats() { this->stats_.reset(millis()); }
+
 void VitoHomeComponent::on_result_(const optolink::Result &result) {
+  // From the dispatch of the request in flight.
+  this->stats_.result(result.status, App.get_loop_component_start_time() - this->in_flight_started_ms_);
 #ifdef VITOHOME_RECORDER
   this->recorder_.result(result.status, result.address);
 #endif
