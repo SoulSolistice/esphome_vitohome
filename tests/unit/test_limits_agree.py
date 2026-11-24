@@ -31,6 +31,8 @@ from components.vitohome import (  # noqa: E402
     FRAME_TO_ACK_MAX_MS,
     MAX_P300_READ_LENGTH,
     MAX_RMW_BLOCK,
+    RECORDER_MAX_SIZE,
+    RECORDER_MIN_SIZE,
     RPC_PREFIX_MAX,
 )
 from components.vitohome.text_sensor import MAX_TEXT_BLOCK_LENGTH  # noqa: E402
@@ -58,6 +60,9 @@ def _cpp_constant(header: str, name: str) -> int:
         (ANSWER_TO_NEXT_MAX_MS, "optolink_types.h", "ANSWER_TO_NEXT_MAX_MS"),
         (ENQ_TO_SYNC_MAX_MS, "optolink_types.h", "ENQ_TO_SYNC_MAX_MS"),
         (FRAME_TO_ACK_MAX_MS, "optolink_types.h", "FRAME_TO_ACK_MAX_MS"),
+        # The recorder's size: the YAML refuses what allocate() would.
+        (RECORDER_MIN_SIZE, "vito_recorder.h", "MIN_SIZE"),
+        (RECORDER_MAX_SIZE, "vito_recorder.h", "MAX_SIZE"),
         (ACK_TO_TELEGRAM_MAX_MS, "optolink_types.h", "ACK_TO_TELEGRAM_MAX_MS"),
     ],
 )

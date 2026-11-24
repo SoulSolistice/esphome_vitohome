@@ -3,6 +3,9 @@
 #include <cstdint>
 
 #include "esphome/components/uart/uart.h"
+#ifdef VITOHOME_RECORDER
+#include "vito_recorder.h"
+#endif
 #ifdef VITOHOME_LOG_FRAMES
 #include <cstdio>
 
@@ -81,9 +84,16 @@ class ESPHomeUARTInterface {
   std::size_t write(const uint8_t *data, uint8_t length) {
     if (dev_ == nullptr || data == nullptr || length == 0)
       return 0;
+#ifdef VITOHOME_RECORDER
+    const uint32_t t_us = this->recorder_ != nullptr ? this->recorder_->now() : 0;
+#endif
     // The bytes first: a log line in front of them would delay them by as long
     // as the logger takes to reach its consumers.
     dev_->write_array(data, length);
+#ifdef VITOHOME_RECORDER
+    if (this->recorder_ != nullptr)
+      this->recorder_->tx(t_us, data, length);
+#endif
 #ifdef VITOHOME_LOG_FRAMES
     // Traffic in the other direction closes the pending frame, so the log reads
     // as a strict request/response alternation.
@@ -100,6 +110,10 @@ class ESPHomeUARTInterface {
     uint8_t b = 0;
     if (dev_ != nullptr) {
       dev_->read_byte(&b);
+#ifdef VITOHOME_RECORDER
+      if (this->recorder_ != nullptr)
+        this->recorder_->rx(b);
+#endif
 #ifdef VITOHOME_LOG_FRAMES
       this->flush_tx_();
       this->note_rx_(b);
@@ -127,6 +141,11 @@ class ESPHomeUARTInterface {
 #endif
   }
 
+#ifdef VITOHOME_RECORDER
+  // Every byte read or written from here on goes to `recorder` (null: none).
+  void set_recorder(VitoRecorder *recorder) { this->recorder_ = recorder; }
+#endif
+
   static constexpr bool frame_logging_enabled() {
 #ifdef VITOHOME_LOG_FRAMES
     return true;
@@ -137,6 +156,9 @@ class ESPHomeUARTInterface {
 
  private:
   uart::UARTDevice *dev_;
+#ifdef VITOHOME_RECORDER
+  VitoRecorder *recorder_{nullptr};
+#endif
 
 #ifdef VITOHOME_LOG_FRAMES
   // The longest single telegram this component moves is a 48-byte P300 read

@@ -2755,6 +2755,35 @@ interleaving reads oddly.
 
 ---
 
+### 9b. The recorder
+
+The frame log merges bytes within 30 ms, has to be on before the failure, and
+goes through the logger, which changes the timing it shows. `recorder:` on the
+hub sets `-DVITOHOME_RECORDER` and keeps the last bytes and results in a ring
+of 8-byte entries (`vito_recorder.h`):
+
+- **Bytes:** from the port (`vito_uart_interface.h`), stamped with `micros()`.
+  A write is stamped before it is handed to the UART. A read is stamped when
+  the engine takes it from the UART buffer, which may be later than it
+  arrived. Each entry also carries the hub's loop pass.
+- **Results:** every request's status and address, and a timed frame's
+  (`raw_op.h` `~ms`).
+- **Freeze:** on the first timeout or error (`freeze_on:`), the ring takes
+  `after:` more entries, then keeps what it holds. Later failures are only
+  counted.
+- **Dump:** two lines per loop pass under `vitohome.recorder`. One line holds
+  the bytes of one direction in one pass, prefixed by `+ms.µs` from the
+  oldest entry. A dump of an unfrozen ring freezes it first. The dump re-arms
+  the ring.
+- **Import:** `tests/native/sim/import_frames.py` reads the first dump of a
+  log into a trace for the simulator tests.
+
+ESPHome's `uart/event` takes the bytes off the line itself, and
+`add_debug_callback()` sees them at the same moment as the port, one
+`std::function` call per byte. No hook gives the time a byte arrived.
+
+---
+
 ## 10. Testing and the gate model
 
 The gates are **sequential and non-substituting** — passing an earlier gate does

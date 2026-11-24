@@ -18,6 +18,16 @@ void VitoRefreshButton::press_action() {
   this->vh_parent_->refresh_all();
 }
 
+void VitoRecorderDumpButton::dump_config() { LOG_BUTTON("  ", "Recorder Dump Button", this); }
+
+void VitoRecorderDumpButton::press_action() {
+  if (this->vh_parent_ == nullptr) {
+    ESP_LOGE(TAG, "no hub bound");
+    return;
+  }
+  this->vh_parent_->recorder_dump();
+}
+
 void VitoActionButton::dump_config() {
   LOG_BUTTON("  ", "Action Button", this);
   ESP_LOGCONFIG(TAG, "    Procedure: 0x%04X, %u-byte parameter (remote procedure call)", this->datapoint_.address(),

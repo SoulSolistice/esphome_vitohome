@@ -10,6 +10,7 @@
 #include "optolink_p300.h"
 #include "poll_schedule.h"
 #include "raw_op.h"
+#include "vito_recorder.h"
 
 template class esphome::vitohome::optolink::KwExchange<FakeOptolink>;
 template class esphome::vitohome::optolink::P300Exchange<FakeOptolink>;

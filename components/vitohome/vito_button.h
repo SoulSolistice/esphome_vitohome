@@ -26,6 +26,18 @@ class VitoRefreshButton final : public button::Button, public Component {
   VitoHomeComponent *vh_parent_{nullptr};
 };
 
+// Dumps the hub's recorder to the log (`type: recorder_dump`).
+class VitoRecorderDumpButton final : public button::Button, public Component {
+ public:
+  void set_vitohome_parent(VitoHomeComponent *parent) { this->vh_parent_ = parent; }
+  void dump_config() override;
+
+ protected:
+  void press_action() override;
+
+  VitoHomeComponent *vh_parent_{nullptr};
+};
+
 // Action button (`type: action`, `access: rpc`, P300 only): each press is one
 // remote procedure call -- function code 0x07 with the catalog's parameter
 // (`prefix:`, empty for a procedure without one) -- that RUNS a procedure on

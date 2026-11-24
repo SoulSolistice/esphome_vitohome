@@ -291,6 +291,15 @@ vitohome:
   #                         # the pacing without them. Any other value is a
   #                         # diagnostic setting, logged as a warning at
   #                         # boot; set_link_timing() changes them live.
+  # recorder:               # The last bytes on the line and every result, in
+  #   size: 512             # RAM with µs times (8 B an entry; default 256 on
+  #   freeze_on: timeout    # ESP8266, 512 elsewhere). It freezes `after:`
+  #   after: 128            # entries (default a quarter) past the first
+  #                         # timeout, or error, or only on a dump (`manual`).
+  #                         # A `type: recorder_dump` button, or
+  #                         # id(vito).recorder_dump(), writes it to the log
+  #                         # (tag vitohome.recorder) and re-arms it. Not
+  #                         # compiled in without the block.
 
 sensor:
   - platform: vitohome

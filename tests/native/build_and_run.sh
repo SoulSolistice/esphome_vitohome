@@ -94,6 +94,11 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" \
   -I"$ROOT" proof_ring_buffer.cpp -o proof_ring_buffer
 ./proof_ring_buffer
 
+# vito_recorder.h: the ring, its freeze and its dump lines, then a KW read on
+# a port with the hub's hook.
+g++ -std=c++17 -Wall -Wextra -Werror -Wformat=2 "${SAN_FLAGS[@]}" -I"$ROOT" proof_recorder.cpp -o proof_recorder
+./proof_recorder
+
 # P300 parser fuzz corpus, replayed deterministically. Same source file the
 # libFuzzer target is built from (fuzz.sh), minus the fuzzer driver: here it
 # walks the committed seeds in fuzz_corpus_vs2.h, so the oracles CI enforces

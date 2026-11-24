@@ -72,6 +72,12 @@ vitohome:
   # common-gwg.yaml and the two ESP8266 configs (KW, P300) add
   # unsafe_raw_writes, and the single-platform config the refusing default.
   raw_access: unrestricted
+  # Compiles the recorder (-DVITOHOME_RECORDER) on every config that takes
+  # this file; test.esp8266-arduino-gwg.yaml builds without it.
+  recorder:
+    size: 256
+    freeze_on: [timeout, error]
+    after: 64
 
 sensor:
   # div10 SIGNED via converter default
@@ -427,6 +433,9 @@ button:
   # force-refresh: marks all datapoints due (hub-debounced)
   - platform: vitohome
     name: "Test Refresh"
+  - platform: vitohome
+    type: recorder_dump
+    name: "Test Recorder Dump"
   - platform: template
     name: "Test Raw Read"
     entity_category: diagnostic

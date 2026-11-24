@@ -107,6 +107,54 @@ LINK_TIMING_POINTS = {
     CONF_FRAME_TO_ACK: ("FRAME_TO_ACK", FRAME_TO_ACK_MAX_MS, ("P300",)),
     CONF_ACK_TO_TELEGRAM: ("ACK_TO_TELEGRAM", ACK_TO_TELEGRAM_MAX_MS, ("GWG",)),
 }
+# The recorder (vito_recorder.h): the last bytes and results in RAM, frozen
+# after a failure, dumped on demand. Without the block it is not compiled in.
+CONF_RECORDER = "recorder"
+CONF_SIZE = "size"
+CONF_FREEZE_ON = "freeze_on"
+CONF_AFTER = "after"
+# VitoRecorder::MIN_SIZE and MAX_SIZE; 8 bytes an entry.
+RECORDER_MIN_SIZE = 32
+RECORDER_MAX_SIZE = 4096
+RECORDER_SIZE_ESP8266 = 256
+RECORDER_SIZE_DEFAULT = 512
+# RecorderTrigger; `manual`: only a dump freezes it.
+RECORDER_FREEZE = {"timeout": 1, "error": 2, "manual": 0}
+
+
+def _target_is_esp8266():
+    # No platform outside a build (the unit tests): not ESP8266.
+    try:
+        return CORE.is_esp8266
+    except KeyError:
+        return False
+
+
+def _validate_recorder(config):
+    freeze_on = config[CONF_FREEZE_ON]
+    if "manual" in freeze_on and len(freeze_on) > 1:
+        raise cv.Invalid("'manual' freezes on a dump only and takes no other trigger", path=[CONF_FREEZE_ON])
+    config = dict(config)
+    if CONF_SIZE not in config:
+        config[CONF_SIZE] = RECORDER_SIZE_ESP8266 if _target_is_esp8266() else RECORDER_SIZE_DEFAULT
+    if CONF_AFTER not in config:
+        config[CONF_AFTER] = config[CONF_SIZE] // 4
+    if config[CONF_AFTER] >= config[CONF_SIZE]:
+        raise cv.Invalid(f"'{CONF_AFTER}' must be less than '{CONF_SIZE}' ({config[CONF_SIZE]})", path=[CONF_AFTER])
+    return config
+
+
+RECORDER_SCHEMA = cv.All(
+    cv.Schema(
+        {
+            cv.Optional(CONF_SIZE): cv.int_range(min=RECORDER_MIN_SIZE, max=RECORDER_MAX_SIZE),
+            cv.Optional(CONF_FREEZE_ON, default=["timeout"]): cv.ensure_list(cv.one_of(*RECORDER_FREEZE, lower=True)),
+            cv.Optional(CONF_AFTER): cv.int_range(min=0, max=RECORDER_MAX_SIZE - 1),
+        }
+    ),
+    _validate_recorder,
+)
+
 # The generic raw operation (VitoHomeComponent::queue_raw_op(), raw_op.h): any
 # telegram of any layer, for reverse engineering. Off by default; the second
 # switch adds the operations that may change the controller (RawClass UNSAFE).
@@ -1156,6 +1204,9 @@ CONFIG_SCHEMA = cv.All(
             # and 25 ms; anything else is a diagnostic setting and logged as a
             # warning at boot.
             cv.Optional(CONF_LINK_TIMING, visibility=cv.Visibility.ADVANCED): LINK_TIMING_SCHEMA,
+            # The last bytes and results with µs times, for a failure that the
+            # frame log merges or misses (vito_recorder.h).
+            cv.Optional(CONF_RECORDER, visibility=cv.Visibility.ADVANCED): RECORDER_SCHEMA,
         }
     )
     .extend(cv.polling_component_schema("60s"))
@@ -1628,6 +1679,13 @@ async def to_code(config):
     for key, (point, _, _) in LINK_TIMING_POINTS.items():
         if key in config.get(CONF_LINK_TIMING, {}):
             cg.add(var.set_link_timing(getattr(timing_point, point), config[CONF_LINK_TIMING][key].total_milliseconds))
+    if CONF_RECORDER in config:
+        recorder = config[CONF_RECORDER]
+        cg.add_build_flag("-DVITOHOME_RECORDER")
+        freeze_on = 0
+        for trigger in recorder[CONF_FREEZE_ON]:
+            freeze_on |= RECORDER_FREEZE[trigger]
+        cg.add(var.set_recorder(recorder[CONF_SIZE], recorder[CONF_AFTER], freeze_on))
     if config[CONF_RAW_ACCESS] == RAW_ACCESS_UNRESTRICTED:
         cg.add_build_flag("-DVITOHOME_RAW_UNRESTRICTED")
         _LOGGER.warning(

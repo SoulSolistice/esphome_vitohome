@@ -3,7 +3,9 @@
     python import_frames.py LOG NAME --source TEXT [--start HEX] [--lines N] > trace_NAME.h
 
 Reads the >>> and <<< lines of `uart_debug` and `vitohome.frames`, whose bytes
-are written as colon-separated hex, with their [hh:mm:ss.mmm] times. --start
+are written as colon-separated hex, with their [hh:mm:ss.mmm] times. A log
+with a recorder dump (`vitohome.recorder`, vito_recorder.h) gives the dump's
+lines instead, with their times from the first entry, rounded to the ms. --start
 skips to the first engine line with those bytes (04 for a P300 log, so the
 replay begins with the session handshake); --lines keeps that many lines.
 The header holds bytes and times only, nothing else of the log.
@@ -16,21 +18,37 @@ import sys
 LINE = re.compile(
     r"^\[(\d\d):(\d\d):(\d\d)\.(\d{3})\]\[D\]\[(?:uart_debug|vitohome\.frames)[^\]]*\]: (>>>|<<<) ([0-9A-Fa-f:]+)\s*$"
 )
+REC = re.compile(r"\]\[vitohome\.recorder[^\]]*\]: rec \+(\d+)\.(\d{3}) p\d+ (>>>|<<<) ([0-9A-Fa-f:]+)\s*$")
 DAY_MS = 24 * 3600 * 1000
 
 
 def read_lines(path):
-    out = []
     with open(path, encoding="utf-8", errors="replace") as log:
-        for raw in log:
-            m = LINE.match(raw.strip())
-            if not m:
-                continue
-            h, mi, s, ms, direction, hexes = m.groups()
-            t = ((int(h) * 60 + int(mi)) * 60 + int(s)) * 1000 + int(ms)
+        raws = [raw.strip() for raw in log]
+    # The first recorder dump; its times restart at every dump.
+    recorded = []
+    dumps = 0
+    for raw in raws:
+        if "]: rec dump:" in raw and "vitohome.recorder" in raw:
+            dumps += 1
+        m = REC.search(raw)
+        if m and dumps == 1:
+            ms, us, direction, hexes = m.groups()
             data = bytes(int(x, 16) for x in hexes.split(":") if x)
             if data:
-                out.append((t, direction == "<<<", data))
+                recorded.append((int(ms) + (int(us) >= 500), direction == "<<<", data))
+    if recorded:
+        return recorded
+    out = []
+    for raw in raws:
+        m = LINE.match(raw)
+        if not m:
+            continue
+        h, mi, s, ms, direction, hexes = m.groups()
+        t = ((int(h) * 60 + int(mi)) * 60 + int(s)) * 1000 + int(ms)
+        data = bytes(int(x, 16) for x in hexes.split(":") if x)
+        if data:
+            out.append((t, direction == "<<<", data))
     return out
 
 

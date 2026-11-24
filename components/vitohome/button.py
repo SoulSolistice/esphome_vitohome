@@ -18,6 +18,7 @@ DEPENDENCIES = ["vitohome"]
 
 VitoRefreshButton = vitohome_ns.class_("VitoRefreshButton", button.Button, cg.Component)
 VitoActionButton = vitohome_ns.class_("VitoActionButton", button.Button, cg.Component)
+VitoRecorderDumpButton = vitohome_ns.class_("VitoRecorderDumpButton", button.Button, cg.Component)
 
 # type: refresh (the default) -- force-refresh. Pressing it (from the HA UI or
 # via button.press in an automation) calls the hub's refresh_all(), which marks
@@ -61,10 +62,26 @@ _ACTION_SCHEMA = (
     .extend(cv.COMPONENT_SCHEMA)
 )
 
+# type: recorder_dump -- dumps the hub's recorder (`recorder:`) to the log.
+_RECORDER_DUMP_SCHEMA = (
+    button.button_schema(
+        VitoRecorderDumpButton,
+        icon="mdi:record-rec",
+        entity_category="diagnostic",
+    )
+    .extend(
+        {
+            cv.GenerateID(CONF_VITOHOME_ID): cv.use_id(VitoHomeComponent),
+        }
+    )
+    .extend(cv.COMPONENT_SCHEMA)
+)
+
 CONFIG_SCHEMA = cv.typed_schema(
     {
         "refresh": _REFRESH_SCHEMA,
         "action": _ACTION_SCHEMA,
+        "recorder_dump": _RECORDER_DUMP_SCHEMA,
     },
     key=CONF_TYPE,
     default_type="refresh",

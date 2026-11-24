@@ -272,11 +272,34 @@ RawScriptTiming VitoHomeComponent::raw_script_timing_() const {
   return RawScriptTiming{RAW_SCRIPT_ENQ_TIMEOUT_MS, quiet, RAW_SCRIPT_DEADLINE_MS};
 }
 
+#ifdef VITOHOME_RECORDER
+// A timed frame's end as the recorder files it: unsent and unanswered are
+// both a timeout, a wrong checksum is CRC.
+static optolink::OptolinkResult raw_script_result_status(RawScriptStatus status) {
+  switch (status) {
+    case RawScriptStatus::OK:
+      return optolink::OptolinkResult::OK;
+    case RawScriptStatus::NO_ENQ:
+    case RawScriptStatus::TIMEOUT:
+      return optolink::OptolinkResult::TIMEOUT;
+    case RawScriptStatus::NACK:
+      return optolink::OptolinkResult::NACK;
+    case RawScriptStatus::CHECKSUM:
+      return optolink::OptolinkResult::CRC;
+    default:
+      return optolink::OptolinkResult::ERROR;
+  }
+}
+#endif
+
 void VitoHomeComponent::raw_script_loop_() {
 #ifdef VITOHOME_RAW_SCRIPT
   if (!this->raw_script_.loop())
     return;
   this->raw_script_hold_.stop();
+#ifdef VITOHOME_RECORDER
+  this->recorder_.result(raw_script_result_status(this->raw_script_.result().status), 0, true);
+#endif
   char line[256];
   format_raw_script(this->raw_script_.spec(), this->raw_script_.result(), this->raw_script_timing_(), line,
                     sizeof(line));

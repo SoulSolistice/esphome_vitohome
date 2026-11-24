@@ -132,6 +132,18 @@ void VitoHomeComponent::setup() {
   });
 #endif
 
+#ifdef VITOHOME_RECORDER
+  // Before begin(), so the bytes it drains are recorded. Not fatal: the hub
+  // runs without it.
+  if (this->recorder_.allocate(this->recorder_size_, this->recorder_after_, this->recorder_freeze_on_,
+                               []() -> uint32_t { return micros(); })) {
+    this->iface_.set_recorder(&this->recorder_);
+  } else {
+    ESP_LOGW(TAG, "recorder: %u entries could not be allocated; recording off",
+             static_cast<unsigned>(this->recorder_size_));
+  }
+#endif
+
   if (!this->vito_.begin()) {
     ESP_LOGE(TAG, "optolink engine begin() failed");
     this->mark_failed(LOG_STR("optolink engine begin() failed"));
@@ -187,6 +199,9 @@ void VitoHomeComponent::setup() {
 void VitoHomeComponent::loop() {
   if (this->is_failed())
     return;
+#ifdef VITOHOME_RECORDER
+  this->recorder_.set_pass(++this->loop_pass_);
+#endif
 
 #ifdef VITOHOME_RAW_SCRIPT
   // A timed raw frame owns the port; the engine is parked meanwhile.
@@ -210,6 +225,9 @@ void VitoHomeComponent::loop() {
   // Closes an RX frame log line once the bus is quiet (VITOHOME_LOG_FRAMES,
   // vito_uart_interface.h); nothing otherwise.
   this->iface_.frame_tick();
+#ifdef VITOHOME_RECORDER
+  this->recorder_loop_();
+#endif
 
   if (this->protocol_verify_pending_) {
     if (this->link_established_) {
@@ -317,6 +335,47 @@ bool VitoHomeComponent::set_link_timing(TimingPoint point, uint32_t ms) {
     this->warn_link_timing_(point);
   return true;
 }
+
+#ifdef VITOHOME_RECORDER
+static const char *const TAG_RECORDER = "vitohome.recorder";
+// Lines per loop pass: the dump must not starve the link or flood the log's
+// consumers.
+static constexpr uint8_t RECORDER_LINES_PER_PASS = 2;
+
+void VitoHomeComponent::recorder_dump() {
+  if (!this->recorder_.start_dump()) {
+    ESP_LOGW(TAG_RECORDER, "%s", this->recorder_.enabled() ? "a dump is running" : "recording is off");
+    return;
+  }
+  ESP_LOGI(TAG_RECORDER, "rec protocol %s, times in ms from the first entry", PROTOCOL_NAME);
+  for (uint8_t i = 0; i < optolink::TIMING_POINTS; ++i)
+    this->warn_link_timing_(static_cast<TimingPoint>(i));
+  for (uint8_t i = 0; i < optolink::LINK_WINDOWS; ++i)
+    this->warn_link_window_(static_cast<LinkWindow>(i));
+}
+
+void VitoHomeComponent::recorder_arm() {
+  if (this->recorder_.dumping())
+    return;
+  this->recorder_.arm();
+}
+
+void VitoHomeComponent::recorder_loop_() {
+  if (!this->recorder_.dumping())
+    return;
+  char line[VitoRecorder::LINE_CAPACITY];
+  for (uint8_t i = 0; i < RECORDER_LINES_PER_PASS; ++i) {
+    if (!this->recorder_.next_dump_line(line, sizeof(line))) {
+      ESP_LOGI(TAG_RECORDER, "rec end");
+      return;
+    }
+    ESP_LOGI(TAG_RECORDER, "%s", line);
+  }
+}
+#else
+void VitoHomeComponent::recorder_dump() { ESP_LOGW(TAG, "recorder_dump: no `recorder:` configured"); }
+void VitoHomeComponent::recorder_arm() { ESP_LOGW(TAG, "recorder_arm: no `recorder:` configured"); }
+#endif
 
 void VitoHomeComponent::warn_link_timing_(TimingPoint point) const {
   const uint32_t ms = this->vito_.timing(point);
@@ -648,6 +707,13 @@ void VitoHomeComponent::dump_config() {
                 "  Entities: %zu\n"
                 "  Raw queue capacity: %zu",
                 PROTOCOL_NAME, this->entities_.size(), this->raw_queue_capacity_);
+#ifdef VITOHOME_RECORDER
+  ESP_LOGCONFIG(TAG, "  Recorder: %u entries, %u after a failure, freezes on %s%s%s",
+                static_cast<unsigned>(this->recorder_.size()), static_cast<unsigned>(this->recorder_after_),
+                (this->recorder_freeze_on_ & RECORDER_FREEZE_TIMEOUT) != 0 ? "timeout " : "",
+                (this->recorder_freeze_on_ & RECORDER_FREEZE_ERROR) != 0 ? "error " : "",
+                this->recorder_freeze_on_ == 0 ? "the dump only" : "");
+#endif
 #if defined(VITOHOME_PROTOCOL_KW)
   ESP_LOGCONFIG(TAG, "  Link timing: ENQ to send %" PRIu32 " ms, answer to next %" PRIu32 " ms",
                 this->vito_.timing(TimingPoint::ENQ_TO_SEND), this->vito_.timing(TimingPoint::ANSWER_TO_NEXT));
@@ -788,6 +854,9 @@ bool VitoHomeComponent::send_raw_frame_(const uint8_t *bytes, uint8_t len, uint8
 // on KW and GWG. The hub knows what is in flight (in_flight_op_, in_flight_);
 // the address only cross-checks it.
 void VitoHomeComponent::on_result_(const optolink::Result &result) {
+#ifdef VITOHOME_RECORDER
+  this->recorder_.result(result.status, result.address);
+#endif
   // A KW telegram the device met with silence, sent again on its next ENQ:
   // rare (on a VScotHO1_72 about 4 in 1000 on KW, 9 in 1000 for the first
   // telegram of a P300 detour), so each one is worth a line.

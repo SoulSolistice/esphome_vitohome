@@ -26,6 +26,9 @@
 #include "ring_buffer.h"
 #include "vito_clock.h"
 #include "vito_entity.h"
+#ifdef VITOHOME_RECORDER
+#include "vito_recorder.h"
+#endif
 #include "vito_uart_interface.h"
 
 // Timed open frames (raw_script.h) need the same opt-ins as an open frame.
@@ -110,6 +113,18 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 #endif
 
   void set_identify_device(bool value) { this->identify_device_ = value; }
+
+  // The recorder's settings (YAML `recorder:`), applied in setup().
+  void set_recorder(uint16_t size, uint16_t after, uint8_t freeze_on) {
+    this->recorder_size_ = size;
+    this->recorder_after_ = after;
+    this->recorder_freeze_on_ = freeze_on;
+  }
+  // Dumps the recorder to the log at INFO (tag vitohome.recorder), a few lines
+  // per loop pass, freezing it first if no failure did; the dump re-arms it.
+  void recorder_dump();
+  // Clears the recorder, frozen or not, and records again.
+  void recorder_arm();
 
   // Slots of the raw lane (scan console), allocated in setup(); see
   // RAW_QUEUE_DEFAULT.
@@ -437,6 +452,14 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
  private:
   ESPHomeUARTInterface iface_;
+  uint16_t recorder_size_{0};
+  uint16_t recorder_after_{0};
+  uint8_t recorder_freeze_on_{0};
+#ifdef VITOHOME_RECORDER
+  VitoRecorder recorder_;
+  uint16_t loop_pass_{0};
+  void recorder_loop_();
+#endif
 #ifdef VITOHOME_RAW_SCRIPT
   RawScript<ESPHomeUARTInterface> raw_script_{&this->iface_};
   // Keeps the main loop from idling while a script runs, so its waits are not
