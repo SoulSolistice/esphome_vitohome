@@ -76,9 +76,9 @@ class VitoClimate final : public climate::Climate, public Component {
     this->setpoint_min_ = min_c;
     this->setpoint_max_ = max_c;
   }
-  void configure_setpoint(VitoHomeComponent *hub, const optolink::Datapoint &dp, uint32_t poll_ms);
-  void configure_mode(VitoHomeComponent *hub, const optolink::Datapoint &read_dp, bool read_back, uint32_t poll_ms);
-  void set_mode_write_datapoint(const optolink::Datapoint &dp) { this->mode_.set_write_datapoint(dp); }
+  void configure_setpoint(VitoHomeComponent *hub, const Datapoint &dp, uint32_t poll_ms);
+  void configure_mode(VitoHomeComponent *hub, const Datapoint &read_dp, bool read_back, uint32_t poll_ms);
+  void set_mode_write_datapoint(const Datapoint &dp) { this->mode_.set_write_datapoint(dp); }
 
   // GWG access mode, per channel: the setpoint and Betriebsart registers need
   // not share an access space. One mode drives both directions of a channel

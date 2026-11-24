@@ -22,9 +22,7 @@ namespace {
 // The smallest concrete entity that can carry a write target.
 class Probe final : public VitoWritableEntity {
  public:
-  Probe(uint16_t address, uint8_t length) {
-    this->set_datapoint(optolink::Datapoint("probe", address, length, optolink::noconv));
-  }
+  Probe(uint16_t address, uint8_t length) { this->set_datapoint(Datapoint("probe", address, length)); }
   void handle_response(const ResponseView &) override {}
   void handle_error(optolink::OptolinkResult) override {}
   const char *entity_kind() const override { return "probe"; }
@@ -64,7 +62,7 @@ int main() {
 
   // A separate write target is not part of the read.
   Probe command(0x0055, 1);
-  command.set_write_datapoint(optolink::Datapoint("probe", 0x2323, 1, optolink::noconv));
+  command.set_write_datapoint(Datapoint("probe", 0x2323, 1));
   check(a.reads_same_datapoint(command), "a different write address does not matter");
 
 #if defined(VITOHOME_PROTOCOL_GWG)

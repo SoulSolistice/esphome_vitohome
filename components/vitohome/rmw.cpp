@@ -62,7 +62,7 @@ void VitoHomeComponent::rmw_handle_read_(VitoEntityBase *entity, const ResponseV
 
 void VitoHomeComponent::rmw_dispatch_write_() {
   VitoEntityBase *entity = this->rmw_pending_;
-  const optolink::Datapoint &wdp = entity->get_write_datapoint();
+  const Datapoint &wdp = entity->get_write_datapoint();
   const bool write_ok = this->send_write_(wdp.address(), this->rmw_buf_, this->rmw_len_, entity->space());
   if (!write_ok) {
     // Busy: stay armed. dispatch_next_() comes back here first, so nothing

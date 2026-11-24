@@ -48,15 +48,14 @@ void VitoClimateChannel::handle_write_error(optolink::OptolinkResult error) {
 
 // --- channel wiring (needs the complete hub type) --------------------------
 
-void VitoClimate::configure_setpoint(VitoHomeComponent *hub, const optolink::Datapoint &dp, uint32_t poll_ms) {
+void VitoClimate::configure_setpoint(VitoHomeComponent *hub, const Datapoint &dp, uint32_t poll_ms) {
   this->setpoint_.set_vitohome_parent(hub);
   this->setpoint_.set_datapoint(dp);
   this->setpoint_.set_poll_interval(poll_ms);
   hub->register_entity(&this->setpoint_);
 }
 
-void VitoClimate::configure_mode(VitoHomeComponent *hub, const optolink::Datapoint &read_dp, bool read_back,
-                                 uint32_t poll_ms) {
+void VitoClimate::configure_mode(VitoHomeComponent *hub, const Datapoint &read_dp, bool read_back, uint32_t poll_ms) {
   this->has_mode_ = true;
   this->mode_.set_vitohome_parent(hub);
   this->mode_.set_datapoint(read_dp);

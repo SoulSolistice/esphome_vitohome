@@ -96,31 +96,31 @@ void VitoHomeComponent::ident_dispatch_(IdentState state) {
 
   switch (state) {
     case IdentState::READ4:
-      this->ident_dp_ = optolink::Datapoint("ident", 0x00F8, 4, optolink::noconv);
+      this->ident_dp_ = Datapoint("ident", 0x00F8, 4);
       break;
 
     case IdentState::READ_F8:
-      this->ident_dp_ = optolink::Datapoint("ident", 0x00F8, 1, optolink::noconv);
+      this->ident_dp_ = Datapoint("ident", 0x00F8, 1);
       break;
 
     case IdentState::READ_F9:
-      this->ident_dp_ = optolink::Datapoint("ident", 0x00F9, 1, optolink::noconv);
+      this->ident_dp_ = Datapoint("ident", 0x00F9, 1);
       break;
 
     case IdentState::READ_FA:
-      this->ident_dp_ = optolink::Datapoint("ident", 0x00FA, 1, optolink::noconv);
+      this->ident_dp_ = Datapoint("ident", 0x00FA, 1);
       break;
 
     case IdentState::READ_FB:
-      this->ident_dp_ = optolink::Datapoint("ident", 0x00FB, 1, optolink::noconv);
+      this->ident_dp_ = Datapoint("ident", 0x00FB, 1);
       break;
 
     case IdentState::READ_GFA:
-      this->ident_dp_ = optolink::Datapoint("ident", 0x7650, 1, optolink::noconv);
+      this->ident_dp_ = Datapoint("ident", 0x7650, 1);
       break;
 
     case IdentState::READ_F0:
-      this->ident_dp_ = optolink::Datapoint("ident", 0x00F0, 2, optolink::noconv);
+      this->ident_dp_ = Datapoint("ident", 0x00F0, 2);
       break;
 
     default:

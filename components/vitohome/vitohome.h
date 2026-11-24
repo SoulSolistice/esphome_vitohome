@@ -17,7 +17,6 @@
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/component.h"
 #include "address_space.h"
-#include "optolink_datapoint.h"
 #include "optolink_types.h"
 #include "protocol_select.h"
 #include "raw_op.h"
@@ -25,6 +24,7 @@
 #include "response_view.h"
 #include "ring_buffer.h"
 #include "vito_clock.h"
+#include "vito_datapoint.h"
 #include "vito_entity.h"
 #ifdef VITOHOME_RECORDER
 #include "vito_recorder.h"
@@ -617,7 +617,7 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   bool identify_device_{true};
   IdentState ident_state_{IdentState::IDLE};
 
-  optolink::Datapoint ident_dp_{"ident", 0x00F8, 4, optolink::noconv};
+  Datapoint ident_dp_{"ident", 0x00F8, 4};
 
   int ident_group_{-1};
   int ident_controller_{-1};
@@ -716,7 +716,7 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // in dispatch_next_().
   AddressSpace last_space_{AddressSpace::OWN};
 
-  optolink::Datapoint raw_dp_{"scan", 0, 1, optolink::noconv};
+  Datapoint raw_dp_{"scan", 0, 1};
 
   // Length of the raw write in flight, for the ACK line.
   uint8_t raw_write_len_{0};

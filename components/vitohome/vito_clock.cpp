@@ -25,9 +25,7 @@ VitoClock::VitoClock() {
 // VitoWritePath::buf: the clock writes through the ordinary entity path.
 void VitoClock::set_clock_address(uint16_t address) {
   this->clock_address_ = address;
-  // noconv: like every other vitohome entity, this decodes and encodes the raw
-  // payload itself (decode.h) rather than using an optolink library converter.
-  this->set_datapoint(optolink::Datapoint("clock", address, CLOCK_LEN, optolink::noconv));
+  this->set_datapoint(Datapoint("clock", address, CLOCK_LEN));
 }
 
 void VitoClock::tick(uint32_t now_ms) {

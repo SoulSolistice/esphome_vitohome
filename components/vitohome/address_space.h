@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <type_traits>
 
-#include "optolink_datapoint.h"
 #include "optolink_types.h"
 #include "protocol_select.h"
 

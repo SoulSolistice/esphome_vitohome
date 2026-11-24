@@ -507,7 +507,7 @@ bool VitoHomeComponent::dispatch_write_front_() {
     // Read first (RMW_READ) the whole write datapoint, in the entity's space:
     // exactly what the merged write replaces. Config validation rules out a
     // state_address here, so read and write are one register.
-    const optolink::Datapoint &wdp = entity->get_write_datapoint();
+    const Datapoint &wdp = entity->get_write_datapoint();
     if (wdp.length() == 0 || wdp.length() > MAX_RMW_BLOCK) {
       // Unreachable with a validated config; no partial block goes out.
       ESP_LOGE(TAG, "%s: %u-byte read-modify-write exceeds %u bytes; dropping", entity->get_datapoint().name(),
@@ -538,7 +538,7 @@ bool VitoHomeComponent::dispatch_write_front_() {
   // A GWG entity writes in the mode it polls in, as Vitosoft pairs them
   // (EEPROM_READ/EEPROM_WRITE, BE_READ/BE_WRITE). An action (VitoActionButton)
   // sends the procedure call an `access: rpc` read sends, for its effect.
-  const optolink::Datapoint &wdp = entity->get_write_datapoint();
+  const Datapoint &wdp = entity->get_write_datapoint();
   if (!this->send_write_(wdp.address(), entity->write_data(), entity->write_length(), entity->space(),
                          entity->rpc_prefix(), entity->rpc_prefix_len())) {
     // Busy is transient. Any other refusal is permanent (unreachable with a
@@ -577,7 +577,7 @@ void VitoHomeComponent::dispatch_read_front_() {
     return;
   }
 
-  const optolink::Datapoint &datapoint = entity->get_datapoint();
+  const Datapoint &datapoint = entity->get_datapoint();
 
   // The entity's space picks the telegram (send_read_): a GWG access mode, an
   // `access: rpc` call with its prefix, an `access: gfa` read.

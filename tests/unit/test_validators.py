@@ -380,10 +380,10 @@ def test_cpp_string_literal_escapes():
     assert cpp_string_literal("neu??)") == '"neu\\?\\?)"'
 
 
-def test_datapoint_expression_uses_noconv_and_hex():
+def test_datapoint_expression_is_qualified_and_hex():
     expr = str(datapoint_expression('Kessel "K"', 0x0802, 2))
-    assert "esphome::vitohome::optolink::Datapoint(" in expr
-    assert "esphome::vitohome::optolink::noconv" in expr  # always bypass the engine converter
+    assert expr.startswith("esphome::vitohome::Datapoint(")
+    assert expr.endswith(", 2)")
     assert "0x0802" in expr
     assert '\\"K\\"' in expr  # name escaping survived
 

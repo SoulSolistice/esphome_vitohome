@@ -5,8 +5,7 @@ P300 (VS2) and KW (VS1) are confirmed on hardware. GWG is build-time selectable
 EEPROM writes, on one (docs/gwg_protocol.md). Platforms:
 sensor, binary_sensor, text_sensor, number, select, switch, text, button,
 climate and event. The component decodes and encodes raw Optolink payloads
-itself (see ``decode.h``); its engine (``optolink_*.h``) only moves bytes, and
-every ``Datapoint`` is built with the vestigial ``optolink::noconv``.
+itself (see ``decode.h``); its engine (``optolink_*.h``) only moves bytes.
 
 Why the component decodes rather than using engine converters -- VitoWiFi,
 which the engine began as, has a converter layer, which was dropped because:
@@ -1060,7 +1059,7 @@ def cpp_string_literal(value: str) -> str:
     """Return *value* as a safely-escaped C++ string literal (incl. quotes).
 
     Entity names are interpolated verbatim into generated C++ (the
-    ``optolink::Datapoint`` name argument). A backslash or double-quote in the
+    ``Datapoint`` name argument). A backslash or double-quote in the
     name would otherwise break the literal, so escape those characters.
 
     Every ``?`` is emitted as backslash-question-mark (a standard C++ escape for
@@ -1073,22 +1072,13 @@ def cpp_string_literal(value: str) -> str:
 
 
 def datapoint_expression(name: str, address: int, length: int) -> cg.RawExpression:
-    """Build the ``optolink::Datapoint`` constructor expression.
+    """Build the ``Datapoint`` constructor expression.
 
-    The converter slot is always ``noconv``: the component decodes/encodes the
-    raw payload itself, so the engine converter is never used. ``name`` is
-    escaped; ``address`` is emitted as a 0x-prefixed 16-bit literal. The type is
-    fully qualified (``esphome::vitohome::optolink::``) because the expression is
-    emitted into the global-scope generated ``main.cpp``.
+    ``name`` is escaped; ``address`` is emitted as a 0x-prefixed 16-bit literal.
+    The type is fully qualified because the expression is emitted into the
+    global-scope generated ``main.cpp``.
     """
-    return cg.RawExpression(
-        f"esphome::vitohome::optolink::Datapoint("
-        f"{cpp_string_literal(name)}, "
-        f"{address:#06x}, "
-        f"{length}, "
-        f"esphome::vitohome::optolink::noconv"
-        f")"
-    )
+    return cg.RawExpression(f"esphome::vitohome::Datapoint({cpp_string_literal(name)}, {address:#06x}, {length})")
 
 
 # The longest interval the hub's schedules can hold: deadlines compare through a

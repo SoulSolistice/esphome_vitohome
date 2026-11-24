@@ -49,16 +49,16 @@ the design is what it is:
 ## 1. Architecture — the engine moves bytes; decode in the component
 
 The engine (`components/vitohome/optolink_*.h`) is **only** the P300/KW/GWG
-wire layer: framing, sequencing, ACK/NACK, checksums, retries. Every
-`Datapoint` carries `optolink::noconv`, and a request carries raw bytes
-(`Request`). **All value decode and encode happens in the component**, in
+wire layer: framing, sequencing, ACK/NACK, checksums, retries. A
+`Datapoint` (`vito_datapoint.h`) is a name, an address and a length, and a
+request carries raw bytes (`Request`). **All value decode and encode happens in the component**, in
 `decode.h`: read the raw little-endian bytes into a `uint64_t`, scale in
 `double`, and narrow to `float` only at the ESPHome state boundary
 (`publish_state`). The Python layer turns YAML into the three things the runtime
-needs per entity — a `Datapoint(noconv)`, a decode scale, and a signedness flag.
+needs per entity — a `Datapoint`, a decode scale, and a signedness flag.
 
 ```
-YAML ──Python codegen──▶ Datapoint(noconv) + scale + signed
+YAML ──Python codegen──▶ Datapoint + scale + signed
                               │
    bus bytes ◀── optolink engine (frame/CRC/seq) ──▶ raw payload
                               │  (byte-mover callback → ResponseView)
@@ -459,9 +459,8 @@ the one before:
   replaced, 7.4 million cases.
 - Once the reference outputs are recorded as fixtures, the copy goes.
 
-Of VitoWiFi only the `Datapoint` class remains (`optolink_datapoint.h`, MIT
-notice kept); attribution and licensing are in [`NOTICE.md`](../NOTICE.md).
-Two lessons from the vendored years generalise:
+Attribution is in [`NOTICE.md`](../NOTICE.md). Two lessons from the vendored
+years generalise:
 
 - **ESPHome's component file copier does not recurse into subdirectories.**
   Every engine file sits at the component's top level, so the component
@@ -2283,9 +2282,6 @@ rest.
   are commented hints. No committed catalog carries one.
 - **`HexByte2DecimalByte`** has no decoder: "Anlage/TN" (two decimal bytes)
   reads as one 16-bit number (`01 01` is 257).
-- **The vestigial `Converter` argument** of every generated
-  `Datapoint(...)` line (`noconv`) could go from the codegen and
-  `optolink_datapoint.h`; it changes every generated line but no behaviour.
 - **Detecting the operating unit and modules** (BES or BEM, a mixer) to pick a
   catalog or hide entities at run time. It needs a reliable signal first: the
   hardware index does not separate BES and BEM on the units seen (§6,

@@ -6,9 +6,9 @@
 
 #include "address_space.h"
 #include "decode.h"
-#include "optolink_datapoint.h"
 #include "optolink_types.h"
 #include "response_view.h"
+#include "vito_datapoint.h"
 
 namespace esphome::vitohome {
 
@@ -27,7 +27,7 @@ struct VitoOption {
 // What only a writable entity carries (VitoWritableEntity).
 struct VitoWritePath {
   // Distinct write target (command address); used only when has_datapoint.
-  optolink::Datapoint datapoint{"uninitialized", 0, 1, optolink::noconv};
+  Datapoint datapoint{"uninitialized", 0, 1};
   bool has_datapoint{false};
   // Block mode: the field is block_width bytes at block_offset of the write
   // datapoint; 0 = not block mode.
@@ -50,8 +50,8 @@ class VitoEntityBase {
  public:
   virtual ~VitoEntityBase() = default;
 
-  void set_datapoint(const optolink::Datapoint &dp) { this->datapoint_ = dp; }
-  const optolink::Datapoint &get_datapoint() const { return this->datapoint_; }
+  void set_datapoint(const Datapoint &dp) { this->datapoint_ = dp; }
+  const Datapoint &get_datapoint() const { return this->datapoint_; }
 
   void set_vitohome_parent(VitoHomeComponent *parent) { this->vh_parent_ = parent; }
 
@@ -149,7 +149,7 @@ class VitoEntityBase {
   virtual const VitoWritePath *write_path() const { return nullptr; }
 
   // The write target: the command address when one is set, else datapoint_.
-  const optolink::Datapoint &get_write_datapoint() const {
+  const Datapoint &get_write_datapoint() const {
     const VitoWritePath *w = this->write_path();
     return w != nullptr && w->has_datapoint ? w->datapoint : this->datapoint_;
   }
@@ -223,9 +223,8 @@ class VitoEntityBase {
                          this->field_mask_, value);
   }
 
-  // Set by codegen. The converter is always noconv: decode.h does the
-  // decoding.
-  optolink::Datapoint datapoint_{"uninitialized", 0, 1, optolink::noconv};
+  // Set by codegen.
+  Datapoint datapoint_{"uninitialized", 0, 1};
   VitoHomeComponent *vh_parent_{nullptr};
   uint32_t poll_interval_ms_{0};
   // int16_t: an offset reaches 254, and -1 means "no extraction".
@@ -261,7 +260,7 @@ class VitoWritableEntity : public VitoEntityBase {
 
   // A distinct write target: polling, read-back and answer matching use
   // datapoint_ (the state address), writes go here (the command address).
-  void set_write_datapoint(const optolink::Datapoint &dp) {
+  void set_write_datapoint(const Datapoint &dp) {
     this->write_path_.datapoint = dp;
     this->write_path_.has_datapoint = true;
   }

@@ -134,8 +134,7 @@ inline bool merge_block_field(const uint8_t *old, uint8_t block_len, uint8_t off
 // numeric decode/encode
 // ---------------------------------------------------------------------------
 
-// Optolink payloads are little-endian (verified against the optolink engine
-// Converter.cpp at the pinned SHA: data[1] << 8 | data[0], etc.).
+// Optolink payloads are little-endian.
 inline uint64_t read_le(const uint8_t *data, uint8_t len) {
   uint64_t v = 0;
   for (uint8_t i = 0; i < len && i < 8; i++) {

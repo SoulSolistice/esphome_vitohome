@@ -472,7 +472,7 @@ void VitoHomeComponent::dispatch_raw_front_() {
   if (!this->raw_queue_.try_front(operation))
     return;
 
-  this->raw_dp_ = optolink::Datapoint("scan", operation.address, operation.length, optolink::noconv);
+  this->raw_dp_ = Datapoint("scan", operation.address, operation.length);
 
   this->raw_is_write_ = operation.is_write;
   this->raw_space_ = operation.space;
