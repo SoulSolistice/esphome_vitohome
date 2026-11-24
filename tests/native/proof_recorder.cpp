@@ -10,7 +10,9 @@
 //   (6) a dump line joins the bytes of one direction and pass, up to 24;
 //       results and timed frames carry their status and address;
 //   (7) on a port with the hub's hook, a KW read on the KW exchange: its
-//       ENQ, 01 + telegram, answer and result, one pass each.
+//       ENQ, 01 + telegram, answer and result, one pass each;
+//   (8) with the link's trace as well (LinkSink), a P300 read the device
+//       NACKs: the states of a pass on one line, the fact with its own.
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -20,6 +22,7 @@
 #include "fake_optolink.h"
 #include "kw_calls.h"
 #include "optolink_kw.h"
+#include "optolink_p300.h"
 #include "vito_recorder.h"
 
 using esphome::vitohome::RECORDER_FREEZE_ERROR;
@@ -249,6 +252,54 @@ int main() {
     check(lines.size() > 2 && lines[2] == "rec +0.000 p1 >>> 01:F7:00:F8:02", "(7) 01 + telegram in its pass");
     check(lines.size() > 3 && lines[3] == "rec +30.000 p2 <<< 20:CB", "(7) the answer 30 ms later");
     check(lines.size() > 4 && lines[4] == "rec +30.000 p2 = ok @00F8", "(7) its result");
+  }
+
+  // (8)
+  {
+    VitoRecorder rec;
+    (void) rec.allocate(128, 0, 0, engine_micros);
+    FakeOptolink uart;
+    RecordingPort port(&uart, &rec);
+    using P300 = optolink::P300Exchange<RecordingPort>;
+    P300 p300(&port);
+    rec.set_state_names(&P300::state_name);
+    p300.set_sink(optolink::LinkSink{&VitoRecorder::link_trace, &rec});
+    p300.on_result([&rec](const optolink::Result &r) { rec.result(r.status, r.address); });
+    uint16_t pass = 0;
+    auto pump = [&](int n) {
+      for (int i = 0; i < n; ++i) {
+        rec.set_pass(++pass);
+        p300.loop();
+      }
+    };
+    p300.begin();
+    pump(1);
+    uart.feed({0x05});
+    pump(1);
+    pump(1);
+    uart.feed({0x06});
+    pump(1);
+    check(kw_calls::read(p300, 0x00F8, 4), "(8) P300 read accepted");
+    pump(1);
+    uart.feed({0x15});
+    pump(1);
+    const auto lines = dump(rec);
+    auto at = [&lines](const char *text) {
+      for (std::size_t i = 0; i < lines.size(); ++i)
+        if (lines[i].find(text) != std::string::npos)
+          return static_cast<int>(i);
+      return -1;
+    };
+    check(at("p1 >>> 04") > 0 && at("p1 ~ RESET_ACK") == at("p1 >>> 04") + 1, "(8) the EOT, then its state");
+    check(at("p3 >>> 16:00:00") > 0 && at("p4 ~ IDLE") > at("p3 >>> 16:00:00"), "(8) the handshake to IDLE");
+    const int start = at("p5 ~ SEND_START");
+    check(start > 0 && lines[start + 1].find("p5 >>> 41") != std::string::npos &&
+              lines[start + 2].find("p5 ~ SEND_PACKET") != std::string::npos &&
+              lines[start + 6].find("p5 ~ SEND_ACK") != std::string::npos,
+          "(8) the telegram: states and bytes in their order, one pass");
+    const int nack = at("p6 * nack");
+    check(nack > 0 && at("p6 <<< 15") == nack - 1 && at("p6 ~ IDLE") == nack + 1 && at("p6 = nack @00F8") == nack + 2,
+          "(8) the 15, the fact, IDLE, the result");
   }
 
   std::printf("recorder: %d failure(s)\n", g_failures);

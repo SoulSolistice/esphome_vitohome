@@ -12,6 +12,7 @@
 
 #include "optolink_kw.h"
 #include "optolink_p300.h"
+#include "trace_sink.h"
 
 namespace kw_calls {
 
@@ -34,6 +35,7 @@ template<class E, class R, class F> void wire(E &e, R on_response, F on_error) {
 }
 template<class P, const live::EnqLinkParams &K, class R, class F>
 void wire(live::KwExchange<P, K> &e, R on_response, F on_error) {
+  e.set_sink(trace_sink::counting());
   e.on_result([on_response, on_error](const live::Result &r) {
     if (r.status == live::OptolinkResult::OK) {
       on_response(r.data, r.length, r.address);
@@ -101,6 +103,7 @@ template<class E, class R, class F, class C> void wire(E &e, R on_response, F on
 }
 template<class P, uint8_t N, uint32_t Q, class R, class F, class C>
 void wire(live::P300Exchange<P, N, Q> &e, R on_response, F on_error, C on_error_code) {
+  e.set_sink(trace_sink::counting());
   e.on_result([on_response, on_error, on_error_code](const live::Result &r) {
     if (r.status == live::OptolinkResult::OK) {
       on_response(r.data, r.length, r.address);

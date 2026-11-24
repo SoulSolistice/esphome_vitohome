@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "optolink_gwg.h"
+#include "trace_sink.h"
 
 namespace gwg_calls {
 
@@ -30,6 +31,7 @@ template<class Port> class Engine {
   using OnTiming = std::function<void(uint32_t, uint32_t, uint16_t)>;
 
   explicit Engine(Port *port) : x_(port) {
+    x_.set_sink(trace_sink::counting());
     x_.on_result([this](const live::Result &r) { this->deliver_(r); });
   }
 
@@ -138,6 +140,7 @@ template<class E, class R, class F, class T> void wire(E &e, R on_response, F on
   e.onTiming(on_timing);
 }
 template<class P, class R, class F, class T> void wire(Exchange<P> &e, R on_response, F on_error, T on_timing) {
+  e.set_sink(trace_sink::counting());
   e.on_result([on_response, on_error, on_timing](const live::Result &r) {
     last_sent() = Sent{r.timing.enq_paced, r.timing.enq_to_send_ms};
     if (r.status != live::OptolinkResult::OK) {

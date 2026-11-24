@@ -96,6 +96,19 @@ class P300Exchange {
   P300Exchange &operator=(const P300Exchange &) = delete;
 
   void on_result(ResultCallback callback) { on_result_ = std::move(callback); }
+  // The trace for the recorder (LinkSink); none by default.
+  void set_sink(const LinkSink &sink) { sink_ = sink; }
+
+  static const char *state_name(uint8_t state) {
+    static constexpr const char *NAMES[] = {
+        "UNDEFINED",   "RESET",    "RESET_ACK",  "INIT",     "INIT_ACK",    "IDLE",          "SEND_START",
+        "SEND_PACKET", "SEND_CRC", "SEND_ACK",   "RECEIVE",  "RECEIVE_ACK", "KW_DROP",       "KW_ENQ",
+        "KW_HOLD",     "KW_SEND",  "KW_RECEIVE", "KW_CHAIN", "FRAME_SEND",  "FRAME_RECEIVE",
+    };
+    static_assert(sizeof(NAMES) / sizeof(NAMES[0]) == static_cast<std::size_t>(State::FRAME_RECEIVE) + 1,
+                  "a name per state");
+    return state < sizeof(NAMES) / sizeof(NAMES[0]) ? NAMES[state] : "?";
+  }
 
   // A restart takes the clock afresh, as the KW exchange does.
   bool begin() {
@@ -211,6 +224,7 @@ class P300Exchange {
         break;
     }
     if (busy_ && now_ - request_ms_ > P300_WATCHDOG_MS) {
+      sink_.fact(LinkFact::WATCHDOG);
       this->set_state_(State::RESET);
       this->fail_(OptolinkResult::TIMEOUT);
     }
@@ -300,6 +314,8 @@ class P300Exchange {
 
   // Every state that counts bytes starts at 0, and without a held write.
   void set_state_(State state) {
+    if (state != state_)
+      sink_.state(static_cast<uint8_t>(state));
     state_ = state;
     count_ = 0;
     hold_ms_ = 0;
@@ -319,8 +335,13 @@ class P300Exchange {
   }
 
   void drain_() {
-    while (port_->available())
+    uint16_t drained = 0;
+    while (port_->available()) {
       port_->read();
+      ++drained;
+    }
+    if (drained != 0)
+      sink_.fact(LinkFact::DRAINED, drained);
   }
 
   // A byte from the device the next EOT must wait out.
@@ -332,10 +353,14 @@ class P300Exchange {
   // The line drained; whether it has not been quiet for QuietMs since a byte
   // other than the device's 05.
   bool line_busy_() {
+    uint16_t drained = 0;
     while (port_->available()) {
+      ++drained;
       if (port_->read() != ENQ)
         this->note_heard_();
     }
+    if (drained != 0)
+      sink_.fact(LinkFact::DRAINED, drained);
     if (heard_ && now_ - heard_ms_ < QuietMs)
       return true;
     heard_ = false;
@@ -356,6 +381,7 @@ class P300Exchange {
     if (port_->available()) {
       const uint8_t b = port_->read();
       if (b == NACK && QuietMs != 0) {
+        sink_.fact(LinkFact::EOT_REFUSED);
         this->note_heard_();
         this->set_state_(State::RESET);
         return;
@@ -425,8 +451,10 @@ class P300Exchange {
         return;
       }
     }
-    if (keepalive)
+    if (keepalive) {
+      sink_.fact(LinkFact::KEEPALIVE);
       this->set_state_(State::INIT);
+    }
   }
 
   // A partial write stays in its state and resumes on the next pass.
@@ -464,6 +492,7 @@ class P300Exchange {
     if (b == ACK) {
       this->set_state_(State::RECEIVE);
     } else if (b == NACK) {
+      sink_.fact(LinkFact::NACK);
       this->set_state_(State::IDLE);
       this->fail_(OptolinkResult::NACK);
     }
@@ -552,6 +581,7 @@ class P300Exchange {
       // P300 and dropped.
       const uint8_t b = port_->read();
       if (b == NACK && QuietMs != 0) {
+        sink_.fact(LinkFact::EOT_REFUSED);
         this->note_heard_();
         this->set_state_(State::KW_DROP);
       } else if (b == ENQ) {
@@ -612,6 +642,7 @@ class P300Exchange {
     if (now_ - last_ms_ > P300_KW_ANSWER_TIMEOUT_MS) {
       const bool unheard = count_ == 0 || (count_ == 1 && kw_answer_[0] == ENQ);
       if (unheard && kw_retries_left_ != 0) {
+        sink_.fact(LinkFact::RETRY);
         --kw_retries_left_;
         ++retries_;
         last_ms_ = now_;
@@ -768,6 +799,7 @@ class P300Exchange {
   uint8_t error_code_[P300_ERROR_CODE_MAX]{};
   uint8_t error_len_{0};
   ResultCallback on_result_;
+  LinkSink sink_;
 };
 
 }  // namespace esphome::vitohome::optolink

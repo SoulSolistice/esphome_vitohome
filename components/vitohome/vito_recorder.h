@@ -1,7 +1,8 @@
 #pragma once
 
 // The recorder (design-optolink-layers.md, section 15): the last bytes on the
-// line and the result of every request, with µs times, in a ring of fixed
+// line, the link's states and facts (LinkSink) and the result of every
+// request, with µs times, in a ring of fixed
 // size. It freezes some entries after the first failure it is set to watch,
 // keeps them until they are dumped, and dumps them a few lines per loop pass.
 //
@@ -33,9 +34,13 @@ enum class RecordKind : uint8_t {
   ARG,
   // value: the RecorderTrigger that froze the ring.
   TRIGGER,
+  // value: the link's state, named by the exchange's state_name().
+  STATE,
+  // value: a LinkFact; its argument, if any, in an ARG entry after it.
+  FACT,
 };
 
-enum class RecordArg : uint8_t { ADDRESS };
+enum class RecordArg : uint8_t { ADDRESS, FACT };
 
 // Which failures freeze the ring; none: only a dump does.
 enum RecorderTrigger : uint8_t {
@@ -55,6 +60,7 @@ static_assert(sizeof(RecorderEntry) == 8, "8 bytes an entry");
 class VitoRecorder {
  public:
   using Clock = uint32_t (*)();
+  using StateName = const char *(*)(uint8_t);
   static constexpr uint8_t RECORDER_SCRIPT = 0x80;
   static constexpr uint16_t MIN_SIZE = 32;
   static constexpr uint16_t MAX_SIZE = 4096;
@@ -94,6 +100,22 @@ class VitoRecorder {
   void tx(uint32_t t_us, const uint8_t *data, std::size_t length) {
     for (std::size_t i = 0; i < length; ++i)
       this->record_(t_us, RecordKind::TX, data[i]);
+  }
+
+  // The names of the link's states in the dump.
+  void set_state_names(StateName names) { state_names_ = names; }
+
+  // A LinkSink's emit, `context` the recorder.
+  static void link_trace(void *context, optolink::LinkTrace trace, uint8_t value, uint16_t arg) {
+    auto *self = static_cast<VitoRecorder *>(context);
+    const uint32_t t = self->now();
+    if (trace == optolink::LinkTrace::STATE) {
+      self->record_(t, RecordKind::STATE, value);
+      return;
+    }
+    self->record_(t, RecordKind::FACT, value);
+    if (arg != 0)
+      self->record_arg_(t, RecordArg::FACT, arg);
   }
 
   // A request's end; `script`: a timed frame's, mapped onto OptolinkResult.
@@ -212,6 +234,8 @@ class VitoRecorder {
     state_ = State::AFTER;
   }
 
+  const char *state_name_(uint8_t state) const { return state_names_ != nullptr ? state_names_(state) : "?"; }
+
   static void append_(std::size_t capacity, std::size_t &pos, int written) {
     if (written > 0)
       pos += static_cast<std::size_t>(written);
@@ -221,7 +245,8 @@ class VitoRecorder {
 
   // One line: `rec +<ms>.<µs> p<pass> <dir> <bytes>`, the bytes of one
   // direction read or written in one pass joined; a result as
-  // `= <status> @<address>`, the trigger as `! <name>`.
+  // `= <status> @<address>`, the trigger as `! <name>`, the link's states of
+  // one pass as `~ <name> ...`, a fact as `* <name> [<arg>]`.
   void format_line_(char *line, std::size_t capacity) {
     const RecorderEntry &first = this->at_(cursor_);
     const uint32_t rel = first.t_us - t0_;
@@ -249,6 +274,30 @@ class VitoRecorder {
         std::snprintf(line + pos, capacity - pos, "arg %u %u", static_cast<unsigned>(first.value),
                       static_cast<unsigned>(first.pass));
         return;
+      case RecordKind::FACT: {
+        const char *name = first.value < optolink::LINK_FACTS
+                               ? optolink::link_fact_name(static_cast<optolink::LinkFact>(first.value))
+                               : "?";
+        if (cursor_ < count_ && static_cast<RecordKind>(this->at_(cursor_).kind) == RecordKind::ARG &&
+            this->at_(cursor_).value == static_cast<uint8_t>(RecordArg::FACT)) {
+          std::snprintf(line + pos, capacity - pos, "* %s %u", name, static_cast<unsigned>(this->at_(cursor_).pass));
+          ++cursor_;
+        } else {
+          std::snprintf(line + pos, capacity - pos, "* %s", name);
+        }
+        return;
+      }
+      case RecordKind::STATE:
+        // The states of one pass on one line.
+        append_(capacity, pos, std::snprintf(line + pos, capacity - pos, "~ %s", this->state_name_(first.value)));
+        while (cursor_ < count_ && pos + 16 < capacity) {
+          const RecorderEntry &next = this->at_(cursor_);
+          if (next.kind != first.kind || next.pass != first.pass)
+            break;
+          append_(capacity, pos, std::snprintf(line + pos, capacity - pos, " %s", this->state_name_(next.value)));
+          ++cursor_;
+        }
+        return;
       case RecordKind::RX:
       case RecordKind::TX:
         break;
@@ -269,6 +318,7 @@ class VitoRecorder {
 
   std::unique_ptr<RecorderEntry[]> entries_;
   Clock clock_{nullptr};
+  StateName state_names_{nullptr};
   uint16_t size_{0};
   uint16_t after_{0};
   uint16_t head_{0};

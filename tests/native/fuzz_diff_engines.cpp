@@ -16,7 +16,9 @@
 //   (1) both sides run the same number of engine passes, write the same bytes
 //       in each pass, and report the same callbacks with the same addresses
 //       and data, in the same order;
-//   (2) no harness oracle fails on either side.
+//   (2) no harness oracle fails on either side;
+//   (3) the live side runs with the links' trace on (trace_sink.h), and
+//       the replay checks that it reported.
 //
 // Each harness is compiled twice with -DVITOHOME_DIFF_SIDE (diff_hooks.h);
 // see build_and_run_protocols.sh. The replay build walks the four corpora,
@@ -37,6 +39,7 @@
 #include "fuzz_corpus_raw_engines.h"
 #include "fuzz_corpus_sim_session.h"
 #include "optolink_clock.h"
+#include "trace_sink.h"
 
 extern "C" int diff_kw_session_live(const uint8_t *data, std::size_t size);
 extern "C" int diff_kw_session_ref(const uint8_t *data, std::size_t size);
@@ -253,7 +256,12 @@ int main(int argc, char **argv) {
     std::fclose(f);
     replay_one(argv[a], buf, len);
   }
-  std::printf("differential: %zu seed(s), %d failure(s)\n", g_seeds, g_fail);
+  if (trace_sink::count() == 0) {
+    std::printf("  the live side reported no trace                       FAIL\n");
+    ++g_fail;
+  }
+  std::printf("differential: %zu seed(s), %u trace item(s) on the live side, %d failure(s)\n", g_seeds,
+              static_cast<unsigned>(trace_sink::count()), g_fail);
   return g_fail == 0 ? 0 : 1;
 }
 

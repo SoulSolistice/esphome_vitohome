@@ -75,13 +75,13 @@ template<class Port> class EnqLink {
     while (port_->available())
       port_->read();
     last_ms_ = optolink_millis();
-    state_ = State::WAIT_ENQ;
+    this->set_state_(State::WAIT_ENQ);
     return true;
   }
 
   void end() {
     port_->end();
-    state_ = State::UNDEFINED;
+    this->set_state_(State::UNDEFINED);
   }
 
   // The telegram goes out when the line allows; `expect` answer bytes, or
@@ -130,14 +130,23 @@ template<class Port> class EnqLink {
   bool pending() const { return pending_; }
   void release() { pending_ = false; }
 
+  // The trace for the recorder (LinkSink); none by default.
+  void set_sink(const LinkSink &sink) { sink_ = sink; }
+  const LinkSink &sink() const { return sink_; }
+  static const char *state_name(uint8_t state) {
+    static constexpr const char *NAMES[] = {"UNDEFINED", "WAIT_ENQ", "ENQ_HELD", "CHAINED", "SEND", "RECEIVE"};
+    static_assert(sizeof(NAMES) / sizeof(NAMES[0]) == static_cast<std::size_t>(State::RECEIVE) + 1, "a name per state");
+    return state < sizeof(NAMES) / sizeof(NAMES[0]) ? NAMES[state] : "?";
+  }
+
   // A good answer: chain the next telegram, unless it was an open frame's.
-  void chain() { state_ = frame_ ? State::WAIT_ENQ : State::CHAINED; }
+  void chain() { this->set_state_(frame_ ? State::WAIT_ENQ : State::CHAINED); }
   // A refused answer: the next telegram waits for an ENQ.
-  void wait_enq() { state_ = State::WAIT_ENQ; }
+  void wait_enq() { this->set_state_(State::WAIT_ENQ); }
   // The exchange's watchdog.
   void abort() {
     count_ = 0;
-    state_ = State::WAIT_ENQ;
+    this->set_state_(State::WAIT_ENQ);
   }
 
   const uint8_t *answer() const { return answer_; }
@@ -170,16 +179,25 @@ template<class Port> class EnqLink {
   static constexpr uint8_t ENQ_ACK = 0x01;
   static constexpr uint8_t EOT = 0x04;
 
+  void set_state_(State state) {
+    if (state != state_)
+      sink_.state(static_cast<uint8_t>(state));
+    state_ = state;
+  }
+
   LinkEvent wait_for_enq_(uint32_t now) {
     if (port_->available()) {
       if (port_->read() == ENQ) {
         last_ms_ = now;
-        state_ = State::ENQ_HELD;
+        this->set_state_(State::ENQ_HELD);
         if (params_.same_pass)
           return this->enq_held_(now);
+      } else {
+        sink_.fact(LinkFact::DRAINED, 1);
       }
     } else if (params_.eot_interval_ms != 0 && now - last_ms_ > params_.eot_interval_ms) {
       last_ms_ = now;
+      sink_.fact(LinkFact::EOT);
       port_->write(&EOT, 1);
     }
     return LinkEvent::NONE;
@@ -188,11 +206,11 @@ template<class Port> class EnqLink {
   LinkEvent enq_held_(uint32_t now) {
     const uint32_t held = now - last_ms_;
     if (held >= params_.enq_to_send_ms + params_.enq_hold_ms) {
-      state_ = State::WAIT_ENQ;
+      this->set_state_(State::WAIT_ENQ);
       return LinkEvent::NONE;
     }
     if (pending_ && held >= params_.enq_to_send_ms && (frame_ || port_->write(&ENQ_ACK, 1) == 1)) {
-      state_ = State::SEND;
+      this->set_state_(State::SEND);
       return this->send_(now);
     }
     return LinkEvent::NONE;
@@ -201,18 +219,18 @@ template<class Port> class EnqLink {
   LinkEvent chained_(uint32_t now) {
     // A byte since the answer is the device's next ENQ: never chain across it.
     if (port_->available() || (pending_ && frame_)) {
-      state_ = State::WAIT_ENQ;
+      this->set_state_(State::WAIT_ENQ);
       return LinkEvent::NONE;
     }
     if (now - last_ms_ >= params_.chain_window_ms) {
-      state_ = State::WAIT_ENQ;
+      this->set_state_(State::WAIT_ENQ);
       return LinkEvent::NONE;
     }
     const uint32_t gap =
         telegram_.chain_gap_ms > params_.answer_to_next_ms ? telegram_.chain_gap_ms : params_.answer_to_next_ms;
     if (!pending_ || now - last_ms_ < gap)
       return LinkEvent::NONE;
-    state_ = State::SEND;
+    this->set_state_(State::SEND);
     return params_.same_pass ? this->send_(now) : LinkEvent::NONE;
   }
 
@@ -222,7 +240,7 @@ template<class Port> class EnqLink {
       return LinkEvent::NONE;
     count_ = 0;
     last_ms_ = now;
-    state_ = State::RECEIVE;
+    this->set_state_(State::RECEIVE);
     return LinkEvent::SENT;
   }
 
@@ -230,7 +248,7 @@ template<class Port> class EnqLink {
     if (now - last_ms_ > params_.answer_timeout_ms) {
       const uint8_t received = count_;
       count_ = 0;
-      state_ = State::WAIT_ENQ;
+      this->set_state_(State::WAIT_ENQ);
       if (collect_ && received != 0) {
         answer_length_ = received < ANSWER_MAX ? received : static_cast<uint8_t>(ANSWER_MAX);
         return LinkEvent::COLLECTED;
@@ -239,6 +257,7 @@ template<class Port> class EnqLink {
       // unheard.
       const bool unheard = received == 0 || (received == 1 && answer_[0] == ENQ);
       if (unheard && !frame_ && retries_left_ != 0) {
+        sink_.fact(LinkFact::RETRY);
         --retries_left_;
         return LinkEvent::RETRY;
       }
@@ -275,6 +294,7 @@ template<class Port> class EnqLink {
   uint8_t count_{0};
   uint8_t answer_[ANSWER_MAX]{};
   uint8_t answer_length_{0};
+  LinkSink sink_;
 };
 
 }  // namespace esphome::vitohome::optolink

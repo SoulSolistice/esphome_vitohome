@@ -296,6 +296,7 @@ vitohome:
   #   freeze_on: timeout    # ESP8266, 512 elsewhere). It freezes `after:`
   #   after: 128            # entries (default a quarter) past the first
   #                         # timeout, or error, or only on a dump (`manual`).
+  #                         # The link's states and events are in it too.
   #                         # A `type: recorder_dump` button, or
   #                         # id(vito).recorder_dump(), writes it to the log
   #                         # (tag vitohome.recorder) and re-arms it. Not

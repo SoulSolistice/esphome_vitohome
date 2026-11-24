@@ -240,6 +240,10 @@ echo "== P300: the EOT after the device's 15 =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT"   proof_p300_eot_refused.cpp -o p300_eot_refused
 ./p300_eot_refused
 
+echo "== the links' trace for the recorder =="
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT"   proof_link_trace.cpp -o link_trace
+./link_trace
+
 echo "== GWG exchange: Request in, Result out =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" \
   proof_gwg_exchange.cpp -o gwg_exchange

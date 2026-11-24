@@ -133,11 +133,13 @@ void VitoHomeComponent::setup() {
 #endif
 
 #ifdef VITOHOME_RECORDER
-  // Before begin(), so the bytes it drains are recorded. Not fatal: the hub
-  // runs without it.
+  // Before begin(), so the bytes it drains are recorded, with the link's
+  // states and facts. Not fatal: the hub runs without it.
   if (this->recorder_.allocate(this->recorder_size_, this->recorder_after_, this->recorder_freeze_on_,
                                []() -> uint32_t { return micros(); })) {
     this->iface_.set_recorder(&this->recorder_);
+    this->recorder_.set_state_names(&SelectedEngine<ESPHomeUARTInterface>::state_name);
+    this->vito_.set_sink(optolink::LinkSink{&VitoRecorder::link_trace, &this->recorder_});
   } else {
     ESP_LOGW(TAG, "recorder: %u entries could not be allocated; recording off",
              static_cast<unsigned>(this->recorder_size_));

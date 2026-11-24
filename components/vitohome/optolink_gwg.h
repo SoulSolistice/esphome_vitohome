@@ -111,6 +111,14 @@ template<class Port> class GwgExchange {
   // Once, when bursting goes off.
   void on_burst_fallback(FallbackCallback callback) { on_fallback_ = std::move(callback); }
   void on_late_answer(LateAnswerCallback callback) { on_late_ = std::move(callback); }
+  // The trace for the recorder (LinkSink); none by default.
+  void set_sink(const LinkSink &sink) { sink_ = sink; }
+
+  static const char *state_name(uint8_t state) {
+    static constexpr const char *NAMES[] = {"UNDEFINED", "WAIT_ENQ", "HOLD", "ACK_GAP", "SEND", "RECEIVE"};
+    static_assert(sizeof(NAMES) / sizeof(NAMES[0]) == static_cast<std::size_t>(State::RECEIVE) + 1, "a name per state");
+    return state < sizeof(NAMES) / sizeof(NAMES[0]) ? NAMES[state] : "?";
+  }
 
   // A restart takes the clock afresh and knows nothing of the device's ENQs:
   // no burst before the next one, and an open late-answer report is closed.
@@ -118,12 +126,12 @@ template<class Port> class GwgExchange {
     now_ = optolink_millis();
     sync_valid_ = false;
     this->close_late_watch_();
-    state_ = State::WAIT_ENQ;
+    this->set_state_(State::WAIT_ENQ);
     return port_->begin();
   }
   void end() {
     port_->end();
-    state_ = State::UNDEFINED;
+    this->set_state_(State::UNDEFINED);
     busy_ = false;
   }
   bool busy() const { return busy_; }
@@ -217,8 +225,9 @@ template<class Port> class GwgExchange {
         break;
     }
     if (busy_ && now_ - request_ms_ > this->watchdog_ms_()) {
+      sink_.fact(LinkFact::WATCHDOG);
       never_sent_ = state_ == State::WAIT_ENQ;
-      state_ = State::WAIT_ENQ;
+      this->set_state_(State::WAIT_ENQ);
       this->fail_(OptolinkResult::TIMEOUT);
     }
     if (late_watch_ && now_ - late_.sent_ms > GWG_LATE_WATCH_MS)
@@ -230,6 +239,22 @@ template<class Port> class GwgExchange {
 
   static constexpr uint8_t ENQ = 0x05;
   static constexpr uint8_t ENQ_ACK = 0x01;
+
+  void set_state_(State state) {
+    if (state != state_)
+      sink_.state(static_cast<uint8_t>(state));
+    state_ = state;
+  }
+
+  void drain_() {
+    uint16_t drained = 0;
+    while (port_->available()) {
+      port_->read();
+      ++drained;
+    }
+    if (drained != 0)
+      sink_.fact(LinkFact::DRAINED, drained);
+  }
 
   // The longest answer, MAX_PAYLOAD bytes, plus one: an EEPROM run receives
   // its last pair at the index of its last value.
@@ -361,11 +386,11 @@ template<class Port> class GwgExchange {
         stamp_enq_to_send_ = true;
         ack_gap_ms_ = 0;
         if (enq_to_send_set_ms_ > 0) {
-          state_ = State::HOLD;
+          this->set_state_(State::HOLD);
           this->hold_();
           return;
         }
-        state_ = State::SEND;
+        this->set_state_(State::SEND);
         this->send_();
         return;
       }
@@ -382,7 +407,7 @@ template<class Port> class GwgExchange {
       burst_sent_ = true;
       enq_paced_ = false;
       stamp_enq_to_send_ = false;
-      state_ = State::SEND;
+      this->set_state_(State::SEND);
       this->send_();
     }
   }
@@ -390,22 +415,20 @@ template<class Port> class GwgExchange {
   // A fresh clock: the delay is shorter than an idle loop pass. Nothing that
   // arrives meanwhile answers the telegram.
   void hold_() {
-    while (port_->available())
-      port_->read();
+    this->drain_();
     if (optolink_millis() - enq_seen_ms_ < enq_to_send_set_ms_)
       return;
-    state_ = State::SEND;
+    this->set_state_(State::SEND);
     this->send_();
   }
 
   void ack_gap_() {
-    while (port_->available())
-      port_->read();
+    this->drain_();
     const uint32_t elapsed = optolink_millis() - ack_sent_ms_;
     if (elapsed < ack_to_telegram_set_ms_)
       return;
     ack_gap_ms_ = elapsed;
-    state_ = State::SEND;
+    this->set_state_(State::SEND);
     this->send_();
   }
 
@@ -422,14 +445,14 @@ template<class Port> class GwgExchange {
     }
     if (ack_alone && count_ == 1) {
       ack_sent_ms_ = write_ms;
-      state_ = State::ACK_GAP;
+      this->set_state_(State::ACK_GAP);
       return;
     }
     if (count_ == wire_.length) {
       count_ = 0;
       last_ms_ = now_;
       send_done_ms_ = now_;
-      state_ = State::RECEIVE;
+      this->set_state_(State::RECEIVE);
     }
   }
 
@@ -441,7 +464,7 @@ template<class Port> class GwgExchange {
         const uint8_t received = count_ < MAX_PAYLOAD ? count_ : MAX_PAYLOAD;
         count_ = 0;
         sync_valid_ = false;
-        state_ = State::WAIT_ENQ;
+        this->set_state_(State::WAIT_ENQ);
         this->deliver_(received, false);
         return;
       }
@@ -453,8 +476,9 @@ template<class Port> class GwgExchange {
         this->note_late_byte_(port_->read());
       count_ = 0;
       sync_valid_ = false;
-      state_ = State::WAIT_ENQ;
+      this->set_state_(State::WAIT_ENQ);
       if (retry) {
+        sink_.fact(LinkFact::RETRY);
         retrying_ = true;
         request_ms_ = now_;
         return;
@@ -489,7 +513,7 @@ template<class Port> class GwgExchange {
       this->note_burst_failure_();
     }
     retrying_ = false;
-    state_ = State::WAIT_ENQ;
+    this->set_state_(State::WAIT_ENQ);
     if (per_address_) {
       if (run_mode_ == GWGAccessMode::EEPROM) {
         const uint8_t complement = answer_[run_index_];
@@ -520,6 +544,7 @@ template<class Port> class GwgExchange {
     if (++burst_failures_ < GWG_BURST_FAILURES)
       return;
     burst_off_ = true;
+    sink_.fact(LinkFact::BURST_OFF, burst_failures_);
     if (on_fallback_)
       on_fallback_(burst_failures_);
   }
@@ -555,6 +580,8 @@ template<class Port> class GwgExchange {
       return;
     late_watch_ = false;
     const GwgLateAnswer &r = late_.report;
+    if (r.late_count != 0)
+      sink_.fact(LinkFact::LATE, r.late_count);
     if ((r.received != 0 || r.late_count != 0 || r.retried) && on_late_)
       on_late_(r);
   }
@@ -653,6 +680,7 @@ template<class Port> class GwgExchange {
   ResultCallback on_result_;
   FallbackCallback on_fallback_;
   LateAnswerCallback on_late_;
+  LinkSink sink_;
 };
 
 }  // namespace esphome::vitohome::optolink

@@ -2768,12 +2768,21 @@ of 8-byte entries (`vito_recorder.h`):
   arrived. Each entry also carries the hub's loop pass.
 - **Results:** every request's status and address, and a timed frame's
   (`raw_op.h` `~ms`).
+- **The link's trace:** each exchange reports to a `LinkSink`
+  (`optolink_types.h`, a function and a context, off while unset). It reports
+  every change of its state, which the exchange names (`state_name()`), and
+  the facts no state shows: bytes drained, a retry, late bytes, bursting off,
+  the device's NACK, a refused EOT, the keepalive, KW's idle EOT and the
+  watchdog. The differential target runs the live side with a counting sink,
+  so the trace changes no byte; `proof_link_trace.cpp` pins what each
+  exchange reports.
 - **Freeze:** on the first timeout or error (`freeze_on:`), the ring takes
   `after:` more entries, then keeps what it holds. Later failures are only
   counted.
 - **Dump:** two lines per loop pass under `vitohome.recorder`. One line holds
   the bytes of one direction in one pass, prefixed by `+ms.µs` from the
-  oldest entry. A dump of an unfrozen ring freezes it first. The dump re-arms
+  oldest entry; `~ <state>` and `* <fact> [<arg>]` lines stand between them
+  in the order they happened. A dump of an unfrozen ring freezes it first. The dump re-arms
   the ring.
 - **Import:** `tests/native/sim/import_frames.py` reads the first dump of a
   log into a trace for the simulator tests.

@@ -34,6 +34,9 @@ template<class Codec, class Link> class Exchange {
   Exchange &operator=(const Exchange &) = delete;
 
   void on_result(ResultCallback callback) { on_result_ = std::move(callback); }
+  // The trace for the recorder (LinkSink); none by default.
+  void set_sink(const LinkSink &sink) { link_.set_sink(sink); }
+  static const char *state_name(uint8_t state) { return Link::state_name(state); }
 
   // A restart takes the clock afresh: the exchange may not have been looped
   // for a while (a timed frame held the port), and a request submitted before
@@ -121,6 +124,7 @@ template<class Codec, class Link> class Exchange {
         break;
     }
     if (link_.pending() && now_ - request_ms_ > watchdog_ms_) {
+      link_.sink().fact(LinkFact::WATCHDOG);
       link_.abort();
       this->deliver_(OptolinkResult::TIMEOUT, nullptr, 0);
     }

@@ -249,6 +249,74 @@ inline bool frame_encode(const uint8_t *bytes, uint8_t length, uint8_t max, Tele
   return true;
 }
 
+// What a link reports for the recorder (design-optolink-layers.md, 15.9):
+// each change of its state, which its exchange names (state_name()), and
+// the facts no state shows.
+enum class LinkTrace : uint8_t { STATE, FACT };
+
+enum class LinkFact : uint8_t {
+  // Bytes read and thrown away; arg: how many.
+  DRAINED,
+  // A telegram met by silence goes out again.
+  RETRY,
+  // GWG: bytes after the answer deadline; arg: how many.
+  LATE,
+  // GWG: bursting off; arg: the failures in a row.
+  BURST_OFF,
+  // P300: the device's 15 to a telegram.
+  NACK,
+  // P300: the device's 15 to an EOT; the EOT goes again after the quiet.
+  EOT_REFUSED,
+  // P300: the session's keepalive SYNC.
+  KEEPALIVE,
+  // KW: the EOT after the ENQ silence.
+  EOT,
+  // The request's watchdog ended it.
+  WATCHDOG,
+};
+inline constexpr uint8_t LINK_FACTS = 9;
+
+constexpr const char *link_fact_name(LinkFact fact) {
+  switch (fact) {
+    case LinkFact::DRAINED:
+      return "drained";
+    case LinkFact::RETRY:
+      return "retry";
+    case LinkFact::LATE:
+      return "late";
+    case LinkFact::BURST_OFF:
+      return "burst off";
+    case LinkFact::NACK:
+      return "nack";
+    case LinkFact::EOT_REFUSED:
+      return "eot refused";
+    case LinkFact::KEEPALIVE:
+      return "keepalive";
+    case LinkFact::EOT:
+      return "eot";
+    case LinkFact::WATCHDOG:
+      return "watchdog";
+  }
+  return "?";
+}
+
+// Where the trace goes: a function and its context, off while `emit` is
+// null, so an exchange without one makes a compare per call.
+struct LinkSink {
+  using Emit = void (*)(void *context, LinkTrace trace, uint8_t value, uint16_t arg);
+  Emit emit{nullptr};
+  void *context{nullptr};
+
+  void state(uint8_t state) const {
+    if (emit != nullptr)
+      emit(context, LinkTrace::STATE, state, 0);
+  }
+  void fact(LinkFact fact, uint16_t arg = 0) const {
+    if (emit != nullptr)
+      emit(context, LinkTrace::FACT, static_cast<uint8_t>(fact), arg);
+  }
+};
+
 }  // namespace esphome::vitohome::optolink
 
 #endif  // VITOHOME_OPTOLINK_TYPES_H
