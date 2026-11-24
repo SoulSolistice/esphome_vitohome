@@ -220,7 +220,7 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   // lane, which goes after identification and before writes and polls. The
   // result is logged and published to every scan_result text sensor.
   //
-  // `access` is used under `protocol: GWG` only (GWGAccessMode, constants.h)
+  // `access` is used under `protocol: GWG` only (GWGAccessMode, optolink_codec_gwg.h)
   // and ignored elsewhere, so lambdas compile on every protocol.
   void queue_raw_read(uint16_t address, uint8_t length,
                       optolink::GWGAccessMode access = optolink::GWGAccessMode::PHYSICAL);

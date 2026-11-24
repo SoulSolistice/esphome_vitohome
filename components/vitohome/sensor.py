@@ -121,7 +121,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_BIT_MASK): BIT_MASK_SCHEMA,
             cv.Optional(CONF_UPDATE_INTERVAL): poll_update_interval,
             # A GWG access mode (GWG only), selecting the TYPE byte per
-            # GWGAccessMode (constants.h), `rpc` (P300 only) or `gfa` (KW and
+            # GWGAccessMode (optolink_codec_gwg.h), `rpc` (P300 only) or `gfa` (KW and
             # P300); all checked in _final_validate (__init__.py). Default
             # omitted here, so a sensor that never sets this reads as before.
             cv.Optional(CONF_ACCESS): read_access,

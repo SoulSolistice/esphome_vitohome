@@ -24,9 +24,8 @@
 //      CHECKSUM: the first stray byte is a checksum mismatch (CS_ERROR +
 //      reset) and the rest are ignored as invalid start bytes.
 //
-// Build (from tests/native): with constants.cpp, under
-// -fsanitize=address,undefined, -I../../components/vitohome and
-// -I../../components/vitohome/optolink. build_and_run.sh runs it.
+// Build (from tests/native): under -fsanitize=address,undefined, with
+// -I../../components/vitohome. build_and_run.sh runs it.
 
 #include <cstdio>
 

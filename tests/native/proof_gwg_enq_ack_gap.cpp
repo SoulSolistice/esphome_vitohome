@@ -1,4 +1,4 @@
-// Proves the diagnostic GWG gap after the 0x01 (GWGEngine::setEnqAckGapMs(),
+// Proves the diagnostic GWG gap after the 0x01 (TimingPoint::ACK_TO_TELEGRAM,
 // issue #35, THIRD_PARTY.md #39).
 //
 //   * Default 0: the request goes out as one write in the pass that read the

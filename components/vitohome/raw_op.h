@@ -190,7 +190,7 @@ inline RawClass raw_op_class(RawLayer layer, uint8_t code, std::size_t payload_l
       // (optolink_gwg.h), unchecked.
       if (code == optolink::gwgWriteTypeByte(optolink::GWGAccessMode::EEPROM) && payload_len == 2)
         return RawClass::UNSAFE;
-      // The access-mode table (constants.h): what queue_raw_read() /
+      // The access-mode table (optolink_codec_gwg.h): what queue_raw_read() /
       // queue_raw_write() send in some mode.
       if (optolink::isKnownGwgReadType(code))
         return has_payload ? RawClass::UNSAFE : RawClass::READ;

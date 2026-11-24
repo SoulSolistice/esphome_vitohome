@@ -1,4 +1,4 @@
-// Proves the diagnostic GWG ENQ-to-send delay (GWGEngine::setEnqSendDelayMs(),
+// Proves the diagnostic GWG ENQ-to-send delay (TimingPoint::ENQ_TO_SEND,
 // issue #35, THIRD_PARTY.md #33).
 //
 //   * Default 0: the request goes out in the loop() pass that read the ENQ,

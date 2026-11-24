@@ -1,6 +1,6 @@
 // Proves the two 2026-08-24 additions built on top of the ENQ-misread fix:
 //
-//   (1/2) GWGEngine::onTiming -- fires once per successful READ with the age
+//   (1/2) the answer's timing (Result::timing) -- once per successful READ with the age
 //         of the ENQ we answered and the send->response delta, never for
 //         writes, never for failures. Motivated by the same hardware capture
 //         as RESPONSE_TIMEOUT_MS: host-batched API log timestamps could not

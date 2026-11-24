@@ -245,7 +245,7 @@ _ACCESS_DOMAINS = ("sensor", "binary_sensor", "text_sensor", "number", "select",
 _WRITE_DOMAINS = ("number", "select", "switch", "text", "climate")
 
 # Access modes with no write telegram type in the openv wiki's Protokoll-GWG
-# table -- mirrors gwgWriteTypeByte()/gwgModeIsWritable() in constants.h, which
+# table -- mirrors gwgWriteTypeByte()/gwgModeIsWritable() in optolink_codec_gwg.h, which
 # return kNoGwgWriteType for exactly these two.
 _READ_ONLY_ACCESS_MODES = ("kmbus_ram", "kmbus_eeprom")
 
@@ -256,7 +256,7 @@ optolink_ns = vitohome_ns.namespace("optolink")
 # exactly -- name, order and member spelling all have to match by hand since
 # this is a Python-side reference to a C++ enum class, not a generated
 # binding; a mismatch here fails at C++ compile time (unknown enumerator),
-# not at `esphome config` time. See constants.h for the evidence behind each
+# not at `esphome config` time. See optolink_codec_gwg.h for the evidence behind each
 # mode's TYPE byte (openv wiki, Protokoll-GWG).
 GWGAccessMode = optolink_ns.enum("GWGAccessMode", is_class=True)
 GWG_ACCESS_MODES = {

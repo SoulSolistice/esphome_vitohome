@@ -473,7 +473,7 @@ int main() {
   }
 
   // --- (11) the response deadline is a runtime variable ---------------------
-  // set_gwg_response_timeout_ms() exists to find out how long a datapoint
+  // The answer deadline (LinkWindow::ANSWER_DEADLINE) is settable to find out how long a datapoint
   // needs (issue #35); the request watchdog has to grow with it, or the ENQ
   // wait it also covers would be cut short.
   {

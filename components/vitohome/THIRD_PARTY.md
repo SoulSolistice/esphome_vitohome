@@ -13,7 +13,7 @@ The `optolink/` subtree is a vendored and modified copy of the
 Only the engine sources from the upstream `src/` tree were vendored; the
 upstream `test/` tree was not. The engine's regression coverage is the
 host-side decode and VS2-transaction tests in `tests/native/` (see
-[`tests/native/README.md`](../../../tests/native/README.md)), which run against
+[`tests/native/README.md`](../../tests/native/README.md)), which run against
 this in-tree copy.
 
 This component as a whole is licensed under the GPLv3. Combining MIT-licensed
@@ -28,7 +28,7 @@ divergences) and **what was deliberately left unchanged and routed around in the
 component above** (Part 2, candidate fixes to propose upstream). The deeper
 *why* behind both — the decode-in-component architecture and the precision and
 type-safety hazards that motivate it — is in
-[`docs/design_notes.md`](../../../docs/design_notes.md) §1 and §4.
+[`docs/design_notes.md`](../../docs/design_notes.md) §1 and §4.
 
 ---
 
@@ -1151,7 +1151,7 @@ to propose upstream, so the workarounds could eventually be retired. The line
   are unsigned.
 - **vitohome status.** Not needed upstream: converters are modelled in the
   Python layer as `(scale, signed, lengths, encodable)` presets (see
-  [`converters.md`](../../../docs/converters.md)) and applied in `decode.h`.
+  [`converters.md`](../../docs/converters.md)) and applied in `decode.h`.
   Conversions that can't be represented as a scale (floats, `DateTimeBCD`, …)
   are surfaced by the catalog generator as commented hints rather than decoded
   wrongly.
@@ -1193,4 +1193,4 @@ to propose upstream, so the workarounds could eventually be retired. The line
   **two-address split** for mode controls — a Viessmann *device* behaviour (some
   datapoints accept a write at one register but expose the resulting state at
   another), not a VitoWiFi limitation, documented in
-  [`converters.md`](../../../docs/converters.md) and `docs/design_notes.md` §5.
+  [`converters.md`](../../docs/converters.md) and `docs/design_notes.md` §5.

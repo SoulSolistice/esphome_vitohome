@@ -15,7 +15,7 @@
 //        it chains without the GFA pause;
 //   KW (a Lane::KW request on the KW exchange):
 //     G) any type byte, <len> bytes back; with payload, one ack byte;
-//   GWG (GWGEngine::telegram()):
+//   GWG (a Lane::GWG request on the GWG exchange):
 //     H) an unnamed TYPE byte: 01 TYPE ADDR LEN 04, <len> bytes back; with
 //        payload, the write layout and one ack byte;
 //     I) a TYPE byte of the access-mode table keeps its mode (EEPROM pairs).

@@ -457,9 +457,8 @@ convenience — it does not count as passing the gate.
    `data()[0..dataLength())` segfaults. The correct consumer guard is `if (data())`
    before reading payload. The two WRITE vectors guard that contract permanently.
 3. **The `<iostream>` log wart is fixed.** Upstream `Logging.h`'s PC branch wrote
-   `state N --> M` to `std::cout` unconditionally. The vendored `logging.h` (§1b) gates
-   all engine logging on `VITOHOME_DEBUG_OPTOLINK && ESP_PLATFORM`, so the host build is
-   silent — no stdout filtering needed.
+   `state N --> M` to `std::cout` unconditionally. The engines that replaced it do not
+   log at all, so the host build is silent — no stdout filtering needed.
 
 ## CI integration
 

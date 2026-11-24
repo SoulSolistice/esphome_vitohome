@@ -1,6 +1,6 @@
 // Proof: GWG EEPROM (0xAE) reads are complement-pair aware.
 //
-// See GWGEngine::kEepromPairLength. On hardware (issue #21, GWG_VBEM 0x2053
+// See gwgCellLength() (optolink_codec_gwg.h). On hardware (issue #21, GWG_VBEM 0x2053
 // SW=0x7A) every EEPROM read returned two bytes, b0 + b1 == 0xFF, value in
 // b1, whatever LEN the telegram carried. The engine therefore reads EEPROM
 // byte-wise -- one LEN-1 telegram per address -- checks each pair, and

@@ -1,4 +1,4 @@
-// GWG open frame (GWGEngine::frame(), the raw lane's `gwg f`).
+// GWG open frame (Lane::FRAME on the GWG exchange, the raw lane's `gwg f`).
 //
 // Pinned below:
 //   (1) the bytes go out exactly as given, the leading 01 included;
