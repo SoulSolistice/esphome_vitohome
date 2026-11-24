@@ -2,7 +2,7 @@
 # Host build + run of the per-protocol engine proofs (P300 / KW / GWG): the
 # hub's SelectedEngine compiles and links for every protocol flag, and each
 # stack's proofs, harness replays and the differential target against the
-# reference copy run.
+# recorded traces (fixtures/) run.
 #
 # EVERY g++ line here carries -Wall -Wextra -Werror AND $SAN; see the notes in
 # build_and_run.sh for why both are hard requirements and not preferences.
@@ -25,21 +25,6 @@ SAN="${SAN-"-fsanitize=address,undefined -fno-sanitize-recover=all"}"
 # but the multi-flag value must reach g++ as separate arguments -- quoting it
 # as "$SAN" would pass one bogus argument. An empty SAN yields an empty array.
 read -r -a SAN_FLAGS <<<"$SAN"
-# The reference engines (reference/, README.md there): the differential
-# target, and the P300 and GWG hub requests against the reference engines.
-REF="reference/optolink"
-REF_P300=(
-  "$REF/constants.cpp"
-  "$REF/protocol/vs2/vs2.cpp"
-  "$REF/protocol/vs2/parser_vs2.cpp"
-  "$REF/protocol/vs2/packet_vs2.cpp"
-)
-REF_GWG=(
-  "$REF/constants.cpp"
-  "$REF/protocol/gwg/gwg.cpp"
-  "$REF/protocol/gwg/packet_gwg.cpp"
-)
-
 echo "== protocol engine: compile + link for each protocol =="
 for sel in "P300:" "KW:-DVITOHOME_PROTOCOL_KW" "GWG:-DVITOHOME_PROTOCOL_GWG"; do
   name="${sel%%:*}"
@@ -61,14 +46,11 @@ for sel in "P300:" "KW:-DVITOHOME_PROTOCOL_KW" "GWG:-DVITOHOME_PROTOCOL_GWG"; do
   ./read_coalesce
 done
 
-echo "== hub requests against the engine calls they replace, per protocol =="
+echo "== hub requests against their recorded cases, per protocol =="
 for sel in "P300:" "KW:-DVITOHOME_PROTOCOL_KW" "GWG:-DVITOHOME_PROTOCOL_GWG"; do
   flag="${sel#*:}"
-  old=()
-  [ -z "$flag" ] && old=("${REF_P300[@]}")
-  [ "$flag" = "-DVITOHOME_PROTOCOL_GWG" ] && old=("${REF_GWG[@]}")
   g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread ${flag:+"$flag"} -I"$ROOT" \
-    proof_hub_requests.cpp "${old[@]}" -o hub_requests
+    proof_hub_requests.cpp -o hub_requests
   ./hub_requests
 done
 
@@ -103,36 +85,23 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" \
   fuzz_sim_session.cpp -o fuzz_sim_session
 ./fuzz_sim_session
 
-echo "== differential: live engines against the reference copy (fuzz_diff_engines.cpp) =="
-# Each session harness twice, once per side; the reference engines are the
-# frozen copy in reference/ (README.md there).
-REF_SRCS=(
-  "$REF/constants.cpp"
-  "$REF/protocol/vs2/vs2.cpp"
-  "$REF/protocol/vs2/parser_vs2.cpp"
-  "$REF/protocol/vs2/packet_vs2.cpp"
-  "$REF/protocol/vs1/vs1.cpp"
-  "$REF/protocol/vs1/packet_vs1.cpp"
-  "$REF/protocol/gwg/gwg.cpp"
-  "$REF/protocol/gwg/packet_gwg.cpp"
-)
+echo "== differential: live engines against the recorded traces (fuzz_diff_engines.cpp) =="
+# Each session harness as a side (diff_hooks.h); the traces are in
+# fixtures/diff_engines.txt (golden.h).
 DIFF_OBJS=()
 for h in kw_session gwg_session raw_engines sim_session; do
   g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" \
-    -DVITOHOME_DIFF_SIDE="diff_${h}_live" -c "fuzz_${h}.cpp" -o "diff_${h}_live.o"
-  g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" \
-    -DVITOHOME_DIFF_SIDE="diff_${h}_ref" -DVITOHOME_DIFF_REF -c "fuzz_${h}.cpp" -o "diff_${h}_ref.o"
-  DIFF_OBJS+=("diff_${h}_live.o" "diff_${h}_ref.o")
+    -DVITOHOME_DIFF_SIDE="diff_${h}" -c "fuzz_${h}.cpp" -o "diff_${h}.o"
+  DIFF_OBJS+=("diff_${h}.o")
 done
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" \
-  fuzz_diff_engines.cpp "${DIFF_OBJS[@]}" "${REF_SRCS[@]}" -o fuzz_diff_engines
+  fuzz_diff_engines.cpp "${DIFF_OBJS[@]}" -o fuzz_diff_engines
 rm -f "${DIFF_OBJS[@]}"
 ./fuzz_diff_engines
 
-echo "== the codecs against the packet classes they replace (reference/) =="
+echo "== the codecs against their recorded outputs (fixtures/codecs.txt) =="
 g++ -std=c++17 -O1 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" \
-  proof_codec_equality.cpp "$REF/constants.cpp" "$REF/protocol/vs1/packet_vs1.cpp" "$REF/protocol/vs2/packet_vs2.cpp" \
-  "$REF/protocol/vs2/parser_vs2.cpp" "$REF/protocol/gwg/packet_gwg.cpp" -o proof_codec_equality
+  proof_codec_equality.cpp -o proof_codec_equality
 ./proof_codec_equality
 
 echo "== GWG read/write completion =="

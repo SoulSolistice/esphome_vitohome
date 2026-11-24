@@ -78,7 +78,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-TARGETS=(parser_vs2 decode field raw_spec raw_engines gwg_session kw_session sim_session diff_engines)
+TARGETS=(parser_vs2 decode field raw_spec raw_engines gwg_session kw_session sim_session)
 TARGET="${1:-}"
 SECS="${2:-300}"
 WORKERS="${3:-$(nproc)}"
@@ -147,21 +147,6 @@ case "$TARGET" in
     HEADER="fuzz_corpus_sim_session.h"
     EXTRA=()
     ;;
-  diff_engines)
-    # Each session harness built twice as a side (diff_hooks.h), against the
-    # live engines and against the reference copy.
-    SRC="fuzz_diff_engines.cpp"
-    HEADER="fuzz_corpus_diff.h"
-    REF="reference/optolink"
-    EXTRA=()
-    EXTRA+=("$REF/constants.cpp" "$REF/protocol/vs2/vs2.cpp" "$REF/protocol/vs2/parser_vs2.cpp"
-      "$REF/protocol/vs2/packet_vs2.cpp" "$REF/protocol/vs1/vs1.cpp" "$REF/protocol/vs1/packet_vs1.cpp"
-      "$REF/protocol/gwg/gwg.cpp" "$REF/protocol/gwg/packet_gwg.cpp")
-    DIFF_SIDES=(kw_session gwg_session raw_engines sim_session)
-    # The harness corpora seed it too, each led by its harness byte.
-    SEED_HEADERS=("fuzz_corpus_kw_session.h=0" "fuzz_corpus_gwg_session.h=1" "fuzz_corpus_raw_engines.h=2"
-      "fuzz_corpus_sim_session.h=3")
-    ;;
   *)
     echo "usage: [KEEP_GOING=1] bash fuzz.sh <target|all> [seconds] [workers]" >&2
     echo "targets:" >&2
@@ -173,7 +158,6 @@ case "$TARGET" in
     echo "  gwg_session  GWG sessions -- up to six operations against a fuzzed device" >&2
     echo "  kw_session   KW and P300-detour sessions -- up to six operations against a fuzzed controller" >&2
     echo "  sim_session  up to six operations against a device simulator with fuzzed quirks" >&2
-    echo "  diff_engines the session harnesses against the reference engines, compared pass by pass" >&2
     exit 2
     ;;
 esac
@@ -198,39 +182,20 @@ before=$(find "$FINDINGS" -type f | wc -l)
 # truth and is never written back to. Corpus entries the fuzzer discovers
 # accumulate alongside them and are not committed as a whole: they are a
 # cache that makes the next campaign start warm (see NEW COVERAGE above).
-# Further headers come as path=tag: their seeds are exported with the tag
-# byte in front (diff_engines).
-python3 - "$CORPUS" "$SCRIPT_DIR/$HEADER" ${SEED_HEADERS[@]+"${SEED_HEADERS[@]/#/$SCRIPT_DIR/}"} <<'PY'
+python3 - "$CORPUS" "$SCRIPT_DIR/$HEADER" <<'PY'
 import os, re, sys
 out = sys.argv[1]
 n = 0
-for arg in sys.argv[2:]:
-    header, _, tag = arg.partition("=")
-    prefix = bytes([int(tag)]) if tag else b""
-    src = open(header).read()
-    # kSeed_ (parser) and kDSeed_ (decode) share one shape.
-    for m in re.finditer(r"k[A-Za-z]*Seed_(\w+)\[\] = \{(.*?)\};", src, re.S):
-        data = bytes(int(x, 16) for x in re.findall(r"0x([0-9A-Fa-f]{2})", m.group(2)))
-        name = "seed_" + (tag + "_" if tag else "") + m.group(1)
-        open(os.path.join(out, name), "wb").write(prefix + data)
-        n += 1
+src = open(sys.argv[2]).read()
+# kSeed_ (parser) and kDSeed_ (decode) share one shape.
+for m in re.finditer(r"k[A-Za-z]*Seed_(\w+)\[\] = \{(.*?)\};", src, re.S):
+    data = bytes(int(x, 16) for x in re.findall(r"0x([0-9A-Fa-f]{2})", m.group(2)))
+    open(os.path.join(out, "seed_" + m.group(1)), "wb").write(data)
+    n += 1
 print(f"  {n} seeds exported to {out}")
 PY
 
 echo "== building the libFuzzer target '$TARGET' (clang) =="
-for h in ${DIFF_SIDES[@]+"${DIFF_SIDES[@]}"}; do
-  for side in live ref; do
-    side_flags=(-DVITOHOME_DIFF_SIDE="diff_${h}_${side}")
-    if [ "$side" = ref ]; then
-      side_flags+=(-DVITOHOME_DIFF_REF)
-    fi
-    clang++ -std=c++17 -g -Wall -Wextra -Werror \
-      -fsanitize=fuzzer-no-link,address,undefined -fno-sanitize-recover=all \
-      -I"$ROOT" "${side_flags[@]}" \
-      -c "fuzz_${h}.cpp" -o "$WORK/diff_${h}_${side}.o"
-    EXTRA+=("$WORK/diff_${h}_${side}.o")
-  done
-done
 clang++ -std=c++17 -g -Wall -Wextra -Werror \
   -DVITOHOME_FUZZ_LIBFUZZER \
   -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all \

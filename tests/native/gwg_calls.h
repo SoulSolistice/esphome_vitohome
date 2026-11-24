@@ -1,10 +1,9 @@
 #pragma once
 
-// The calls the GWG harnesses make, for both sides of the differential
-// target: the reference GWGEngine takes read(), write(), telegram() and
-// frame() and reports through its five callbacks; the live GwgExchange
-// (optolink_gwg.h) takes a Request and reports a Result, mapped back onto the
-// same callbacks, so a harness's checks and diff_hooks.h events stay one set.
+// The calls the GWG harnesses and proofs make: read(), write(), telegram()
+// and frame(), each a Request to GwgExchange (optolink_gwg.h), its Result
+// reported through five callbacks, so a harness's checks and diff_hooks.h
+// events stay one set.
 
 #include <cstdint>
 #include <functional>
@@ -19,8 +18,8 @@ namespace live = esphome::vitohome::optolink;
 
 template<class P> using Exchange = live::GwgExchange<P>;
 
-// The GWG exchange behind GWGEngine's calls, for the proofs written against
-// that engine: each assertion stays as it was. The last...() getters read
+// The GWG exchange behind those calls, for the proofs written as calls. The
+// last...() getters read
 // the last Result; the settings map onto the timing points, the answer
 // deadline and the variant switches.
 template<class Port> class Engine {
@@ -50,8 +49,8 @@ template<class Port> class Engine {
   bool read(uint16_t address, uint8_t length, live::GWGAccessMode mode = live::GWGAccessMode::PHYSICAL) {
     return this->submit_(live::make_request(live::Lane::GWG, live::gwgReadTypeByte(mode), address, length, nullptr));
   }
-  // As GWGEngine::write(): no write TYPE byte, or an EEPROM write of other
-  // than one cell, is refused.
+  // A mode without a write TYPE byte, or an EEPROM write of other than one
+  // cell, is refused.
   bool write(uint16_t address, const uint8_t *data, uint8_t length,
              live::GWGAccessMode mode = live::GWGAccessMode::PHYSICAL) {
     if (data == nullptr || !live::gwgModeIsWritable(mode) || (mode == live::GWGAccessMode::EEPROM && length != 1))
@@ -86,7 +85,7 @@ template<class Port> class Engine {
   Exchange<Port> &exchange() { return x_; }
 
  private:
-  // A new request clears the two flags, as GWGEngine's did.
+  // A new request clears the two flags.
   bool submit_(const live::Request &request) {
     if (!x_.submit(request))
       return false;
@@ -114,8 +113,7 @@ template<class Port> class Engine {
   OnTiming on_timing_;
 };
 
-// How the last result's telegram went out: the live side's answer to the
-// reference engine's lastSendWasEnqPaced() and lastEnqToSendMs().
+// How the last result's telegram went out.
 struct Sent {
   bool enq_paced;
   uint32_t enq_to_send_ms;
@@ -133,7 +131,7 @@ template<class P, class R, class F> void wire(Exchange<P> &e, R on_response, F o
   wire(e, on_response, on_error, [](uint32_t, uint32_t, uint16_t) {});
 }
 
-// The timing report comes before its answer, as GWGEngine::onTiming does.
+// The timing report comes before its answer.
 template<class E, class R, class F, class T> void wire(E &e, R on_response, F on_error, T on_timing) {
   e.onResponse(on_response);
   e.onError(on_error);
@@ -194,8 +192,8 @@ bool read(Exchange<P> &e, uint16_t address, uint8_t length, live::GWGAccessMode 
 }
 template<class E> bool read(E &e, uint16_t address, uint8_t length) { return e.read(address, length); }
 
-// As GWGEngine::write(): a mode without a write TYPE byte, and an EEPROM write
-// of other than one cell, are refused. The two-byte EEPROM pair is
+// A mode without a write TYPE byte, and an EEPROM write of other than one
+// cell, are refused. The two-byte EEPROM pair is
 // telegram()'s.
 template<class E, class M> bool write(E &e, uint16_t address, const uint8_t *data, uint8_t length, M mode) {
   return e.write(address, data, length, mode);

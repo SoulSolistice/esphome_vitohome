@@ -1,0 +1,80 @@
+== OWN read
+accepted
+wrote 04 16 00 00 41 05 00 01 00 F8 02 00 06 16 00 00 04
+ok 0x00F8 never_sent=0 unserved=0 paced=0 age=0 to_send=0 gap=0 timed=0 answer=0 data=20 CB code=-
+idle x24
+busy x9
+idle x7
+== an error frame: DEVICE_ERROR with its code 05
+accepted
+wrote 04 16 00 00 41 05 00 01 00 F8 02 00 06 16 00 00 04
+device error 0x00F8 never_sent=0 unserved=0 paced=0 age=0 to_send=0 gap=0 timed=0 answer=0 data=- code=05
+idle x24
+busy x9
+idle x7
+== no answer: TIMEOUT
+accepted
+wrote 04 16 00 00 41 05 00 01 00 F8 02 00 04 04
+timeout 0x00F8 never_sent=0 unserved=0 paced=0 age=0 to_send=0 gap=0 timed=0 answer=0 data=- code=-
+idle x24
+busy x8
+== a read past MAX_PAYLOAD: refused
+refused
+wrote 04 16 00 00 16 00 00 04
+idle x32
+== OWN write
+accepted
+wrote 04 16 00 00 41 07 00 02 23 06 02 03 04 3B 06 16 00 00 04
+ok 0x2306 never_sent=0 unserved=0 paced=0 age=0 to_send=0 gap=0 timed=0 answer=0 data=- code=-
+idle x24
+busy x9
+idle x7
+== procedure call with its parameter
+accepted
+wrote 04 16 00 00 41 07 00 07 12 34 02 01 02 59 06 16 00 00 04
+ok 0x1234 never_sent=0 unserved=0 paced=0 age=0 to_send=0 gap=0 timed=0 answer=0 data=AA BB code=-
+idle x24
+busy x9
+idle x7
+== an action button: the call without parameter
+accepted
+wrote 04 16 00 00 41 05 00 07 12 34 00 52 06 16 00 00 04
+ok 0x1234 never_sent=0 unserved=0 paced=0 age=0 to_send=0 gap=0 timed=0 answer=0 data=- code=-
+idle x24
+busy x9
+idle x7
+== GFA read: the KW detour
+accepted
+wrote 04 16 00 00 04 01 6B 40 50 01 16 00 00 16 00 00 04
+ok 0x4050 never_sent=0 unserved=0 paced=0 age=0 to_send=0 gap=0 timed=0 answer=0 data=24 code=-
+idle x24
+busy x24
+idle x32
+== raw lane: a generic function code
+accepted
+wrote 04 16 00 00 41 05 00 05 10 00 02 1C 06 16 00 00 04
+ok 0x1000 never_sent=0 unserved=0 paced=0 age=0 to_send=0 gap=0 timed=0 answer=0 data=AA BB code=-
+idle x24
+busy x9
+idle x7
+== raw lane: a KW telegram with payload
+accepted
+wrote 04 16 00 00 04 01 F4 23 06 01 03 16 00 00 16 00 00 04
+ok 0x2306 never_sent=0 unserved=0 paced=0 age=0 to_send=0 gap=0 timed=0 answer=0 data=00 code=-
+idle x24
+busy x24
+idle x32
+== open frame
+accepted
+wrote 04 16 00 00 16 00 00 04 04 04
+ok 0x0000 never_sent=0 unserved=0 paced=0 age=0 to_send=0 gap=0 timed=0 answer=0 data=06 code=-
+idle x24
+busy x8
+idle x8
+== after a 3.5 s park: no early TIMEOUT, answered
+accepted
+wrote 04 04 16 00 00 41 05 00 01 00 F8 02 00 06 16 00 00 04
+ok 0x00F8 never_sent=0 unserved=0 paced=0 age=0 to_send=0 gap=0 timed=0 answer=0 data=20 CB code=-
+idle x8
+busy x825
+idle x7

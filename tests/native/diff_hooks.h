@@ -3,8 +3,8 @@
 // What a fuzz harness reports when it is built as one side of the
 // differential target (fuzz_diff_engines.cpp). Built with
 // -DVITOHOME_DIFF_SIDE=<entry name>, a harness:
-//   - runs its engines from the namespace `optolink` it aliases: the live
-//     ones, or with -DVITOHOME_DIFF_REF the reference copy (reference/);
+//   - runs the live engines with the timing the recorded traces were
+//     taken with (kw_calls::kVs1Timing, P300Exchange<Port, 0, 0>);
 //   - exports its fuzz entry under that name and has no main();
 //   - reports every engine pass, callback and failed oracle through the
 //     calls below, which fuzz_diff_engines.cpp defines.

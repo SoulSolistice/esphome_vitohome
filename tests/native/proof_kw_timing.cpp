@@ -25,7 +25,7 @@
 //  (12) an open frame met by silence is not sent again;
 //  (13) the watchdog runs afresh from the retry: an ENQ 2.9 s after it still
 //       carries the telegram, though the request is then about 6 s old.
-// The differential target runs the link on VS1Engine's timing
+// The differential target runs the link on the recorded traces' timing
 // (kw_calls::kVs1Timing): one pass later, no pauses, no retry.
 #include <cstdio>
 #include <vector>

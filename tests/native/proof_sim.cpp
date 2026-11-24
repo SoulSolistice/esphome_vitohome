@@ -6,7 +6,7 @@
 //
 //   K  KW: the KW exchange and SimVitotronic in KW
 //   P  P300: the P300 exchange and SimVitotronic, the KW detour included
-//   G  GWG: GWGEngine and SimGwg
+//   G  GWG: the GWG exchange and SimGwg
 //
 // The clock is frozen; every scenario advances it 1 ms per engine pass.
 

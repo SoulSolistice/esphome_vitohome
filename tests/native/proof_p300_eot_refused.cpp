@@ -5,8 +5,8 @@
 //   A) a restart after a NACK: the EOT waits out the device's 15s, then
 //      goes QuietMs after the last; the read queued meanwhile answered
 //      inside its watchdog;
-//   B) with QuietMs 0 (VS2Engine, which the differential target compares
-//      against) the 15 is ignored, the EOT goes again after 3 s and the read
+//   B) with QuietMs 0 (as the differential target runs it) the 15 is
+//      ignored, the EOT goes again after 3 s and the read
 //      times out;
 //   C) bytes after a checksum error: the EOT QuietMs after the last;
 //   D) a 05 on the line does not hold the EOT back;

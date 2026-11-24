@@ -58,10 +58,10 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
   vector replay request + chunked response and assert wire + payload.
 - `proof_hub_requests.cpp` — the hub's requests (`read_request()`,
   `write_request()`) on its engine (`SelectedEngine`), once per protocol.
-  On P300 and GWG the hub's engine and the reference copy's old engine,
-  called as the hub called it, run side by side on one clock: same refusals,
-  same bytes, same results, the getters the hub used to read included, and
-  each case's named outcome.
+  On P300 and GWG each case is held to its recorded case
+  (`fixtures/hub_requests_{p300,gwg}.txt`): accepted or refused, the bytes,
+  the results with what the hub read inside them, the passes it held the
+  loop and was busy, and each case's named outcome.
   On KW each request equals the one `kw_calls.h` sends.
 - `proof_kw_timing.cpp` — the KW link's own timing on a frozen clock: its
   two pauses (20 ms after the ENQ, 25 ms after an answer), 0 as the same
@@ -111,9 +111,9 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
   set exactly when an `FF FF` pair was part of the read,
   never for PHYSICAL.
 - The `proof_gwg_*.cpp` files run on the GWG exchange through
-  `gwg_calls::Engine` (`gwg_calls.h`), which maps `GWGEngine`'s calls, its
-  five callbacks and its `last...()` getters onto `submit()` and `Result`, so
-  their assertions stayed as written against that engine.
+  `gwg_calls::Engine` (`gwg_calls.h`), which maps read(), write(),
+  telegram(), frame(), five callbacks and `last...()` getters onto
+  `submit()` and `Result`.
 - `fuzz_corpus_decode.h` — its seed corpus. The first two bytes of every seed
   steer the output-buffer capacity and the declared field width; the rest is
   the payload.
@@ -128,10 +128,13 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
 - `fuzz_kw_session.cpp` — the same over KW sessions, on a KW link
   (the KW exchange) and over the P300 engine's KW detour. Seeds in
   `fuzz_corpus_kw_session.h`.
-- `fuzz_diff_engines.cpp` — the engine harnesses against the reference
-  engines (`reference/`), compared pass by pass; `diff_hooks.h` is what each
-  harness reports. Boundary seeds in `fuzz_corpus_diff.h`; see "The
-  differential target" below.
+- `fuzz_diff_engines.cpp` — the engine harnesses against their recorded
+  traces (`fixtures/diff_engines.txt`), compared pass by pass;
+  `diff_hooks.h` is what each harness reports. Boundary seeds in
+  `fuzz_corpus_diff.h`; see "The differential target" below.
+- `golden.h` — recorded outputs (`fixtures/`): a proof compares what it
+  produces with them; `VITOHOME_RECORD=1` writes them instead. See
+  "Recorded outputs" below.
 - `sim/` — device simulators: a Vitotronic in KW and P300
   (`sim_vitotronic.h`) and a GWG controller (`sim_gwg.h`) on a shared port
   (`sim_port.h`). `proof_sim.cpp` runs each engine against its simulator,
@@ -310,57 +313,73 @@ read longer than `MAX_PAYLOAD`, whose answer the parser cannot hold.
 ### The differential target
 
 `fuzz_diff_engines.cpp` is the acceptance check of the engine redesign: the
-same bytes at the same moments. `reference/` holds a frozen copy of the
-engines as they stood before it, under the namespace `optolink_ref`.
-`fuzz_raw_engines.cpp`, `fuzz_gwg_session.cpp` and `fuzz_kw_session.cpp` are
-each compiled twice with `-DVITOHOME_DIFF_SIDE` (`diff_hooks.h`), once against
-the live engines and once against the reference, and the target runs one input
-through both on the same clock. After every `loop()` it compares the bytes
-written, and it compares every callback with its address and data.
+same bytes at the same moments. `fixtures/diff_engines.txt` holds, per seed,
+the trace of the engines as they stood before it: after every `loop()` the
+bytes written (`> 01 F7 08 00 02`, or `. 5` for five passes that wrote
+none), and every callback with its address and data
+(`response 0x0800 2: 12 34`). `fuzz_raw_engines.cpp`, `fuzz_gwg_session.cpp`,
+`fuzz_kw_session.cpp` and `fuzz_sim_session.cpp` are each compiled with
+`-DVITOHOME_DIFF_SIDE` (`diff_hooks.h`), and the target holds each seed's
+trace to the recorded one.
 
 The input's first byte picks the harness and, with bit 7 set, makes the
 script's time steps 1 ms instead of 10 ms; the rest is that harness's input.
 The replay build walks the three harness corpora twice, in 10 ms and in 1 ms
 steps, and the seeds in `fuzz_corpus_diff.h`, which sit on a timing boundary.
-A divergence names the pass and both sides' bytes:
+A divergence names the line and both versions of it:
 
 ```
-kw session: record 10 (after 9 pass(es)): reference: pass, wrote 0 byte(s); live: pass, wrote 4 byte(s) 6B 40 50 01
+kw session: line 3: recorded "> 00", now "> 04"
 ```
 
 The seeds sample time coarsely: after the script, the harnesses move in
 100 ms steps. A change of a few ms shows only where a seed puts a step on
-that boundary (`diff_kw_gfa_gap_edge` catches `GFA_GAP_MS` 25 → 26) or where a
-campaign finds one. `fuzz.sh diff_engines` runs one, seeded with all five
-corpora.
+that boundary (`diff_kw_gfa_gap_edge` catches `GFA_GAP_MS` 25 → 26). A new
+input has no recorded trace, so the target has no libFuzzer build; the
+harnesses' own campaigns (`fuzz.sh`) hold them to their oracles.
 
-`fuzz_sim_session.cpp` is the fourth harness: there both sides face a device
-simulator built from the same input.
-
-On KW the two sides are different code. The live side runs the new KW stack
-(`optolink_kw.h`: the KW codec, `EnqLink`, `Exchange`) on `VS1Engine`'s timing
-(`kw_calls::kVs1Timing`: one pass later, no retry after silence), the
-reference side `VS1Engine`; the new timing has its own proofs
-(`proof_kw_timing.cpp`) and the harnesses' own builds run on it; `kw_calls.h` gives a harness one set of KW calls for both, and
-maps the stack's `Result` back onto the old engines' two callbacks, so the
-checks and the compared events stay one set. The boundary seeds put a step on
+On KW the target runs the KW stack (`optolink_kw.h`: the KW codec, `EnqLink`,
+`Exchange`) on the recorded traces' timing (`kw_calls::kVs1Timing`: one pass
+later, no retry after silence); the current timing has its own proofs
+(`proof_kw_timing.cpp`) and the harnesses' own builds run on it.
+`kw_calls.h` gives a harness one set of KW calls and maps the stack's
+`Result` onto two callbacks, so the checks and the recorded events stay one
+set. The boundary seeds put a step on
 each KW timing constant the stack carries that a harness can reach: the GFA
 pause, the answer deadline, the EOT interval and the watchdog. The ENQ hold
 and the chain window are out of reach, because the harnesses submit the next
 operation the moment the last one completes.
 
-On P300 the live side is `P300Exchange<Port, 0, 0>`, without the KW
-detour's retry after silence and without the quiet before an EOT after the
-device's 15, which `VS2Engine` lacks both; `proof_p300_kw_retry.cpp` and
+On P300 the target runs `P300Exchange<Port, 0, 0>`, without the KW detour's
+retry after silence and without the quiet after the device's 15, which the
+recorded traces predate; `proof_p300_kw_retry.cpp` and
 `proof_p300_eot_refused.cpp` pin them, and the harnesses' own builds run
 with them.
 
-On GWG the live side is `GwgExchange` as built; it changes nothing on the
-wire. `gwg_calls.h` maps it onto the reference `GWGEngine`'s calls and five
-callbacks, as `kw_calls.h` does for KW. The boundary seeds put a step on the burst window
+On GWG the target runs `GwgExchange` as built; it changes nothing on the
+wire. `gwg_calls.h` maps it onto read(), write(), telegram() and frame() and
+five callbacks, as `kw_calls.h` does for KW. The boundary seeds put a step on
+the burst window
 (80 and 81 ms after the ENQ a read went out on, when the watchdog ends it),
 on the watchdog lengthened by a longer deadline, and on a burst-sent write
 met by silence.
+
+### Recorded outputs
+
+`golden.h` keeps what a proof produced in `fixtures/<name>.txt`, one case per
+`== <key>` line followed by its lines. A run compares; with
+`VITOHOME_RECORD=1` in the environment it rewrites the file instead, so a
+deliberate change to the wire is re-recorded and reviewed as the file's
+diff. A case with no recording, and a recording no run checked, both fail.
+
+- `diff_engines.txt`: the differential target, per seed and step size.
+- `hub_requests_p300.txt`, `hub_requests_gwg.txt`: `proof_hub_requests.cpp`.
+- `codecs.txt`: `proof_codec_equality.cpp`, per codec family the number of
+  cases and a hash over their outcomes (7.4 million cases).
+
+The first recordings are the outputs of the engines before the redesign:
+the traces were taken from them, and the hub requests and codecs were equal
+to them case by case when recorded.
 
 ### Device simulators
 
@@ -442,24 +461,12 @@ printing into a green one.
 `SAN= bash build_and_run.sh` builds unsanitized. That is a debugging
 convenience — it does not count as passing the gate.
 
-## Three things the original build surfaced (now resolved in-tree)
+## A write's acknowledgement carries no data
 
-1. **Namespace once collided with the class name.** Upstream `VitoWiFi::VitoWiFi<VS2>`
-   had to be fully qualified. After de-branding the P300 engine is
-   `esphome::vitohome::optolink::VS2Engine`, so the collision is gone; the
-   harness just aliases the namespace.
-2. **The P300 packet was non-copyable** (deleted copy-assign — owned a `malloc`
-   buffer); its successor, `P300Frame`, holds a `std::array`. The callback still
-   extracts the payload there, because `data()` points into engine-owned storage valid
-   only for the duration of the callback.
-
-   The enduring finding is a real null-deref hazard: for a write-ack, `data()` returns
-   `nullptr` by design but `dataLength()` still returns the echoed length, so a naive
-   `data()[0..dataLength())` segfaults. The correct consumer guard is `if (data())`
-   before reading payload. The two WRITE vectors guard that contract permanently.
-3. **The `<iostream>` log wart is fixed.** Upstream `Logging.h`'s PC branch wrote
-   `state N --> M` to `std::cout` unconditionally. The engines that replaced it do not
-   log at all, so the host build is silent — no stdout filtering needed.
+For a write's acknowledgement the `Result`'s `data` is `nullptr` while its
+`length` is the echoed length, so a consumer that reads `data[0..length)`
+without checking `data` dereferences null. The two WRITE vectors hold that
+contract.
 
 ## CI integration
 

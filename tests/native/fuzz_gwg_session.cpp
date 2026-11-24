@@ -54,9 +54,9 @@
 // Same two-build arrangement as fuzz_parser_vs2.cpp; seeds in
 // fuzz_corpus_gwg_session.h.
 //
-// The GWG stack (optolink_gwg.h) on the live side, GWGEngine on the reference
-// side (gwg_calls.h). Built with -DVITOHOME_DIFF_SIDE it is one side of
-// fuzz_diff_engines.cpp (diff_hooks.h).
+// The GWG stack (optolink_gwg.h), driven through gwg_calls.h. Built with
+// -DVITOHOME_DIFF_SIDE it is one side of fuzz_diff_engines.cpp
+// (diff_hooks.h).
 
 #include <cstdio>
 #include <cstdlib>
@@ -66,17 +66,6 @@
 #include "diff_hooks.h"
 #include "fake_optolink.h"
 #include "fuzz_corpus_gwg_session.h"
-#ifdef VITOHOME_DIFF_REF
-#include "reference/optolink/optolink.h"
-namespace optolink = esphome::vitohome::optolink_ref;
-using Engine = optolink::GWGEngine;
-using LateAnswer = optolink::GWGEngine::LateAnswer;
-constexpr uint32_t kAnswerTimeoutMs = optolink::GWGEngine::RESPONSE_TIMEOUT_MS;
-constexpr uint32_t kBurstWindowMs = optolink::GWGEngine::ENQ_VALIDITY_MS;
-constexpr uint32_t kDeadlineMinMs = optolink::GWG_RESPONSE_TIMEOUT_MIN_MS;
-constexpr uint32_t kDeadlineMaxMs = optolink::GWG_RESPONSE_TIMEOUT_MAX_MS;
-constexpr uint32_t kDelayMaxMs = optolink::GWG_ENQ_SEND_DELAY_MAX_MS;
-#else
 #include "optolink_gwg.h"
 namespace optolink = esphome::vitohome::optolink;
 using Engine = optolink::GwgExchange<FakeOptolink>;
@@ -86,7 +75,6 @@ constexpr uint32_t kBurstWindowMs = optolink::GWG_BURST_WINDOW_MS;
 constexpr uint32_t kDeadlineMinMs = optolink::GWG_ANSWER_TIMEOUT_MIN_MS;
 constexpr uint32_t kDeadlineMaxMs = optolink::GWG_ANSWER_TIMEOUT_MAX_MS;
 constexpr uint32_t kDelayMaxMs = optolink::ENQ_TO_SEND_MAX_MS;
-#endif
 #include "gwg_calls.h"
 using optolink::GWGAccessMode;
 
@@ -119,8 +107,7 @@ constexpr uint32_t kDeadlines[8] = {kAnswerTimeoutMs, kAnswerTimeoutMs, kDeadlin
                                     kDeadlineMaxMs};
 constexpr int kMaxOps = 6;
 
-// The GWG frame cap, built from MAX_PAYLOAD so it holds for the live engine
-// (GWG_FRAME_MAX) and the reference copy alike.
+// The GWG frame cap (GWG_FRAME_MAX).
 constexpr std::size_t kGwgFrameMax = 5 + optolink::MAX_PAYLOAD;
 
 struct Op {

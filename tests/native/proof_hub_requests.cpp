@@ -1,37 +1,27 @@
 // The hub's requests (address_space.h: read_request(), write_request()) on its
-// engine (protocol_select.h: SelectedEngine), against the engine calls they
-// replace. Compiled once per protocol by build_and_run_protocols.sh.
+// engine (protocol_select.h: SelectedEngine). Compiled once per protocol by
+// build_and_run_protocols.sh.
 //
-// P300 and GWG: two engines on two fake ports, fed the same bytes on the same
-// frozen clock. One is the old engine, called as the hub called it (P300: the
-// reference copy's VS2Engine, tests/native/reference: read(), write(), rpc(),
-// gfaRead(), request(), kwTelegram(), frame(); GWG: the reference copy's
-// GWGEngine: read() and write() with the space's mode, telegram(), frame());
-// the other is the
-// hub's engine, given the hub's request. Both must accept or refuse alike,
-// write the same bytes and report the same outcomes, including what the hub
-// read from the old engine's getters inside its callbacks: errorPayload(),
-// lastTimeoutWasUnsynced(), lastReadHadUnservedEeprom(), the GWG timing,
-// isHoldingEnq(). Each case also names the outcomes it must reach, so
-// agreeing on the wrong path fails too.
+// P300 and GWG: the hub's engine on a fake port and the frozen clock, given
+// the hub's request and a scripted device. Each case must accept or refuse
+// the request, write the bytes, report the outcomes and hold the loop as its
+// recorded case does (fixtures/hub_requests_{p300,gwg}.txt, golden.h): the
+// outcomes of the engine calls these requests replaced, with what the hub
+// read inside their callbacks (the error code, an unsynced timeout, an
+// unserved EEPROM read, the GWG timing). Each case also names the outcomes it
+// must reach, so a recording on the wrong path fails too.
 //
 // KW: each request equals the one the KW harnesses send (kw_calls.h), which
-// the differential target holds to VS1Engine's read(), write() and gfaRead().
+// the differential target holds to the recorded traces.
 #include <cstdio>
 #include <cstring>
+#include <string>
 #include <vector>
 
 #include "address_space.h"
 #include "fake_optolink.h"
+#include "golden.h"
 #include "protocol_select.h"
-#if !defined(VITOHOME_PROTOCOL_KW)
-#include "reference/optolink/optolink.h"
-#endif
-#if defined(VITOHOME_PROTOCOL_GWG)
-using RefGwg = esphome::vitohome::optolink_ref::GWGEngine;
-#elif !defined(VITOHOME_PROTOCOL_KW)
-using RefVs2 = esphome::vitohome::optolink_ref::VS2Engine;
-#endif
 
 using namespace esphome::vitohome;
 using optolink::OptolinkResult;
@@ -51,8 +41,7 @@ void check(bool ok, const char *what) {
 constexpr OptolinkResult kOk = OptolinkResult::OK;
 constexpr OptolinkResult kTimeout = OptolinkResult::TIMEOUT;
 
-// One reported outcome, from a Result or from an old engine's callback and
-// getters.
+// One reported outcome.
 struct Event {
   OptolinkResult status{OptolinkResult::CONTINUE};
   uint16_t address{0};
@@ -93,143 +82,69 @@ Event from_result(const optolink::Result &r) {
   return e;
 }
 
-// The old engine's callbacks, read as the hub read them. Each build uses its
-// protocol's.
-#if !defined(VITOHOME_PROTOCOL_KW) && !defined(VITOHOME_PROTOCOL_GWG)
-// The reference's error codes have the live values; it has no OK.
-void capture(RefVs2 &e, std::vector<Event> &out) {
-  e.onResponse([&out](const uint8_t *data, uint8_t length, uint16_t address) {
-    Event ev;
-    ev.status = OptolinkResult::OK;
-    ev.address = address;
-    if (data != nullptr)
-      ev.data.assign(data, data + length);
-    out.push_back(ev);
-  });
-  e.onError([&e, &out](esphome::vitohome::optolink_ref::OptolinkResult status, uint16_t address) {
-    Event ev;
-    ev.status = static_cast<OptolinkResult>(static_cast<int>(status));
-    ev.address = address;
-    if (status == esphome::vitohome::optolink_ref::OptolinkResult::DEVICE_ERROR) {
-      uint8_t n = 0;
-      const uint8_t *code = e.errorPayload(n);
-      ev.error_code.assign(code, code + n);
-    }
-    out.push_back(ev);
-  });
-}
-#endif
+[[maybe_unused]] Golden *g_golden = nullptr;
 
-#if defined(VITOHOME_PROTOCOL_GWG)
-struct GwgTiming {
-  bool timed{false};
-  uint32_t enq_age_ms{0};
-  uint32_t send_to_response_ms{0};
-};
-
-void gwg_getters(const RefGwg &e, Event &ev) {
-  ev.enq_paced = e.lastSendWasEnqPaced();
-  ev.enq_age_ms = e.lastEnqAgeMs();
-  ev.enq_to_send_ms = e.lastEnqToSendMs();
-  ev.ack_gap_ms = e.lastAckGapMs();
+[[maybe_unused]] std::string describe(const Event &e) {
+  char line[192];
+  std::snprintf(
+      line, sizeof(line), "%s 0x%04X never_sent=%d unserved=%d paced=%d age=%u to_send=%u gap=%u timed=%d answer=%u",
+      e.status == OptolinkResult::OK ? "ok" : optolink::errorToString(e.status), e.address, e.never_sent,
+      e.unserved_eeprom, e.enq_paced, static_cast<unsigned>(e.enq_age_ms), static_cast<unsigned>(e.enq_to_send_ms),
+      static_cast<unsigned>(e.ack_gap_ms), e.answer_timed, static_cast<unsigned>(e.send_to_answer_ms));
+  return std::string(line) + " data=" + golden_hex(e.data.data(), e.data.size()) +
+         " code=" + golden_hex(e.error_code.data(), e.error_code.size());
 }
 
-// The reference's error codes have the live values.
-void capture(RefGwg &e, std::vector<Event> &out, GwgTiming &t) {
-  e.onTiming([&t](uint32_t enq_age_ms, uint32_t send_to_response_ms, uint16_t) {
-    t.timed = true;
-    t.enq_age_ms = enq_age_ms;
-    t.send_to_response_ms = send_to_response_ms;
-  });
-  e.onResponse([&e, &out, &t](const uint8_t *data, uint8_t length, uint16_t address) {
-    Event ev;
-    ev.status = OptolinkResult::OK;
-    ev.address = address;
-    if (data != nullptr)
-      ev.data.assign(data, data + length);
-    ev.unserved_eeprom = e.lastReadHadUnservedEeprom();
-    gwg_getters(e, ev);
-    // The hub's timing line took the age from the timing callback.
-    if (t.timed)
-      ev.enq_age_ms = t.enq_age_ms;
-    ev.answer_timed = t.timed;
-    ev.send_to_answer_ms = t.send_to_response_ms;
-    t = GwgTiming{};
-    out.push_back(ev);
-  });
-  e.onError([&e, &out, &t](esphome::vitohome::optolink_ref::OptolinkResult status, uint16_t address) {
-    Event ev;
-    ev.status = static_cast<OptolinkResult>(static_cast<int>(status));
-    ev.address = address;
-    ev.never_sent = ev.status == OptolinkResult::TIMEOUT && e.lastTimeoutWasUnsynced();
-    gwg_getters(e, ev);
-    t = GwgTiming{};
-    out.push_back(ev);
-  });
-}
-#else
-struct GwgTiming {};
-#endif
-
-// The old engine and the hub's engine side by side.
-template<class Old> struct Twin {
-  FakeOptolink old_port;
-  FakeOptolink new_port;
-  Old old_engine{&old_port};
-  SelectedEngine<FakeOptolink> engine{&new_port};
-  std::vector<Event> old_events;
-  std::vector<Event> new_events;
-  GwgTiming gwg_timing;
-  bool holds_agree{true};
+// The hub's engine and what it did: whether each request was accepted, the
+// bytes written, every Result, and per pass whether it held the loop awake
+// and was busy.
+struct Hub {
+  FakeOptolink port;
+  SelectedEngine<FakeOptolink> engine{&port};
+  std::vector<Event> events;
+  Golden::Lines accepted;
+  Golden::Lines passes;
   bool held{false};
 
-  Twin() {
-#if defined(VITOHOME_PROTOCOL_GWG)
-    capture(old_engine, old_events, gwg_timing);
-#else
-    capture(old_engine, old_events);
-#endif
-    engine.on_result([this](const optolink::Result &r) { new_events.push_back(from_result(r)); });
-    old_engine.begin();
+  Hub() {
+    engine.on_result([this](const optolink::Result &r) { events.push_back(from_result(r)); });
     engine.begin();
   }
 
+  // The request built and submitted.
+  bool accept(bool ok) {
+    accepted.push_back(ok ? "accepted" : "refused");
+    return ok;
+  }
   void pass() {
-    old_engine.loop();
     engine.loop();
-    bool holding = false;
-#if defined(VITOHOME_PROTOCOL_GWG)
-    holding = old_engine.isHoldingEnq();
-#endif
+    const bool holding = engine.wants_fast_loop();
     held = held || holding;
-    holds_agree = holds_agree && holding == engine.wants_fast_loop() && old_engine.isBusy() == engine.busy();
+    this->note_(holding ? (engine.busy() ? "held busy" : "held") : (engine.busy() ? "busy" : "idle"));
     optolink::optolink_test_clock_advance(1);
   }
-  // The port held by a timed frame: time passes, neither engine is looped,
-  // then both restart.
+  // The port held by a timed frame: time passes, the engine is not looped,
+  // then restarts.
   void park(uint32_t ms) {
     optolink::optolink_test_clock_advance(ms);
-    old_engine.begin();
     engine.begin();
   }
   void step(const Bytes &feed, int passes) {
-    old_port.feed(feed);
-    new_port.feed(feed);
+    port.feed(feed);
     for (int i = 0; i < passes; ++i)
       this->pass();
   }
   // Long enough for every deadline and watchdog, 10 ms per pass.
   void settle(uint32_t ms = 8000) {
     for (uint32_t t = 0; t < ms; t += 10) {
-      old_engine.loop();
       engine.loop();
       optolink::optolink_test_clock_advance(10);
     }
   }
-  // Both wrote and reported the same, and reported exactly `want`.
-  bool ended(const Statuses &want) const {
+  // Reported exactly `want`, and did what the recorded case `what` did.
+  bool ended(const char *what, const Statuses &want) {
     Statuses got;
-    for (const Event &e : new_events)
+    for (const Event &e : events)
       got.push_back(e.status);
     if (got != want) {
       std::printf("    reported:");
@@ -237,7 +152,31 @@ template<class Old> struct Twin {
         std::printf(" %s", optolink::errorToString(s));
       std::printf("\n");
     }
-    return holds_agree && old_port.written() == new_port.written() && old_events == new_events && got == want;
+    Golden::Lines lines = accepted;
+    lines.push_back("wrote " + golden_hex(port.written().data(), port.written().size()));
+    for (const Event &e : events)
+      lines.push_back(describe(e));
+    lines.insert(lines.end(), passes.begin(), passes.end());
+    if (run_ != 0)
+      lines.push_back(run_state_ + " x" + std::to_string(run_));
+    const std::string diff = g_golden->check(what, lines);
+    if (!diff.empty())
+      std::printf("    %s\n", diff.c_str());
+    return diff.empty() && got == want;
+  }
+
+ private:
+  std::string run_state_;
+  uint32_t run_{0};
+  void note_(const char *state) {
+    if (run_ != 0 && run_state_ == state) {
+      ++run_;
+      return;
+    }
+    if (run_ != 0)
+      passes.push_back(run_state_ + " x" + std::to_string(run_));
+    run_state_ = state;
+    run_ = 1;
   }
 };
 
@@ -309,12 +248,6 @@ void kw_cases() {
 
 #elif defined(VITOHOME_PROTOCOL_GWG)
 
-using GwgTwin = Twin<RefGwg>;
-
-esphome::vitohome::optolink_ref::GWGAccessMode ref_mode(AddressSpace space) {
-  return static_cast<esphome::vitohome::optolink_ref::GWGAccessMode>(gwg_mode(space));
-}
-
 // The bytes an EEPROM cell answers: the complement, then the value.
 Bytes cells(std::initializer_list<uint8_t> values) {
   Bytes out;
@@ -331,60 +264,54 @@ struct GwgKnobs {
   bool eot_first{false};
 };
 
-void apply(GwgTwin &t, const GwgKnobs &k) {
+void apply(Hub &t, const GwgKnobs &k) {
+  // set_timing() clamps its argument in place.
   uint32_t delay_ms = k.delay_ms;
   uint32_t gap_ms = k.gap_ms;
-  t.old_engine.setEnqSendDelayMs(k.delay_ms);
   t.engine.set_timing(optolink::TimingPoint::ENQ_TO_SEND, delay_ms);
-  t.old_engine.setEnqAckGapMs(k.gap_ms);
   t.engine.set_timing(optolink::TimingPoint::ACK_TO_TELEGRAM, gap_ms);
-  t.old_engine.setWriteEotBeforePayload(k.eot_first);
   t.engine.set_write_eot_before_payload(k.eot_first);
 }
 
-// A read on both engines: accepted alike; then `script`, 40 passes per chunk.
-bool gwg_read(GwgTwin &t, AddressSpace space, uint16_t address, uint8_t length, const std::vector<Bytes> &script) {
+// A read; then `script`, 40 passes per chunk.
+bool gwg_read(Hub &t, AddressSpace space, uint16_t address, uint8_t length, const std::vector<Bytes> &script) {
   optolink::Request r{};
-  const bool built = read_request(space, address, length, nullptr, 0, r);
-  const bool old_ok = t.old_engine.read(address, length, ref_mode(space));
-  const bool new_ok = built && t.engine.submit(r);
+  const bool ok = t.accept(read_request(space, address, length, nullptr, 0, r) && t.engine.submit(r));
   for (const Bytes &b : script)
     t.step(b, 40);
-  return old_ok == new_ok;
+  return ok;
 }
 
-bool gwg_write(GwgTwin &t, AddressSpace space, uint16_t address, const Bytes &data, const std::vector<Bytes> &script) {
+bool gwg_write(Hub &t, AddressSpace space, uint16_t address, const Bytes &data, const std::vector<Bytes> &script) {
   optolink::Request r{};
   const auto n = static_cast<uint8_t>(data.size());
-  const bool built = write_request(space, address, data.data(), n, nullptr, 0, r);
-  const bool old_ok = t.old_engine.write(address, data.data(), n, ref_mode(space));
-  const bool new_ok = built && t.engine.submit(r);
+  const bool ok = t.accept(write_request(space, address, data.data(), n, nullptr, 0, r) && t.engine.submit(r));
   for (const Bytes &b : script)
     t.step(b, 40);
-  return old_ok == new_ok;
+  return ok;
 }
 
 void read_case(const char *what, const Statuses &want, AddressSpace space, uint16_t address, uint8_t length,
                const std::vector<Bytes> &script, const GwgKnobs &knobs = {}) {
-  GwgTwin t;
+  Hub t;
   apply(t, knobs);
-  const bool alike = gwg_read(t, space, address, length, script);
+  gwg_read(t, space, address, length, script);
   t.settle();
-  check(alike && t.ended(want), what);
+  check(t.ended(what, want), what);
 }
 
 void write_case(const char *what, const Statuses &want, AddressSpace space, uint16_t address, const Bytes &data,
                 const std::vector<Bytes> &script, const GwgKnobs &knobs = {}) {
-  GwgTwin t;
+  Hub t;
   apply(t, knobs);
-  const bool alike = gwg_write(t, space, address, data, script);
+  gwg_write(t, space, address, data, script);
   t.settle();
-  check(alike && t.ended(want), what);
+  check(t.ended(what, want), what);
 }
 
 void gwg_cases() {
   std::printf("-- GWG --\n");
-  read_case("OWN read: same bytes, same result", {kOk}, AddressSpace::OWN, 0x55, 2, {{0x05}, {0x12, 0x34}});
+  read_case("OWN read", {kOk}, AddressSpace::OWN, 0x55, 2, {{0x05}, {0x12, 0x34}});
   read_case("VIRTUAL read (identification)", {kOk}, AddressSpace::GWG_VIRTUAL, 0xF8, 4,
             {{0x05}, {0x20, 0x53, 0x01, 0x1E}});
   read_case("EEPROM read, one address per telegram", {kOk}, AddressSpace::GWG_EEPROM, 0x15, 3,
@@ -393,104 +320,108 @@ void gwg_cases() {
             {{0x05}, {0x12, 0x34}});
   read_case("BE read", {kOk}, AddressSpace::GWG_BE, 0x20, 2, {{0x05}, {0x01}, {0x02}});
   read_case("KM-bus RAM read", {kOk}, AddressSpace::GWG_KMBUS_RAM, 0x30, 1, {{0x05}, {0x7F}});
-  read_case("address past FF: both refuse", {}, AddressSpace::OWN, 0x100, 1, {});
+  read_case("address past FF: refused", {}, AddressSpace::OWN, 0x100, 1, {});
   {
-    GwgTwin t;
-    const bool alike = gwg_read(t, AddressSpace::GWG_EEPROM, 0x15, 2, {{0x05}, cells({0x0F}), {0xFF, 0xFF}});
+    Hub t;
+    gwg_read(t, AddressSpace::GWG_EEPROM, 0x15, 2, {{0x05}, cells({0x0F}), {0xFF, 0xFF}});
     t.settle();
-    check(alike && t.ended({kOk}) && t.new_events[0].unserved_eeprom, "EEPROM FF FF: OK, flagged unserved");
+    const char *what = "EEPROM FF FF: OK, flagged unserved";
+    check(t.ended(what, {kOk}) && t.events[0].unserved_eeprom, what);
   }
   {
-    GwgTwin t;
-    const bool alike = gwg_read(t, AddressSpace::OWN, 0x55, 1, {});
+    Hub t;
+    gwg_read(t, AddressSpace::OWN, 0x55, 1, {});
     t.settle();
-    check(alike && t.ended({kTimeout}) && t.new_events[0].never_sent, "TIMEOUT before any ENQ: never sent");
+    const char *what = "TIMEOUT before any ENQ: never sent";
+    check(t.ended(what, {kTimeout}) && t.events[0].never_sent, what);
   }
   {
-    GwgTwin t;
-    const bool alike = gwg_read(t, AddressSpace::OWN, 0x55, 1, {{0x05}});
+    Hub t;
+    gwg_read(t, AddressSpace::OWN, 0x55, 1, {{0x05}});
     t.settle();
-    check(alike && t.ended({kTimeout}) && !t.new_events[0].never_sent && t.new_events[0].enq_paced,
-          "TIMEOUT after an ENQ: sent, ENQ-paced");
+    const char *what = "TIMEOUT after an ENQ: sent, ENQ-paced";
+    check(t.ended(what, {kTimeout}) && !t.events[0].never_sent && t.events[0].enq_paced, what);
   }
   {
-    GwgTwin t;
+    Hub t;
     apply(t, GwgKnobs{20, 0, false});
-    const bool alike = gwg_read(t, AddressSpace::OWN, 0x55, 1, {{0x05}, {}, {0x42}});
+    gwg_read(t, AddressSpace::OWN, 0x55, 1, {{0x05}, {}, {0x42}});
     t.settle();
-    check(alike && t.ended({kOk}) && t.held, "an ENQ-to-send delay: held, the hold agrees");
+    const char *what = "an ENQ-to-send delay: held, the hold agrees";
+    check(t.ended(what, {kOk}) && t.held, what);
   }
   {
-    GwgTwin t;
+    Hub t;
     apply(t, GwgKnobs{0, 30, false});
-    const bool alike = gwg_read(t, AddressSpace::OWN, 0x55, 1, {{0x05}, {}, {0x42}});
+    gwg_read(t, AddressSpace::OWN, 0x55, 1, {{0x05}, {}, {0x42}});
     t.settle();
-    check(alike && t.ended({kOk}) && t.held && t.new_events[0].ack_gap_ms != 0,
-          "a gap after the 01: held, the gap measured");
+    const char *what = "a gap after the 01: held, the gap measured";
+    check(t.ended(what, {kOk}) && t.held && t.events[0].ack_gap_ms != 0, what);
   }
   {
     // A read right after a restart: its watchdog runs from the restart.
-    GwgTwin t;
+    Hub t;
     t.step({}, 8);
     t.park(2500);
-    const bool alike = gwg_read(t, AddressSpace::OWN, 0x55, 1, {});
+    gwg_read(t, AddressSpace::OWN, 0x55, 1, {});
     for (int i = 0; i < 25; ++i)
       t.step({}, 40);
     t.step({0x05}, 40);
     t.step({0x42}, 40);
     t.settle();
-    check(alike && t.ended({kOk}), "after a 2.5 s park: no early TIMEOUT, answered on the ENQ");
+    const char *what = "after a 2.5 s park: no early TIMEOUT, answered on the ENQ";
+    check(t.ended(what, {kOk}), what);
   }
   {
     // A read's timing is its own: the write after it reports none.
-    GwgTwin t;
-    const bool read_alike = gwg_read(t, AddressSpace::OWN, 0x55, 1, {{0x05}, {0x42}});
-    const bool write_alike = gwg_write(t, AddressSpace::OWN, 0x30, {0x07}, {{0x05}, {0x00}});
+    Hub t;
+    gwg_read(t, AddressSpace::OWN, 0x55, 1, {{0x05}, {0x42}});
+    gwg_write(t, AddressSpace::OWN, 0x30, {0x07}, {{0x05}, {0x00}});
     t.settle();
-    check(read_alike && write_alike && t.ended({kOk, kOk}), "a read, then a write on the same engine");
-    check(t.new_events.size() == 2 && t.new_events[0].answer_timed && !t.new_events[1].answer_timed,
-          "  only the read is timed");
+    const char *what = "a read, then a write on the same engine";
+    check(t.ended(what, {kOk, kOk}), what);
+    check(t.events.size() == 2 && t.events[0].answer_timed && !t.events[1].answer_timed, "  only the read is timed");
   }
 
   write_case("OWN write", {kOk}, AddressSpace::OWN, 0x30, {0x05}, {{0x05}, {0x00}});
   write_case("OWN write, EOT before the payload", {kOk}, AddressSpace::OWN, 0x30, {0x05, 0x06}, {{0x05}, {0x00}},
              GwgKnobs{0, 0, true});
   write_case("EEPROM write of one cell", {kOk}, AddressSpace::GWG_EEPROM, 0x20, {0x0F}, {{0x05}, {0x00}});
-  write_case("EEPROM write of two bytes: both refuse", {}, AddressSpace::GWG_EEPROM, 0x20, {0x0F, 0xF0}, {});
+  write_case("EEPROM write of two bytes: refused", {}, AddressSpace::GWG_EEPROM, 0x20, {0x0F, 0xF0}, {});
   write_case("BE write", {kOk}, AddressSpace::GWG_BE, 0x20, {0x01}, {{0x05}, {0x00}});
-  write_case("KM-bus write: both refuse", {}, AddressSpace::GWG_KMBUS_EEPROM, 0x20, {0x01}, {});
+  write_case("KM-bus write: refused", {}, AddressSpace::GWG_KMBUS_EEPROM, 0x20, {0x01}, {});
 
   {
-    GwgTwin t;
+    Hub t;
     const uint8_t pair[] = {0xF0, 0x0F};
-    const bool old_ok = t.old_engine.telegram(0xAD, 0x20, 2, pair);
-    const bool new_ok = t.engine.submit(optolink::make_request(optolink::Lane::GWG, 0xAD, 0x20, 2, pair));
+    const bool ok = t.accept(t.engine.submit(optolink::make_request(optolink::Lane::GWG, 0xAD, 0x20, 2, pair)));
     t.step({0x05}, 40);
     t.step({0x00}, 40);
     t.settle();
-    check(old_ok && new_ok && t.ended({kOk}), "raw lane: a two-byte EEPROM write is the pair as given");
+    const char *what = "raw lane: a two-byte EEPROM write is the pair as given";
+    check(ok && t.ended(what, {kOk}), what);
   }
   {
-    GwgTwin t;
-    const bool old_ok = t.old_engine.telegram(0x31, 0x05, 1);
-    const bool new_ok = t.engine.submit(optolink::make_request(optolink::Lane::GWG, 0x31, 0x05, 1, nullptr));
+    Hub t;
+    const bool ok = t.accept(t.engine.submit(optolink::make_request(optolink::Lane::GWG, 0x31, 0x05, 1, nullptr)));
     t.step({0x05}, 40);
     t.step({0x7F}, 40);
     t.settle();
-    check(old_ok && new_ok && t.ended({kOk}), "raw lane: an unnamed TYPE byte");
+    const char *what = "raw lane: an unnamed TYPE byte";
+    check(ok && t.ended(what, {kOk}), what);
   }
   {
-    GwgTwin t;
+    Hub t;
     const uint8_t bytes[] = {0x01, 0xCB, 0x55, 0x01, 0x04};
-    const bool old_ok = t.old_engine.frame(bytes, sizeof(bytes), 0);
-    const bool new_ok = t.engine.submit(optolink::make_frame(bytes, sizeof(bytes), 0));
+    const bool ok = t.accept(t.engine.submit(optolink::make_frame(bytes, sizeof(bytes), 0)));
     t.step({0x05}, 40);
     t.step({0x42, 0x43}, 40);
     t.settle();
-    check(old_ok && new_ok && t.ended({kOk}), "open frame, collected until quiet");
+    const char *what = "open frame, collected until quiet";
+    check(ok && t.ended(what, {kOk}), what);
   }
   {
-    GwgTwin t;
+    Hub t;
     check(!t.engine.submit(optolink::make_request(optolink::Lane::P300, 0x01, 0x55, 1, nullptr)) &&
               !t.engine.submit(optolink::make_request(optolink::Lane::KW, 0xF7, 0x55, 1, nullptr)),
           "the GWG exchange refuses the P300 and KW lanes");
@@ -499,8 +430,6 @@ void gwg_cases() {
 }
 
 #else
-
-using P300Twin = Twin<RefVs2>;
 
 // A P300 frame with its checksum, the sum of every byte after the 41.
 Bytes p300(const Bytes &body) {
@@ -519,33 +448,26 @@ Bytes acked(const Bytes &frame) {
   return out;
 }
 
-// The link up (the EOT, the device's 05, our 16 00 00, its 06), then the old
-// call and the hub's request side by side, then `script` once the request is
-// out.
-template<class OldCall>
-P300Twin &p300_run(P300Twin &t, bool built, const optolink::Request &r, OldCall old_call,
-                   const std::vector<Bytes> &script, bool &alike) {
+// The link up (the EOT, the device's 05, our 16 00 00, its 06), then the
+// request, then `script` once the request is out.
+bool p300_run(Hub &t, bool built, const optolink::Request &r, const std::vector<Bytes> &script) {
   t.step({}, 8);
   t.step({0x05}, 8);
   t.step({0x06}, 8);
-  const bool old_ok = old_call(t.old_engine);
-  const bool new_ok = built && t.engine.submit(r);
+  const bool ok = t.accept(built && t.engine.submit(r));
   // The request goes out before anything answers it.
   t.step({}, 8);
   for (const Bytes &b : script)
     t.step(b, 8);
   t.settle();
-  alike = old_ok == new_ok;
-  return t;
+  return ok;
 }
 
-template<class OldCall>
-void p300_case(const char *what, const Statuses &want, bool built, const optolink::Request &r, OldCall old_call,
+void p300_case(const char *what, const Statuses &want, bool built, const optolink::Request &r,
                const std::vector<Bytes> &script) {
-  P300Twin t;
-  bool alike = false;
-  p300_run(t, built, r, old_call, script, alike);
-  check(alike && t.ended(want), what);
+  Hub t;
+  p300_run(t, built, r, script);
+  check(t.ended(what, want), what);
 }
 
 void p300_cases() {
@@ -555,69 +477,58 @@ void p300_cases() {
   const uint8_t param[] = {0x01, 0x02};
 
   {
-    P300Twin t;
-    bool alike = false;
+    Hub t;
     const bool b = read_request(AddressSpace::OWN, 0x00F8, 2, nullptr, 0, r);
-    p300_run(
-        t, b, r, [](RefVs2 &e) { return e.read(0x00F8, 2); },
-        {acked(p300({0x07, 0x01, 0x01, 0x00, 0xF8, 0x02, 0x20, 0xCB}))}, alike);
-    check(alike && t.ended({kOk}) && t.new_events[0].data == Bytes({0x20, 0xCB}), "OWN read: same bytes, same result");
+    p300_run(t, b, r, {acked(p300({0x07, 0x01, 0x01, 0x00, 0xF8, 0x02, 0x20, 0xCB}))});
+    const char *what = "OWN read";
+    check(t.ended(what, {kOk}) && t.events[0].data == Bytes({0x20, 0xCB}), what);
   }
   {
-    P300Twin t;
-    bool alike = false;
+    Hub t;
     const bool b = read_request(AddressSpace::OWN, 0x00F8, 2, nullptr, 0, r);
-    p300_run(
-        t, b, r, [](RefVs2 &e) { return e.read(0x00F8, 2); }, {acked(p300({0x06, 0x03, 0x01, 0x00, 0xF8, 0x02, 0x05}))},
-        alike);
-    check(alike && t.ended({OptolinkResult::DEVICE_ERROR}) && t.new_events[0].error_code == Bytes({0x05}),
-          "an error frame: DEVICE_ERROR with its code 05");
+    p300_run(t, b, r, {acked(p300({0x06, 0x03, 0x01, 0x00, 0xF8, 0x02, 0x05}))});
+    const char *what = "an error frame: DEVICE_ERROR with its code 05";
+    check(t.ended(what, {OptolinkResult::DEVICE_ERROR}) && t.events[0].error_code == Bytes({0x05}), what);
   }
   bool b = read_request(AddressSpace::OWN, 0x00F8, 2, nullptr, 0, r);
-  p300_case("no answer: TIMEOUT", {kTimeout}, b, r, [](RefVs2 &e) { return e.read(0x00F8, 2); }, {});
+  p300_case("no answer: TIMEOUT", {kTimeout}, b, r, {});
   b = read_request(AddressSpace::OWN, 0x2000, optolink::MAX_PAYLOAD + 1, nullptr, 0, r);
-  p300_case("a read past MAX_PAYLOAD: both refuse", {}, b, r,
-            [](RefVs2 &e) { return e.read(0x2000, optolink::MAX_PAYLOAD + 1); }, {});
+  p300_case("a read past MAX_PAYLOAD: refused", {}, b, r, {});
 
   b = write_request(AddressSpace::OWN, 0x2306, data, 2, nullptr, 0, r);
-  p300_case("OWN write", {kOk}, b, r, [&data](RefVs2 &e) { return e.write(0x2306, data, 2); },
-            {acked(p300({0x05, 0x01, 0x02, 0x23, 0x06, 0x02}))});
+  p300_case("OWN write", {kOk}, b, r, {acked(p300({0x05, 0x01, 0x02, 0x23, 0x06, 0x02}))});
 
   b = read_request(AddressSpace::RPC, 0x1234, 4, param, 2, r);
-  p300_case("procedure call with its parameter", {kOk}, b, r, [&param](RefVs2 &e) { return e.rpc(0x1234, param, 2); },
+  p300_case("procedure call with its parameter", {kOk}, b, r,
             {acked(p300({0x07, 0x01, 0x07, 0x12, 0x34, 0x02, 0xAA, 0xBB}))});
   b = write_request(AddressSpace::RPC, 0x1234, data, 2, nullptr, 0, r);
   p300_case("an action button: the call without parameter", {kOk}, b, r,
-            [](RefVs2 &e) { return e.rpc(0x1234, nullptr, 0); }, {acked(p300({0x05, 0x01, 0x07, 0x12, 0x34, 0x00}))});
+            {acked(p300({0x05, 0x01, 0x07, 0x12, 0x34, 0x00}))});
 
   {
-    P300Twin t;
-    bool alike = false;
+    Hub t;
     const bool built = read_request(AddressSpace::GFA, 0x4050, 1, nullptr, 0, r);
-    p300_run(
-        t, built, r, [](RefVs2 &e) { return e.gfaRead(0x4050, 1); }, {{}, {0x05}, {0x24}, {}, {0x05}, {0x06}}, alike);
-    check(alike && t.ended({kOk}) && t.new_events[0].data == Bytes({0x24}), "GFA read: the KW detour");
+    p300_run(t, built, r, {{}, {0x05}, {0x24}, {}, {0x05}, {0x06}});
+    const char *what = "GFA read: the KW detour";
+    check(t.ended(what, {kOk}) && t.events[0].data == Bytes({0x24}), what);
   }
 
   r = optolink::make_request(optolink::Lane::P300, 0x05, 0x1000, 2, nullptr);
-  p300_case("raw lane: a generic function code", {kOk}, true, r, [](RefVs2 &e) { return e.request(0x05, 0x1000, 2); },
+  p300_case("raw lane: a generic function code", {kOk}, true, r,
             {acked(p300({0x07, 0x01, 0x05, 0x10, 0x00, 0x02, 0xAA, 0xBB}))});
   r = optolink::make_request(optolink::Lane::KW, 0xF4, 0x2306, 1, data);
-  p300_case("raw lane: a KW telegram with payload", {kOk}, true, r,
-            [&data](RefVs2 &e) { return e.kwTelegram(0xF4, 0x2306, 1, data); },
-            {{}, {0x05}, {0x00}, {}, {0x05}, {0x06}});
+  p300_case("raw lane: a KW telegram with payload", {kOk}, true, r, {{}, {0x05}, {0x00}, {}, {0x05}, {0x06}});
   const uint8_t frame[] = {0x16, 0x00, 0x00};
   r = optolink::make_frame(frame, sizeof(frame), 1);
-  p300_case("open frame", {kOk}, true, r, [&frame](RefVs2 &e) { return e.frame(frame, sizeof(frame), 1); }, {{0x06}});
+  p300_case("open frame", {kOk}, true, r, {{0x06}});
 
   {
     // A read right after a restart: its watchdog runs from the restart.
-    P300Twin t;
+    Hub t;
     t.step({}, 8);
     t.park(3500);
     const bool b2 = read_request(AddressSpace::OWN, 0x00F8, 2, nullptr, 0, r);
-    const bool old_ok = t.old_engine.read(0x00F8, 2);
-    const bool new_ok = b2 && t.engine.submit(r);
+    const bool ok = t.accept(b2 && t.engine.submit(r));
     for (int i = 0; i < 8; ++i)
       t.step({}, 100);  // 800 ms before the device's ENQ
     t.step({0x05}, 8);
@@ -625,10 +536,11 @@ void p300_cases() {
     t.step({}, 8);
     t.step(acked(p300({0x07, 0x01, 0x01, 0x00, 0xF8, 0x02, 0x20, 0xCB})), 8);
     t.settle();
-    check(old_ok && new_ok && t.ended({kOk}), "after a 3.5 s park: no early TIMEOUT, answered");
+    const char *what = "after a 3.5 s park: no early TIMEOUT, answered";
+    check(ok && t.ended(what, {kOk}), what);
   }
 
-  P300Twin t;
+  Hub t;
   check(!t.engine.submit(optolink::make_request(optolink::Lane::GWG, 0xCB, 0x55, 1, nullptr)),
         "the P300 exchange refuses the GWG lane");
   check(!t.engine.wants_fast_loop(), "and never holds the loop awake");
@@ -644,10 +556,17 @@ int main() {
   common_refusals();
 #if defined(VITOHOME_PROTOCOL_KW)
   kw_cases();
-#elif defined(VITOHOME_PROTOCOL_GWG)
+#else
+#if defined(VITOHOME_PROTOCOL_GWG)
+  Golden golden("hub_requests_gwg");
+  g_golden = &golden;
   gwg_cases();
 #else
+  Golden golden("hub_requests_p300");
+  g_golden = &golden;
   p300_cases();
+#endif
+  g_fail += golden.finish();
 #endif
   std::printf("hub requests: %d failure(s)\n", g_fail);
   return g_fail == 0 ? 0 : 1;

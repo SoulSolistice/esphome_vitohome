@@ -64,22 +64,13 @@
 #include "diff_hooks.h"
 #include "fake_optolink.h"
 #include "fuzz_corpus_kw_session.h"
-#ifdef VITOHOME_DIFF_REF
-#include "reference/optolink/optolink.h"
-namespace optolink = esphome::vitohome::optolink_ref;
-#else
 #include "optolink_types.h"
 namespace optolink = esphome::vitohome::optolink;
-#endif
 #include "kw_calls.h"
 
-// KW: the KW stack on the live side, VS1Engine on the reference side; in
-// the differential target the live side keeps VS1Engine's timing
+// KW: as a side of the differential target with the recorded traces' timing
 // (kw_calls::kVs1Timing).
-#ifdef VITOHOME_DIFF_REF
-template<class Port> using KwEngine = optolink::VS1Engine;
-constexpr uint32_t kGfaGapMs = optolink::VS1Engine::GFA_GAP_MS;
-#elif defined(VITOHOME_DIFF_SIDE)
+#if defined(VITOHOME_DIFF_SIDE)
 template<class Port> using KwEngine = optolink::KwExchange<Port, kw_calls::kVs1Timing>;
 constexpr uint32_t kGfaGapMs = optolink::KW_GFA_GAP_MS;
 #else
@@ -87,15 +78,8 @@ template<class Port> using KwEngine = optolink::KwExchange<Port>;
 constexpr uint32_t kGfaGapMs = optolink::KW_GFA_GAP_MS;
 #endif
 
-// P300: the P300 stack on the live side, VS2Engine on the reference side;
-// as a side of the differential target without the KW silence retry, which
-// VS2Engine lacks.
-#ifdef VITOHOME_DIFF_REF
-template<class Port> using P300Engine = optolink::VS2Engine;
-constexpr uint8_t kP300KwMaxPayload = optolink::VS2Engine::KW_MAX_PAYLOAD;
-constexpr uint8_t kP300KwMaxLength = optolink::VS2Engine::KW_MAX_LENGTH;
-constexpr std::size_t kP300FrameMax = optolink::VS2Engine::FRAME_MAX;
-#else
+// P300: as a side of the differential target without the KW silence retry
+// and the quiet rule, which the recorded traces predate.
 #ifdef VITOHOME_DIFF_SIDE
 template<class Port> using P300Engine = optolink::P300Exchange<Port, 0, 0>;
 #else
@@ -104,7 +88,6 @@ template<class Port> using P300Engine = optolink::P300Exchange<Port>;
 constexpr uint8_t kP300KwMaxPayload = optolink::P300_KW_MAX_PAYLOAD;
 constexpr uint8_t kP300KwMaxLength = optolink::P300_KW_MAX_LENGTH;
 constexpr std::size_t kP300FrameMax = optolink::P300_OPEN_FRAME_MAX;
-#endif
 
 namespace {
 
@@ -132,8 +115,7 @@ void oracle(bool ok, const char *what) {
 
 constexpr int kMaxOps = 6;
 
-// The KW frame cap, built from MAX_PAYLOAD so it holds for the live engines
-// (KW_FRAME_MAX) and the reference copy alike.
+// The KW frame cap (KW_FRAME_MAX).
 constexpr std::size_t kKwFrameMax = 4 + optolink::MAX_PAYLOAD;
 
 enum class Kind : uint8_t { READ, WRITE, GFA, TELEGRAM, TELEGRAM_PAYLOAD, KW, KW_PAYLOAD, RPC, FRAME };

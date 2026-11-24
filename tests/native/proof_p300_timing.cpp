@@ -13,7 +13,7 @@
 //   (6) each point is clamped to its bound; the KW exchange refuses the two
 //       P300 points.
 // 0 for every point is the pacing without them: the differential target
-// holds that to VS2Engine.
+// holds that to the recorded traces.
 //
 // Built by build_and_run_protocols.sh.
 #include <cstdio>

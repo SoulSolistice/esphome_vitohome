@@ -53,36 +53,21 @@
 #include "diff_hooks.h"
 #include "fake_optolink.h"
 #include "fuzz_corpus_raw_engines.h"
-#ifdef VITOHOME_DIFF_REF
-#include "reference/optolink/optolink.h"
-namespace optolink = esphome::vitohome::optolink_ref;
-#else
 #include "optolink_types.h"
 namespace optolink = esphome::vitohome::optolink;
-#endif
 #include "gwg_calls.h"
 #include "kw_calls.h"
 
-// KW: the KW stack on the live side, VS1Engine on the reference side; in
-// the differential target the live side keeps VS1Engine's timing
+// KW: as a side of the differential target with the recorded traces' timing
 // (kw_calls::kVs1Timing).
-#ifdef VITOHOME_DIFF_REF
-template<class Port> using KwEngine = optolink::VS1Engine;
-#elif defined(VITOHOME_DIFF_SIDE)
+#if defined(VITOHOME_DIFF_SIDE)
 template<class Port> using KwEngine = optolink::KwExchange<Port, kw_calls::kVs1Timing>;
 #else
 template<class Port> using KwEngine = optolink::KwExchange<Port>;
 #endif
 
-// P300: the P300 stack on the live side, VS2Engine on the reference side;
-// as a side of the differential target without the KW silence retry, which
-// VS2Engine lacks.
-#ifdef VITOHOME_DIFF_REF
-template<class Port> using P300Engine = optolink::VS2Engine;
-constexpr uint8_t kP300KwMaxLength = optolink::VS2Engine::KW_MAX_LENGTH;
-constexpr std::size_t kP300FrameMax = optolink::VS2Engine::FRAME_MAX;
-constexpr uint8_t kP300ErrorCodeMax = optolink::VS2Engine::ERROR_PAYLOAD_MAX;
-#else
+// P300: as a side of the differential target without the KW silence retry
+// and the quiet rule, which the recorded traces predate.
 #ifdef VITOHOME_DIFF_SIDE
 template<class Port> using P300Engine = optolink::P300Exchange<Port, 0, 0>;
 #else
@@ -91,15 +76,8 @@ template<class Port> using P300Engine = optolink::P300Exchange<Port>;
 constexpr uint8_t kP300KwMaxLength = optolink::P300_KW_MAX_LENGTH;
 constexpr std::size_t kP300FrameMax = optolink::P300_OPEN_FRAME_MAX;
 constexpr uint8_t kP300ErrorCodeMax = optolink::P300_ERROR_CODE_MAX;
-#endif
 
-// GWG: the GWG stack on the live side, GWGEngine on the reference side
-// (gwg_calls.h).
-#ifdef VITOHOME_DIFF_REF
-template<class Port> using GwgEngine = optolink::GWGEngine;
-#else
 template<class Port> using GwgEngine = optolink::GwgExchange<Port>;
-#endif
 
 namespace {
 
@@ -125,8 +103,7 @@ void oracle(bool ok, const char *what) {
 #endif
 }
 
-// The frame caps, built from MAX_PAYLOAD so they hold for the live engines
-// (KW_FRAME_MAX, GWG_FRAME_MAX) and the reference copy alike.
+// The frame caps (KW_FRAME_MAX, GWG_FRAME_MAX).
 constexpr std::size_t kKwFrameMax = 4 + optolink::MAX_PAYLOAD;
 constexpr std::size_t kGwgFrameMax = 5 + optolink::MAX_PAYLOAD;
 

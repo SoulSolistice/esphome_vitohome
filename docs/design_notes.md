@@ -26,10 +26,10 @@ the design is what it is:
 
 - **The wire engine is the project's own code.** It began as VitoWiFi at
   `edc059a7`; every engine file has since been rewritten from the protocol and
-  the field evidence. A frozen copy of the engines before the rewrite
-  (`tests/native/reference/`) holds the new ones to the same bytes at the same
-  moments (§3), so each change on the wire is a deliberate one, with its
-  evidence in the protocol document it belongs to.
+  the field evidence. The outputs of the engines before the rewrite, recorded
+  as fixtures (`tests/native/fixtures/`), hold the new ones to the same bytes
+  at the same moments (§3), so each change on the wire is a deliberate one,
+  with its evidence in the protocol document it belongs to.
 - **The reverse-engineering write-ups are dated.** InsideViessmannVitosoft's
   docs are a map, not the territory — e.g. they describe per-language
   `Textresource_de.xml`/`Textresource_en.xml`; the 2026 definition export ships
@@ -445,19 +445,19 @@ null by default; the recorder takes them (§9b).
 at `edc059a7` and was rewritten in stages, each held to the bytes and passes of
 the one before:
 
-- `tests/native/reference/` is a frozen copy of the engines before the rewrite,
-  compiled only in the native tests.
 - The differential target (`fuzz_diff_engines.cpp`) runs each engine harness
-  twice, against the live engines and against the reference copy, on one
-  scripted device and one clock, and compares every pass's writes and every
-  result. It replays its seeds in 10 ms and in 1 ms steps and has boundary
+  on its seeds and holds every pass's writes and every result to the trace
+  recorded from the engines before the rewrite
+  (`tests/native/fixtures/diff_engines.txt`). It replays its seeds in 10 ms and in 1 ms steps and has boundary
   seeds for the timing constants, since a change of a few ms would otherwise
   pass. A deliberate change to the wire runs with its parameter off on the
-  live side (`kw_calls::kVs1Timing`, `P300Exchange<Port, 0, 0>`), and has its
+  target (`kw_calls::kVs1Timing`, `P300Exchange<Port, 0, 0>`), and has its
   own proof.
-- `proof_codec_equality.cpp` compares the codecs with the packet classes they
-  replaced, 7.4 million cases.
-- Once the reference outputs are recorded as fixtures, the copy goes.
+- `proof_codec_equality.cpp` holds the codecs to the outputs of the packet
+  classes they replaced, 7.4 million cases; `proof_hub_requests.cpp` holds
+  the hub's requests to the outputs of the engine calls they replaced.
+- A deliberate change to the wire is re-recorded (`VITOHOME_RECORD=1`) and
+  reviewed as the fixture's diff.
 
 Attribution is in [`NOTICE.md`](../NOTICE.md). Two lessons from the vendored
 years generalise:
@@ -1982,7 +1982,7 @@ not vouch for a later one:
 host C++ : decode/encode tests           tests/native/test_decode.cpp   (916,696 checks)
 host C++ : P300 transaction harness      tests/native/test_p300_transaction.cpp (8/8)
 host C++ : engine proofs, per protocol   tests/native/proof_{kw,p300,gwg}_*.cpp, proof_hub_requests.cpp
-host C++ : differential target           tests/native/fuzz_diff_engines.cpp (live engines vs the reference copy)
+host C++ : differential target           tests/native/fuzz_diff_engines.cpp (engines vs recorded traces)
 host C++ : simulators, field traces      tests/native/proof_sim*.cpp
 host C++ : recorder, link trace          tests/native/proof_recorder.cpp, proof_link_trace.cpp
 host C++ : fuzz corpora (replay)         tests/native/fuzz_*.cpp  (libFuzzer via fuzz.sh)
@@ -2088,7 +2088,8 @@ elsewhere in this file as obligations rather than as tested facts:
    telegram is covered only by the compile gate.
 
 `proof_hub_requests.cpp` covers the requests the hub builds for each space
-and protocol, against the reference engines' calls. If hub-level host testing
+and protocol, against the recorded outcomes of the engine calls they replaced.
+If hub-level host testing
 is ever taken on, these four are the first things to point it at.
 
 Two limits worth re-stating because they are recurring footguns:
@@ -2265,9 +2266,6 @@ rest.
 
 **Engine and recorder**
 
-- **The reference copy goes** once its outputs are recorded as fixtures
-  (`tests/native/reference/`, §3); until then it is what the differential
-  target compares against.
 - **Recorder:** keeping a frozen ring across a restart (RTC memory: 8 KB on
   ESP32, 512 bytes on ESP8266), and a `freeze_on: resync` trigger.
 - **Sharing the UART** with `uart_mux`, `serial_proxy` or `tcp_uart`: the

@@ -13,8 +13,8 @@
 //   H) the watchdog runs from the retry: an ENQ just inside
 //      KW_ENQ_TIMEOUT_MS is still answered;
 //   I) ENQ_TO_SEND holds the resend as it holds the first send;
-//   J) with SilenceRetries 0, the first silence is TIMEOUT (VS2Engine, which
-//      the differential target compares against).
+//   J) with SilenceRetries 0, the first silence is TIMEOUT (as the
+//      differential target runs it).
 //
 // Built by build_and_run_protocols.sh.
 

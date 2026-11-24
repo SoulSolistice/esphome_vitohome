@@ -1,7 +1,7 @@
 // The GWG exchange (optolink_gwg.h) through its own interface, Request in and
-// Result out, on a frozen clock. The differential target compares its bytes
-// and callbacks with the reference GWGEngine's; these cases pin what only the
-// Result and the settings say.
+// Result out, on a frozen clock. The differential target holds its bytes and
+// callbacks to the recorded traces; these cases pin what only the Result and
+// the settings say.
 //   A) a read goes out on the ENQ, in the pass that reads it; the Result
 //      carries the answer and its timing;
 //   B) a read within GWG_BURST_WINDOW_MS of an answer goes out at once,

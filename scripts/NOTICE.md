@@ -3,20 +3,12 @@
 vitohome is licensed under the **GNU General Public License v3.0** (see
 [`LICENSE`](../LICENSE)). It builds on the work of several projects, credited here.
 
-## Optolink protocol engine — VitoWiFi (vendored)
+## Optolink protocol engine — VitoWiFi
 
 vitohome's Optolink engine began as a vendored and modified copy of
-**VitoWiFi** by Bert Melis. The engine is now the component's own
-(`components/vitohome/optolink_*.h`). See [`NOTICE.md`](../NOTICE.md) for
-what remains of it.
-
-- Upstream: <https://github.com/bertmelis/VitoWiFi>
-- Vendored at commit `edc059a7c3df3de0a5de089ebc1bdbfc19ca6faa`
-- License: MIT — see
-  [`components/vitohome/LICENSE.optolink`](../components/vitohome/LICENSE.optolink)
-
-VitoWiFi is MIT-licensed; combining it into this GPLv3 work is permitted, and
-the combined work is distributed under the GPLv3.
+**VitoWiFi** by Bert Melis (<https://github.com/bertmelis/VitoWiFi>, MIT).
+It has since been rewritten (`components/vitohome/optolink_*.h`); no
+VitoWiFi code remains. See [`NOTICE.md`](../NOTICE.md).
 
 ## Datapoint structure — InsideViessmannVitosoft
 

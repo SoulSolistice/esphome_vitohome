@@ -1,12 +1,11 @@
 #pragma once
 
-// The calls the engine harnesses make, for both sides of the differential
-// target: the reference engines (VS1Engine, VS2Engine) take read(),
-// telegram(), kwTelegram(), frame() and the like and report through
-// onResponse / onError; the live KW and P300 stacks (optolink_kw.h,
-// optolink_p300.h) take a Request and report a Result, mapped back onto the
-// same two callbacks so a harness's checks and diff_hooks.h events stay one
-// set. The generic overloads also serve the GWG engine.
+// The calls the engine harnesses and proofs make: read(), telegram(),
+// kwTelegram(), frame() and the like, each a Request to the KW or P300 stack
+// (optolink_kw.h, optolink_p300.h), its Result reported through an
+// onResponse / onError pair, so a harness's checks and diff_hooks.h events
+// stay one set. The generic overloads serve engines with such calls of their
+// own (gwg_calls::Engine).
 
 #include <cstdint>
 
@@ -18,10 +17,10 @@ namespace kw_calls {
 
 namespace live = esphome::vitohome::optolink;
 
-// VS1Engine's timing on the KW link: the ENQ answered and a chained telegram
-// sent one pass later, no retry after silence. The live side of the
-// differential target runs on it, so the comparison with the reference covers
-// everything else; the new timing has its own proofs.
+// The KW link's timing in the recorded traces (fixtures/diff_engines.txt): the
+// ENQ answered and a chained telegram sent one pass later, no retry after
+// silence. The differential target runs on it, so the comparison with the
+// traces covers everything else; the current timing has its own proofs.
 inline constexpr live::EnqLinkParams kVs1Timing{50, 500, 1000, 4000, false, 0, 0, 0};
 
 // The KW link without its pauses: the proofs of chaining, GFA reads, writes
@@ -85,7 +84,7 @@ bool frame(live::KwExchange<P, K> &e, const uint8_t *bytes, uint8_t length, uint
   return e.submit(live::make_frame(bytes, length, answer_length));
 }
 
-// --- P300: the reference VS2Engine, the live P300Exchange ------------------
+// --- P300: P300Exchange -------------------------------------------------
 
 // on_error_code(code, length) runs before on_error for a DEVICE_ERROR that
 // carries the error frame's payload.

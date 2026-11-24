@@ -87,7 +87,7 @@ inline constexpr uint8_t P300_ERROR_CODE_MAX = 4;
 // The quiet before an EOT after the device's bytes: past its late 15.
 inline constexpr uint32_t P300_QUIET_MS = 300;
 
-// `QuietMs` 0: the EOT at once and a 15 ignored, as VS2Engine had it.
+// `QuietMs` 0: the EOT at once and a 15 ignored.
 template<class Port, uint8_t SilenceRetries = P300_KW_SILENCE_RETRIES, uint32_t QuietMs = P300_QUIET_MS>
 class P300Exchange {
  public:

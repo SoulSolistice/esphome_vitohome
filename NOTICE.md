@@ -6,21 +6,12 @@ vitohome is licensed under the **GNU General Public License v3.0** (see
 ## Optolink protocol engine — VitoWiFi
 
 vitohome's Optolink engine began as a vendored and modified copy of
-**VitoWiFi** by Bert Melis. The engine is now the component's own
-(`components/vitohome/optolink_*.h`), rewritten from the protocols and this
-project's field evidence. Of VitoWiFi one part remains, with its MIT notice:
-a frozen copy of the engines before the rewrite, compiled only in the native
-tests, in [`tests/native/reference/`](tests/native/reference/).
-
-- Upstream: <https://github.com/bertmelis/VitoWiFi>
-- Vendored at commit `edc059a7c3df3de0a5de089ebc1bdbfc19ca6faa`
-- License: MIT — see
-  [`components/vitohome/LICENSE.optolink`](components/vitohome/LICENSE.optolink)
-
-VitoWiFi is MIT-licensed; combining it into this GPLv3 work is permitted, and
-the combined work is distributed under the GPLv3. Where the engine behaves
-differently from VitoWiFi's on the wire, the protocol documents say so, with
-the evidence: [`docs/p300_protocol.md`](docs/p300_protocol.md),
+**VitoWiFi** by Bert Melis (<https://github.com/bertmelis/VitoWiFi>, MIT),
+at commit `edc059a7c3df3de0a5de089ebc1bdbfc19ca6faa`. The engine has since
+been rewritten from the protocols and this project's field evidence
+(`components/vitohome/optolink_*.h`); no VitoWiFi code remains. Where the
+engine behaves differently from VitoWiFi's on the wire, the protocol
+documents say so, with the evidence: [`docs/p300_protocol.md`](docs/p300_protocol.md),
 [`docs/kw_protocol.md`](docs/kw_protocol.md),
 [`docs/gwg_protocol.md`](docs/gwg_protocol.md).
 

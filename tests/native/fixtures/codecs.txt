@@ -1,0 +1,18 @@
+== KW: kw_encode()
+cases 1048576
+fnv1a64 53e058bb6e4cb925
+== KW: frame_encode()
+cases 512
+fnv1a64 f2730be4f7ca42df
+== P300: p300_encode() with 41 and checksum
+cases 1048576
+fnv1a64 52e9176bfcec0db3
+== P300: P300Parser, byte by byte
+cases 1143793
+fnv1a64 3cebeef3afa49634
+== GWG: gwg_encode(), gwg_encode_mode(), gwg_eeprom_pair()
+cases 4196864
+fnv1a64 08c0de4b62aa659d
+== GWG: frame_encode()
+cases 512
+fnv1a64 7e6dd85069f0b81e

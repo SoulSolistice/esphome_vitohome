@@ -1,0 +1,132 @@
+== OWN read
+accepted
+wrote 01 CB 55 02 04
+ok 0x0055 never_sent=0 unserved=0 paced=1 age=0 to_send=0 gap=0 timed=1 answer=40 data=12 34 code=-
+busy x40
+idle x40
+== VIRTUAL read (identification)
+accepted
+wrote 01 C7 F8 04 04
+ok 0x00F8 never_sent=0 unserved=0 paced=1 age=0 to_send=0 gap=0 timed=1 answer=40 data=20 53 01 1E code=-
+busy x40
+idle x40
+== EEPROM read, one address per telegram
+accepted
+wrote 01 AE 15 01 04 AE 16 01 04 AE 17 01 04
+ok 0x0015 never_sent=0 unserved=0 paced=0 age=1 to_send=0 gap=0 timed=1 answer=39 data=0F 11 22 code=-
+busy x120
+idle x40
+== EEPROM pair that does not sum to FF: CRC
+accepted
+wrote 01 AE 15 01 04
+crc 0x0015 never_sent=0 unserved=0 paced=1 age=0 to_send=0 gap=0 timed=0 answer=0 data=- code=-
+busy x40
+idle x40
+== BE read
+accepted
+wrote 01 9E 20 01 04 9E 21 01 04
+ok 0x0020 never_sent=0 unserved=0 paced=0 age=1 to_send=0 gap=0 timed=1 answer=39 data=01 02 code=-
+busy x80
+idle x40
+== KM-bus RAM read
+accepted
+wrote 01 33 30 01 04
+ok 0x0030 never_sent=0 unserved=0 paced=1 age=0 to_send=0 gap=0 timed=1 answer=40 data=7F code=-
+busy x40
+idle x40
+== address past FF: refused
+refused
+wrote -
+== EEPROM FF FF: OK, flagged unserved
+accepted
+wrote 01 AE 15 01 04 AE 16 01 04
+ok 0x0015 never_sent=0 unserved=1 paced=0 age=1 to_send=0 gap=0 timed=1 answer=39 data=0F FF code=-
+busy x80
+idle x40
+== TIMEOUT before any ENQ: never sent
+accepted
+wrote -
+timeout 0x0055 never_sent=1 unserved=0 paced=0 age=0 to_send=0 gap=0 timed=0 answer=0 data=- code=-
+== TIMEOUT after an ENQ: sent, ENQ-paced
+accepted
+wrote 01 CB 55 01 04
+timeout 0x0055 never_sent=0 unserved=0 paced=1 age=0 to_send=0 gap=0 timed=0 answer=0 data=- code=-
+busy x40
+== an ENQ-to-send delay: held, the hold agrees
+accepted
+wrote 01 CB 55 01 04
+ok 0x0055 never_sent=0 unserved=0 paced=1 age=0 to_send=20 gap=0 timed=1 answer=60 data=42 code=-
+held busy x20
+busy x60
+idle x40
+== a gap after the 01: held, the gap measured
+accepted
+wrote 01 CB 55 01 04
+ok 0x0055 never_sent=0 unserved=0 paced=1 age=0 to_send=0 gap=30 timed=1 answer=50 data=42 code=-
+held busy x30
+busy x50
+idle x40
+== after a 2.5 s park: no early TIMEOUT, answered on the ENQ
+accepted
+wrote 01 CB 55 01 04
+ok 0x0055 never_sent=0 unserved=0 paced=1 age=1 to_send=0 gap=0 timed=1 answer=40 data=42 code=-
+idle x8
+busy x1040
+idle x40
+== a read, then a write on the same engine
+accepted
+accepted
+wrote 01 CB 55 01 04 01 C8 30 01 07 04
+ok 0x0055 never_sent=0 unserved=0 paced=1 age=0 to_send=0 gap=0 timed=1 answer=40 data=42 code=-
+ok 0x0030 never_sent=0 unserved=0 paced=1 age=1 to_send=0 gap=0 timed=0 answer=0 data=00 code=-
+busy x40
+idle x40
+busy x40
+idle x40
+== OWN write
+accepted
+wrote 01 C8 30 01 05 04
+ok 0x0030 never_sent=0 unserved=0 paced=1 age=0 to_send=0 gap=0 timed=0 answer=0 data=00 code=-
+busy x40
+idle x40
+== OWN write, EOT before the payload
+accepted
+wrote 01 C8 30 02 04 05 06
+ok 0x0030 never_sent=0 unserved=0 paced=1 age=0 to_send=0 gap=0 timed=0 answer=0 data=00 code=-
+busy x40
+idle x40
+== EEPROM write of one cell
+accepted
+wrote 01 AD 20 F0 0F 04
+ok 0x0020 never_sent=0 unserved=0 paced=1 age=0 to_send=0 gap=0 timed=0 answer=0 data=00 code=-
+busy x40
+idle x40
+== EEPROM write of two bytes: refused
+refused
+wrote -
+== BE write
+accepted
+wrote 01 9D 20 01 01 04
+ok 0x0020 never_sent=0 unserved=0 paced=1 age=0 to_send=0 gap=0 timed=0 answer=0 data=00 code=-
+busy x40
+idle x40
+== KM-bus write: refused
+refused
+wrote -
+== raw lane: a two-byte EEPROM write is the pair as given
+accepted
+wrote 01 AD 20 F0 0F 04
+ok 0x0020 never_sent=0 unserved=0 paced=1 age=0 to_send=0 gap=0 timed=0 answer=0 data=00 code=-
+busy x40
+idle x40
+== raw lane: an unnamed TYPE byte
+accepted
+wrote 01 31 05 01 04
+ok 0x0005 never_sent=0 unserved=0 paced=1 age=0 to_send=0 gap=0 timed=1 answer=40 data=7F code=-
+busy x40
+idle x40
+== open frame, collected until quiet
+accepted
+wrote 01 CB 55 01 04
+ok 0x0000 never_sent=0 unserved=0 paced=1 age=0 to_send=0 gap=0 timed=0 answer=0 data=42 43 code=-
+busy x80
