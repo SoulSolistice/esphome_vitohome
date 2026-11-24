@@ -106,7 +106,7 @@ def render(run: Run) -> str:
     if h:
         lines.append(
             f"program `{h.get('program', '?')}`, protocol {h.get('protocol', '?')}, ESPHome {h.get('esphome', '?')}, "
-            f"source `{h.get('source', '?')}`, device `{h.get('device', '?')}`"
+            f"source `{h.get('source', '?')}` at `{h.get('sha', '?')}`, device `{h.get('device', '?')}`"
         )
     else:
         lines.append("no `report v1` header")

@@ -10,14 +10,14 @@ text_sensor:
     name: "Device ID"
 
 script:
-  # The line that names the run: program, protocol, ESPHome and vitohome
-  # source, and the identification (README.md, "Report lines").
+  # The line that names the run: program, protocol, ESPHome, vitohome source
+  # and commit, and the identification (README.md, "Report lines").
   - id: diag_header
     mode: queued
     then:
       - lambda: |-
-          ESP_LOGI("diag", "report v1 program=${diag_program} protocol=%s esphome=%s source=${vitohome_source} device=\"%s\"",
-                   vitohome::PROTOCOL_TAG, ESPHOME_VERSION, id(diag_device_id).state.c_str());
+          ESP_LOGI("diag", "report v1 program=${diag_program} protocol=%s esphome=%s source=${vitohome_source} sha=%s device=\"%s\"",
+                   vitohome::PROTOCOL_TAG, ESPHOME_VERSION, id(vito).source_revision(), id(diag_device_id).state.c_str());
 
 button:
   - platform: restart

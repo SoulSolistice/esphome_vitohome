@@ -115,6 +115,11 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
   void set_identify_device(bool value) { this->identify_device_ = value; }
 
+  // The commit of the component the firmware is built from (codegen:
+  // component_revision()), "unknown" without one.
+  void set_source_revision(const char *revision) { this->source_revision_ = revision; }
+  const char *source_revision() const { return this->source_revision_; }
+
   // The recorder's settings (YAML `recorder:`), applied in setup().
   void set_recorder(uint16_t size, uint16_t after, uint8_t freeze_on, bool dump_on_freeze) {
     this->recorder_size_ = size;
@@ -464,6 +469,7 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 
  private:
   ESPHomeUARTInterface iface_;
+  const char *source_revision_{"unknown"};
   VitoStats stats_;
   // The exchange's LinkSink: the facts into stats_, everything into the
   // recorder when it records.

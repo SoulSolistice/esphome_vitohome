@@ -18,7 +18,7 @@ if _SCRIPTS not in sys.path:
 import vitohome_report as report  # noqa: E402
 
 PROBE = """\
-[10:00:00.100][I][diag:091]: report v1 program=probe-kw/1 protocol=KW esphome=2026.11.0 source=github://x/y@main device="0x20CB VScotHO1"
+[10:00:00.100][I][diag:091]: report v1 program=probe-kw/1 protocol=KW esphome=2026.11.0 source=github://x/y@main sha=0123456789ab device="0x20CB VScotHO1"
 [10:00:00.200][I][diag:092]: probe v1 start steps=2
 \x1b[0;32m[10:00:10.000][I][vitohome.stats:974]: stats v1 KW base s=9 n=20 ok=20 timeout=0 length=0 nack=0 crc=0 error=0 \
 device_error=0 ms=12/14/19 script_ok=0 script_failed=0 link.drained=0 link.retry=0 link.late=0 link.burst_off=0 \
@@ -47,6 +47,7 @@ def test_header_steps_and_dumps():
     run = report.parse_log(PROBE, "probe.log")
     assert run.header["program"] == "probe-kw/1"
     assert run.header["device"] == "0x20CB VScotHO1"
+    assert run.header["sha"] == "0123456789ab"
     assert list(run.steps) == ["base", "enq_to_send:100"]
     step = run.steps["enq_to_send:100"]
     assert step.protocol == "KW"
@@ -70,6 +71,7 @@ def test_table_rows():
     assert "drained=3 retry=2" in text
     assert "1 frozen by a retry" in text
     assert "did not log" not in text
+    assert "source `github://x/y@main` at `0123456789ab`" in text
 
 
 def test_a_cut_probe_is_named():

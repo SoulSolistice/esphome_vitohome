@@ -61,8 +61,9 @@ packages:
     refresh: 0s
 ```
 
-Use the same ref for `ref:` and in `vitohome_source`: the report header
-names the source, and two reports compare only at the same one. A local
+Use the same ref for `ref:` and in `vitohome_source`. The report header
+names the source and the commit the firmware was built from, and two reports
+compare only at the same commit. A local
 checkout works too: `!include {file: ../path/example/diagnostics/probe-kw.yaml,
 vars: {vitohome_source: ../path/components}}`.
 
@@ -98,13 +99,14 @@ logs the header and the counts at any time.
 ## Report lines
 
 ```
-report v1 program=probe-kw/1 protocol=KW esphome=2026.11.0 source=github://... device="..."
+report v1 program=probe-kw/1 protocol=KW esphome=2026.11.0 source=github://... sha=0123456789ab device="..."
 stats v1 KW enq_to_send:40 s=21 n=20 ok=20 timeout=0 length=0 nack=0 crc=0 error=0 device_error=0 ms=31/38/52 script_ok=0 script_failed=0 link.drained=0 link.retry=0 ...
 probe v1 done steps=28
 ```
 
 - `report`: the program and its version, the protocol, ESPHome, the
-  vitohome source and the identification.
+  vitohome source and the commit it was built from (`-dirty` for changes not
+  committed, `unknown` without git), and the identification.
 - `stats` (`VitoHomeComponent::log_stats()`): the counts since the step began
   (probe) or since boot (audit). `n` requests, how each ended, `ms` the time
   from dispatch to an answer (min/avg/max), `script_*` the timed frames, and

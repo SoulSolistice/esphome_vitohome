@@ -802,10 +802,11 @@ void VitoHomeComponent::dump_config() {
   // its capacity is shown.
   ESP_LOGCONFIG(TAG,
                 "VitoHome:\n"
+                "  Source revision: %s\n"
                 "  Protocol: %s\n"
                 "  Entities: %zu\n"
                 "  Raw queue capacity: %zu",
-                PROTOCOL_NAME, this->entities_.size(), this->raw_queue_capacity_);
+                this->source_revision_, PROTOCOL_NAME, this->entities_.size(), this->raw_queue_capacity_);
 #ifdef VITOHOME_RECORDER
   ESP_LOGCONFIG(TAG, "  Recorder: %u entries, %u after a failure, freezes on %s%s%s%s%s",
                 static_cast<unsigned>(this->recorder_.size()), static_cast<unsigned>(this->recorder_after_),

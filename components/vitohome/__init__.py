@@ -20,6 +20,8 @@ narrows the *final* value to the float32 ESPHome state requires.
 from dataclasses import dataclass
 import logging
 import math
+from pathlib import Path
+import subprocess
 
 from esphome import automation
 import esphome.codegen as cg
@@ -58,6 +60,37 @@ if _release(ESPHOME_VERSION) < _release(MIN_ESPHOME_VERSION):
     raise ImportError(f"vitohome needs ESPHome {MIN_ESPHOME_VERSION} or newer; this is ESPHome {ESPHOME_VERSION}")
 
 _LOGGER = logging.getLogger(__name__)
+
+# What the firmware reports when the component's folder is not a commit of a
+# repository that tracks it.
+REVISION_UNKNOWN = "unknown"
+
+
+def _git(directory: Path, *args: str) -> str | None:
+    try:
+        done = subprocess.run(["git", "-C", str(directory), *args], capture_output=True, text=True, timeout=10, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return done.stdout.strip() if done.returncode == 0 else None
+
+
+def component_revision(directory: Path | None = None) -> str:
+    """The commit the component is built from: 12 hex digits, with "-dirty"
+    when a file of the component differs from it or is not committed.
+
+    ESPHome keeps `.git` in its clone of a git source, and a local source is a
+    checkout, so both name their commit. A folder its repository does not
+    track (a copy inside another repository) or no git at all: "unknown".
+    """
+    here = Path(directory) if directory is not None else Path(__file__).resolve().parent
+    if _git(here, "ls-files", "--error-unmatch", "--", "__init__.py") is None:
+        return REVISION_UNKNOWN
+    sha = _git(here, "rev-parse", "--short=12", "HEAD")
+    if not sha:
+        return REVISION_UNKNOWN
+    status = _git(here, "status", "--porcelain", "--", ".")
+    return f"{sha}-dirty" if status else sha
+
 
 CODEOWNERS = ["@SoulSolistice"]
 DEPENDENCIES = ["uart"]
@@ -1672,6 +1705,8 @@ async def to_code(config):
         cg.add_build_flag("-DVITOHOME_LOG_FRAMES")
 
     var = cg.new_Pvariable(config[CONF_ID])
+    # A setter, not a define: a new commit then rebuilds main.cpp only.
+    cg.add(var.set_source_revision(component_revision()))
     await cg.register_component(var, config)
     await uart.register_uart_device(var, config)
 
