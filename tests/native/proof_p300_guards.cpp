@@ -9,7 +9,7 @@
 //     succeeds. The 4 s watchdog is crossed as a clock advance
 //     (optolink_test_clock_freeze in optolink_clock.h).
 //
-// THIRD_PARTY.md items 9 and 10.
+// docs/p300_protocol.md, quirks 8 and 9.
 #include <cstdio>
 #include <cstring>
 #include <numeric>

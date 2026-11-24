@@ -8,7 +8,7 @@
 // _packet[6 + dataLength() - _payloadLength] = _packet[6 + 0 - 255] -- an
 // out-of-bounds write through std::array::operator[], reachable from garbled
 // RX before the checksum is verified. Inherited verbatim from upstream
-// VitoWiFi @ edc059a (see THIRD_PARTY.md #12). The fix routes a zero-length
+// VitoWiFi @ edc059a. The fix routes a zero-length
 // payload straight to CHECKSUM.
 //
 // Two scenarios, matching the two pre-fix failure modes:

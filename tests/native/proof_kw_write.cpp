@@ -7,7 +7,7 @@
 //   <<< 00                                      (single ack byte, ~125 ms)
 //
 // The device acknowledges a KW write with one byte, 00 when it took it,
-// whatever the write's length (THIRD_PARTY.md #11).
+// whatever the write's length (docs/kw_protocol.md).
 #include <cstdio>
 #include <cstring>
 #include <vector>

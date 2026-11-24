@@ -4,8 +4,8 @@
 // fed straight from the UART, i.e. from a noisy optical link where garbled RX
 // is the ordinary case rather than an attack. It is also the only place in
 // this codebase with a known history of memory-safety defects: the
-// zero-payload out-of-bounds write (THIRD_PARTY.md #12) and, next door in the
-// packet it fills, the RESPONSE payload guards (#16). Both were found by a
+// zero-payload out-of-bounds write and, next door in the packet it filled,
+// VitoWiFi's RESPONSE payload guards. Both were found by a
 // person hand-writing the one input that trips them, and both are now pinned
 // by targeted proofs. A coverage-guided fuzzer covers the inputs nobody
 // thought to write down.
@@ -111,7 +111,7 @@ void check_complete_frame(const P300Frame &p, uint8_t checksum_byte) {
   //
   // The P300 exchange (optolink_p300.h) delivers a completed frame as an
   // answer only when packetType() == RESPONSE; anything else ends the request
-  // with DEVICE_ERROR (THIRD_PARTY.md #9). That guard is there for
+  // with DEVICE_ERROR. That guard is there for
   // correctness -- an ERROR frame's payload is no data -- but it is also
   // what keeps a consumer inside the packet buffer, and that second
   // job is undocumented anywhere else.
@@ -132,7 +132,7 @@ void check_complete_frame(const P300Frame &p, uint8_t checksum_byte) {
     // The length the P300 exchange hands the consumer: DataLength,
     // except for an RPC answer, whose size is the frame's own payload
     // (payloadLength()) -- the parser keeps an RPC answer's DataLength as
-    // received and does not trust it (THIRD_PARTY.md #26) -- and for the
+    // received and does not trust it -- and for the
     // answer to any other function code a raw request asked for
     // (P300Parser::expect_function()), sized the same way.
     const bool by_frame = p.function_code() != static_cast<uint8_t>(FunctionCode::READ) &&

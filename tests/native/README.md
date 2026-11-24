@@ -107,8 +107,8 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
   contiguous masks every old byte and every field value up to one past the
   mask's capacity. Pinned with the issue #21 bytes (`0xA8`, `0x91`) decoding to
   the export's factory defaults.
-- `proof_gwg_eeprom_pairs.cpp` case (8) pins `Result::unserved_eeprom`
-  (THIRD_PARTY.md #25): set exactly when an `FF FF` pair was part of the read,
+- `proof_gwg_eeprom_pairs.cpp` case (8) pins `Result::unserved_eeprom`:
+  set exactly when an `FF FF` pair was part of the read,
   never for PHYSICAL.
 - The `proof_gwg_*.cpp` files run on the GWG exchange through
   `gwg_calls::Engine` (`gwg_calls.h`), which maps `GWGEngine`'s calls, its
@@ -154,9 +154,8 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
 `P300Parser::parse()` (`optolink_codec_p300.h`) is a byte-at-a-time state
 machine fed straight off the optical link, where garbled RX is routine rather
 than exceptional, and it is the one place in this tree with a history of
-memory-safety defects — the zero-payload out-of-bounds write (THIRD_PARTY.md
-#12) and, in the packet class it filled then, the RESPONSE payload guards
-(#16). Both were found by someone writing
+memory-safety defects — the zero-payload out-of-bounds write and, in the
+packet class it filled then, VitoWiFi's RESPONSE payload guards. Both were found by someone writing
 down the single input that trips them. Fuzzing covers the inputs nobody thought
 of.
 

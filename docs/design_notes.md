@@ -8,9 +8,7 @@ points rather than repeats:
 - **Authoring/decoding a datapoint, the converter table, two-address `select`,
   config-time validation rules** → [`converters.md`](converters.md).
 - **Quick start, YAML shape, how it works at a glance** → [`README.md`](../README.md).
-- **Where the engine's behaviour differs from VitoWiFi's, and licensing** →
-  [`THIRD_PARTY.md`](../components/vitohome/THIRD_PARTY.md) and
-  [`NOTICE.md`](../NOTICE.md).
+- **Licensing and credits** → [`NOTICE.md`](../NOTICE.md).
 - **Each protocol: wire format, state flow, timing, quirks** →
   [`p300_protocol.md`](p300_protocol.md), [`kw_protocol.md`](kw_protocol.md),
   [`gwg_protocol.md`](gwg_protocol.md).
@@ -30,8 +28,8 @@ the design is what it is:
   `edc059a7`; every engine file has since been rewritten from the protocol and
   the field evidence. A frozen copy of the engines before the rewrite
   (`tests/native/reference/`) holds the new ones to the same bytes at the same
-  moments (§3), so each change on the wire is a deliberate one, listed in
-  `THIRD_PARTY.md`.
+  moments (§3), so each change on the wire is a deliberate one, with its
+  evidence in the protocol document it belongs to.
 - **The reverse-engineering write-ups are dated.** InsideViessmannVitosoft's
   docs are a map, not the territory — e.g. they describe per-language
   `Textresource_de.xml`/`Textresource_en.xml`; the 2026 definition export ships

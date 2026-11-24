@@ -17,11 +17,8 @@ remains, in
   [`components/vitohome/LICENSE.optolink`](../components/vitohome/LICENSE.optolink)
 
 VitoWiFi is MIT-licensed; combining it into this GPLv3 work is permitted, and
-the combined work is distributed under the GPLv3. The exact modifications made
-during vendoring — the de-branding rename, the buffer changes, and the
-behavioural fixes — together with the retained per-file MIT notices, are
-documented in
-[`components/vitohome/THIRD_PARTY.md`](../components/vitohome/THIRD_PARTY.md).
+the combined work is distributed under the GPLv3. See [`NOTICE.md`](../NOTICE.md)
+for what remains of it.
 
 ## Datapoint structure — InsideViessmannVitosoft
 

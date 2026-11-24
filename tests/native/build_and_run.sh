@@ -20,7 +20,7 @@
 # seventeen -- including EVERY engine proof in build_and_run_protocols.sh, i.e.
 # all of the VS1/GWG sync, burst and access-mode work -- ran uninstrumented.
 # That is the surface where garbled RX is the NORMAL case and where both known
-# memory-safety defects (the zero-payload OOB write below, THIRD_PARTY.md #16's
+# memory-safety defects (the zero-payload OOB write below, VitoWiFi's
 # RESPONSE guards) actually lived, so it is the last place that should have
 # been running without a memory checker. $SAN now goes on every g++ line in
 # both scripts; keep it there.

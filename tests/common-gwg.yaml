@@ -155,7 +155,7 @@ number:
   # this reads with EEPROM_READ (0xAE) and writes with EEPROM_WRITE (0xAD).
   # Vitosoft marks every writable GWG datapoint as EEPROM or BE and NONE as
   # physical, so this is the shape a real GWG write takes. Codegen gate only;
-  # EEPROM writes are hardware-confirmed (THIRD_PARTY.md #32).
+  # EEPROM writes are hardware-confirmed (docs/gwg_protocol.md).
   - platform: vitohome
     name: "GWG Kesselmaximaltemperatur"
     address: 0x01

@@ -135,7 +135,7 @@ g++ -std=c++17 -O1 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" \
   "$REF/protocol/vs2/parser_vs2.cpp" "$REF/protocol/gwg/packet_gwg.cpp" -o proof_codec_equality
 ./proof_codec_equality
 
-echo "== GWG read/write completion (THIRD_PARTY.md #8 fix) =="
+echo "== GWG read/write completion =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" \
   proof_gwg_read.cpp -o gwg_read
 ./gwg_read
@@ -155,17 +155,17 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTO
   proof_gwg_burst.cpp -o gwg_burst
 ./gwg_burst
 
-echo "== GWG timeout kind: no ENQ versus an unanswered datapoint (THIRD_PARTY.md #31) =="
+echo "== GWG timeout kind: no ENQ versus an unanswered datapoint =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" \
   proof_gwg_timeout_kind.cpp -o gwg_timeout_kind
 ./gwg_timeout_kind
 
-echo "== GWG ENQ-to-send delay: default 0, hold, burst unaffected (THIRD_PARTY.md #33) =="
+echo "== GWG ENQ-to-send delay: default 0, hold, burst unaffected =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" \
   proof_gwg_enq_send_delay.cpp -o gwg_enq_send_delay
 ./gwg_enq_send_delay
 
-echo "== GWG gap after the 0x01: default 0, the 0x01 alone, burst unaffected (THIRD_PARTY.md #39) =="
+echo "== GWG gap after the 0x01: default 0, the 0x01 alone, burst unaffected =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT"   proof_gwg_enq_ack_gap.cpp -o gwg_enq_ack_gap
 ./gwg_enq_ack_gap
 
@@ -207,7 +207,7 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTO
   proof_kw_timing.cpp -o kw_timing
 ./kw_timing
 
-echo "== KW write-ack completion (THIRD_PARTY.md #11) =="
+echo "== KW write-ack completion =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" \
   proof_kw_write.cpp -o kw_write
 ./kw_write

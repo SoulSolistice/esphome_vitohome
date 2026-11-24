@@ -1,5 +1,5 @@
 // Proves the diagnostic GWG gap after the 0x01 (TimingPoint::ACK_TO_TELEGRAM,
-// issue #35, THIRD_PARTY.md #39).
+// docs/gwg_protocol.md).
 //
 //   * Default 0: the request goes out as one write in the pass that read the
 //     ENQ, and the measured gap reads 0.

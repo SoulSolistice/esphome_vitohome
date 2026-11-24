@@ -2,7 +2,7 @@
 // path proof_gwg_poke.cpp never exercised (it only asserts the EOT-poke
 // switch; no read has ever completed in a host test before this file).
 //
-// Guards the THIRD_PARTY.md #8 fix: upstream compared the received byte count
+// Guards the read completion: VitoWiFi compared the received byte count
 // against the REQUEST frame length (5 for a read), so a GWG read of any
 // length != 5 could never complete. The correct completion is the datapoint's
 // own length for a read (source-confirmed: vcontrold GWG getaddr = "SEND 01 CB

@@ -4,7 +4,7 @@ Copyright (c) 2023 Bert Melis. All rights reserved.
 This work is licensed under the terms of the MIT license.
 For a copy, see <https://opensource.org/licenses/MIT> or LICENSE.optolink.
 
-Modified as part of vitohome (vendored & de-branded) - see THIRD_PARTY.md.
+Modified as part of vitohome - see NOTICE.md.
 */
 
 // Include guards, not #pragma once: see optolink_types.h.
@@ -17,8 +17,8 @@ namespace esphome::vitohome::optolink {
 
 // Vestigial converter tag: every Datapoint is built with `noconv`, and the
 // component decodes and encodes the raw bytes itself (decode.h). The tag stays
-// so the Datapoint constructor and the codegen that emits it stay as they are
-// (THIRD_PARTY.md items 13 and 15).
+// so the Datapoint constructor and the codegen that emits it stay as they
+// are.
 class Converter {};
 class NoconvConvert : public Converter {};
 inline NoconvConvert noconv;

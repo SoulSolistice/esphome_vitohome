@@ -15,8 +15,10 @@ becomes `esphome::vitohome::optolink_ref`. The script refuses to run over an
 existing copy. Apart from the namespace, the 18 copied files
 equal the live ones at the branch point. `helpers.h` is a shim to the live clock
 (`optolink_clock.h`), so both sides share one test clock, `logging.h` keeps
-the logging silent, and `optolink.h` includes the engines only. The build files, `datapoint/` and `THIRD_PARTY.md`
-are not copied.
+the logging silent, and `optolink.h` includes the engines only. The build files and `datapoint/`
+are not copied. The files' headers name `THIRD_PARTY.md`, which is gone: what
+it recorded is in `docs/*_protocol.md` and `docs/design_notes.md`, the
+attribution in `NOTICE.md`.
 
 Compiled only in the native tests. It outlived `optolink/` (stage 6): the
 GWG changes of stage 5c are still measured against it. It goes once its

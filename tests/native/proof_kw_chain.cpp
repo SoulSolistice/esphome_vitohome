@@ -1,4 +1,4 @@
-// KW chaining and its two windows (THIRD_PARTY.md #22), on the KW exchange
+// KW chaining and its two windows (docs/kw_protocol.md), on the KW exchange
 // (optolink_kw.h).
 //
 // A VScotHO1_72 (0x20CB) answers a whole poll cycle off one ENQ: on a capture

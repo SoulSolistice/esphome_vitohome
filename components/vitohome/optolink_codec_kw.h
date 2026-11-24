@@ -23,7 +23,7 @@ namespace esphome::vitohome::optolink {
 // The KW TYPE bytes with a name. 6B reads the burner control (GFA) in its own
 // address space, a KW telegram only: a VScotHO1_72 refuses it as a P300
 // function code (error 05), so the P300 engine reads it over the KW detour
-// (THIRD_PARTY.md item 27).
+// (docs/kw_protocol.md).
 constexpr struct {
   uint8_t READ = 0xF7;
   uint8_t WRITE = 0xF4;
@@ -33,7 +33,7 @@ constexpr struct {
 // The least pause between an answer and a GFA read chained onto it: the read
 // is forwarded to the burner control, a second controller. A VScotHO1_72
 // answered every 6B sent 25 ms after the previous answer (2026-10-26); without
-// the pause it was never tried (THIRD_PARTY.md item 27).
+// the pause it was never tried.
 inline constexpr uint8_t KW_GFA_GAP_MS = 25;
 
 // The longest KW telegram or open frame: the header and MAX_PAYLOAD bytes.

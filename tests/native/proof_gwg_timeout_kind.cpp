@@ -1,4 +1,4 @@
-// Proves Result::never_sent (THIRD_PARTY.md #31), the fact the
+// Proves Result::never_sent, the fact the
 // hub's link monitor needs and a bare TIMEOUT does not carry.
 //
 // GWG has no error telegram, so a TIMEOUT has two unrelated causes:

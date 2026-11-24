@@ -8,9 +8,8 @@ climate and event. The component decodes and encodes raw Optolink payloads
 itself (see ``decode.h``); its engine (``optolink_*.h``) only moves bytes, and
 every ``Datapoint`` is built with the vestigial ``optolink::noconv``.
 
-Why the component decodes rather than using engine converters -- upstream ships
-a converter layer, but the vendored copy removed it (THIRD_PARTY.md 13/15)
-precisely because:
+Why the component decodes rather than using engine converters -- VitoWiFi,
+which the engine began as, has a converter layer, which was dropped because:
   * its accessor returned a tagless union with no record of which member was
     written, so reading the wrong member silently returned garbage; and
   * it did all converter math in float32, which loses precision for 4-byte

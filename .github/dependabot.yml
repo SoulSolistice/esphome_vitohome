@@ -5,7 +5,7 @@
 #     watched non-blocking by .github/workflows/upstream-canary.yml instead.
 #   - pre-commit hook revs (clang-format, ruff, yamllint) are not a Dependabot
 #     ecosystem; refresh them with `pre-commit autoupdate`.
-#   - the vendored optolink engine (THIRD_PARTY.md) is not a manifest dependency
+#   - the optolink engine is the component's own code, not a manifest dependency
 #     and is updated deliberately, not automatically.
 version: 2
 updates:

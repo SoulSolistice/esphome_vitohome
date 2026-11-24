@@ -20,7 +20,7 @@
 //       ("address not in use", uwen70) is delivered as 0xFF, not as an error;
 //   (6) PHYSICAL reads are untouched: LEN as requested, bytes as received;
 //   (7) the timing instrument fires once per datapoint, not per pair;
-//   (8) lastReadHadUnservedEeprom() (THIRD_PARTY.md #25) is true inside the
+//   (8) lastReadHadUnservedEeprom() (Result::unserved_eeprom) is true inside the
 //       callback exactly when an FF FF pair was part of the read -- also as
 //       the SECOND pair of a 2-byte read -- and false for a good EEPROM read,
 //       after a reset by the next read, and for every PHYSICAL read. The

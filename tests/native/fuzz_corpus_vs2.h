@@ -39,7 +39,7 @@ inline constexpr uint8_t kSeed_hw_read_resp_7b[] = {
     0x41, 0x0C, 0x01, 0x01, 0x08, 0xE0, 0x07, 0x35, 0x34, 0x36, 0x34, 0x37, 0x39, 0x33, 0x73,
 };
 
-// payload-length 0 on a payload-bearing type: the historic OOB write (THIRD_PARTY.md #12)
+// payload-length 0 on a payload-bearing type: the historic OOB write
 inline constexpr uint8_t kSeed_zero_payload_resp[] = {
     0x41, 0x05, 0x01, 0x01, 0x08, 0x00, 0x00, 0x0F,
 };
@@ -141,7 +141,7 @@ inline constexpr uint8_t kSeed_payload_len_mismatch[] = {
     0x41, 0x07, 0x01, 0x01, 0x55, 0x25, 0x05, 0x00,
 };
 // RPC answer whose DataLength is the parameter's length (1), not the six bytes the
-// frame carries -- delivered by the frame length since the RPC change (THIRD_PARTY #26)
+// frame carries -- delivered by the frame length
 inline constexpr uint8_t kSeed_rpc_resp_param_len[] = {
     0x41, 0x0B, 0x01, 0x07, 0xA0, 0x10, 0x01, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x29,
 };
@@ -166,7 +166,7 @@ inline constexpr uint8_t kSeed_rpc_resp_len255[] = {
 };
 
 // The controller's refusal of 0x6B as a P300 function code (VScotHO1_72,
-// 2026-10-27; THIRD_PARTY #27): an ERROR frame whose flags byte echoes 0x6B,
+// 2026-10-27): an ERROR frame whose flags byte echoes 0x6B,
 // which is no function code this parser takes (low five bits 0x0B) -> ERROR at
 // FLAGS, unless a raw request for 0B expects it. The engine never sends 0x6B
 // over P300 itself; it drops to KW for it.

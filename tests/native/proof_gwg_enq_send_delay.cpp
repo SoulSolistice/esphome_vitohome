@@ -1,5 +1,5 @@
 // Proves the diagnostic GWG ENQ-to-send delay (TimingPoint::ENQ_TO_SEND,
-// issue #35, THIRD_PARTY.md #33).
+// docs/gwg_protocol.md).
 //
 //   * Default 0: the request goes out in the loop() pass that read the ENQ,
 //     exactly as before, and enq->send reads 0.
