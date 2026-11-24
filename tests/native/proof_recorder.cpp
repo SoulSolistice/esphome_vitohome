@@ -15,7 +15,13 @@
 //       NACKs: the states of a pass on one line, the fact with its own;
 //   (9) freeze on a retry: a KW read met by silence, answered on the next
 //       ENQ; frozen_by_failure() once its after-entries are in, which the
-//       hub's dump_on_freeze waits for.
+//       hub's dump_on_freeze waits for;
+//  (10) a ring in a store (RTC memory on a device): power-on garbage is no
+//       ring; after a restart the store holds it whole, restore() copies it
+//       frozen by "the restart", oldest to newest, dumped alike as often as
+//       asked until released, while a new ring records in the same store;
+//  (11) a ring frozen by a timeout keeps its trigger and nothing after the
+//       freeze; a header that does not check out is not taken.
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -30,6 +36,9 @@
 
 using esphome::vitohome::RECORDER_FREEZE_ERROR;
 using esphome::vitohome::RECORDER_FREEZE_TIMEOUT;
+using esphome::vitohome::RecorderEntry;
+using esphome::vitohome::RecorderHeader;
+using esphome::vitohome::RecorderStore;
 using esphome::vitohome::VitoRecorder;
 namespace optolink = esphome::vitohome::optolink;
 using optolink::OptolinkResult;
@@ -337,6 +346,64 @@ int main() {
     (void) manual.allocate(32, 0, 0, fake_micros);
     (void) manual.start_dump();
     check(!manual.frozen_by_failure(), "(9) a ring frozen by the dump is not frozen by a failure");
+  }
+
+  // (10)
+  {
+    RecorderHeader header;
+    RecorderEntry entries[64];
+    std::memset(&header, 0xA5, sizeof(header));
+    std::memset(entries, 0xA5, sizeof(entries));
+    const RecorderStore store{&header, entries, 64};
+    check(!VitoRecorder::held_before(store), "(10) power-on garbage: no ring");
+    {
+      VitoRecorder rec;
+      check(!rec.allocate(65, 0, 0, fake_micros, &store), "(10) more entries than the store holds refused");
+      check(rec.allocate(48, 0, RECORDER_FREEZE_TIMEOUT, fake_micros, &store), "(10) 48 entries in the store");
+      for (uint16_t i = 0; i < 60; ++i) {
+        g_us = 1000U * i;
+        rec.set_pass(i);
+        rec.rx(static_cast<uint8_t>(i));
+      }
+    }
+    check(VitoRecorder::held_before(store), "(10) after the restart the store holds the ring");
+    VitoRecorder previous;
+    check(previous.restore(store, fake_micros) && previous.restored(), "(10) restored");
+    VitoRecorder live;
+    check(live.allocate(48, 0, 0, fake_micros, &store), "(10) a new ring in the same store");
+    live.rx(0x99);
+    const auto lines = dump(previous);
+    check(lines.size() == 49 && lines[0].find("48 of 48 entries, frozen by the restart") != std::string::npos,
+          "(10) the header: all 48, frozen by the restart");
+    check(lines.size() == 49 && lines[1] == "rec +0.000 p12 <<< 0C" && lines[48] == "rec +47.000 p59 <<< 3B",
+          "(10) oldest to newest as recorded");
+    check(previous.frozen() && previous.held() == 48, "(10) frozen after its dump");
+    check(dump(previous) == lines, "(10) and dumped again alike");
+    previous.release();
+    check(!previous.enabled(), "(10) released");
+    check(live.held() == 1 && !live.frozen(), "(10) the new ring records on");
+  }
+
+  // (11)
+  {
+    RecorderHeader header{};
+    RecorderEntry entries[32];
+    const RecorderStore store{&header, entries, 32};
+    {
+      VitoRecorder rec;
+      (void) rec.allocate(32, 0, RECORDER_FREEZE_TIMEOUT, fake_micros, &store);
+      rec.rx(0x05);
+      rec.result(OptolinkResult::TIMEOUT, 0x00F8);
+      rec.rx(0x06);
+    }
+    VitoRecorder previous;
+    check(previous.restore(store, fake_micros), "(11) restored");
+    const auto lines = dump(previous);
+    check(!lines.empty() && lines[0].find("frozen by a timeout") != std::string::npos, "(11) its trigger kept");
+    check(has(lines, "= timeout @00F8") && has(lines, "<<< 05") && !has(lines, "<<< 06"),
+          "(11) the timeout, and nothing after the freeze");
+    header.count = static_cast<uint16_t>(header.count ^ 1U);
+    check(!VitoRecorder::held_before(store), "(11) a header that does not check out is not taken");
   }
 
   std::printf("recorder: %d failure(s)\n", g_failures);

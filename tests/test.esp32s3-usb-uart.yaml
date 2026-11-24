@@ -30,6 +30,7 @@
 # ESPHome 2026.7.0 and the one a usb_uart user on an unpinned ESPHome gets.
 
 substitutions:
+  recorder_persist: "false"
   name: vitohome-test-usb-uart
   protocol: P300
   log_frames: "false"

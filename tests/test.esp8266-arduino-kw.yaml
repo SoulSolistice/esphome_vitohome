@@ -2,6 +2,7 @@
 # Compile gate: the KW engine through the ESP8266 toolchain, whose millis()
 # branch and heap budget no ESP32 build reaches.
 substitutions:
+  recorder_persist: "false"
   name: vitohome-test-esp8266-kw
   protocol: KW
   log_frames: "false"

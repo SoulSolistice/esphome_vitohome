@@ -15,8 +15,43 @@
 #ifdef VITOHOME_TIME_SYNC
 #include "esphome/components/time/real_time_clock.h"
 #endif
+#if defined(VITOHOME_RECORDER) && defined(USE_API)
+#include "esphome/components/api/api_server.h"
+#endif
+#ifdef VITOHOME_RECORDER_PERSIST
+#include <esp_attr.h>
+#include <esp_system.h>
+#endif
 
 namespace esphome::vitohome {
+
+#ifdef VITOHOME_RECORDER_PERSIST
+// RTC memory: kept across every reset but a power loss.
+static RTC_NOINIT_ATTR RecorderHeader recorder_header;
+static RTC_NOINIT_ATTR RecorderEntry recorder_entries[VITOHOME_RECORDER_PERSIST];
+static const RecorderStore RECORDER_STORE{&recorder_header, recorder_entries, VITOHOME_RECORDER_PERSIST};
+
+// The reset, if it kept RTC memory; nullptr if it did not (power on,
+// brownout) or is not known.
+static const char *kept_reset_reason() {
+  switch (esp_reset_reason()) {
+    case ESP_RST_SW:
+      return "software";
+    case ESP_RST_PANIC:
+      return "panic";
+    case ESP_RST_INT_WDT:
+      return "interrupt watchdog";
+    case ESP_RST_TASK_WDT:
+      return "task watchdog";
+    case ESP_RST_WDT:
+      return "watchdog";
+    case ESP_RST_DEEPSLEEP:
+      return "deep sleep";
+    default:
+      return nullptr;
+  }
+}
+#endif
 
 static const char *const TAG = "vitohome";
 
@@ -135,8 +170,13 @@ void VitoHomeComponent::setup() {
 #ifdef VITOHOME_RECORDER
   // Before begin(), so the bytes it drains are recorded, with the link's
   // states and facts. Not fatal: the hub runs without it.
-  if (this->recorder_.allocate(this->recorder_size_, this->recorder_after_, this->recorder_freeze_on_,
-                               []() -> uint32_t { return micros(); })) {
+  this->recorder_restore_();
+  const RecorderStore *store = nullptr;
+#ifdef VITOHOME_RECORDER_PERSIST
+  store = &RECORDER_STORE;
+#endif
+  const VitoRecorder::Clock clock = []() -> uint32_t { return micros(); };
+  if (this->recorder_.allocate(this->recorder_size_, this->recorder_after_, this->recorder_freeze_on_, clock, store)) {
     this->iface_.set_recorder(&this->recorder_);
     this->recorder_.set_state_names(&SelectedEngine<ESPHomeUARTInterface>::state_name);
     this->vito_.set_sink(optolink::LinkSink{&VitoRecorder::link_trace, &this->recorder_});
@@ -344,11 +384,36 @@ static const char *const TAG_RECORDER = "vitohome.recorder";
 // consumers.
 static constexpr uint8_t RECORDER_LINES_PER_PASS = 2;
 
-void VitoHomeComponent::recorder_dump() {
-  if (!this->recorder_.start_dump()) {
-    ESP_LOGW(TAG_RECORDER, "%s", this->recorder_.enabled() ? "a dump is running" : "recording is off");
+void VitoHomeComponent::recorder_restore_() {
+#ifdef VITOHOME_RECORDER_PERSIST
+  const char *reason = kept_reset_reason();
+  if (reason == nullptr || !this->previous_.restore(RECORDER_STORE, []() -> uint32_t { return micros(); }))
     return;
-  }
+  this->previous_reset_ = reason;
+  this->previous_.set_state_names(&SelectedEngine<ESPHomeUARTInterface>::state_name);
+  ESP_LOGI(TAG_RECORDER, "%u entries kept from before the restart (%s); dumped once a log client connects",
+           static_cast<unsigned>(this->previous_.held()), reason);
+#endif
+}
+
+bool VitoHomeComponent::recorder_audience_() const {
+#ifdef USE_API
+  return api::global_api_server != nullptr && api::global_api_server->is_connected();
+#else
+  return true;
+#endif
+}
+
+void VitoHomeComponent::recorder_start_previous_dump_() {
+  if (!this->previous_.start_dump())
+    return;
+  ESP_LOGI(TAG_RECORDER, "rec from before the restart (reset: %s)", this->previous_reset_);
+  ESP_LOGI(TAG_RECORDER, "rec protocol %s, times in ms from the first entry", PROTOCOL_NAME);
+}
+
+void VitoHomeComponent::recorder_start_live_dump_() {
+  if (!this->recorder_.start_dump())
+    return;
   ESP_LOGI(TAG_RECORDER, "rec protocol %s, times in ms from the first entry", PROTOCOL_NAME);
   for (uint8_t i = 0; i < optolink::TIMING_POINTS; ++i)
     this->warn_link_timing_(static_cast<TimingPoint>(i));
@@ -356,22 +421,49 @@ void VitoHomeComponent::recorder_dump() {
     this->warn_link_window_(static_cast<LinkWindow>(i));
 }
 
-void VitoHomeComponent::recorder_arm() {
-  if (this->recorder_.dumping())
+void VitoHomeComponent::recorder_dump() {
+  if (this->recorder_.dumping() || this->previous_.dumping() || !this->recorder_.enabled()) {
+    ESP_LOGW(TAG_RECORDER, "%s", this->recorder_.enabled() ? "a dump is running" : "recording is off");
     return;
+  }
+  if (this->previous_.enabled()) {
+    this->previous_shown_ = true;
+    this->live_after_previous_ = true;
+    this->recorder_start_previous_dump_();
+    return;
+  }
+  this->recorder_start_live_dump_();
+}
+
+void VitoHomeComponent::recorder_arm() {
+  if (this->recorder_.dumping() || this->previous_.dumping())
+    return;
+  this->previous_.release();
   this->recorder_.arm();
 }
 
 void VitoHomeComponent::recorder_loop_() {
-  // Unattended: each failure's entries to the log as soon as they are taken.
-  if (this->recorder_dump_on_freeze_ && this->recorder_.frozen_by_failure())
-    this->recorder_dump();
-  if (!this->recorder_.dumping())
+  // Held until someone can read them: the ring from before the restart once,
+  // and with dump_on_freeze each failure's entries as soon as they are taken.
+  const bool idle = !this->recorder_.dumping() && !this->previous_.dumping();
+  if (idle && this->previous_.enabled() && !this->previous_shown_ && this->recorder_audience_()) {
+    this->previous_shown_ = true;
+    this->recorder_start_previous_dump_();
+  } else if (idle && this->recorder_dump_on_freeze_ && this->recorder_.frozen_by_failure() &&
+             this->recorder_audience_()) {
+    this->recorder_start_live_dump_();
+  }
+  VitoRecorder &rec = this->previous_.dumping() ? this->previous_ : this->recorder_;
+  if (!rec.dumping())
     return;
   char line[VitoRecorder::LINE_CAPACITY];
   for (uint8_t i = 0; i < RECORDER_LINES_PER_PASS; ++i) {
-    if (!this->recorder_.next_dump_line(line, sizeof(line))) {
+    if (!rec.next_dump_line(line, sizeof(line))) {
       ESP_LOGI(TAG_RECORDER, "rec end");
+      if (&rec == &this->previous_ && this->live_after_previous_) {
+        this->live_after_previous_ = false;
+        this->recorder_start_live_dump_();
+      }
       return;
     }
     ESP_LOGI(TAG_RECORDER, "%s", line);

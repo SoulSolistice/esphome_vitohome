@@ -79,6 +79,8 @@ vitohome:
     freeze_on: [timeout, error, retry]
     after: 64
     dump_on_freeze: true
+    # -DVITOHOME_RECORDER_PERSIST on test.esp32-idf-native.yaml only.
+    persist: ${recorder_persist}
 
 sensor:
   # div10 SIGNED via converter default

@@ -112,6 +112,7 @@ CONF_SIZE = "size"
 CONF_FREEZE_ON = "freeze_on"
 CONF_AFTER = "after"
 CONF_DUMP_ON_FREEZE = "dump_on_freeze"
+CONF_PERSIST = "persist"
 # VitoRecorder::MIN_SIZE and MAX_SIZE; 8 bytes an entry.
 RECORDER_MIN_SIZE = 32
 RECORDER_MAX_SIZE = 4096
@@ -119,6 +120,11 @@ RECORDER_SIZE_ESP8266 = 256
 RECORDER_SIZE_DEFAULT = 512
 # RecorderTrigger; `manual`: only a dump freezes it.
 RECORDER_FREEZE = {"timeout": 1, "error": 2, "retry": 4, "manual": 0}
+# `persist:` keeps the ring in RTC memory, 8 KB on the ESP32 variants that
+# have it and shared with ESPHome's own; ESP8266's 512 bytes hold ESPHome's
+# preferences and the boot loader's data.
+RECORDER_PERSIST_MAX = 512
+RECORDER_PERSIST_NO_RTC = ("ESP32C2", "ESP32C61")
 
 
 def _target_is_esp8266():
@@ -127,6 +133,18 @@ def _target_is_esp8266():
         return CORE.is_esp8266
     except KeyError:
         return False
+
+
+def _esp32_variant():
+    # None: not an ESP32 build, or no platform at all (the unit tests).
+    try:
+        if not CORE.is_esp32:
+            return None
+        from esphome.components.esp32 import get_esp32_variant
+
+        return get_esp32_variant()
+    except KeyError:
+        return None
 
 
 def _validate_recorder(config):
@@ -142,6 +160,15 @@ def _validate_recorder(config):
         config[CONF_AFTER] = config[CONF_SIZE] // 4
     if config[CONF_AFTER] >= config[CONF_SIZE]:
         raise cv.Invalid(f"'{CONF_AFTER}' must be less than '{CONF_SIZE}' ({config[CONF_SIZE]})", path=[CONF_AFTER])
+    if config[CONF_PERSIST]:
+        variant = _esp32_variant()
+        if variant is None or variant in RECORDER_PERSIST_NO_RTC:
+            raise cv.Invalid(
+                f"'{CONF_PERSIST}' needs RTC memory: an ESP32 other than {' and '.join(RECORDER_PERSIST_NO_RTC)}",
+                path=[CONF_PERSIST],
+            )
+        if config[CONF_SIZE] > RECORDER_PERSIST_MAX:
+            raise cv.Invalid(f"'{CONF_PERSIST}' holds at most {RECORDER_PERSIST_MAX} entries", path=[CONF_SIZE])
     return config
 
 
@@ -154,6 +181,9 @@ RECORDER_SCHEMA = cv.All(
             # Each frozen ring to the log at once, then recording again: for
             # an unattended run.
             cv.Optional(CONF_DUMP_ON_FREEZE, default=False): cv.boolean,
+            # The ring in RTC memory: kept across a restart but not a power
+            # loss, and dumped once a log client connects.
+            cv.Optional(CONF_PERSIST, default=False): cv.boolean,
         }
     ),
     _validate_recorder,
@@ -1681,6 +1711,8 @@ async def to_code(config):
         for trigger in recorder[CONF_FREEZE_ON]:
             freeze_on |= RECORDER_FREEZE[trigger]
         cg.add(var.set_recorder(recorder[CONF_SIZE], recorder[CONF_AFTER], freeze_on, recorder[CONF_DUMP_ON_FREEZE]))
+        if recorder[CONF_PERSIST]:
+            cg.add_build_flag(f"-DVITOHOME_RECORDER_PERSIST={recorder[CONF_SIZE]}")
     if config[CONF_RAW_ACCESS] == RAW_ACCESS_UNRESTRICTED:
         cg.add_build_flag("-DVITOHOME_RAW_UNRESTRICTED")
         _LOGGER.warning(

@@ -13,6 +13,10 @@
 // RX byte is stamped when it is read from the UART buffer, not when it
 // arrived, so `pass` says which bytes one loop pass handled. A write is
 // stamped before it is handed to the UART.
+//
+// With a RecorderStore the ring and its state live in memory the caller keeps
+// (RTC memory on a device, `persist:`); after a restart held_before() and
+// restore() take a whole ring out of it for a dump.
 
 #include <cinttypes>
 #include <cstddef>
@@ -50,6 +54,8 @@ enum RecorderTrigger : uint8_t {
   // A telegram met by silence that goes out again (LinkFact::RETRY), even
   // when the retry is answered.
   RECORDER_FREEZE_RETRY = 1U << 2,
+  // Not a freeze_on choice: a ring that was recording when the unit restarted.
+  RECORDER_RESTART = 1U << 7,
 };
 
 struct RecorderEntry {
@@ -59,6 +65,26 @@ struct RecorderEntry {
   uint8_t value;
 };
 static_assert(sizeof(RecorderEntry) == 8, "8 bytes an entry");
+
+// The ring's state, next to its entries in a RecorderStore. `check` covers
+// the fields before it.
+struct RecorderHeader {
+  uint32_t magic;
+  uint16_t size;
+  uint16_t head;
+  uint16_t count;
+  uint16_t triggers_since;
+  uint8_t trigger;
+  uint8_t state;
+  uint16_t check;
+};
+
+// A ring the caller keeps: its header and `capacity` entries.
+struct RecorderStore {
+  RecorderHeader *header;
+  RecorderEntry *entries;
+  uint16_t capacity;
+};
 
 class VitoRecorder {
  public:
@@ -71,14 +97,23 @@ class VitoRecorder {
   static constexpr uint8_t BYTES_PER_LINE = 24;
   static constexpr std::size_t LINE_CAPACITY = 32 + 3 * BYTES_PER_LINE;
 
-  // Once, in setup(). False: a setting is out of range or the allocation
-  // failed; the recorder stays off.
-  bool allocate(uint16_t size, uint16_t after, uint8_t freeze_on, Clock clock) {
+  // Once, in setup(). With `store` the ring is the store's, which holds at
+  // least `size` entries; restore() first what it should keep. False: a
+  // setting is out of range or the allocation failed; the recorder stays off.
+  bool allocate(uint16_t size, uint16_t after, uint8_t freeze_on, Clock clock, const RecorderStore *store = nullptr) {
     if (entries_ != nullptr || size < MIN_SIZE || size > MAX_SIZE || after >= size || clock == nullptr)
       return false;
-    entries_.reset(new (std::nothrow) RecorderEntry[size]);
-    if (entries_ == nullptr)
-      return false;
+    if (store != nullptr) {
+      if (store->header == nullptr || store->entries == nullptr || store->capacity < size)
+        return false;
+      entries_ = store->entries;
+      header_ = store->header;
+    } else {
+      owned_.reset(new (std::nothrow) RecorderEntry[size]);
+      entries_ = owned_.get();
+      if (entries_ == nullptr)
+        return false;
+    }
     size_ = size;
     after_ = after;
     freeze_on_ = freeze_on;
@@ -87,7 +122,57 @@ class VitoRecorder {
     return true;
   }
 
+  // Whether `store` holds a whole ring: its header checks out, and its
+  // place and count fit its size and the store. Not whether the memory was
+  // kept: the caller knows that from the reset reason.
+  static bool held_before(const RecorderStore &store) {
+    if (store.header == nullptr || store.entries == nullptr)
+      return false;
+    const RecorderHeader &h = *store.header;
+    return h.magic == MAGIC && h.check == check_of(h) && h.size >= MIN_SIZE && h.size <= store.capacity &&
+           h.head < h.size && h.count <= h.size && h.count != 0 && h.state <= static_cast<uint8_t>(State::DUMPING);
+  }
+
+  // A copy of the ring `store` held, frozen, for dumps; its trigger, or
+  // RECORDER_RESTART if it was recording. Unlike a recording ring it stays
+  // frozen after a dump, until release(). False: no whole ring, or no memory.
+  bool restore(const RecorderStore &store, Clock clock) {
+    if (entries_ != nullptr || clock == nullptr || !held_before(store))
+      return false;
+    const RecorderHeader &h = *store.header;
+    owned_.reset(new (std::nothrow) RecorderEntry[h.count]);
+    entries_ = owned_.get();
+    if (entries_ == nullptr)
+      return false;
+    const uint16_t oldest = h.count < h.size ? 0 : h.head;
+    for (uint16_t i = 0; i < h.count; ++i)
+      owned_[i] = store.entries[(oldest + i) % h.size];
+    size_ = h.count;
+    count_ = h.count;
+    head_ = 0;
+    clock_ = clock;
+    const auto state = static_cast<State>(h.state);
+    trigger_ = state == State::RECORDING ? static_cast<uint8_t>(RECORDER_RESTART) : h.trigger;
+    triggers_since_ = h.triggers_since;
+    restored_ = true;
+    state_ = State::FROZEN;
+    return true;
+  }
+
+  // Frees the ring; the recorder is off.
+  void release() {
+    owned_.reset();
+    entries_ = nullptr;
+    header_ = nullptr;
+    size_ = 0;
+    count_ = 0;
+    head_ = 0;
+    restored_ = false;
+    state_ = State::RECORDING;
+  }
+
   bool enabled() const { return entries_ != nullptr; }
+  bool restored() const { return restored_; }
   uint16_t size() const { return size_; }
   uint16_t held() const { return count_; }
   bool frozen() const { return state_ == State::FROZEN || state_ == State::DUMPING; }
@@ -148,6 +233,7 @@ class VitoRecorder {
     triggers_since_ = 0;
     trigger_ = 0;
     state_ = State::RECORDING;
+    this->seal_();
   }
 
   // Freezes the ring if it is not frozen and starts the dump. False while one
@@ -158,6 +244,7 @@ class VitoRecorder {
     state_ = State::DUMPING;
     cursor_ = 0;
     header_done_ = false;
+    this->seal_();
     return true;
   }
 
@@ -175,7 +262,11 @@ class VitoRecorder {
       return true;
     }
     if (cursor_ >= count_) {
-      this->arm();
+      if (restored_) {
+        state_ = State::FROZEN;
+      } else {
+        this->arm();
+      }
       return false;
     }
     this->format_line_(line, capacity);
@@ -190,9 +281,18 @@ class VitoRecorder {
         return "an error";
       case RECORDER_FREEZE_RETRY:
         return "a retry";
+      case RECORDER_RESTART:
+        return "the restart";
       default:
         return "nothing";
     }
+  }
+
+  static uint16_t check_of(const RecorderHeader &h) {
+    uint32_t c = h.magic ^ (static_cast<uint32_t>(h.size) << 16) ^ h.head ^ (static_cast<uint32_t>(h.count) << 16) ^
+                 h.triggers_since ^ (static_cast<uint32_t>(h.trigger) << 16) ^ (static_cast<uint32_t>(h.state) << 24);
+    c ^= c >> 16;
+    return static_cast<uint16_t>(~c);
   }
 
   static const char *status_name(uint8_t value) {
@@ -202,6 +302,23 @@ class VitoRecorder {
 
  private:
   enum class State : uint8_t { RECORDING, AFTER, FROZEN, DUMPING };
+  // "VRC" and the entry layout's version.
+  static constexpr uint32_t MAGIC = 0x56524301;
+
+  // The state into the store's header, if there is one.
+  void seal_() {
+    if (header_ == nullptr)
+      return;
+    RecorderHeader &h = *header_;
+    h.magic = MAGIC;
+    h.size = size_;
+    h.head = head_;
+    h.count = count_;
+    h.triggers_since = triggers_since_;
+    h.trigger = trigger_;
+    h.state = static_cast<uint8_t>(state_);
+    h.check = check_of(h);
+  }
 
   const RecorderEntry &at_(uint16_t i) const {
     const uint16_t oldest = count_ < size_ ? 0 : head_;
@@ -217,6 +334,7 @@ class VitoRecorder {
       ++count_;
     if (state_ == State::AFTER && --remaining_after_ == 0)
       state_ = State::FROZEN;
+    this->seal_();
   }
 
   void record_arg_(uint32_t t_us, RecordArg arg, uint16_t value) {
@@ -230,17 +348,20 @@ class VitoRecorder {
     if (state_ != State::RECORDING) {
       if (triggers_since_ != UINT16_MAX)
         ++triggers_since_;
+      this->seal_();
       return;
     }
     trigger_ = trigger;
     if (after_ == 0) {
       this->record_(t_us, RecordKind::TRIGGER, trigger);
       state_ = State::FROZEN;
+      this->seal_();
       return;
     }
     remaining_after_ = after_;
     this->record_(t_us, RecordKind::TRIGGER, trigger);
     state_ = State::AFTER;
+    this->seal_();
   }
 
   const char *state_name_(uint8_t state) const { return state_names_ != nullptr ? state_names_(state) : "?"; }
@@ -325,7 +446,9 @@ class VitoRecorder {
     }
   }
 
-  std::unique_ptr<RecorderEntry[]> entries_;
+  std::unique_ptr<RecorderEntry[]> owned_;
+  RecorderEntry *entries_{nullptr};
+  RecorderHeader *header_{nullptr};
   Clock clock_{nullptr};
   StateName state_names_{nullptr};
   uint16_t size_{0};
@@ -340,6 +463,7 @@ class VitoRecorder {
   uint8_t freeze_on_{0};
   uint8_t trigger_{0};
   bool header_done_{false};
+  bool restored_{false};
   State state_{State::RECORDING};
 };
 

@@ -1958,7 +1958,18 @@ of 8-byte entries (`vito_recorder.h`):
 - **Freeze:** on the first timeout, error or retry (`freeze_on:`), the ring
   takes `after:` more entries, then keeps what it holds. Later failures are
   only counted. With `dump_on_freeze: true` the hub dumps it as soon as it
-  is frozen, so an unattended run logs every failure in turn.
+  is frozen and an API client is connected (any time without `api:`), so an
+  unattended run logs every failure in turn; until then the ring stays
+  frozen.
+- **Across a restart:** with `persist: true` the ring and its state live in
+  RTC no-init memory (ESP32 variants that have it, at most 512 entries). A
+  reset that keeps that memory (software, panic, watchdogs, deep sleep)
+  keeps the ring; at boot the hub copies a ring whose header checks out
+  aside, frozen by its trigger or by "the restart", records anew in RTC, and
+  dumps the copy once an API client connects. The copy stays for further
+  dumps until `recorder_arm()`. A power-on or brownout reset discards it.
+  ESP8266's 512 bytes of RTC memory hold ESPHome's preferences and the boot
+  loader's data, so it has no `persist`.
 - **Dump:** two lines per loop pass under `vitohome.recorder`. One line holds
   the bytes of one direction in one pass, prefixed by `+ms.µs` from the
   oldest entry; `~ <state>` and `* <fact> [<arg>]` lines stand between them
@@ -2266,8 +2277,7 @@ rest.
 
 **Engine and recorder**
 
-- **Recorder:** keeping a frozen ring across a restart (RTC memory: 8 KB on
-  ESP32, 512 bytes on ESP8266), and a `freeze_on: resync` trigger.
+- **Recorder:** a `freeze_on: resync` trigger.
 - **Sharing the UART** with `uart_mux`, `serial_proxy` or `tcp_uart`: the
   engine owns the port, so another user needs a way to pause and resume it.
 - **A NACK retry on P300.** The telegram after a NACK now waits out the

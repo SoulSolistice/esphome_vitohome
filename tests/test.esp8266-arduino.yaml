@@ -9,6 +9,7 @@
 # single source of entity coverage while this file only swaps the wiring.
 
 substitutions:
+  recorder_persist: "false"
   name: vitohome-test-esp8266
   protocol: P300
   log_frames: "false"

@@ -123,8 +123,10 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   }
   // Dumps the recorder to the log at INFO (tag vitohome.recorder), a few lines
   // per loop pass, freezing it first if no failure did; the dump re-arms it.
+  // A ring kept from before the restart (`persist:`) comes first.
   void recorder_dump();
-  // Clears the recorder, frozen or not, and records again.
+  // Clears the recorder, frozen or not, and records again; drops a ring kept
+  // from before the restart.
   void recorder_arm();
 
   // Slots of the raw lane (scan console), allocated in setup(); see
@@ -460,7 +462,17 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
 #ifdef VITOHOME_RECORDER
   VitoRecorder recorder_;
   uint16_t loop_pass_{0};
+  // The ring from before the restart (`persist:`), held until recorder_arm().
+  VitoRecorder previous_;
+  const char *previous_reset_{""};
+  bool previous_shown_{false};
+  bool live_after_previous_{false};
   void recorder_loop_();
+  void recorder_restore_();
+  void recorder_start_live_dump_();
+  void recorder_start_previous_dump_();
+  // Someone can read a dump: an API client is connected, or there is no API.
+  bool recorder_audience_() const;
 #endif
 #ifdef VITOHOME_RAW_SCRIPT
   RawScript<ESPHomeUARTInterface> raw_script_{&this->iface_};

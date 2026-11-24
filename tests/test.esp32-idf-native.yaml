@@ -1,4 +1,5 @@
 substitutions:
+  recorder_persist: "true"
   name: vitohome-test-idf-native
   protocol: P300
   log_frames: "false"

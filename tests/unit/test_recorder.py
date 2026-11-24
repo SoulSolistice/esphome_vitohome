@@ -2,7 +2,8 @@
 
 The size defaults to 256 entries on ESP8266 and 512 elsewhere, `after` to a
 quarter of it; `freeze_on` takes timeout, error and retry, or manual alone;
-`dump_on_freeze` dumps each frozen ring at once. The
+`dump_on_freeze` dumps each frozen ring at once; `persist` keeps the ring in
+RTC memory, on an ESP32 that has it, up to 512 entries. The
 bounds match VitoRecorder (test_limits_agree.py). The `recorder_dump` button
 dumps it.
 """
@@ -26,10 +27,12 @@ from components.vitohome import (  # noqa: E402
     CONF_AFTER,
     CONF_DUMP_ON_FREEZE,
     CONF_FREEZE_ON,
+    CONF_PERSIST,
     CONF_SIZE,
     RECORDER_FREEZE,
     RECORDER_MAX_SIZE,
     RECORDER_MIN_SIZE,
+    RECORDER_PERSIST_MAX,
     RECORDER_SCHEMA,
     RECORDER_SIZE_DEFAULT,
     RECORDER_SIZE_ESP8266,
@@ -52,6 +55,7 @@ def test_defaults_elsewhere():
     assert out[CONF_AFTER] == RECORDER_SIZE_DEFAULT // 4
     assert out[CONF_FREEZE_ON] == ["timeout"]
     assert out[CONF_DUMP_ON_FREEZE] is False
+    assert out[CONF_PERSIST] is False
 
 
 def test_defaults_on_esp8266():
@@ -89,6 +93,36 @@ def test_dump_on_freeze_needs_a_trigger():
     assert RECORDER_SCHEMA({CONF_FREEZE_ON: "retry", CONF_DUMP_ON_FREEZE: True})[CONF_DUMP_ON_FREEZE] is True
     with pytest.raises(cv.Invalid, match="needs a trigger"):
         RECORDER_SCHEMA({CONF_FREEZE_ON: "manual", CONF_DUMP_ON_FREEZE: True})
+
+
+def _esp32(variant):
+    CORE.data[KEY_CORE] = {KEY_TARGET_PLATFORM: "esp32"}
+    CORE.data["esp32"] = {"variant": variant}
+
+
+def test_persist_on_an_esp32_with_rtc_memory():
+    _esp32("ESP32C3")
+    assert RECORDER_SCHEMA({CONF_PERSIST: True})[CONF_PERSIST] is True
+    assert RECORDER_SCHEMA({CONF_PERSIST: True, CONF_SIZE: RECORDER_PERSIST_MAX})[CONF_SIZE] == RECORDER_PERSIST_MAX
+
+
+def test_persist_holds_at_most_512():
+    _esp32("ESP32")
+    with pytest.raises(cv.Invalid, match="at most"):
+        RECORDER_SCHEMA({CONF_PERSIST: True, CONF_SIZE: RECORDER_PERSIST_MAX + 1})
+
+
+@pytest.mark.parametrize("variant", ["ESP32C2", "ESP32C61"])
+def test_persist_refused_without_rtc_memory(variant):
+    _esp32(variant)
+    with pytest.raises(cv.Invalid, match="RTC memory"):
+        RECORDER_SCHEMA({CONF_PERSIST: True})
+
+
+def test_persist_refused_on_esp8266():
+    CORE.data[KEY_CORE] = {KEY_TARGET_PLATFORM: "esp8266"}
+    with pytest.raises(cv.Invalid, match="RTC memory"):
+        RECORDER_SCHEMA({CONF_PERSIST: True})
 
 
 def test_manual_stands_alone():

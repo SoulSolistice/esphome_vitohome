@@ -4,6 +4,7 @@
 # DEFAULT for KW is now ON (identification is hardware-confirmed on KW); this
 # "false" is a test override, not the default.
 substitutions:
+  recorder_persist: "false"
   name: vitohome-test-idf-kw
   protocol: KW
   log_frames: "true"

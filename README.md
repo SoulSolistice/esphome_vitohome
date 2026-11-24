@@ -298,7 +298,12 @@ vitohome:
   #                         # timeout, error or retry (a telegram met by
   #                         # silence that goes out again), or only on a
   #                         # dump (`manual`). dump_on_freeze: true dumps
-  #                         # each frozen ring at once, for unattended runs.
+  #                         # each frozen ring at once, for unattended runs,
+  #                         # once an API client is connected.
+  #   persist: false        # true: the ring in RTC memory (ESP32 but C2/C61,
+  #                         # at most 512 entries), kept across a restart but
+  #                         # not a power loss and dumped once at the next
+  #                         # boot, when an API client connects.
   #                         # The link's states and events are in it too.
   #                         # A `type: recorder_dump` button, or
   #                         # id(vito).recorder_dump(), writes it to the log
