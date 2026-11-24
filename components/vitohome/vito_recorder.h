@@ -47,6 +47,9 @@ enum RecorderTrigger : uint8_t {
   RECORDER_FREEZE_TIMEOUT = 1U << 0,
   // Any result but OK, a timeout too.
   RECORDER_FREEZE_ERROR = 1U << 1,
+  // A telegram met by silence that goes out again (LinkFact::RETRY), even
+  // when the retry is answered.
+  RECORDER_FREEZE_RETRY = 1U << 2,
 };
 
 struct RecorderEntry {
@@ -89,6 +92,8 @@ class VitoRecorder {
   uint16_t held() const { return count_; }
   bool frozen() const { return state_ == State::FROZEN || state_ == State::DUMPING; }
   bool dumping() const { return state_ == State::DUMPING; }
+  // Frozen by a failure, its after-entries taken, not dumped yet.
+  bool frozen_by_failure() const { return state_ == State::FROZEN && trigger_ != 0; }
   uint16_t triggers_since() const { return triggers_since_; }
 
   // The hub's loop pass, stamped on every entry from here on.
@@ -116,6 +121,8 @@ class VitoRecorder {
     self->record_(t, RecordKind::FACT, value);
     if (arg != 0)
       self->record_arg_(t, RecordArg::FACT, arg);
+    if (value == static_cast<uint8_t>(optolink::LinkFact::RETRY) && (self->freeze_on_ & RECORDER_FREEZE_RETRY) != 0)
+      self->on_failure_(t, RECORDER_FREEZE_RETRY);
   }
 
   // A request's end; `script`: a timed frame's, mapped onto OptolinkResult.
@@ -181,6 +188,8 @@ class VitoRecorder {
         return "a timeout";
       case RECORDER_FREEZE_ERROR:
         return "an error";
+      case RECORDER_FREEZE_RETRY:
+        return "a retry";
       default:
         return "nothing";
     }

@@ -2776,9 +2776,10 @@ of 8-byte entries (`vito_recorder.h`):
   watchdog. The differential target runs the live side with a counting sink,
   so the trace changes no byte; `proof_link_trace.cpp` pins what each
   exchange reports.
-- **Freeze:** on the first timeout or error (`freeze_on:`), the ring takes
-  `after:` more entries, then keeps what it holds. Later failures are only
-  counted.
+- **Freeze:** on the first timeout, error or retry (`freeze_on:`), the ring
+  takes `after:` more entries, then keeps what it holds. Later failures are
+  only counted. With `dump_on_freeze: true` the hub dumps it as soon as it
+  is frozen, so an unattended run logs every failure in turn.
 - **Dump:** two lines per loop pass under `vitohome.recorder`. One line holds
   the bytes of one direction in one pass, prefixed by `+ms.µs` from the
   oldest entry; `~ <state>` and `* <fact> [<arg>]` lines stand between them

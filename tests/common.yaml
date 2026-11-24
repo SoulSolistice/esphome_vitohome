@@ -76,8 +76,9 @@ vitohome:
   # this file; test.esp8266-arduino-gwg.yaml builds without it.
   recorder:
     size: 256
-    freeze_on: [timeout, error]
+    freeze_on: [timeout, error, retry]
     after: 64
+    dump_on_freeze: true
 
 sensor:
   # div10 SIGNED via converter default

@@ -12,7 +12,10 @@
 //   (7) on a port with the hub's hook, a KW read on the KW exchange: its
 //       ENQ, 01 + telegram, answer and result, one pass each;
 //   (8) with the link's trace as well (LinkSink), a P300 read the device
-//       NACKs: the states of a pass on one line, the fact with its own.
+//       NACKs: the states of a pass on one line, the fact with its own;
+//   (9) freeze on a retry: a KW read met by silence, answered on the next
+//       ENQ; frozen_by_failure() once its after-entries are in, which the
+//       hub's dump_on_freeze waits for.
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -300,6 +303,40 @@ int main() {
     const int nack = at("p6 * nack");
     check(nack > 0 && at("p6 <<< 15") == nack - 1 && at("p6 ~ IDLE") == nack + 1 && at("p6 = nack @00F8") == nack + 2,
           "(8) the 15, the fact, IDLE, the result");
+  }
+
+  // (9)
+  {
+    optolink::optolink_test_clock_freeze();
+    VitoRecorder rec;
+    (void) rec.allocate(64, 4, esphome::vitohome::RECORDER_FREEZE_RETRY, engine_micros);
+    FakeOptolink uart;
+    RecordingPort port(&uart, &rec);
+    using Kw = optolink::KwExchange<RecordingPort, kw_calls::kNoPause>;
+    Kw kw(&port);
+    rec.set_state_names(&Kw::state_name);
+    kw.set_sink(optolink::LinkSink{&VitoRecorder::link_trace, &rec});
+    kw.on_result([&rec](const optolink::Result &r) { rec.result(r.status, r.address); });
+    kw.begin();
+    check(kw_calls::read(kw, 0x00F8, 2), "(9) KW read accepted");
+    uart.feed({0x05});
+    kw.loop();
+    optolink::optolink_test_clock_advance(optolink::KW_LINK_PARAMS.answer_timeout_ms + 1);
+    kw.loop();
+    check(!rec.frozen_by_failure(), "(9) the retry: still taking its after-entries");
+    uart.feed({0x05});
+    kw.loop();
+    uart.feed({0x20, 0xCB});
+    kw.loop();
+    check(rec.frozen_by_failure(), "(9) frozen after them, waiting for its dump");
+    const auto lines = dump(rec);
+    check(!lines.empty() && lines[0].find("frozen by a retry") != std::string::npos, "(9) the header names the retry");
+    check(has(lines, "* retry") && has(lines, "! a retry"), "(9) the fact and the trigger");
+    check(!rec.frozen_by_failure(), "(9) re-armed by the dump");
+    VitoRecorder manual;
+    (void) manual.allocate(32, 0, 0, fake_micros);
+    (void) manual.start_dump();
+    check(!manual.frozen_by_failure(), "(9) a ring frozen by the dump is not frozen by a failure");
   }
 
   std::printf("recorder: %d failure(s)\n", g_failures);

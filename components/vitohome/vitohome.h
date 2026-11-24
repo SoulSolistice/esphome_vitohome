@@ -115,10 +115,11 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   void set_identify_device(bool value) { this->identify_device_ = value; }
 
   // The recorder's settings (YAML `recorder:`), applied in setup().
-  void set_recorder(uint16_t size, uint16_t after, uint8_t freeze_on) {
+  void set_recorder(uint16_t size, uint16_t after, uint8_t freeze_on, bool dump_on_freeze) {
     this->recorder_size_ = size;
     this->recorder_after_ = after;
     this->recorder_freeze_on_ = freeze_on;
+    this->recorder_dump_on_freeze_ = dump_on_freeze;
   }
   // Dumps the recorder to the log at INFO (tag vitohome.recorder), a few lines
   // per loop pass, freezing it first if no failure did; the dump re-arms it.
@@ -455,6 +456,7 @@ class VitoHomeComponent final : public PollingComponent, public uart::UARTDevice
   uint16_t recorder_size_{0};
   uint16_t recorder_after_{0};
   uint8_t recorder_freeze_on_{0};
+  bool recorder_dump_on_freeze_{false};
 #ifdef VITOHOME_RECORDER
   VitoRecorder recorder_;
   uint16_t loop_pass_{0};

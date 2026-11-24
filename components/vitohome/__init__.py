@@ -113,13 +113,14 @@ CONF_RECORDER = "recorder"
 CONF_SIZE = "size"
 CONF_FREEZE_ON = "freeze_on"
 CONF_AFTER = "after"
+CONF_DUMP_ON_FREEZE = "dump_on_freeze"
 # VitoRecorder::MIN_SIZE and MAX_SIZE; 8 bytes an entry.
 RECORDER_MIN_SIZE = 32
 RECORDER_MAX_SIZE = 4096
 RECORDER_SIZE_ESP8266 = 256
 RECORDER_SIZE_DEFAULT = 512
 # RecorderTrigger; `manual`: only a dump freezes it.
-RECORDER_FREEZE = {"timeout": 1, "error": 2, "manual": 0}
+RECORDER_FREEZE = {"timeout": 1, "error": 2, "retry": 4, "manual": 0}
 
 
 def _target_is_esp8266():
@@ -134,6 +135,8 @@ def _validate_recorder(config):
     freeze_on = config[CONF_FREEZE_ON]
     if "manual" in freeze_on and len(freeze_on) > 1:
         raise cv.Invalid("'manual' freezes on a dump only and takes no other trigger", path=[CONF_FREEZE_ON])
+    if "manual" in freeze_on and config.get(CONF_DUMP_ON_FREEZE):
+        raise cv.Invalid(f"'{CONF_DUMP_ON_FREEZE}' needs a trigger in '{CONF_FREEZE_ON}'", path=[CONF_DUMP_ON_FREEZE])
     config = dict(config)
     if CONF_SIZE not in config:
         config[CONF_SIZE] = RECORDER_SIZE_ESP8266 if _target_is_esp8266() else RECORDER_SIZE_DEFAULT
@@ -150,6 +153,9 @@ RECORDER_SCHEMA = cv.All(
             cv.Optional(CONF_SIZE): cv.int_range(min=RECORDER_MIN_SIZE, max=RECORDER_MAX_SIZE),
             cv.Optional(CONF_FREEZE_ON, default=["timeout"]): cv.ensure_list(cv.one_of(*RECORDER_FREEZE, lower=True)),
             cv.Optional(CONF_AFTER): cv.int_range(min=0, max=RECORDER_MAX_SIZE - 1),
+            # Each frozen ring to the log at once, then recording again: for
+            # an unattended run.
+            cv.Optional(CONF_DUMP_ON_FREEZE, default=False): cv.boolean,
         }
     ),
     _validate_recorder,
@@ -1685,7 +1691,7 @@ async def to_code(config):
         freeze_on = 0
         for trigger in recorder[CONF_FREEZE_ON]:
             freeze_on |= RECORDER_FREEZE[trigger]
-        cg.add(var.set_recorder(recorder[CONF_SIZE], recorder[CONF_AFTER], freeze_on))
+        cg.add(var.set_recorder(recorder[CONF_SIZE], recorder[CONF_AFTER], freeze_on, recorder[CONF_DUMP_ON_FREEZE]))
     if config[CONF_RAW_ACCESS] == RAW_ACCESS_UNRESTRICTED:
         cg.add_build_flag("-DVITOHOME_RAW_UNRESTRICTED")
         _LOGGER.warning(

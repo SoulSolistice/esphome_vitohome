@@ -295,7 +295,10 @@ vitohome:
   #   size: 512             # RAM with µs times (8 B an entry; default 256 on
   #   freeze_on: timeout    # ESP8266, 512 elsewhere). It freezes `after:`
   #   after: 128            # entries (default a quarter) past the first
-  #                         # timeout, or error, or only on a dump (`manual`).
+  #                         # timeout, error or retry (a telegram met by
+  #                         # silence that goes out again), or only on a
+  #                         # dump (`manual`). dump_on_freeze: true dumps
+  #                         # each frozen ring at once, for unattended runs.
   #                         # The link's states and events are in it too.
   #                         # A `type: recorder_dump` button, or
   #                         # id(vito).recorder_dump(), writes it to the log

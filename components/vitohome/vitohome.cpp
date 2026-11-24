@@ -363,6 +363,9 @@ void VitoHomeComponent::recorder_arm() {
 }
 
 void VitoHomeComponent::recorder_loop_() {
+  // Unattended: each failure's entries to the log as soon as they are taken.
+  if (this->recorder_dump_on_freeze_ && this->recorder_.frozen_by_failure())
+    this->recorder_dump();
   if (!this->recorder_.dumping())
     return;
   char line[VitoRecorder::LINE_CAPACITY];
@@ -710,11 +713,13 @@ void VitoHomeComponent::dump_config() {
                 "  Raw queue capacity: %zu",
                 PROTOCOL_NAME, this->entities_.size(), this->raw_queue_capacity_);
 #ifdef VITOHOME_RECORDER
-  ESP_LOGCONFIG(TAG, "  Recorder: %u entries, %u after a failure, freezes on %s%s%s",
+  ESP_LOGCONFIG(TAG, "  Recorder: %u entries, %u after a failure, freezes on %s%s%s%s%s",
                 static_cast<unsigned>(this->recorder_.size()), static_cast<unsigned>(this->recorder_after_),
                 (this->recorder_freeze_on_ & RECORDER_FREEZE_TIMEOUT) != 0 ? "timeout " : "",
                 (this->recorder_freeze_on_ & RECORDER_FREEZE_ERROR) != 0 ? "error " : "",
-                this->recorder_freeze_on_ == 0 ? "the dump only" : "");
+                (this->recorder_freeze_on_ & RECORDER_FREEZE_RETRY) != 0 ? "retry " : "",
+                this->recorder_freeze_on_ == 0 ? "the dump only" : "",
+                this->recorder_dump_on_freeze_ ? ", dumped when frozen" : "");
 #endif
 #if defined(VITOHOME_PROTOCOL_KW)
   ESP_LOGCONFIG(TAG, "  Link timing: ENQ to send %" PRIu32 " ms, answer to next %" PRIu32 " ms",

@@ -1,7 +1,8 @@
 """`recorder:` -- the hub's ring of bytes and results (vito_recorder.h).
 
 The size defaults to 256 entries on ESP8266 and 512 elsewhere, `after` to a
-quarter of it; `freeze_on` takes timeout and error, or manual alone. The
+quarter of it; `freeze_on` takes timeout, error and retry, or manual alone;
+`dump_on_freeze` dumps each frozen ring at once. The
 bounds match VitoRecorder (test_limits_agree.py). The `recorder_dump` button
 dumps it.
 """
@@ -23,6 +24,7 @@ from esphome.core import CORE  # noqa: E402
 
 from components.vitohome import (  # noqa: E402
     CONF_AFTER,
+    CONF_DUMP_ON_FREEZE,
     CONF_FREEZE_ON,
     CONF_SIZE,
     RECORDER_FREEZE,
@@ -49,6 +51,7 @@ def test_defaults_elsewhere():
     assert out[CONF_SIZE] == RECORDER_SIZE_DEFAULT
     assert out[CONF_AFTER] == RECORDER_SIZE_DEFAULT // 4
     assert out[CONF_FREEZE_ON] == ["timeout"]
+    assert out[CONF_DUMP_ON_FREEZE] is False
 
 
 def test_defaults_on_esp8266():
@@ -79,6 +82,13 @@ def test_freeze_on_takes_both_and_one():
     assert RECORDER_SCHEMA({CONF_FREEZE_ON: ["timeout", "error"]})[CONF_FREEZE_ON] == ["timeout", "error"]
     assert RECORDER_SCHEMA({CONF_FREEZE_ON: "error"})[CONF_FREEZE_ON] == ["error"]
     assert RECORDER_SCHEMA({CONF_FREEZE_ON: "manual"})[CONF_FREEZE_ON] == ["manual"]
+    assert RECORDER_SCHEMA({CONF_FREEZE_ON: ["retry", "timeout"]})[CONF_FREEZE_ON] == ["retry", "timeout"]
+
+
+def test_dump_on_freeze_needs_a_trigger():
+    assert RECORDER_SCHEMA({CONF_FREEZE_ON: "retry", CONF_DUMP_ON_FREEZE: True})[CONF_DUMP_ON_FREEZE] is True
+    with pytest.raises(cv.Invalid, match="needs a trigger"):
+        RECORDER_SCHEMA({CONF_FREEZE_ON: "manual", CONF_DUMP_ON_FREEZE: True})
 
 
 def test_manual_stands_alone():
@@ -95,7 +105,8 @@ def test_trigger_bits_match_the_header():
     text = (pathlib.Path(_REPO_ROOT) / "components" / "vitohome" / "vito_recorder.h").read_text(encoding="utf-8")
     assert "RECORDER_FREEZE_TIMEOUT = 1U << 0" in text
     assert "RECORDER_FREEZE_ERROR = 1U << 1" in text
-    assert RECORDER_FREEZE == {"timeout": 1, "error": 2, "manual": 0}
+    assert "RECORDER_FREEZE_RETRY = 1U << 2" in text
+    assert RECORDER_FREEZE == {"timeout": 1, "error": 2, "retry": 4, "manual": 0}
 
 
 def test_dump_button():
