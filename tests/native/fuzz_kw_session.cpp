@@ -68,7 +68,7 @@
 #include "reference/optolink/optolink.h"
 namespace optolink = esphome::vitohome::optolink_ref;
 #else
-#include "optolink/optolink.h"
+#include "optolink_types.h"
 namespace optolink = esphome::vitohome::optolink;
 #endif
 #include "kw_calls.h"

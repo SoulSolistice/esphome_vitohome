@@ -42,6 +42,26 @@ enum class PacketType : uint8_t {
 // while the old engines still report them.
 enum class OptolinkResult { CONTINUE, TIMEOUT, LENGTH, NACK, CRC, ERROR, DEVICE_ERROR, OK };
 
+// An error for the log; "invalid error" for OK and CONTINUE.
+constexpr const char *errorToString(OptolinkResult error) {
+  switch (error) {
+    case OptolinkResult::TIMEOUT:
+      return "timeout";
+    case OptolinkResult::LENGTH:
+      return "length";
+    case OptolinkResult::NACK:
+      return "nack";
+    case OptolinkResult::CRC:
+      return "crc";
+    case OptolinkResult::ERROR:
+      return "error";
+    case OptolinkResult::DEVICE_ERROR:
+      return "device error";
+    default:
+      return "invalid error";
+  }
+}
+
 // One telegram as a codec builds it: the bytes a link sends, without the
 // link's own (the 01 that answers an ENQ, the P300 ACKs). A P300 telegram
 // runs from its 41 to its checksum.

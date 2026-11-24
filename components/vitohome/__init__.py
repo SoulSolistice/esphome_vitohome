@@ -1,15 +1,12 @@
-"""ESPHome component for Viessmann Optolink (vendored optolink engine).
+"""ESPHome component for Viessmann Optolink.
 
 P300 (VS2) and KW (VS1) are confirmed on hardware. GWG is build-time selectable
-through the same engine template (protocol_select.h); its reads are confirmed on
-three units, of its writes only EEPROM writes, on one (docs/gwg_protocol.md).
-Platforms:
+(protocol_select.h); its reads are confirmed on three units, of its writes only
+EEPROM writes, on one (docs/gwg_protocol.md). Platforms:
 sensor, binary_sensor, text_sensor, number, select, switch, text, button,
 climate and event. The component decodes and encodes raw Optolink payloads
-itself (see ``decode.h``) and uses the in-tree optolink engine (under
-``optolink/``) only as the wire/transport layer; the engine's converters are
-never exercised (every ``Datapoint`` is built with ``optolink::noconv`` and the
-raw-bytes write overload is used).
+itself (see ``decode.h``); its engine (``optolink_*.h``) only moves bytes, and
+every ``Datapoint`` is built with the vestigial ``optolink::noconv``.
 
 Why the component decodes rather than using engine converters -- upstream ships
 a converter layer, but the vendored copy removed it (THIRD_PARTY.md 13/15)
@@ -25,11 +22,10 @@ narrows the *final* value to the float32 ESPHome state requires.
 from dataclasses import dataclass
 import logging
 import math
-from pathlib import Path
 
 from esphome import automation
 import esphome.codegen as cg
-from esphome.components import esp32, time as time_, uart
+from esphome.components import time as time_, uart
 from esphome.components.const import CONF_STOP_BITS
 import esphome.config_validation as cv
 from esphome.const import (
@@ -256,7 +252,7 @@ _READ_ONLY_ACCESS_MODES = ("kmbus_ram", "kmbus_eeprom")
 vitohome_ns = cg.esphome_ns.namespace("vitohome")
 optolink_ns = vitohome_ns.namespace("optolink")
 
-# GWG access mode (2026-08-24). Mirrors optolink/constants.h::GWGAccessMode
+# GWG access mode (2026-08-24). Mirrors optolink_codec_gwg.h::GWGAccessMode
 # exactly -- name, order and member spelling all have to match by hand since
 # this is a Python-side reference to a C++ enum class, not a generated
 # binding; a mismatch here fails at C++ compile time (unknown enumerator),
@@ -1553,96 +1549,8 @@ FINAL_VALIDATE_SCHEMA = _final_validate_with_uart
 
 
 async def to_code(config):
-    # The Optolink protocol engine is vendored in-tree under
-    # ``components/vitohome/optolink/`` with two parallel, toolchain-specific
-    # build descriptions: ``optolink/library.json`` (PlatformIO) and
-    # ``optolink/CMakeLists.txt`` (ESP-IDF native toolchain). Both exist
-    # because of the same underlying limitation, not because of anything
-    # PlatformIO- or CMake-specific: ESPHome's own component file copier
-    # (``loader.py``'s ``ComponentManifest.resources``) only copies files
-    # sitting directly in a component's top level dir; it does not descend
-    # into the engine's ``protocol/``, ``datapoint/`` and ``interface/``
-    # subdirectories under EITHER toolchain. (ESPHome does have a one-level
-    # recursive mode -- ``recursive_sources`` -- but it's hardcoded to
-    # ESPHome's own ``esphome.core`` package, not available to external
-    # components, and wouldn't reach two levels deep here regardless.) So the
-    # engine has to be registered as its own separately-built unit no matter
-    # which toolchain compiles it; only the registration mechanism differs:
-    #
-    #   esp32.toolchain: platformio (current default -- see design_notes.md
-    #   SS11 for the toolchain default flip on ESPHome's dev channel): a
-    #   ``file://`` library handed straight to PlatformIO's library
-    #   dependency finder, which compiles the nested sources with their
-    #   structure intact.
-    #
-    #   esp32.toolchain: esp-idf: PlatformIO is not involved at all, so a
-    #   PlatformIO library declaration doesn't reach the build -- worse, if
-    #   left registered unconditionally it actively breaks the build, because
-    #   ESPHome's PlatformIO-library-to-IDF-component converter
-    #   (esphome/platformio/library.py::convert_libraries, upstream) treats
-    #   any non-empty ``repository`` string as a git remote with no
-    #   ``file://`` case, and tries (and fails) to ``git clone`` this local
-    #   directory. The ESP-IDF-native equivalent is
-    #   ``esp32.add_idf_component(path=...)``, which writes a real ESP-IDF
-    #   Component Manager ``path:`` dependency -- standard, documented IDF
-    #   functionality, independent of ESPHome -- into the generated
-    #   ``idf_component.yml``. See ``optolink/CMakeLists.txt`` for the
-    #   ESP-IDF-side source list and its ``INCLUDE_DIRS ".."`` -- that's not
-    #   parity with this function's ``-I`` flag below, it's a *replacement*
-    #   for it; see the note there for why.
-    #
-    # NOTE: this ESP-IDF-native branch has been through full, successful
-    # native compiles in this project's sandbox -- both esp32.framework.type:
-    # esp-idf and : arduino, each ending in "Successfully compiled program."
-    # with real firmware.factory.bin/firmware.ota.bin output, on the pinned
-    # ESPHome version (2026.7.0) -- not just codegen succeeding. One real bug
-    # was caught and fixed in the process: see optolink/CMakeLists.txt's
-    # ``INCLUDE_DIRS ".."`` note. Reproducible with
-    # ``esphome compile tests/test.esp32-idf-native.yaml``. Still never run
-    # against real hardware, but esp32.toolchain: esp-idf is now the DEFAULT
-    # (esp32/__init__.py defaults CONF_TOOLCHAIN to Toolchain.ESP_IDF), and the
-    # CI ``compile-idf-native`` job exercises this exact path on every push --
-    # so it is a live, gated path, not forward-proofing. Re-run that test config
-    # after any change here or under optolink/ before relying on it again.
-    #
-    # The ``-I`` flag puts the component dir on the include path so the
-    # component's ``#include "optolink/optolink.h"`` (and the engine's header
-    # tree it pulls in) resolves against that same checkout location. This
-    # only works under esp32.toolchain: platformio, though -- confirmed by a
-    # real native-toolchain compile failing on exactly this include with the
-    # flag left unconditional. ESPHome's native-toolchain generator
-    # (``build_gen/espidf.py::get_project_cmakelists``, pinned version
-    # 2026.7.0) filters ``CORE.build_flags`` down to flags starting with
-    # ``-D``/``-W`` before propagating them project-wide; a plain ``-I`` flag
-    # is silently dropped, and "main"'s own generated
-    # ``idf_component_register()`` hardcodes ``INCLUDE_DIRS "." "esphome"``
-    # with no extension point for a third-party component to add to. Under
-    # the native toolchain, ``optolink/CMakeLists.txt`` exposing its own
-    # parent dir via ``INCLUDE_DIRS ".."`` is what makes the same include
-    # resolve instead -- "main" implicitly REQUIRES optolink via the ``path:``
-    # dependency above, and ESP-IDF auto-propagates a required component's
-    # public INCLUDE_DIRS to the requiring component. So the flag below is
-    # platformio-only in practice even though it's added unconditionally;
-    # it's simply inert (unused) under the native toolchain rather than
-    # harmful, so there's no need to gate it the way the library
-    # registration above has to be gated.
-    component_dir = Path(__file__).resolve().parent
-    optolink_dir = component_dir / "optolink"
-    if CORE.using_toolchain_esp_idf:
-        esp32.add_idf_component(name="optolink", path=str(optolink_dir))
-    elif CORE.using_toolchain_platformio:
-        # PlatformIO strips "file://" and opens the rest as a path, so a
-        # Windows path must follow directly ("file:///C:/..." is invalid there).
-        cg.add_library("optolink", None, f"file://{optolink_dir}")
-    else:
-        # The native toolchains' library resolver (native ESP8266) needs an
-        # empty host: "file://C:\..." is rejected, "file:///C:/..." resolves.
-        cg.add_library("optolink", None, "file:///" + optolink_dir.as_posix().lstrip("/"))
-    # as_posix(): on a Windows host str(Path) yields backslashes, which
-    # PlatformIO/SCons mangles inside build_flags, so the include path is lost
-    # and every `#include "optolink/optolink.h"` fails. Forward slashes are
-    # accepted by gcc on every host.
-    cg.add_build_flag(f"-I{component_dir.as_posix()}")
+    # The engine is the component's own top-level optolink_*.h files, which
+    # ESPHome copies with the rest: no library to register, no include path.
 
     # The VITOHOME_* gates below (protocol select, LOG_FRAMES, TIME_SYNC) are
     # emitted as global -D build flags, not via cg.add_define(). ESPHome's

@@ -9,10 +9,10 @@ points rather than repeats:
   config-time validation rules** → [`converters.md`](converters.md).
 - **Quick start, YAML shape, how it works at a glance** → [`README.md`](../README.md).
 - **Exact modifications made to the vendored engine, and licensing** →
-  [`optolink/THIRD_PARTY.md`](../components/vitohome/optolink/THIRD_PARTY.md) and
+  [`THIRD_PARTY.md`](../components/vitohome/THIRD_PARTY.md) and
   [`NOTICE.md`](../NOTICE.md).
 - **VitoWiFi shortcomings written up as upstream proposals** →
-  [`optolink/THIRD_PARTY.md`](../components/vitohome/optolink/THIRD_PARTY.md), Part 2.
+  [`THIRD_PARTY.md`](../components/vitohome/THIRD_PARTY.md), Part 2.
 - **Catalog generation tooling** → [`scripts/README.md`](../scripts/README.md).
 - **What GWG units actually did on the wire, per access mode, and the open
   questions** → [`gwg_protocol.md`](gwg_protocol.md).
@@ -47,7 +47,7 @@ the design is what it is:
 
 ## 1. Architecture — VitoWiFi as a pure wire engine; decode in-component
 
-The vendored engine (`components/vitohome/optolink/`) is used **only** as the
+The engine (`components/vitohome/optolink_*.h`) is used **only** as the
 P300/KW/GWG wire layer: framing, sequencing, ACK/NAK, CRC, retries. Every
 `Datapoint` is constructed with `optolink::noconv` and writes go through the
 raw-bytes overload. **All value decode and encode happens in the component**, in
@@ -1136,14 +1136,17 @@ then: an enumerator and its rows in `address_space.h`, its telegram in
 
 ---
 
-## 3. The vendored engine (`optolink/`)
+## 3. The vendored engine, and its replacement
 
-The `optolink/` subtree is a **vendored and modified** copy of VitoWiFi at
-`edc059a7`, de-branded into `esphome::vitohome::optolink`. Every intentional
+The `optolink/` subtree was a **vendored and modified** copy of VitoWiFi at
+`edc059a7`, de-branded into `esphome::vitohome::optolink`. The engine redesign
+replaced it with the component's own top-level `optolink_*.h` files and deleted
+the subtree; of VitoWiFi only the `Datapoint` class remains
+(`optolink_datapoint.h`, MIT notice kept). Every intentional
 divergence from upstream -- from the namespace rename and the `std::array`
 packet buffers through the protocol-level bugfixes and the dead-code sweeps --
 is itemised, numbered and classified (behavioral vs structural) in
-[`optolink/THIRD_PARTY.md`](../components/vitohome/optolink/THIRD_PARTY.md);
+[`THIRD_PARTY.md`](../components/vitohome/THIRD_PARTY.md);
 licensing (MIT-into-GPLv3) is in [`NOTICE.md`](../NOTICE.md). That file is the
 single source of truth for the divergence list: a count and summary previously
 repeated here drifted out of date as items were added, so neither is repeated
@@ -1159,7 +1162,9 @@ because they generalise:
   which the copier won't carry. The fix is to register `optolink/` as a `file://`
   PlatformIO library from the component directory (with `optolink/library.json`),
   so PlatformIO — not the copier — pulls the whole tree on both frameworks. The
-  flat-vs-nested layout question is therefore settled in favour of **nested**.
+  flat-vs-nested layout question was first settled in favour of **nested**;
+  the redesign made it **flat** again, and with no subdirectory left there is
+  no library to register on any toolchain.
 - **`ref: main` without `refresh: 0s` throttles re-pulls to one day.** A same-day
   rebuild after pushing a fix will compile a cached, stale clone. Use
   `refresh: 0s` (or a pinned ref) during active iteration.
@@ -2809,9 +2814,8 @@ ESPHome framework:
 
 ### 10a. What the host harness deliberately cannot reach
 
-The native proofs link **only the vendored engine** — `optolink/constants.cpp`
-plus the six protocol files (see `SRCS` in
-`tests/native/build_and_run_protocols.sh`). They never compile `vitohome.cpp`,
+The native proofs build **only the engine**, the header-only
+`optolink_*.h` files (see `tests/native/build_and_run_protocols.sh`). They never compile `vitohome.cpp`,
 `vito_clock.cpp` or any entity, because those include `vitohome.h`, which pulls
 in the whole ESPHome component surface (`Component`, `uart`, `binary_sensor`,
 `text_sensor`, the platform bases). Testing them on the host means standing up

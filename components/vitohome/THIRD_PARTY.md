@@ -1073,8 +1073,20 @@ These are intentional divergences from upstream `edc059a7`:
     `proof_gwg_exchange.cpp` and `proof_hub_requests.cpp`, the hub's requests
     against the reference engine's calls.
 
+51. **The `optolink/` library removed (structural, no wire change).** What
+    was left of it moved to the component's top level: `Datapoint` and the
+    vestigial `noconv` tag to `optolink_datapoint.h` (header-only, MIT notice
+    kept), `errorToString()` to `optolink_types.h`, the protocol tags to
+    `protocol_select.h`, this file and `LICENSE.optolink` beside them. The
+    unused `ProtocolBytes` table and `logging.h` are gone. With no
+    subdirectory left, ESPHome's copier carries the whole engine, so the
+    component registers no library on any toolchain (no `add_library`,
+    `add_idf_component`, `library.json`, `CMakeLists.txt` or `-I` flag), and
+    the library URL fix of the ESPHome 2026.11 bump is moot. Proof: every
+    native suite, and the ESP8266 and ESP-IDF test builds.
+
 Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called), 39 (when its gap is set), 40, 41, 45, 46, 48 (when set) and 49 are the only intentional changes to on-wire/runtime
-protocol behavior; items 13-16, 42, 43, 44, 47 and 50 are structural (no behavior change from any call
+protocol behavior; items 13-16, 42, 43, 44, 47, 50 and 51 are structural (no behavior change from any call
 site that exists -- item 16 altered bytes only on a RESPONSE-construction path
 nothing exercised, now removed); item 17 changes only construction-failure handling
 (abort -> fail-soft), not protocol or normal-path behavior; item 20 is a

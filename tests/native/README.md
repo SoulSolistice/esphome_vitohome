@@ -8,7 +8,7 @@ payload→value.
 ## Status: built and run against the in-tree optolink engine — 8/8 pass
 
 The fixture was **not** asserted on faith. It is compiled against the actual
-vendored Optolink engine (`components/vitohome/optolink/`, P300 path) on the host
+Optolink engine (`components/vitohome/optolink_p300.h`, P300 path) on the host
 and executed:
 
 ```
@@ -86,8 +86,8 @@ parser is exercised across the boundary it crosses on every poll. Both pass.
   function code, every length, boundary addresses, with and without payload,
   both GWG EOT positions; the P300 parser byte by byte on generated streams.
 - `build_and_run.sh` — host compile + run. Optional `$1` is the component root
-  containing `optolink/` (default `../../components/vitohome`); it compiles the
-  P300 harnesses with `constants` and the header-only P300 exchange.
+  (default `../../components/vitohome`); it compiles the P300 harnesses with
+  the header-only P300 exchange.
 - `fuzz_parser_vs2.cpp` — fuzz target for `P300Parser::parse()`, in two builds
   from one source: a deterministic corpus replay (g++, run by CI) and a
   libFuzzer target (clang, run by hand). Carries the oracles.

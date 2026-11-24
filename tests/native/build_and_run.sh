@@ -2,7 +2,7 @@
 # Host build + run of the P300 transaction harness against the component's
 # P300 exchange (components/vitohome/optolink_p300.h).
 #
-# ROOT = the component root; it and optolink/ are on the include path.
+# ROOT = the component root, on the include path.
 #
 # This first harness runs the transaction vectors through the P300 exchange;
 # build_and_run_protocols.sh (chained at the end) builds every protocol's
@@ -42,42 +42,37 @@ export SAN="${SAN-"-fsanitize=address,undefined -fno-sanitize-recover=all"}"
 # as "$SAN" would pass one bogus argument. An empty SAN yields an empty array.
 read -r -a SAN_FLAGS <<<"$SAN"
 ROOT="${1:-../../components/vitohome}"
-OPTO="$ROOT/optolink"
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" \
-  -I"$ROOT" -I"$OPTO" \
+  -I"$ROOT" \
   test_p300_transaction.cpp \
-  "$OPTO/constants.cpp" \
   -o p300_transaction_harness
-# Engine debug logging is compiled out on host (logging.h is gated on
-# VITOHOME_DEBUG_OPTOLINK && ESP_PLATFORM), so stdout is the harness only.
 ./p300_transaction_harness
 
 # Parser regression: a zero-payload P300 frame must not walk past the frame
 # buffer (P300Parser, optolink_codec_p300.h). Built under AddressSanitizer and
 # UBSan, so an out-of-bounds write traps.
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" \
-  -I"$ROOT" -I"$OPTO" \
+  -I"$ROOT" \
   proof_vs2_zero_payload.cpp \
-  "$OPTO/constants.cpp" \
   -o proof_vs2_zero_payload
 ./proof_vs2_zero_payload
 
 # Remote procedure call (P300 function code 0x07): the parameter rides in the
 # request, the answer is as long as its frame says, and reads/writes keep their
 # guards. Through the exchange, so the wire bytes are checked as well as the parse.
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -I"$ROOT" -I"$OPTO" proof_p300_rpc.cpp "$OPTO/constants.cpp" -o proof_p300_rpc
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -I"$ROOT" proof_p300_rpc.cpp -o proof_p300_rpc
 ./proof_p300_rpc
 
 # Decode proof: multi-byte field extraction from a wide block read (the
 # P300-portable pattern gen_catalog emits for interior fields).
-g++ -std=gnu++20 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -I"$ROOT" -I"$OPTO" proof_extract.cpp -o proof_extract
+g++ -std=gnu++20 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -I"$ROOT" proof_extract.cpp -o proof_extract
 ./proof_extract
 
 # String-offset proof: ascii/utf16 fields at BytePosition > 0 must be sliced out
 # of an aligned block read, never addressed at base+offset (P300 errors on the
 # interior address at any width; KW returns 0xFF fill, which decodes to "").
 g++ -std=gnu++20 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" \
-  -I"$ROOT" -I"$OPTO" proof_string_offset.cpp -o proof_string_offset
+  -I"$ROOT" proof_string_offset.cpp -o proof_string_offset
 ./proof_string_offset
 
 # Scheduler proof: per-entity poll intervals must fire on every hub tick when
@@ -105,22 +100,21 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" \
 # and the oracles a campaign enforces cannot drift apart. Sub-second, no clang
 # needed. The open-ended search is deliberately not run here -- see fuzz.sh.
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" \
-  -I"$ROOT" -I"$OPTO" \
+  -I"$ROOT" \
   fuzz_parser_vs2.cpp \
-  "$OPTO/constants.cpp" \
   -o fuzz_parser_vs2
 ./fuzz_parser_vs2
 
 # raw_op.h: the generic raw operation's spec parser and safety class
 # (queue_raw_op()), then its fuzz corpus -- same two-build arrangement as the
 # VS2 parser's (fuzz.sh raw_spec for the open-ended search).
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}"   -I"$ROOT" -I"$OPTO" proof_raw_op.cpp -o proof_raw_op
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}"   -I"$ROOT" proof_raw_op.cpp -o proof_raw_op
 ./proof_raw_op
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}"   -I"$ROOT" -I"$OPTO" fuzz_raw_spec.cpp -o fuzz_raw_spec
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}"   -I"$ROOT" fuzz_raw_spec.cpp -o fuzz_raw_spec
 ./fuzz_raw_spec
 # raw_script.h: the runner of a timed open frame, on a scripted port and the
 # frozen host clock.
-g++ -std=c++17 -Wall -Wextra -Werror -Wformat=2 "${SAN_FLAGS[@]}" -I"$ROOT" -I"$OPTO" proof_raw_script.cpp -o proof_raw_script
+g++ -std=c++17 -Wall -Wextra -Werror -Wformat=2 "${SAN_FLAGS[@]}" -I"$ROOT" proof_raw_script.cpp -o proof_raw_script
 ./proof_raw_script
 
 # decode.h fuzz corpus, the same two-build arrangement over the other half of

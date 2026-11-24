@@ -15,14 +15,9 @@ cd "$ROOT"
 
 TIDY="${CLANG_TIDY:-clang-tidy}"
 COMP=components/vitohome
-OPTO="$COMP/optolink"
-ENGINE=(
-  "$OPTO/constants.cpp"
-)
-FLAGS=(-std=c++17 -I"$COMP" -I"$OPTO")
+FLAGS=(-std=c++17 -I"$COMP")
 
 "$TIDY" --version | head -2
-"$TIDY" --quiet "${ENGINE[@]}" -- "${FLAGS[@]}"
 for proto in "" -DVITOHOME_PROTOCOL_KW -DVITOHOME_PROTOCOL_GWG; do
   echo "== hub headers ${proto:-(P300)}"
   "$TIDY" --quiet tests/native/tidy_headers.cpp -- "${FLAGS[@]}" ${proto:+"$proto"}

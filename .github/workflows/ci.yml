@@ -169,7 +169,7 @@ jobs:
           # points at. See the file's own header.
           - test.esp32-idf-single-platform.yaml   # P300 / esp-idf / sensor only
           # The only non-ESP32 target. Every ESP32 build (Arduino included)
-          # defines ESP_PLATFORM, so optolink/helpers.h's Arduino millis()
+          # defines ESP_PLATFORM, so optolink_clock.h's Arduino millis()
           # branch is reached ONLY here -- it shipped without <Arduino.h> and
           # broke every ESP8266 build while the whole ESP32 matrix stayed
           # green. Also the platform with the tightest heap budget the

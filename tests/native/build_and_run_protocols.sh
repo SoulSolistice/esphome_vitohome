@@ -4,15 +4,10 @@
 # stack's proofs, harness replays and the differential target against the
 # reference copy run.
 #
-# Deliberately compiled WITHOUT the datapoint/converter translation units:
-# the engine layer has no Datapoint/Converter dependency, and this script is
-# the proof.
-#
 # EVERY g++ line here carries -Wall -Wextra -Werror AND $SAN; see the notes in
 # build_and_run.sh for why both are hard requirements and not preferences.
 set -euo pipefail
 ROOT="${1:-../../components/vitohome}"
-OPTO="$ROOT/optolink"
 
 # Sanitizers. Inherited from build_and_run.sh when chained (it exports SAN), so
 # there is one effective value per run; the default keeps this script correct
@@ -30,9 +25,6 @@ SAN="${SAN-"-fsanitize=address,undefined -fno-sanitize-recover=all"}"
 # but the multi-flag value must reach g++ as separate arguments -- quoting it
 # as "$SAN" would pass one bogus argument. An empty SAN yields an empty array.
 read -r -a SAN_FLAGS <<<"$SAN"
-SRCS=(
-  "$OPTO/constants.cpp"
-)
 # The reference engines (reference/, README.md there): the differential
 # target, and the P300 and GWG hub requests against the reference engines.
 REF="reference/optolink"
@@ -52,8 +44,8 @@ echo "== protocol engine: compile + link for each protocol =="
 for sel in "P300:" "KW:-DVITOHOME_PROTOCOL_KW" "GWG:-DVITOHOME_PROTOCOL_GWG"; do
   name="${sel%%:*}"
   flag="${sel#*:}"
-  g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread ${flag:+"$flag"} -I"$ROOT" -I"$OPTO" \
-    engine_compile_proof.cpp "${SRCS[@]}" -o engine_proof
+  g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread ${flag:+"$flag"} -I"$ROOT" \
+    engine_compile_proof.cpp -o engine_proof
   printf '  %-5s ' "$name"
   ./engine_proof
 done
@@ -61,10 +53,10 @@ done
 echo "== address-space table (address_space.h), per protocol =="
 for sel in "P300:" "KW:-DVITOHOME_PROTOCOL_KW" "GWG:-DVITOHOME_PROTOCOL_GWG"; do
   flag="${sel#*:}"
-  g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread ${flag:+"$flag"} -I"$ROOT" -I"$OPTO"     proof_address_space.cpp "${SRCS[@]}" -o address_space
+  g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread ${flag:+"$flag"} -I"$ROOT"     proof_address_space.cpp -o address_space
   ./address_space
-  g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread ${flag:+"$flag"} -I"$ROOT" -I"$OPTO" \
-    proof_read_coalesce.cpp "${SRCS[@]}" "$OPTO/datapoint/datapoint.cpp" "$OPTO/datapoint/converter.cpp" \
+  g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread ${flag:+"$flag"} -I"$ROOT" \
+    proof_read_coalesce.cpp \
     -o read_coalesce
   ./read_coalesce
 done
@@ -75,40 +67,40 @@ for sel in "P300:" "KW:-DVITOHOME_PROTOCOL_KW" "GWG:-DVITOHOME_PROTOCOL_GWG"; do
   old=()
   [ -z "$flag" ] && old=("${REF_P300[@]}")
   [ "$flag" = "-DVITOHOME_PROTOCOL_GWG" ] && old=("${REF_GWG[@]}")
-  g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread ${flag:+"$flag"} -I"$ROOT" -I"$OPTO" \
-    proof_hub_requests.cpp "${SRCS[@]}" "${old[@]}" -o hub_requests
+  g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread ${flag:+"$flag"} -I"$ROOT" \
+    proof_hub_requests.cpp "${old[@]}" -o hub_requests
   ./hub_requests
 done
 
 echo "== generic telegrams: P300 request / KW detour / KW / GWG (#28) =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO"   proof_raw_engines.cpp "${SRCS[@]}" -o raw_engines
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT"   proof_raw_engines.cpp -o raw_engines
 ./raw_engines
 
 echo "== generic telegrams: fuzz corpus (deterministic replay; fuzz.sh raw_engines) =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO"   fuzz_raw_engines.cpp "${SRCS[@]}" -o fuzz_raw_engines
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT"   fuzz_raw_engines.cpp -o fuzz_raw_engines
 ./fuzz_raw_engines
 
 echo "== GWG sessions: fuzz corpus (deterministic replay; fuzz.sh gwg_session) =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO"   fuzz_gwg_session.cpp "${SRCS[@]}" -o fuzz_gwg_session
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT"   fuzz_gwg_session.cpp -o fuzz_gwg_session
 ./fuzz_gwg_session
 
 echo "== KW sessions, native and over the P300 detour: fuzz corpus (fuzz.sh kw_session) =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO"   fuzz_kw_session.cpp "${SRCS[@]}" -o fuzz_kw_session
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT"   fuzz_kw_session.cpp -o fuzz_kw_session
 ./fuzz_kw_session
 
 echo "== the engines against the device simulators (sim/) =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
-  proof_sim.cpp "${SRCS[@]}" -o proof_sim
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" \
+  proof_sim.cpp -o proof_sim
 ./proof_sim
 
 echo "== the simulators against real frame logs (sim/trace_*.h) =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" \
   proof_sim_traces.cpp -o proof_sim_traces
 ./proof_sim_traces
 
 echo "== simulator sessions: fuzz corpus (deterministic replay; fuzz.sh sim_session) =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
-  fuzz_sim_session.cpp "${SRCS[@]}" -o fuzz_sim_session
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" \
+  fuzz_sim_session.cpp -o fuzz_sim_session
 ./fuzz_sim_session
 
 echo "== differential: live engines against the reference copy (fuzz_diff_engines.cpp) =="
@@ -126,132 +118,132 @@ REF_SRCS=(
 )
 DIFF_OBJS=()
 for h in kw_session gwg_session raw_engines sim_session; do
-  g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
+  g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" \
     -DVITOHOME_DIFF_SIDE="diff_${h}_live" -c "fuzz_${h}.cpp" -o "diff_${h}_live.o"
-  g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
+  g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" \
     -DVITOHOME_DIFF_SIDE="diff_${h}_ref" -DVITOHOME_DIFF_REF -c "fuzz_${h}.cpp" -o "diff_${h}_ref.o"
   DIFF_OBJS+=("diff_${h}_live.o" "diff_${h}_ref.o")
 done
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
-  fuzz_diff_engines.cpp "${DIFF_OBJS[@]}" "${SRCS[@]}" "${REF_SRCS[@]}" -o fuzz_diff_engines
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" \
+  fuzz_diff_engines.cpp "${DIFF_OBJS[@]}" "${REF_SRCS[@]}" -o fuzz_diff_engines
 rm -f "${DIFF_OBJS[@]}"
 ./fuzz_diff_engines
 
 echo "== the codecs against the packet classes they replace (reference/) =="
-g++ -std=c++17 -O1 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
+g++ -std=c++17 -O1 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" \
   proof_codec_equality.cpp "$REF/constants.cpp" "$REF/protocol/vs1/packet_vs1.cpp" "$REF/protocol/vs2/packet_vs2.cpp" \
   "$REF/protocol/vs2/parser_vs2.cpp" "$REF/protocol/gwg/packet_gwg.cpp" -o proof_codec_equality
 ./proof_codec_equality
 
 echo "== GWG read/write completion (THIRD_PARTY.md #8 fix) =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
-  proof_gwg_read.cpp "${SRCS[@]}" -o gwg_read
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" \
+  proof_gwg_read.cpp -o gwg_read
 ./gwg_read
 
 echo "== GWG dispatch-stall discriminator (isBusy() permanent vs transient) =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
-  proof_gwg_dispatch_stall.cpp "${SRCS[@]}" -o gwg_dispatch_stall
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" \
+  proof_gwg_dispatch_stall.cpp -o gwg_dispatch_stall
 ./gwg_dispatch_stall
 
 echo "== GWG ENQ-misread guard: response deadline + same-loop send =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
-  proof_gwg_enq_misread.cpp "${SRCS[@]}" -o gwg_enq_misread
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" \
+  proof_gwg_enq_misread.cpp -o gwg_enq_misread
 ./gwg_enq_misread
 
 echo "== GWG burst: reuse a valid sync instead of waiting for the next ENQ =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
-  proof_gwg_burst.cpp "${SRCS[@]}" -o gwg_burst
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" \
+  proof_gwg_burst.cpp -o gwg_burst
 ./gwg_burst
 
 echo "== GWG timeout kind: no ENQ versus an unanswered datapoint (THIRD_PARTY.md #31) =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
-  proof_gwg_timeout_kind.cpp "${SRCS[@]}" -o gwg_timeout_kind
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" \
+  proof_gwg_timeout_kind.cpp -o gwg_timeout_kind
 ./gwg_timeout_kind
 
 echo "== GWG ENQ-to-send delay: default 0, hold, burst unaffected (THIRD_PARTY.md #33) =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
-  proof_gwg_enq_send_delay.cpp "${SRCS[@]}" -o gwg_enq_send_delay
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" \
+  proof_gwg_enq_send_delay.cpp -o gwg_enq_send_delay
 ./gwg_enq_send_delay
 
 echo "== GWG gap after the 0x01: default 0, the 0x01 alone, burst unaffected (THIRD_PARTY.md #39) =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO"   proof_gwg_enq_ack_gap.cpp "${SRCS[@]}" -o gwg_enq_ack_gap
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT"   proof_gwg_enq_ack_gap.cpp -o gwg_enq_ack_gap
 ./gwg_enq_ack_gap
 
 echo "== GWG write access modes (EEPROM/BE; KMBUS refused) =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
-  proof_gwg_write_access.cpp "${SRCS[@]}" -o gwg_write_access
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" \
+  proof_gwg_write_access.cpp -o gwg_write_access
 ./gwg_write_access
 
 echo "== GWG access modes + timing instrument =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
-  proof_gwg_access_mode.cpp "${SRCS[@]}" -o gwg_access_mode
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" \
+  proof_gwg_access_mode.cpp -o gwg_access_mode
 ./gwg_access_mode
 
 echo "== GWG EEPROM complement pairs =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
-  proof_gwg_eeprom_pairs.cpp "${SRCS[@]}" -o gwg_eeprom_pairs
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" \
+  proof_gwg_eeprom_pairs.cpp -o gwg_eeprom_pairs
 ./gwg_eeprom_pairs
 
 echo "== GWG open frames (raw lane) =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
-  proof_gwg_frame.cpp "${SRCS[@]}" -o gwg_frame
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" \
+  proof_gwg_frame.cpp -o gwg_frame
 ./gwg_frame
 
 echo "== KW open frames (raw lane) =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" -I"$OPTO"   proof_kw_frame.cpp "${SRCS[@]}" -o kw_frame
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT"   proof_kw_frame.cpp -o kw_frame
 ./kw_frame
 
 echo "== P300 open frames (raw lane) =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO"   proof_p300_frame.cpp "${SRCS[@]}" -o p300_frame
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT"   proof_p300_frame.cpp -o p300_frame
 ./p300_frame
 
 echo "== KW chaining and its two windows (#22) =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" -I"$OPTO" \
-  proof_kw_chain.cpp "${SRCS[@]}" -o kw_chain
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" \
+  proof_kw_chain.cpp -o kw_chain
 ./kw_chain
 
 echo "== KW link timing: same pass, retry after silence =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" -I"$OPTO" \
-  proof_kw_timing.cpp "${SRCS[@]}" -o kw_timing
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" \
+  proof_kw_timing.cpp -o kw_timing
 ./kw_timing
 
 echo "== KW write-ack completion (THIRD_PARTY.md #11) =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" -I"$OPTO" \
-  proof_kw_write.cpp "${SRCS[@]}" -o kw_write
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" \
+  proof_kw_write.cpp -o kw_write
 ./kw_write
 
 echo "== KW GFA read: type 0x6B, the chained pause (#27) =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" -I"$OPTO" \
-  proof_kw_gfa.cpp "${SRCS[@]}" -o kw_gfa
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_KW -I"$ROOT" \
+  proof_kw_gfa.cpp -o kw_gfa
 ./kw_gfa
 
 echo "== P300 GFA read: the KW detour (#27) =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
-  proof_p300_gfa.cpp "${SRCS[@]}" -o p300_gfa
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" \
+  proof_p300_gfa.cpp -o p300_gfa
 ./p300_gfa
 
 echo "== P300 guards: ERROR-type frames + parser reset (#9 / #10) =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
-  proof_p300_guards.cpp "${SRCS[@]}" -o p300_guards
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" \
+  proof_p300_guards.cpp -o p300_guards
 ./p300_guards
 
 echo "== P300 link timing: the four timing points =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO"   proof_p300_timing.cpp "${SRCS[@]}" -o p300_timing
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT"   proof_p300_timing.cpp -o p300_timing
 ./p300_timing
 
 echo "== P300 KW detour: the silence retry =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
-  proof_p300_kw_retry.cpp "${SRCS[@]}" -o p300_kw_retry
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" \
+  proof_p300_kw_retry.cpp -o p300_kw_retry
 ./p300_kw_retry
 
 echo "== GWG exchange: Request in, Result out =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" -I"$OPTO" \
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" \
   proof_gwg_exchange.cpp -o gwg_exchange
 ./gwg_exchange
 
 echo "== GWG: no EOT while waiting for the ENQ =="
-g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" -I"$OPTO" \
-  proof_gwg_poke.cpp "${SRCS[@]}" -o gwg_poke
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -DVITOHOME_PROTOCOL_GWG -I"$ROOT" \
+  proof_gwg_poke.cpp -o gwg_poke
 out="$(./gwg_poke)"
 echo "  $out"
 case "$out" in

@@ -12,14 +12,12 @@ esp32:
   # that drives idf.py/CMake directly instead of wrapping PlatformIO; as of
   # 2026.7.0 (this project's pin) it is the DEFAULT, so an unpinned deployment
   # uses this path -- see design_notes.md SS11 for the full writeup, including
-  # why the vendored optolink engine needed its own CMakeLists.txt to work
-  # under it. Compiled on every push by the `compile-idf-native` job in
+  # the component's build under it. Compiled on every push by the `compile-idf-native` job in
   # ci.yml (a dedicated job, since this toolchain caches its SDK under
   # ~/.cache/esphome/idf rather than ~/.platformio). Not yet run on real
   # hardware. Run locally with `esphome compile
-  # tests/test.esp32-idf-native.yaml` after touching anything under
-  # components/vitohome/optolink/ or the toolchain branch in
-  # components/vitohome/__init__.py::to_code.
+  # tests/test.esp32-idf-native.yaml` after touching the component's build
+  # in components/vitohome/__init__.py::to_code.
   toolchain: esp-idf
   framework:
     type: esp-idf

@@ -1,6 +1,7 @@
 """Copy the engines into tests/native/reference/optolink/ under the namespace
 esphome::vitohome::optolink_ref (README.md). Run once, from the repository
-root: the copy is frozen, so the script refuses to replace one."""
+root: the copy is frozen, so the script refuses to replace one. Its source,
+components/vitohome/optolink/, exists only before stage 6."""
 
 import pathlib
 import sys
@@ -70,7 +71,17 @@ using ::esphome::vitohome::optolink::optolink_test_clock_release;
 (dst / "logging.h").write_text(
     """#pragma once
 
-#include "../../../../components/vitohome/optolink/logging.h"
+// The reference engines' logging, silent: the live logging.h went with
+// optolink/ in stage 6.
+#define optolink_log_i(...) \\
+  do { \\
+  } while (0)
+#define optolink_log_e(...) \\
+  do { \\
+  } while (0)
+#define optolink_log_w(...) \\
+  do { \\
+  } while (0)
 """,
     encoding="utf-8",
     newline="\n",

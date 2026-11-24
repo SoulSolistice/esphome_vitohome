@@ -30,7 +30,7 @@
 #include "fake_optolink.h"
 #include "kw_calls.h"
 #include "gwg_calls.h"
-#include "optolink/optolink.h"
+#include "optolink_types.h"
 #include "optolink_kw.h"
 
 namespace optolink = esphome::vitohome::optolink;

@@ -3,7 +3,8 @@
 #include <cstdint>
 #include <type_traits>
 
-#include "optolink/optolink.h"
+#include "optolink_datapoint.h"
+#include "optolink_types.h"
 #include "protocol_select.h"
 
 namespace esphome::vitohome {

@@ -14,9 +14,10 @@ Made by `make_reference.py`, with one rule: `esphome::vitohome::optolink`
 becomes `esphome::vitohome::optolink_ref`. The script refuses to run over an
 existing copy. Apart from the namespace, the 18 copied files
 equal the live ones at the branch point. `helpers.h` is a shim to the live clock
-(`optolink_clock.h`), so both sides share one test clock, `logging.h` one to
-the live logging, and `optolink.h` includes the engines only. The build files, `datapoint/` and `THIRD_PARTY.md`
+(`optolink_clock.h`), so both sides share one test clock, `logging.h` keeps
+the logging silent, and `optolink.h` includes the engines only. The build files, `datapoint/` and `THIRD_PARTY.md`
 are not copied.
 
-Compiled only in the native tests. Deleted with `optolink/` in stage 6; the
-recorded outputs stay as fixtures.
+Compiled only in the native tests. It outlived `optolink/` (stage 6): the
+GWG changes of stage 5c are still measured against it. It goes once its
+recorded outputs are kept as fixtures.

@@ -1,11 +1,17 @@
 #pragma once
 
-#include "optolink/optolink.h"
 #include "optolink_gwg.h"
 #include "optolink_kw.h"
 #include "optolink_p300.h"
 
 namespace esphome::vitohome {
+
+namespace optolink {
+// Protocol tags: P300 is the VS2 wire protocol, KW the VS1 one.
+struct P300 {};
+struct KW {};
+struct GWG {};
+}  // namespace optolink
 
 // Compile-time protocol selection. The ESPHome codegen (__init__.py) emits
 // exactly one VITOHOME_PROTOCOL_* build flag from the `protocol:` option; the

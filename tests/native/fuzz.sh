@@ -83,7 +83,6 @@ TARGET="${1:-}"
 SECS="${2:-300}"
 WORKERS="${3:-$(nproc)}"
 ROOT="${VITOHOME_ROOT:-../../components/vitohome}"
-OPTO="$ROOT/optolink"
 FUZZ_DIR="${FUZZ_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/vitohome-fuzz}"
 KEEP_GOING="${KEEP_GOING:-0}"
 
@@ -111,7 +110,7 @@ case "$TARGET" in
   parser_vs2)
     SRC="fuzz_parser_vs2.cpp"
     HEADER="fuzz_corpus_vs2.h"
-    EXTRA=("$OPTO/constants.cpp")
+    EXTRA=()
     ;;
   decode)
     SRC="fuzz_decode.cpp"
@@ -131,22 +130,22 @@ case "$TARGET" in
   raw_engines)
     SRC="fuzz_raw_engines.cpp"
     HEADER="fuzz_corpus_raw_engines.h"
-    EXTRA=("$OPTO/constants.cpp")
+    EXTRA=()
     ;;
   gwg_session)
     SRC="fuzz_gwg_session.cpp"
     HEADER="fuzz_corpus_gwg_session.h"
-    EXTRA=("$OPTO/constants.cpp")
+    EXTRA=()
     ;;
   kw_session)
     SRC="fuzz_kw_session.cpp"
     HEADER="fuzz_corpus_kw_session.h"
-    EXTRA=("$OPTO/constants.cpp")
+    EXTRA=()
     ;;
   sim_session)
     SRC="fuzz_sim_session.cpp"
     HEADER="fuzz_corpus_sim_session.h"
-    EXTRA=("$OPTO/constants.cpp")
+    EXTRA=()
     ;;
   diff_engines)
     # Each session harness built twice as a side (diff_hooks.h), against the
@@ -154,7 +153,7 @@ case "$TARGET" in
     SRC="fuzz_diff_engines.cpp"
     HEADER="fuzz_corpus_diff.h"
     REF="reference/optolink"
-    EXTRA=("$OPTO/constants.cpp")
+    EXTRA=()
     EXTRA+=("$REF/constants.cpp" "$REF/protocol/vs2/vs2.cpp" "$REF/protocol/vs2/parser_vs2.cpp"
       "$REF/protocol/vs2/packet_vs2.cpp" "$REF/protocol/vs1/vs1.cpp" "$REF/protocol/vs1/packet_vs1.cpp"
       "$REF/protocol/gwg/gwg.cpp" "$REF/protocol/gwg/packet_gwg.cpp")
@@ -227,7 +226,7 @@ for h in ${DIFF_SIDES[@]+"${DIFF_SIDES[@]}"}; do
     fi
     clang++ -std=c++17 -g -Wall -Wextra -Werror \
       -fsanitize=fuzzer-no-link,address,undefined -fno-sanitize-recover=all \
-      -I"$ROOT" -I"$OPTO" "${side_flags[@]}" \
+      -I"$ROOT" "${side_flags[@]}" \
       -c "fuzz_${h}.cpp" -o "$WORK/diff_${h}_${side}.o"
     EXTRA+=("$WORK/diff_${h}_${side}.o")
   done
@@ -235,7 +234,7 @@ done
 clang++ -std=c++17 -g -Wall -Wextra -Werror \
   -DVITOHOME_FUZZ_LIBFUZZER \
   -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all \
-  -I"$ROOT" -I"$OPTO" \
+  -I"$ROOT" \
   "$SRC" ${EXTRA[@]+"${EXTRA[@]}"} \
   -o "$WORK/fuzz_$TARGET"
 

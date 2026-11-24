@@ -65,7 +65,9 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "optolink/constants.h"
+#include "optolink_codec_gwg.h"
+#include "optolink_codec_kw.h"
+#include "optolink_types.h"
 
 namespace esphome::vitohome {
 

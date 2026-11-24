@@ -6,7 +6,8 @@
 
 #include "address_space.h"
 #include "decode.h"
-#include "optolink/optolink.h"
+#include "optolink_datapoint.h"
+#include "optolink_types.h"
 #include "response_view.h"
 
 namespace esphome::vitohome {

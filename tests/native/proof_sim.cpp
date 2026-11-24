@@ -16,7 +16,7 @@
 
 #include "gwg_calls.h"
 #include "kw_calls.h"
-#include "optolink/optolink.h"
+#include "optolink_types.h"
 #include "optolink_kw.h"
 #include "sim/sim_gwg.h"
 #include "sim/sim_vitotronic.h"

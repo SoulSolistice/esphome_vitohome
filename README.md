@@ -322,8 +322,7 @@ from.
 
 ## How it works
 
-- The Optolink protocol engine under
-  [`components/vitohome/optolink/`](components/vitohome/optolink/) implements the
+- The Optolink engine (`components/vitohome/optolink_*.h`) implements the
   framing for the configured protocol (P300/VS2, KW/VS1 or GWG) and serves as
   the wire/transport layer.
 - The component decodes and encodes raw payloads itself in `decode.h`,
@@ -586,7 +585,7 @@ the other chips' burner-control datapoints are hidden. Details in
 vitohome is licensed under the GNU General Public License v3.0 (see
 [`LICENSE`](LICENSE)). It builds on VitoWiFi, InsideViessmannVitosoft and
 openv/vcontrold — see [`NOTICE.md`](NOTICE.md) and
-[`THIRD_PARTY.md`](components/vitohome/optolink/THIRD_PARTY.md).
+[`THIRD_PARTY.md`](components/vitohome/THIRD_PARTY.md).
 
 This work would not have been possible without the "prior art" that was
 and is truly foundational. Many thanks to all of it.
