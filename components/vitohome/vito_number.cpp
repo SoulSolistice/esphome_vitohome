@@ -1,6 +1,7 @@
 #include "vito_number.h"
 #ifdef USE_NUMBER
 
+#include <algorithm>
 #include <cmath>
 
 #include "decode.h"
@@ -110,6 +111,18 @@ void VitoNumber::handle_response(const ResponseView &response) {
   if (std::isnan(out) || std::isinf(out)) {
     ESP_LOGW(TAG, "%s: decoded non-finite value, skipping", this->datapoint_.name());
     this->handle_error(optolink::OptolinkResult::LENGTH);
+    return;
+  }
+  // A unit answers an address it does not serve with 0xFF in every byte (GWG
+  // `be` on a BES). Outside the entity's range that is no value: unknown,
+  // not 255. A signed field keeps 0xFF when -1 is in range.
+  const uint8_t *bytes = nullptr;
+  if (this->field_bytes_(response, &bytes) && std::all_of(bytes, bytes + width, [](uint8_t b) { return b == 0xFF; }) &&
+      (out < this->traits.get_min_value() || out > this->traits.get_max_value())) {
+    ESP_LOGD(TAG, "%s: 0xFF, outside %.3f..%.3f: unknown", this->datapoint_.name(), this->traits.get_min_value(),
+             this->traits.get_max_value());
+    this->clear_read_failures_();
+    this->publish_state(NAN);
     return;
   }
   ESP_LOGD(TAG, "%s = %.3f", this->datapoint_.name(), out);

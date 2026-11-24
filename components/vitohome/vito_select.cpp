@@ -1,6 +1,7 @@
 #include "vito_select.h"
 #ifdef USE_SELECT
 
+#include <algorithm>
 #include <cinttypes>
 
 #include "decode.h"
@@ -78,7 +79,15 @@ void VitoSelect::handle_response(const ResponseView &response) {
     }
   }
   // ESPHome selects can only publish mapped options; an unmapped wire value
-  // stays unpublished and is surfaced in the log instead.
+  // stays unpublished and is surfaced in the log instead. 0xFF in every byte
+  // is an address the unit does not serve (GWG `be` on a BES), not news each
+  // poll.
+  const uint8_t *bytes = nullptr;
+  if (this->field_bytes_(response, &bytes) &&
+      std::all_of(bytes, bytes + this->field_width_(), [](uint8_t b) { return b == 0xFF; })) {
+    ESP_LOGD(TAG, "%s: 0xFF, not an option: unknown", this->datapoint_.name());
+    return;
+  }
   ESP_LOGW(TAG, "%s: device value 0x%02" PRIX32 " is not in the configured options", this->datapoint_.name(), raw);
 }
 

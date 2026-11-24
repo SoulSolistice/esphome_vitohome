@@ -66,9 +66,14 @@ unrelated registers. The catalog's `access:` comes from Vitosoft's `FCRead`.
 | `eeprom` | `0xAE` | `0xAD` | answers in complement pairs (HW #21, #35) |
 | `xram` | `0xC5` | `0xC3` | answers (HW #35) |
 | `port` | `0x6E` | `0x6D` | answers one byte per address whatever LEN asks; `0x00`–`0x03` in use (HW #35) |
-| `be` | `0x9E` | `0x9D` | answers fast, one byte per address whatever LEN asks, but `0xFF` at every address tried (HW #21, #35) |
+| `be` | `0x9E` | `0x9D` | answers fast, one byte per address whatever LEN asks, but `0xFF` at every address tried (HW #21, #35); the VBES catalogs carry no `be` entries |
 | `kmbus_eeprom` | `0x43` | none | never answers, in seven framings, not even late (HW #35); the frame is unsettled, see below |
 | `kmbus_ram` | `0x33` | none | no Vitosoft datapoint uses it; `01 33 ADDR LEN 04` never answers (HW #35) |
+
+A number or select that reads `0xFF` in every byte, as an address the unit
+does not serve answers, shows as unknown when that value is outside the
+number's range or no option of the select. A signed field whose range holds
+-1 keeps it.
 
 ### `eeprom`
 
@@ -217,7 +222,8 @@ address as the cell's complement pair:
   controller acts on it.
 
 No other write type is confirmed. `be` answers `0xFF` everywhere on the
-units tried, and for the non-EEPROM types where the `0x04` goes is unknown;
+units tried (on #35 at every address `0x00`-`0xFF`, with a BES), and for the
+non-EEPROM types where the `0x04` goes is unknown;
 both layouts are switchable at run time
 (`set_gwg_write_eot_before_payload()`).
 
