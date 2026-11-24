@@ -8,9 +8,10 @@
 // open frame; one request in flight, its watchdog and one result callback,
 // as the KW exchange has them (optolink_exchange.h).
 //
-//   RESET        the parser reset, the line drained, 04 -> RESET_ACK
-//   RESET_ACK    05 -> INIT, or a KW telegram pending goes out on it;
-//                3 s without -> RESET
+//   RESET        the parser reset, the line drained; once it has been quiet
+//                for QuietMs after a byte other than the 05, 04 -> RESET_ACK
+//   RESET_ACK    05 -> INIT, or a KW telegram pending goes out on it; 15 ->
+//                RESET; 3 s without -> RESET
 //   INIT         16 00 00, ENQ_TO_SYNC after the 05 -> INIT_ACK
 //   INIT_ACK     06 -> IDLE; any other byte, or 3 s -> RESET
 //   IDLE         3 s since the last activity -> INIT (the keepalive); a KW
@@ -20,9 +21,9 @@
 //   SEND_ACK     one byte per pass: 06 -> RECEIVE, 15 -> IDLE and NACK
 //   RECEIVE      the answer through the parser (P300Parser)
 //   RECEIVE_ACK  06, FRAME_TO_ACK after the frame -> IDLE
-//   KW_DROP      the parser reset, the line drained, 04 -> KW_ENQ
-//   KW_ENQ       05 -> 01 and the telegram in this pass, or KW_HOLD; 3 s
-//                without -> RESET and TIMEOUT
+//   KW_DROP      as RESET, 04 -> KW_ENQ
+//   KW_ENQ       05 -> 01 and the telegram in this pass, or KW_HOLD; 15 ->
+//                KW_DROP; 3 s without -> RESET and TIMEOUT
 //   KW_HOLD      the line drained; ENQ_TO_SEND after the 05 -> 01 and the
 //                telegram
 //   KW_RECEIVE   <len> bytes, or one acknowledgement byte after a payload;
@@ -35,8 +36,15 @@
 //                250 ms -> RESET
 //   FRAME_SEND, FRAME_RECEIVE  the bytes as given, the answer raw until its
 //                length or 500 ms of quiet -> RESET
-//   watchdog     4 s busy, from the submit, the KW drop, each KW telegram, its
-//                retry or an open frame's send -> RESET and TIMEOUT
+//   watchdog     4 s busy, from the submit, the first KW drop, each KW
+//                telegram, its retry or an open frame's send -> RESET and
+//                TIMEOUT
+//
+// After its NACK a VScotHO1_72 refuses the next byte it gets, an EOT too:
+// 15 about 258 ms later. The byte after that it takes (2026-11-24, an EOT
+// 1-255 ms after a NACKed timed frame, and the telegrams after a NACK).
+// The EOT goes out again once that 15 is past, instead of 3 s later; a
+// request waiting meanwhile would run into its watchdog.
 //
 // The timing points (TimingPoint) are 0 by default: the pacing without them,
 // the next pass for ENQ_TO_SYNC, FRAME_TO_ACK and ANSWER_TO_NEXT, the ENQ's
@@ -74,8 +82,12 @@ inline constexpr uint8_t P300_KW_MAX_LENGTH = MAX_PAYLOAD;
 inline constexpr uint8_t P300_KW_SILENCE_RETRIES = 1;
 // The error frame's payload kept for Result::error_code.
 inline constexpr uint8_t P300_ERROR_CODE_MAX = 4;
+// The quiet before an EOT after the device's bytes: past its late 15.
+inline constexpr uint32_t P300_QUIET_MS = 300;
 
-template<class Port, uint8_t SilenceRetries = P300_KW_SILENCE_RETRIES> class P300Exchange {
+// `QuietMs` 0: the EOT at once and a 15 ignored, as VS2Engine had it.
+template<class Port, uint8_t SilenceRetries = P300_KW_SILENCE_RETRIES, uint32_t QuietMs = P300_QUIET_MS>
+class P300Exchange {
  public:
   using ResultCallback = std::function<void(const Result &)>;
 
@@ -281,6 +293,7 @@ template<class Port, uint8_t SilenceRetries = P300_KW_SILENCE_RETRIES> class P30
     frame_ = false;
     retries_ = 0;
     error_len_ = 0;
+    kw_dropped_ = false;
     busy_ = true;
     request_ms_ = now_;
   }
@@ -310,9 +323,29 @@ template<class Port, uint8_t SilenceRetries = P300_KW_SILENCE_RETRIES> class P30
       port_->read();
   }
 
+  // A byte from the device the next EOT must wait out.
+  void note_heard_() {
+    heard_ms_ = now_;
+    heard_ = QuietMs != 0;
+  }
+
+  // The line drained; whether it has not been quiet for QuietMs since a byte
+  // other than the device's 05.
+  bool line_busy_() {
+    while (port_->available()) {
+      if (port_->read() != ENQ)
+        this->note_heard_();
+    }
+    if (heard_ && now_ - heard_ms_ < QuietMs)
+      return true;
+    heard_ = false;
+    return false;
+  }
+
   void reset_() {
     parser_.reset();
-    this->drain_();
+    if (this->line_busy_())
+      return;
     if (port_->write(&EOT, 1) == 1) {
       last_ms_ = now_;
       this->set_state_(State::RESET_ACK);
@@ -321,7 +354,13 @@ template<class Port, uint8_t SilenceRetries = P300_KW_SILENCE_RETRIES> class P30
 
   void reset_ack_() {
     if (port_->available()) {
-      if (port_->read() != ENQ)
+      const uint8_t b = port_->read();
+      if (b == NACK && QuietMs != 0) {
+        this->note_heard_();
+        this->set_state_(State::RESET);
+        return;
+      }
+      if (b != ENQ)
         return;
       last_ms_ = now_;
       // After the EOT the device speaks KW: a KW telegram waiting goes out on
@@ -349,7 +388,12 @@ template<class Port, uint8_t SilenceRetries = P300_KW_SILENCE_RETRIES> class P30
 
   void init_ack_() {
     if (port_->available()) {
-      this->set_state_(port_->read() == ACK ? State::IDLE : State::RESET);
+      if (port_->read() == ACK) {
+        this->set_state_(State::IDLE);
+        return;
+      }
+      this->note_heard_();
+      this->set_state_(State::RESET);
     } else if (now_ - last_ms_ > P300_HANDSHAKE_RETRY_MS) {
       this->set_state_(State::RESET);
     }
@@ -434,6 +478,8 @@ template<class Port, uint8_t SilenceRetries = P300_KW_SILENCE_RETRIES> class P30
         return;
       }
       if (parsed == P300Parse::CS_ERROR || parsed == P300Parse::ERROR) {
+        // The rest of a broken frame may follow.
+        this->note_heard_();
         this->set_state_(State::RESET);
         this->fail_(parsed == P300Parse::CS_ERROR ? OptolinkResult::CRC : OptolinkResult::ERROR);
         return;
@@ -487,21 +533,30 @@ template<class Port, uint8_t SilenceRetries = P300_KW_SILENCE_RETRIES> class P30
 
   void kw_drop_() {
     parser_.reset();
-    this->drain_();
+    if (this->line_busy_())
+      return;
     if (port_->write(&EOT, 1) == 1) {
       last_ms_ = now_;
       // The request may have waited out a handshake: the watchdog runs from
-      // here.
-      request_ms_ = now_;
+      // the first drop, not from one the device refused.
+      if (!kw_dropped_)
+        request_ms_ = now_;
+      kw_dropped_ = true;
       this->set_state_(State::KW_ENQ);
     }
   }
 
   void kw_enq_() {
     if (port_->available()) {
-      // Anything but the ENQ is left over from P300 and dropped.
-      if (port_->read() == ENQ)
+      // A 15 refuses the EOT; anything else but the ENQ is left over from
+      // P300 and dropped.
+      const uint8_t b = port_->read();
+      if (b == NACK && QuietMs != 0) {
+        this->note_heard_();
+        this->set_state_(State::KW_DROP);
+      } else if (b == ENQ) {
         this->kw_enq_read_();
+      }
     } else if (now_ - last_ms_ > P300_KW_ENQ_TIMEOUT_MS) {
       this->set_state_(State::RESET);
       this->fail_(OptolinkResult::TIMEOUT);
@@ -701,6 +756,10 @@ template<class Port, uint8_t SilenceRetries = P300_KW_SILENCE_RETRIES> class P30
   // Silence retries left for it, and those spent (Result::retries).
   uint8_t kw_retries_left_{0};
   uint8_t retries_{0};
+  bool kw_dropped_{false};
+  // The last device byte an EOT waits out.
+  uint32_t heard_ms_{0};
+  bool heard_{false};
   // An open frame in flight and its answer.
   bool frame_{false};
   uint8_t frame_bytes_[P300_OPEN_FRAME_MAX]{};

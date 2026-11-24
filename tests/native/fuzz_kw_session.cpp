@@ -97,7 +97,7 @@ constexpr uint8_t kP300KwMaxLength = optolink::VS2Engine::KW_MAX_LENGTH;
 constexpr std::size_t kP300FrameMax = optolink::VS2Engine::FRAME_MAX;
 #else
 #ifdef VITOHOME_DIFF_SIDE
-template<class Port> using P300Engine = optolink::P300Exchange<Port, 0>;
+template<class Port> using P300Engine = optolink::P300Exchange<Port, 0, 0>;
 #else
 template<class Port> using P300Engine = optolink::P300Exchange<Port>;
 #endif

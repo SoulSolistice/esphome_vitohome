@@ -79,7 +79,7 @@ constexpr uint32_t kKwEnqToSendMs = optolink::KW_LINK_PARAMS.enq_to_send_ms;
 template<class Port> using P300Engine = optolink::VS2Engine;
 #else
 #ifdef VITOHOME_DIFF_SIDE
-template<class Port> using P300Engine = optolink::P300Exchange<Port, 0>;
+template<class Port> using P300Engine = optolink::P300Exchange<Port, 0, 0>;
 #else
 template<class Port> using P300Engine = optolink::P300Exchange<Port>;
 #endif

@@ -1085,7 +1085,22 @@ These are intentional divergences from upstream `edc059a7`:
     the library URL fix of the ESPHome 2026.11 bump is moot. Proof: every
     native suite, and the ESP8266 and ESP-IDF test builds.
 
-Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called), 39 (when its gap is set), 40, 41, 45, 46, 48 (when set) and 49 are the only intentional changes to on-wire/runtime
+52. **P300: the EOT again after the device's 15 (behavioral divergence).**
+    After its NACK a VScotHO1_72 refuses the next byte it gets, an EOT too,
+    with a `15` about 258 ms later, and takes the byte after that
+    (2026-11-24: an EOT 1-255 ms after a NACKed timed frame, and the
+    telegrams after a NACK). `VS2Engine` ignored that `15` and sent the EOT
+    again after 3 s, so the request queued at a restart after a NACK ran
+    into its 4 s watchdog (2 of 2 on the unit). Now a `15` in `RESET_ACK`
+    or `KW_ENQ` sends the EOT again once the line has been quiet for
+    `P300_QUIET_MS` (300 ms). `RESET` and `KW_DROP` also wait for that
+    quiet after any byte but the `05`, so an EOT is not written into the
+    rest of a broken frame. The detour's watchdog runs from its first drop.
+    On the unit the request after a NACKed timed frame was answered 2.7 s
+    later. The differential target runs the live side without it
+    (`P300Exchange<Port, 0, 0>`). Proof: `proof_p300_eot_refused.cpp`.
+
+Items 7-12, 18, 19, 21, 22, 24, 26, 27, 28, 29, 30, 32, 33 (when its delay is set), 35, 36, 37, 38 (when called), 39 (when its gap is set), 40, 41, 45, 46, 48 (when set), 49 and 52 are the only intentional changes to on-wire/runtime
 protocol behavior; items 13-16, 42, 43, 44, 47, 50 and 51 are structural (no behavior change from any call
 site that exists -- item 16 altered bytes only on a RESPONSE-construction path
 nothing exercised, now removed); item 17 changes only construction-failure handling

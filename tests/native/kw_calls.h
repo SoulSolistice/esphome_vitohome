@@ -99,8 +99,8 @@ template<class E, class R, class F, class C> void wire(E &e, R on_response, F on
     on_error(status, address);
   });
 }
-template<class P, uint8_t N, class R, class F, class C>
-void wire(live::P300Exchange<P, N> &e, R on_response, F on_error, C on_error_code) {
+template<class P, uint8_t N, uint32_t Q, class R, class F, class C>
+void wire(live::P300Exchange<P, N, Q> &e, R on_response, F on_error, C on_error_code) {
   e.on_result([on_response, on_error, on_error_code](const live::Result &r) {
     if (r.status == live::OptolinkResult::OK) {
       on_response(r.data, r.length, r.address);
@@ -111,19 +111,20 @@ void wire(live::P300Exchange<P, N> &e, R on_response, F on_error, C on_error_cod
     on_error(r.status, r.address);
   });
 }
-template<class P, uint8_t N, class R, class F> void wire(live::P300Exchange<P, N> &e, R on_response, F on_error) {
+template<class P, uint8_t N, uint32_t Q, class R, class F>
+void wire(live::P300Exchange<P, N, Q> &e, R on_response, F on_error) {
   wire(e, on_response, on_error, [](const uint8_t *, uint8_t) {});
 }
 
-template<class P, uint8_t N> bool busy(const live::P300Exchange<P, N> &e) { return e.busy(); }
+template<class P, uint8_t N, uint32_t Q> bool busy(const live::P300Exchange<P, N, Q> &e) { return e.busy(); }
 
-template<class P, uint8_t N> bool read(live::P300Exchange<P, N> &e, uint16_t address, uint8_t length) {
+template<class P, uint8_t N, uint32_t Q> bool read(live::P300Exchange<P, N, Q> &e, uint16_t address, uint8_t length) {
   return e.submit(
       live::make_request(live::Lane::P300, static_cast<uint8_t>(live::FunctionCode::READ), address, length, nullptr));
 }
 
-template<class P, uint8_t N>
-bool write(live::P300Exchange<P, N> &e, uint16_t address, const uint8_t *data, uint8_t length) {
+template<class P, uint8_t N, uint32_t Q>
+bool write(live::P300Exchange<P, N, Q> &e, uint16_t address, const uint8_t *data, uint8_t length) {
   return data != nullptr &&
          e.submit(live::make_request(live::Lane::P300, static_cast<uint8_t>(live::FunctionCode::WRITE), address, length,
                                      data));
@@ -132,8 +133,8 @@ bool write(live::P300Exchange<P, N> &e, uint16_t address, const uint8_t *data, u
 template<class E> bool rpc(E &e, uint16_t address, const uint8_t *parameter, uint8_t length) {
   return e.rpc(address, parameter, length);
 }
-template<class P, uint8_t N>
-bool rpc(live::P300Exchange<P, N> &e, uint16_t address, const uint8_t *parameter, uint8_t length) {
+template<class P, uint8_t N, uint32_t Q>
+bool rpc(live::P300Exchange<P, N, Q> &e, uint16_t address, const uint8_t *parameter, uint8_t length) {
   if (length != 0 && parameter == nullptr)
     return false;
   return e.submit(live::make_request(live::Lane::P300, static_cast<uint8_t>(live::FunctionCode::RPC), address, length,
@@ -145,8 +146,8 @@ template<class E>
 bool request(E &e, uint8_t function, uint16_t address, uint8_t length, const uint8_t *data = nullptr) {
   return e.request(function, address, length, data);
 }
-template<class P, uint8_t N>
-bool request(live::P300Exchange<P, N> &e, uint8_t function, uint16_t address, uint8_t length,
+template<class P, uint8_t N, uint32_t Q>
+bool request(live::P300Exchange<P, N, Q> &e, uint8_t function, uint16_t address, uint8_t length,
              const uint8_t *data = nullptr) {
   return e.submit(live::make_request(live::Lane::P300, function, address, length, data));
 }
@@ -156,18 +157,19 @@ template<class E>
 bool kw_telegram(E &e, uint8_t type, uint16_t address, uint8_t length, const uint8_t *data = nullptr) {
   return e.kwTelegram(type, address, length, data);
 }
-template<class P, uint8_t N>
-bool kw_telegram(live::P300Exchange<P, N> &e, uint8_t type, uint16_t address, uint8_t length,
+template<class P, uint8_t N, uint32_t Q>
+bool kw_telegram(live::P300Exchange<P, N, Q> &e, uint8_t type, uint16_t address, uint8_t length,
                  const uint8_t *data = nullptr) {
   return e.submit(live::make_request(live::Lane::KW, type, address, length, data));
 }
 
-template<class P, uint8_t N> bool gfa_read(live::P300Exchange<P, N> &e, uint16_t address, uint8_t length) {
+template<class P, uint8_t N, uint32_t Q>
+bool gfa_read(live::P300Exchange<P, N, Q> &e, uint16_t address, uint8_t length) {
   return kw_telegram(e, live::PacketVS1Type.GFA_READ, address, length);
 }
 
-template<class P, uint8_t N>
-bool frame(live::P300Exchange<P, N> &e, const uint8_t *bytes, uint8_t length, uint8_t answer_length) {
+template<class P, uint8_t N, uint32_t Q>
+bool frame(live::P300Exchange<P, N, Q> &e, const uint8_t *bytes, uint8_t length, uint8_t answer_length) {
   return e.submit(live::make_frame(bytes, length, answer_length));
 }
 

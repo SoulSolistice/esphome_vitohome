@@ -5,7 +5,8 @@
 //       exactly as given: no 41, no checksum of the engine's own;
 //   (2) a fixed answer length completes on that many raw bytes (the ACK
 //       counts), at address 0; bytes past it are drained, not delivered;
-//   (3) afterwards the session is re-established: EOT, ENQ, SYNC;
+//   (3) afterwards the session is re-established: EOT, once the line has
+//       been quiet for P300_QUIET_MS after those bytes, ENQ, SYNC;
 //   (4) collect mode (length 0) ends on a quiet line and delivers the ACK
 //       and the controller's frame as they came;
 //   (5) an ordinary read works after a frame;
@@ -94,7 +95,10 @@ int main() {
   pump(engine, 1);
   check(g_responses == 1 && g_data == std::vector<uint8_t>({0x06}) && g_address == 0, "one raw byte, at address 0");
   pump(engine);
-  check(uart.written() == kEot, "then RESET: EOT, the rest drained");
+  check(uart.written().empty(), "then RESET: the rest drained, no EOT yet");
+  optolink::optolink_test_clock_advance(optolink::P300_QUIET_MS);
+  pump(engine);
+  check(uart.written() == kEot, "the EOT once the line was quiet");
   uart.clear_written();
   handshake(engine, uart);
   check(uart.written() == kSync, "and the session is set up again");

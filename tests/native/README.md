@@ -350,9 +350,11 @@ pause, the answer deadline, the EOT interval and the watchdog. The ENQ hold
 and the chain window are out of reach, because the harnesses submit the next
 operation the moment the last one completes.
 
-On P300 the live side is `P300Exchange<Port, 0>`, without the KW detour's
-retry after silence, which `VS2Engine` lacks; `proof_p300_kw_retry.cpp` pins
-the retry, and the harnesses' own builds run with it.
+On P300 the live side is `P300Exchange<Port, 0, 0>`, without the KW
+detour's retry after silence and without the quiet before an EOT after the
+device's 15, which `VS2Engine` lacks both; `proof_p300_kw_retry.cpp` and
+`proof_p300_eot_refused.cpp` pin them, and the harnesses' own builds run
+with them.
 
 On GWG the live side is `GwgExchange` as built; it changes nothing on the
 wire. `gwg_calls.h` maps it onto the reference `GWGEngine`'s calls and five

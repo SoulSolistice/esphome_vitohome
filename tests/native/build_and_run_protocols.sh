@@ -236,6 +236,10 @@ g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" \
   proof_p300_kw_retry.cpp -o p300_kw_retry
 ./p300_kw_retry
 
+echo "== P300: the EOT after the device's 15 =="
+g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT"   proof_p300_eot_refused.cpp -o p300_eot_refused
+./p300_eot_refused
+
 echo "== GWG exchange: Request in, Result out =="
 g++ -std=c++17 -Wall -Wextra -Werror "${SAN_FLAGS[@]}" -pthread -I"$ROOT" \
   proof_gwg_exchange.cpp -o gwg_exchange
