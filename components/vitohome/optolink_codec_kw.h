@@ -2,7 +2,7 @@
 #ifndef VITOHOME_OPTOLINK_CODEC_KW_H
 #define VITOHOME_OPTOLINK_CODEC_KW_H
 
-// The KW codec (design section 4.2; openv wiki, Protokoll KW): the bytes of
+// The KW codec (docs/kw_protocol.md; openv wiki, Protokoll KW): the bytes of
 // one telegram, without the 01 a link puts in front when it answers an ENQ.
 //
 //   TT AH AL LEN [payload]

@@ -1,7 +1,7 @@
 // The codecs (optolink_codec_*.h) against the packet classes they replace,
 // in the frozen reference copy (reference/): for every input the old class
 // takes or refuses, the codec does the same and builds the same bytes
-// (design-optolink-layers.md, section 9, step 3).
+// (docs/design_notes.md, section 3).
 //
 //   KW    kw_encode() against PacketVS1::createTelegram(), frame_encode()
 //         against PacketVS1::createFrame()

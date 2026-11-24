@@ -2,7 +2,7 @@
 #ifndef VITOHOME_OPTOLINK_CODEC_GWG_H
 #define VITOHOME_OPTOLINK_CODEC_GWG_H
 
-// The GWG codec (design section 4.3; docs/gwg_protocol.md): the bytes of one
+// The GWG codec (docs/gwg_protocol.md): the bytes of one
 // telegram, without the 01 a link puts in front when it answers an ENQ.
 //
 //   read     TT AD LEN 04

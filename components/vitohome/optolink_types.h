@@ -4,7 +4,7 @@
 #ifndef VITOHOME_OPTOLINK_TYPES_H
 #define VITOHOME_OPTOLINK_TYPES_H
 
-// What every layer of the Optolink engine shares (design-optolink-layers.md,
+// What every layer of the Optolink engine shares (docs/design_notes.md,
 // section 3).
 
 #include <cstddef>
@@ -75,8 +75,8 @@ struct Telegram {
   uint8_t chain_gap_ms;
 };
 
-// The moments a link holds a write back (design-optolink-layers.md, section
-// 13), each settable up to its bound. KW has the first two, P300 the first
+// The moments a link holds a write back (docs/design_notes.md, section 3),
+// each settable up to its bound. KW has the first two, P300 the first
 // four, GWG ENQ_TO_SEND and ACK_TO_TELEGRAM.
 enum class TimingPoint : uint8_t {
   // The device's ENQ read -> the 01 and the telegram; P300: on the KW
@@ -135,8 +135,8 @@ constexpr const char *timing_name(TimingPoint point) {
   }
 }
 
-// How long a link waits for something (design-optolink-layers.md, section
-// 13.1), settable within its link's bounds. GWG has the answer deadline.
+// How long a link waits for something (docs/design_notes.md, section 3),
+// settable within its link's bounds. GWG has the answer deadline.
 enum class LinkWindow : uint8_t {
   // The silence after the telegram, or after an answer's latest byte, that
   // ends the wait for its answer.
@@ -249,7 +249,7 @@ inline bool frame_encode(const uint8_t *bytes, uint8_t length, uint8_t max, Tele
   return true;
 }
 
-// What a link reports for the recorder (design-optolink-layers.md, 15.9):
+// What a link reports for the recorder (docs/design_notes.md, section 9b):
 // each change of its state, which its exchange names (state_name()), and
 // the facts no state shows.
 enum class LinkTrace : uint8_t { STATE, FACT };

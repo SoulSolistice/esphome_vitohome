@@ -4,7 +4,7 @@
 
 // The port an engine drives: any object with begin(), end(), write(), read()
 // and available(), the hub's ESPHomeUARTInterface on a device, a FakeOptolink
-// or a simulator in the native tests (design-optolink-layers.md, section 7).
+// or a simulator in the native tests (docs/design_notes.md, section 3).
 //
 // PortRef refers to it without owning it: a pointer and one static table of
 // functions per port type, so no allocation, no virtual base for the port to

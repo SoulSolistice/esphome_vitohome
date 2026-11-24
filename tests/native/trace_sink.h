@@ -1,6 +1,6 @@
 #pragma once
 
-// A LinkSink that only counts (design-optolink-layers.md, 15.9). The call
+// A LinkSink that only counts (docs/design_notes.md, section 9b). The call
 // layers (kw_calls.h, gwg_calls.h) attach it to every live exchange they
 // wire, so the differential target holds the live side to the reference's
 // bytes with the trace on, and every proof on those layers runs with it.

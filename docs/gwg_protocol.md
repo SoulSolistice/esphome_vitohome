@@ -1,249 +1,300 @@
 # GWG protocol: field reference
 
-What this project knows about GWG units (Vitodens 200 WB2 class: VR20
-controller, LGM29 burner control, `0x2053`/`0x2054`), and where each fact comes
-from. It summarises; the reasoning and the code paths are in
-[design_notes.md](design_notes.md) §2 (GWG access modes, Bursting, GWG EEPROM,
-Identification under GWG, Writes) and §8d/§8e.
+GWG is the Optolink protocol of the Vitodens 200 WB2 class (VR20 controller,
+LGM29 burner control, `0x2053` / `0x2054`): ENQ-paced like KW, with eight
+access modes, one-byte addresses and no framing at all. The layout of this
+file is shared with [kw_protocol.md](kw_protocol.md) and
+[p300_protocol.md](p300_protocol.md); the KM-bus behind the controller is in
+[kmbus.md](kmbus.md).
 
-Evidence labels used below:
+Evidence labels:
 
 - **HW**: seen on a unit, with the issue that reported it.
 - **Vitosoft**: Viessmann's own export (`ecnEventType.xml`,
   `ecnDataPointType.xml`, `sysDeviceIdent.xml`, `Textresource_de.xml`, the SQL
   link tables).
-- **Spec**: openv wiki, vcontrold, vogod; not confirmed here.
+- **Spec**: openv wiki, vcontrold, vogod, dannerph; not confirmed here.
 
-## Units reported so far
+## Overview
 
 | Issue | Ident | HW | SW | Panel (owner) | Notes |
 |---|---|---|---|---|---|
-| #13 | `0x2053` | `0x01` | `0x2B` | BES (photo) | first GWG capture, 2026-08-23 |
+| #13 | `0x2053` | `0x01` | `0x2B` | BES (photo) | first GWG capture, 2026-08-23; EEPROM writes confirmed 2026-11-13 |
 | #21 | `0x2053` | `0x01` | `0x7A` | not stated | bursting settled; 13 `be` addresses all `0xFF` |
-| #35 | `0x2053` | `0x01` | `0x1E` | BES | Vitodens 200 WB2; VR20 and LGM29 replaced years ago; 15 `be` addresses all `0xFF`; no `kmbus_eeprom` answer |
+| #35 | `0x2053` | `0x01` | `0x1E` | BES | Vitodens 200 WB2; VR20 and LGM29 replaced years ago; every `be` address `0x00`-`0xFF` reads `0xFF`; no `kmbus_eeprom` answer |
 
-Every unit so far reports HW `0x01`, which Vitosoft maps to BEM. At least two of
-them have a BES. See [Identification](#identification).
+| Item | Status |
+|---|---|
+| Reads in `physical`, `virtual`, `eeprom`, `xram`, `port` | HW |
+| Bursting | HW (#21, #35) |
+| EEPROM writes | HW (#35, the #13 unit) |
+| `be` | answers `0xFF` everywhere on two units |
+| `kmbus_eeprom`, `kmbus_ram` | never answered |
+| Other write types | not confirmed |
+
+Every unit so far reports HW `0x01`, which Vitosoft maps to BEM, and at least
+two of them have a BES (see [Identification](#identification)).
 
 ## Wire format
 
 | Item | Value | Evidence |
 |---|---|---|
 | Line | 4800 baud, 8E2 | Spec, HW |
-| Idle ENQ | `0x05`, every 749–2070 ms (median 1229) | HW #13 |
-| Read request | `01 TYPE ADDR LEN 04` after an ENQ; `TYPE ADDR LEN 04` inside a burst | HW #21 |
-| Response | LEN raw bytes; `eeprom` a pair, `be` and `port` one byte, per address whatever LEN asks; no framing, checksum, address echo or error telegram | HW |
-| Answer time | 23–53 ms after the request | HW #21, #35 |
-| Answer deadline | 250 ms default (`set_link_window(LinkWindow::ANSWER_DEADLINE, ms)`, 50–2000 ms from a lambda) | design choice |
-| Address | one byte; anything above `0xFF` is rejected at config time | source, §8d |
+| Idle ENQ | `0x05`, every 749-2070 ms (median 1229) | HW #13 |
+| Read on an ENQ | `01 TYPE ADDR LEN 04` | HW |
+| Read in a burst | `TYPE ADDR LEN 04`, no `01` | HW #21 |
+| EEPROM write | `01 AD ADDR ~V V 04`, one cell per frame, no length byte | HW #35 |
+| Other writes | `01 TYPE ADDR LEN <data> 04`, or the EOT before the data (unsettled) | Spec |
+| Answer | `LEN` raw bytes; `eeprom` a complement pair, `be` and `port` one byte, per address whatever `LEN` asks; a write one byte | HW |
+| Address | one byte | Spec, source |
 
-- **No error answer.** An address a mode does not serve answers `0xFF` (all
-  bytes), not a refusal. A silent datapoint does not answer at all.
-- **A raised deadline must stay under the idle-ENQ gap** (about 700 ms) for
-  one-byte reads. Above it, the next idle ENQ completes a silent read as the
-  value 5.
-- **Bursting works without the leading `0x01`** (HW #21: 25 of 25 answered
-  without it, 0 of 4 with it). A burst-sent read that times out is retried once
-  on a fresh ENQ; only an answered retry counts against bursting (HW #35:
-  burst stays on with 54 silent datapoints).
-- **A burst must leave within about 100 ms of the previous answer** (HW #35,
-  40 h log, 2026-11-19/20): answered almost always under 80 ms, mostly
-  unanswered from 100 ms. The engine bursts for 80 ms (`ENQ_VALIDITY_MS`).
-  After a late burst the fresh-ENQ retry failed 35 times out of 44: 9 of 9
-  sent within 25 ms of that ENQ were answered, 35 of 35 sent 27-57 ms after
-  it were not. Ordinary ENQ-paced reads answer at any of those delays, so the
-  late frame seems to leave the controller less patient for one telegram.
+- **No framing.** An answer has no start byte, type, checksum or address echo,
+  and there is no error telegram. An address a mode does not serve answers
+  `0xFF` in every byte; a silent datapoint does not answer at all.
+- **Timing is the only way to tell an answer from the next ENQ.** `0x05` is a
+  legal value.
+- **One address byte.** vcontrold's GWG device overrides all 26 of its
+  addresses onto one byte; the Vitosoft catalogs' 16-bit addresses do not
+  apply. The config refuses an `address`, `state_address` or `target_address`
+  above `0xFF` under GWG: the codec refuses to build such a telegram, and a
+  telegram that is never built would stall its lane for good.
 
 ## Access modes
 
-Each mode is its own address space; the same address in two modes is two
-unrelated registers. The catalog's `access:` comes from Vitosoft's `FCRead`.
+GWG carries an access mode in the TYPE byte. Each mode is its own address
+space: in `GWG_VBES_00`, address `0x01` is five datapoints across four modes
+(OEM ident on `kmbus_eeprom`, maximum boiler temperature on `eeprom`, three
+outputs on `port`). A wrong mode looks exactly like a wrong address, so every
+GWG entity carries `access:`, taken from Vitosoft's `FCRead`. `physical`, the
+default, is only 26 % of a GWG device's datapoints (51 of 195 on
+`GWG_VBES_00`).
 
-| `access:` | Read | Write | Status on hardware |
-|---|---|---|---|
-| `physical` | `0xCB` | `0xC8` | answers, plausible values (HW #21, #35) |
-| `virtual` | `0xC7` | `0xC4` | answers; identification lives here (HW #13, #21, #35) |
-| `eeprom` | `0xAE` | `0xAD` | answers in complement pairs (HW #21, #35) |
-| `xram` | `0xC5` | `0xC3` | answers (HW #35) |
-| `port` | `0x6E` | `0x6D` | answers one byte per address whatever LEN asks; `0x00`–`0x03` in use (HW #35) |
-| `be` | `0x9E` | `0x9D` | answers fast, one byte per address whatever LEN asks, but `0xFF` at every address tried (HW #21, #35); the VBES catalogs carry no `be` entries |
-| `kmbus_eeprom` | `0x43` | none | never answers, in seven framings, not even late (HW #35); the frame is unsettled, see below |
-| `kmbus_ram` | `0x33` | none | no Vitosoft datapoint uses it; `01 33 ADDR LEN 04` never answers (HW #35) |
+| `access:` | Read | Write | vcontrold | Vitosoft `FCRead` | On hardware |
+|---|---|---|---|---|---|
+| `physical` | `0xCB` | `0xC8` | `GETADDR` | `Physical_READ` | answers (#21, #35) |
+| `virtual` | `0xC7` | `0xC4` | `GETVADDR` | `Virtual_READ` | answers; identification (#13, #21, #35) |
+| `eeprom` | `0xAE` | `0xAD` | `GETEADDR` | `EEPROM_READ` | complement pairs (#21, #35) |
+| `xram` | `0xC5` | `0xC3` | `GETXADDR` | `XRAM_READ` | answers (#35) |
+| `port` | `0x6E` | `0x6D` | `GETPADDR` | `Port_READ` | one byte per address; `0x00`-`0x03` in use (#35) |
+| `be` | `0x9E` | `0x9D` | `GETBADDR` | `BE_READ` | one byte per address, `0xFF` everywhere (#21, #35) |
+| `kmbus_eeprom` | `0x43` | none | `GETKMADDR` | `KMBUS_EEPROM_READ` | never answers, in seven framings (#35) |
+| `kmbus_ram` | `0x33` | none | none | none | never answers (#35) |
 
-A number or select that reads `0xFF` in every byte, as an address the unit
-does not serve answers, shows as unknown when that value is outside the
-number's range or no option of the select. A signed field whose range holds
--1 keeps it.
+The bytes come from four sources that agree: the openv wiki's "Telegramm
+Typen", vcontrold's GWG macros (the same frame, `SYNC; GET*ADDR $addr $hexlen
+04; RECV $len`), Vitosoft's `FCRead` per datapoint, and vogod's command-type
+list (which also leaves both KM-bus modes unwritable). `kmbus_ram` has no
+vcontrold macro and no Vitosoft datapoint (none of 4143 across the 22 `GWG_*`
+tokens), so only the raw lane sends it. Writes: Vitosoft pairs every writable
+datapoint within one mode (`EEPROM_WRITE` 1082, `BE_WRITE` 280,
+`PHYSICAL_WRITE` 0), so one mode drives both directions, and the KM-bus modes
+have no write byte.
+
+The catalog generator infers GWG from the device token (`GWG_*`, `HV_GWG`),
+maps `FCRead` onto `access:` on every entity, and drops addresses above
+`0xFF`. It also inverts P300's reachability rule: on P300 only `Virtual_READ`
+is readable, which on GWG is 3 % of the data (6 of 195); applied to a GWG
+device it kept 8 datapoints and read all 8 on the wrong mode.
 
 ### `eeprom`
 
-- One telegram per address. The unit answers a pair: byte 0 is the one's
-  complement of byte 1, byte 1 is the value (`b0 + b1 == 0xFF`).
-- `FF FF` means "address not in use". A pair that does not add up to `0xFF`
-  fails the read.
-- The owner of #35 reports that half of `0x00..0xFF` answers `FF FF` and that
-  the used part repeats from `0x80` (a 128-byte part). Vitosoft's GWG
-  datapoints use `0x01..0x24` only.
+- One telegram per address. The answer is a pair: byte 0 is the one's
+  complement of byte 1, byte 1 is the value (`b0 + b1 == 0xFF`), whatever `LEN`
+  asks. 14 of 14 pairs summed to `0xFF`, only `b1` fell inside the declared
+  ranges, and burner hours at `0x0017` stepped `E8 17` -> `E7 18` between two
+  days (#21).
+- `FF FF` means "address not in use", delivered as `0xFF` with
+  `Result::unserved_eeprom`; a read-modify-write refuses to merge into it. A
+  pair that does not sum to `0xFF` fails the read with CRC.
+- One VR20 serves 64 cells: `0x01`-`0x3F` answer, `0x00` and `0x40`-`0x7F`
+  answer `FF FF`, `0x80`-`0xFF` repeat the lower half (a dump of all 256
+  addresses, #35). Vitosoft's GWG datapoints use `0x01`-`0x24`.
 
 ### `be` and `port`
 
-- Both answer one byte per address, whatever LEN the telegram asks for
-  (HW #35, SW `0x1E`). The engine reads them like `eeprom`: one LEN-1
-  telegram per address, sent as a burst, delivered together. Every catalog
-  datapoint in these modes is one byte, so this only changes longer raw
-  reads, which timed out before.
-
-### `be`
-
-- Vitosoft describes this space as the panel's: `GWG_BetriebsprogrammBEM`
-  (`be` `0x57`) is the "Betriebsprogramm der menuegefuehrten Bedieneinheit",
-  i.e. the menu-driven panel (BEM).
-- Both units tested answered `0xFF` for every `be` address, including both
-  clock locations (BEM `0xF4..0xF6`, BES `0x74..0x76`). On #35 that fits the
-  BES, which has knobs and no menu.
-- Many `be` datapoints have a same-named `physical` copy (for example
-  "Neigung der Heizkennlinie HK A": `physical` `0x65` and `be` `0x20`).
-  Plausible values in a log usually come from the `physical` copy. Check the
-  frames before calling a `be` read confirmed.
-- So far no `be` read has returned data. A `be` write would go to a space
-  nothing answers from.
+- Both answer one byte per address whatever `LEN` asks (#35, SW `0x1E`), so the
+  engine reads them like `eeprom`: one `LEN`-1 telegram per address, sent as a
+  burst, delivered together.
+- Vitosoft describes `be` as the panel's: `GWG_BetriebsprogrammBEM` (`be`
+  `0x57`) is the "Betriebsprogramm der menuegefuehrten Bedieneinheit", the
+  menu-driven panel (BEM).
+- Both units tried answered `0xFF` at every `be` address, both clock
+  locations included (BEM `0xF4..0xF6`, BES `0x74..0x76`). On #35 that fits the
+  BES, which has knobs and no menu. The VBES catalogs therefore carry no `be`
+  entries.
+- Many `be` datapoints have a same-named `physical` copy ("Neigung der
+  Heizkennlinie HK A": `physical` `0x65`, `be` `0x20`); plausible values in a
+  log usually come from the copy.
+- A number or select that reads `0xFF` in every byte shows as unknown when that
+  value is outside the number's range or no option of the select; a signed
+  field whose range holds -1 keeps it.
 
 ### `kmbus_eeprom`
 
-- These reach the LGM29 burner control over the VR20's KM-Bus. On #35 all 54
-  went unanswered, with no late bytes either (late-answer report on, frames
-  logged). The owner says the KM-Bus itself works (the pump answers there) and
-  suspects the LGM29 needs enabling.
+- These reach the LGM29 over the VR20's KM-bus. On #35 all 54 went unanswered,
+  with no late bytes either. The owner says the KM-bus itself works (the pump
+  answers there).
 - Cost while silent: about one ENQ gap plus a 250 ms retry per read, so 54 of
-  them overran a 60 s poll cycle until poll backoff set in (after three
-  cycles).
+  them overran a 60 s poll cycle until poll backoff set in.
 - vitohome sends the generic frame `01 43 ADDR LEN 04`. No source shows a
-  working KM-bus read over GWG, so that frame is a guess:
-  - vcontrold's `getkmaddr` command calls `GETKMDDR`, a macro that does not
-    exist. Its `getkmtestaddr`, like the test command of every other mode,
-    sends the generic frame with LEN `01`. vogod maps `KMBUS_EEPROM_READ` to
-    no operation. The other Optolink projects (sarnau, philippoo66, idstein)
-    only copy Vitosoft's function-code list.
-  - The `01 33 10 00 04` in #35 was deduced by its reporter, not captured.
-- The bus itself, with sources: [kmbus.md](kmbus.md).
-- The openv wiki ("KM-Bus") rests on bus captures and on the firmware of a
-  Vitotronic 200KW2, a Vitotrol 200A/300 and a 0-10 V function extension.
-  It likens the KM-bus to the M-Bus in its electrical layer and character
-  format (master modulates voltage, participants current, 1200 baud 8E1);
-  its telegrams are Viessmann's own. Vitosoft's `Virtual_MBUS` reads are the
-  meter bus, a different thing. All of this is the bus's own wire between
-  the controller and its participants, and the controller is always its
-  master: participants only answer it. vitohome never sees that wire. It
-  reaches the bus only through the controller, over Optolink at 4800 baud
-  8E2, so a KM-bus read is a GWG request the controller carries out. What
-  carries over is the telegram and the bus's speed.
-- Telegrams are `DK SK CMD LEN DSL SSK data CRC-lo CRC-hi`: destination
-  class, source class, command, the whole telegram's length, destination
-  slot, source subclass, and a CRC-16/KERMIT over everything before it. Every
-  master telegram on the page has SK `00` and SSK `01`. `31` reads one byte
-  and `33` N bytes, answered by `B1` and `B3`; a `B3` answer puts each byte's
-  address before it (`ADR0 DAT0 ADR1 DAT1 ...`). `43` and `C3` are in the
-  200KW2's command table, but neither the Vitotrol nor the function extension
-  uses them.
-- Each participant has a 4-byte ID (class, device type, two serial bytes) at
-  `F8..FB`, and the 200KW2 reads it from every class it knows about every five
-  minutes. The read for class `01` slot `01` is
-  `01 00 33 0A 01 01 F8 04 31 B4`.
-- At 1200 baud a byte (11 bits) takes 9.2 ms. A one-byte `33` read and its
-  answer take 205 ms on the bus, the ID read 260 ms (captured, kmbus.md
-  "Timing"). An answer the
-  controller relays from the bus therefore cannot come back in the 23-53 ms
-  GWG answers take, and hardly within the 250 ms deadline. An answer from the
-  controller's own memory can. After the deadline, bytes show in the
-  late-answer report until the next telegram goes out, and
-  `set_link_window(LinkWindow::ANSWER_DEADLINE, ms)` raises the deadline. On #35 the generic
-  `kmbus_eeprom` reads had no late bytes either.
-- The GWG TYPE bytes of the two KM-bus modes are bus commands: `kmbus_ram`
-  `0x33` is the `33` read and `kmbus_eeprom` `0x43` is the unexplained `43`.
-  A GWG read's `ADDR LEN` is also exactly a `33` telegram's data, `ADR N`.
-  That suggests the controller builds the bus telegram from the GWG frame
-  itself. Nothing confirms this yet.
-- Vitosoft gives a `PrefixRead` only to function codes that reach a device
-  behind the controller: KM-bus, K-bus (`KBUS_*`), Wilo pumps, M-Bus
-  meters, a market manager and remote procedure calls. There the prefix
-  appears to select the device or record, and the gateway does the bus
-  traffic. Of the 91 `KMBUS_EEPROM_READ` datapoints, the 90 of the burner
-  control (`GWG_FA_*`, `GWG_FA27_*`) all carry `03 00 00 00 01 01`; one
-  (`KBUS_Schalterblock`) has none. No datapoint uses `KMBUS_RAM_READ`.
-- Read as a telegram header, that prefix is DK `03`, SK `00`, CMD `00`, LEN
-  `00`, DSL `01` and SSK `01`. SK and SSK are the master's own fields, and
-  CMD and LEN would be the controller's to fill from the TYPE byte and the
-  length, though CMD `00` is also the bus's PING. So the prefix plausibly
-  names the participant, which the generic frame cannot. Where Vitosoft puts
-  it in the GWG frame is unknown. No capture shows class `03`, but none is
-  from a GWG controller. The `03` #35's BES shows is a participant code
-  (burner control unit and a speed-controlled pump), not a bus class.
-- To test that without firmware changes, the raw lane takes an open frame
-  (raw_op.h): `gwg f <bytes...> [/ <n>]` sends the bytes exactly as given and
-  collects the answer, and `[ ... ]` appends the CRC. Candidates, each for
-  address `01`, one byte:
+  working KM-bus read over GWG: vcontrold's `getkmaddr` calls an undefined
+  macro (`GETKMDDR`), its test command sends the generic frame; vogod maps the
+  byte to no operation; the other Optolink projects only copy Vitosoft's
+  function-code list.
+- KM-bus telegrams are `DK SK CMD LEN DSL SSK data CRC-lo CRC-hi`
+  (CRC-16/KERMIT); `31` reads one byte, `33` N bytes. GWG's two KM-bus TYPE
+  bytes are bus commands (`0x33` the read, `0x43` unexplained), and a GWG
+  read's `ADDR LEN` is a `33` telegram's data, which suggests the controller
+  builds the bus telegram itself. At 1200 baud a bus read and its answer take
+  205-260 ms, so a relayed answer cannot come back in the 23-53 ms GWG answers
+  take.
+- Vitosoft's 90 burner-control `KMBUS_EEPROM_READ` datapoints all carry the
+  `PrefixRead` `03 00 00 00 01 01`, which reads as a telegram header (DK `03`,
+  SK `00`, CMD `00`, LEN `00`, DSL `01`, SSK `01`) and plausibly names the
+  participant. Where Vitosoft puts it in the GWG frame is unknown.
+- The candidates, each for address `01`, one byte, sent as open frames
+  (`gwg f ...`, `[ ]` appends the CRC):
 
   | Frame | Idea |
   |---|---|
   | `01 43 01 01 04` | the generic frame (what the catalog sends) |
-  | `01 33 01 01 04` | the generic `kmbus_ram` frame, TYPE `33` the bus's read |
-  | `01 43 03 00 00 00 01 01 01 01 04` | the prefix naming the participant, then address and length |
-  | `01 43 03 00 00 00 01 01 01 04` | the prefix before the address, no length byte (#35's reporter, as given) |
-  | `01 43 [03 00 00 00 01 01 01] 04` | the same with a CRC (#35's reporter) |
-  | `01 43 [03 00 43 0A 01 01 01 01] 04` | a whole telegram, CRC `E2 86`; needs a controller that relays bytes unchanged |
+  | `01 33 01 01 04` | the generic `kmbus_ram` frame |
+  | `01 43 03 00 00 00 01 01 01 01 04` | the prefix, then address and length |
+  | `01 43 03 00 00 00 01 01 01 04` | the prefix before the address, no length byte |
+  | `01 43 [03 00 00 00 01 01 01] 04` | the same with a CRC |
+  | `01 43 [03 00 43 0A 01 01 01 01] 04` | a whole telegram, CRC `E2 86` |
   | `01 43 [03 00 33 0A 01 01 01 01] 04` | the same with the bus's read command, CRC `E3 43` |
 
   `example/vitohome-gwg-kmbus-probe.yaml` sends these and the same seven for
-  the ID at `F8`, with a 600 ms answer deadline for answers relayed over the
-  bus. On #35 (SW `0x1E`) none of the 14 was answered, not even late (HW,
-  2026-11-16).
+  the ID at `F8`, with a 600 ms deadline. On #35 none of the 14 was answered,
+  not even late (2026-11-16).
 
-### Writes
+## Flow
 
-Vitosoft pairs every writable datapoint within one mode (`EEPROM_WRITE` 1082,
-`BE_WRITE` 280, `PHYSICAL_WRITE` 0). Given the `be` results above, `eeprom`
-datapoints are the candidates left, and those are codings.
+The engine is `GwgExchange` (`optolink_gwg.h`).
 
-**EEPROM writes work** (HW #35, the #13 unit: `0x2053` HW `0x01` SW `0x2B`,
-2026-11-13). An EEPROM write is `01 AD ADDR ~V V 04`, one cell per frame
-(design_notes.md, "GWG EEPROM"). The unit stores the two bytes after the
-address as the cell's complement pair:
+```mermaid
+stateDiagram-v2
+  [*] --> WAIT_ENQ: begin
+  WAIT_ENQ --> SEND: 05 with a request
+  WAIT_ENQ --> HOLD: 05, ENQ_TO_SEND set
+  WAIT_ENQ --> SEND: empty line inside the burst window
+  WAIT_ENQ --> WAIT_ENQ: 05 while idle (dropped),<br/>other byte (late-answer report)
+  HOLD --> SEND: ENQ_TO_SEND after the 05
+  SEND --> ACK_GAP: 01 alone, ACK_TO_TELEGRAM set
+  ACK_GAP --> SEND: ACK_TO_TELEGRAM after the 01
+  SEND --> RECEIVE: telegram written
+  RECEIVE --> WAIT_ENQ: answer (opens the burst window)
+  RECEIVE --> WAIT_ENQ: deadline: burst-sent read retried on the next 05,<br/>else TIMEOUT
+```
 
-| Sent | Answer | Read back `0x16` / `0x96` |
+The next cell of a per-address read goes out from `WAIT_ENQ` as a burst, on
+the window its answer opened.
+
+A per-address read of three `eeprom` cells:
+
+```mermaid
+sequenceDiagram
+  participant E as engine
+  participant D as device
+  D->>E: 05
+  E->>D: 01 AE 0A 01 04
+  D->>E: F5 0A
+  E->>D: AE 0B 01 04 (burst, no 01)
+  D->>E: FF 00
+  E->>D: AE 0C 01 04
+  D->>E: CE 31
+```
+
+## Timing
+
+| What | Device (measured) | Engine |
 |---|---|---|
-| `01 AD 16 CF 30 04` | `00` | `CF:30` / `CF:30`; `CF:30` again 16 min later |
-| `01 AD 16 D7 28 04` | `00` | `D7:28` / `D7:28` |
+| Idle ENQ | every 749-2070 ms (median 1229) | - |
+| Telegram -> answer | 23-53 ms | answer deadline 250 ms of silence (`LinkWindow::ANSWER_DEADLINE`, 50-2000 ms live) |
+| Answer -> a burst-sent telegram | answered under 80 ms (109,520 of 109,521); 80-99 ms 183 and 14 unanswered; 100-139 ms 7 and 29 | burst window 80 ms from an answer or the ENQ a telegram went out on |
+| ENQ -> telegram | answered at every delay tried | `ENQ_TO_SEND` 0 (0-100); same pass |
+| Our `01` -> the rest | a 30 ms gap made no difference | `ACK_TO_TELEGRAM` 0 (0-100) |
+| Bytes after a deadline | - | late-answer report until the next telegram, at most 2500 ms |
+| A request | - | watchdog 3000 ms plus what the deadline is raised by |
+| Bursting off | - | after 2 burst failures in a row, for the rest of the session |
 
-- `0x96` follows the write: `0x80`–`0xBF` is the same cell, not a copy.
-- The generic layout put the length byte after the address, so the cell read
-  back `01:29` or `01:04` and failed its check (HW #35, SW `0x1E` and
-  `0x2B`).
-- Not shown yet: that a value survives a power cycle, and that the
-  controller acts on it.
+The answer deadline is a test aid, not a tuning knob: while a request waits,
+the device's idle ENQ can land inside it and be read as the payload, so keep it
+under the shortest idle-ENQ gap (about 700 ms) for one-byte reads. The
+late-answer report already shows a slow answer at the default.
 
-No other write type is confirmed. `be` answers `0xFF` everywhere on the
-units tried (on #35 at every address `0x00`-`0xFF`, with a BES), and for the
-non-EEPROM types where the `0x04` goes is unknown;
-both layouts are switchable at run time
-(`set_gwg_write_eot_before_payload()`).
+## Quirks
 
-A raw EEPROM write of two bytes, `queue_raw_op("gwg w AD ADDR B0 B1")`, sends
-them as the cell's pair unchanged (`01 AD ADDR B0 B1 04`), for example `FF FF`
-to mark a cell unused. Nothing checks the pair, so it can store one that
-every read rejects; it needs `unsafe_raw_writes: true`.
-
-The engine completes a write on any single answer byte. The confirmed EEPROM
-writes answered `00` (as on KW); whether other values occur is unknown, so
-the byte is not checked but shown: the
-raw result reads `write ACK (1 byte), answered XX`, and an entity write logs
-it at DEBUG. Only a read-back proves that a write landed.
+1. **A silent request was completed by the next idle ENQ.** On the first
+   capture 9 of 92 reads returned exactly `0x05` after 903-1476 ms, against
+   0-90 ms for the 79 real answers; Home Assistant showed a plausible 2.5 °C
+   on every `div2` temperature (2026-08-23). Hence the 250 ms deadline, armed
+   at the end of the write and re-armed on every byte. It is checked before
+   the line is drained: the UART holds an ENQ across a long loop pass, and a
+   byte buffered past the deadline is stale. It covers a write's one-byte
+   answer too.
+2. **VitoWiFi completed a read on the request's frame length** (5), so no read
+   of another length ever completed. The engine completes on the datapoint's
+   length, and a write on one byte.
+3. **Bursting works, without the leading `0x01`.** 25 of 25 burst-sent requests
+   were answered without it, 0 of 4 with it (#21). One telegram per ENQ, as the
+   openv wiki and vcontrold have it, would take minutes for a catalog. The
+   window is stamped only by an ENQ a telegram went out on and by an answer,
+   never by an ENQ dropped while idle; any timeout closes it; a pending ENQ
+   always wins.
+4. **A burst must leave within about 100 ms of the answer** (#35, 40 h,
+   2026-11-19/20), hence 80 ms. A late burst costs more than it saves: of 44
+   fresh-ENQ retries after one, 35 went unanswered, all of them sent 27-57 ms
+   after that ENQ; 9 of 9 sent within 25 ms were answered.
+5. **A silent datapoint is not a burst failure.** A burst-sent read that times
+   out goes once more on a fresh ENQ with the `0x01`. Answered there, the burst
+   failed and counts; unanswered too, the datapoint is silent and the count is
+   left alone. Writes are not retried. Without this, two silent `kmbus_eeprom`
+   reads in a row turned bursting off for good on #35.
+6. **A timeout says little about the link.** Only a request that never went out
+   for want of an ENQ (`Result::never_sent`) counts toward "link offline";
+   otherwise the silent fault history on #35 published the link offline about
+   14 times in 6.5 minutes while the unit kept sending ENQs.
+7. **The EEPROM write frame.** The generic layout put the length byte after the
+   address, and the unit stored the two bytes after it as the pair (`01:29` or
+   `01:04`), which then failed its check. `01 AD 16 CF 30 04` and
+   `01 AD 16 D7 28 04` were answered `00` and read back intact, the first again
+   16 minutes later; `0x96` followed both (`0x80`-`0xBF` is the same cell).
+   Survival across a power cycle, and whether the controller acts on it, are
+   not shown. A raw two-byte write (`gwg w AD ADDR B0 B1`) sends the pair
+   unchanged, `FF FF` included.
+8. **Where the `0x04` goes in other writes is unknown.** This project sends it
+   last, dannerph before the payload, the KW sibling none. A write in the
+   wrong layout would be answered and store `0x04`, so a value that reads back
+   as `0x04` is the sign. The switch is `set_gwg_write_eot_before_payload()`,
+   at run time so both can be tried in one session. Reads are the same under
+   both.
+9. **No PHYSICAL write exists** in Vitosoft, yet `0xC8` was the only write byte
+   VitoWiFi could send, which is the likeliest reason no GWG write was
+   confirmed anywhere before (openv issue #467; its "writes only return `0x05`"
+   fits no answer at all and the next ENQ read as the ack).
+10. **An ENQ-to-send delay did not help on #35.** Reads sent 25 ms or more
+    after the ENQ went unanswered 4 times in 439, all right after a boot; within
+    10 ms 236 in 1,882, in stretches (2026-11-13 to 11-17, not alternating). A
+    30 ms gap after the `01` made no difference (85 of 550 against 86 of 550,
+    alternating per read, 2026-11-17).
+11. **Absent sensors read `0xFF`** (255), for example "Raumtemperatur HK B"
+    (`physical` `0x67`) on a single-circuit unit.
+12. **Byte order.** The four timers decode little-endian. `xram` `0x88`
+    "Wasserdruck" is big-endian although Vitosoft defines it as plain `Int`:
+    `01 72` is 1.27 bar against 1.2 bar on the gauge, little-endian 151 bar.
+    The catalogs apply it as a hardware finding to every GWG device with the
+    row. Bits are numbered MSB-first, as everywhere in Vitosoft
+    ([design_notes.md §8e](design_notes.md#8e-vcontrold-numbers-bits-lsb-first-vitosoft-numbers-them-msb-first)).
 
 ## Identification
 
-- Four bytes at `virtual` `0xF8`: group, ident, hardware index (HX, `0xFA`),
-  software index (`0xFB`). Vitosoft: `sysDeviceIdent.xml`,
-  `GWG_SystemIdent_GG/GK/HX/SW`.
-- Vitosoft matches `0x2053` plus IdentificationExtension, whose high byte is
+- Four bytes at `virtual` `0xF8`: group, ident, hardware index, software index.
+  Vitosoft models it as one 4-byte block (`GWG_SystemIdent_GG/GK/HX/SW`);
+  vcontrold reads it the same way (`getDevType`). The hub's identification
+  reads it on `virtual` under GWG.
+- Vitosoft matches `0x2053` plus `IdentificationExtension`, whose high byte is
   the hardware index:
 
   | HW | Vitosoft family | Description |
@@ -253,103 +304,56 @@ it at DEBUG. Only a read-back proves that a write landed.
   | `0x08` | `GWG_VWMS_*` | BES in the wall-mounting base WMS |
   | `0x10` | `GWG_VBT2_*` | Bedienteil BT2, constant-temperature control |
 
-  `0x2054` is `GWG_BT2` (all software indices).
-- **In practice HW does not name the panel.** Units #13 and #35 have a BES and
-  report `0x01`. The likely cause is that the value belongs to the VR20, not to
-  the panel; #35's VR20 is a replacement part.
-- Software index: Vitosoft's "ab Softwareindex 21" is `0x21`. The catalog
-  revisions are `_00`, `_03`, `_21`, `_35`, `_36`; an index between two
-  revisions uses the lower one (SW `0x1E` → `_03`).
-- Vitosoft has no other datapoint that identifies the panel: no product or
-  short name, no controller-type field, no "panel present" flag. The
-  `Neptun_GWGF8..FA` entries belong to a newer controller reading a GWG's
-  codings, not to the VR20.
+  `0x2054` is `GWG_BT2`. Naming a bare `0x2053` "GWG_VBEM", as vcontrold does,
+  is wrong for three families of four.
+- **In practice HW does not name the panel.** #13 and #35 have a BES and report
+  `0x01`. Likely the value belongs to the VR20, not the panel; #35's VR20 is a
+  replacement.
+- Software index: the catalog revisions are `_00`, `_03`, `_21`, `_35`, `_36`
+  (decimal: "ab Softwareindex 21" is `0x21`); an index between two revisions
+  uses the lower (SW `0x1E` -> `_03`).
+- Vitosoft has no other datapoint that identifies the panel.
 
-### BEM and BES catalogs
+**BEM and BES catalogs** share every `physical`, `xram`, `port` and most
+`eeprom` and `be` datapoints. They differ in the clock (`be`: BEM `0xF4..0xF6`,
+BES `0x74..0x76`; VWMS and VBT2 have none) and in the coding cells: the same
+setting sits in a different cell per panel ("Heizungsanlagenschema" is BEM
+coding (00) at `0x08`, BES coding (04) at `0x04`); BEM only: `0x08`, `0x0A`,
+`0x0D`, `0x13`, `0x14`, `0x1C`, `0x21`; BES only: `0x03`. #35's BES unit
+answers (46) at `0x0D` (`0x2D`, the same as PHYSICAL `0xA1`), so the VBES
+catalogs carry it.
 
-The two families share every `physical`, `xram`, `port` and most `eeprom` and
-`be` datapoints. They differ in:
+## Engine
 
-- **Clock (`be`).** BEM `0xF4` weekday, `0xF5` hours and tens of minutes,
-  `0xF6` minutes. BES `0x74` weekday, `0x75` hours, `0x76` minutes. VWMS and
-  VBT2 have none. Both read `0xFF` on #35, so the clock cannot tell them
-  apart.
-- **Coding cells (`eeprom`).** The same setting sits in a different cell per
-  panel: "Heizungsanlagenschema" (same value list) is BEM coding (00) at
-  `0x08` and BES coding (04) at `0x04`.
-  - BEM only: `0x08`, `0x0A`, `0x0D`, `0x13`, `0x14`, `0x1C`, `0x21`.
-  - BES only: `0x03`.
-  - Unused cells answer `FF FF`, so reading these cells shows which coding map
-    the controller keeps. This is the open test for #35.
+| Part | File |
+|---|---|
+| Codec | `optolink_codec_gwg.h` (`gwg_encode()`, `gwg_encode_mode()`, `gwg_eeprom_pair()`, the access-mode tables) |
+| Exchange | `optolink_gwg.h` (`GwgExchange`) |
 
-## Data encoding
+Constants: deadline 250 ms (50-2000), burst window 80 ms, 2 burst failures,
+late watch 2500 ms, watchdog 3000 ms. Variant switches:
+`set_gwg_write_eot_before_payload()` (default off),
+`set_gwg_burst_omits_enq_ack()` (default on). DEBUG lines: `GWG timing:` (ENQ
+age, ENQ->send, `01`->rest, send->answer) for each answered read, and
+`GWG 0x.. unanswered:` for each burst-sent read retried.
 
-- **Byte order: mostly little-endian, one exception suspected.**
-  - The four timers decode consistently little-endian: for each,
-    65536 − raw ≈ 562.5 × its duration in minutes (13, 7, 4 and 1). They never
-    changed between reads, so they are most likely preset durations, not
-    running timers (HW #35).
-  - `xram` `0x88` "Wasserdruck" is big-endian although Vitosoft defines it as
-    plain `Int`: `01 72` is 370 × 0.0052 − 0.65 = 1.27 bar against 1.2 bar on
-    the gauge, little-endian it would be 151 bar. Over two days it read
-    `01 71`..`01 7C`, 1.27..1.33 bar, rising with the boiler temperature (HW
-    #35). The catalogs apply it as a hardware finding
-    (`scripts/vitocatalog/confirmed.toml`) to every GWG device that has the
-    row: they all share it.
-- **Bits** are numbered MSB-first in Vitosoft (§8e).
-- **Absent sensors read `0xFF`** (255), for example "Raumtemperatur HK B"
-  (`physical` `0x67`) on a single-circuit unit. #35's coding (04)
-  Heizungsanlagenschema = 1 ("one heating circuit without mixer, with hot
-  water") agrees.
-
-## Hub behaviour built on these findings
-
-- **Late-answer report.** After a timeout, any bytes that arrive before the
-  next ENQ are logged once with their delay.
-- **Poll backoff.** Three timeouts in a row while other datapoints answer
-  slows that entity down: 2x, then up to 16x its interval. The first answer
-  restores it.
-- **All-`0xFF` warning.** Fires after 8 consecutive all-`0xFF` answers. In a
-  full catalog the `be` reads are interleaved with real ones, so it does not
-  fire there.
-- **Link status.** Three timeouts in a row mark the link offline, but only
-  timeouts of a request that never went out because no ENQ came
-  (`Result::never_sent`). A request the unit took and did
-  not answer is a datapoint it does not serve and leaves the link state
-  alone. Before this, consecutive silent datapoints (the fault history at
-  `0xA0`, `0xAA` and `0xB4` is `kmbus_eeprom`) published the link offline
-  about 14 times in 6.5 minutes on #35, although the unit kept sending ENQs
-  and answering other reads. Not yet confirmed on hardware.
-- **ENQ-to-send delay (diagnostic, off by default).** A request goes out as
-  soon as the ENQ is read. The timing point `ENQ_TO_SEND` (`link_timing:
-  enq_to_send:`, or `id(vito).set_link_timing(vitohome::TimingPoint::ENQ_TO_SEND,
-  30)` from a lambda, 0 to 100 ms) holds an ENQ-paced request that long first; burst-sent
-  requests do not wait. The DEBUG `GWG timing:` line shows `enq age` and the
-  measured `enq->send` for each answered read, and `GWG 0x.. unanswered:`
-  shows the same two for each unanswered one. `enq->send` runs to the write
-  that sends the frame's first byte; the frame log writes its lines after
-  that write. On #35, reads sent 25 ms or more after the ENQ went unanswered
-  4 times in 439, all identification reads right after an ESP boot; reads
-  sent within 10 ms went unanswered 236 times in 1,882, in stretches (HW,
-  2026-11-13 to 2026-11-17). The two settings ran at different times, not
-  alternating.
-- **Gap after the `0x01` (diagnostic, off by default).** The delay above moves
-  the whole frame, its `0x01` included. The timing point `ACK_TO_TELEGRAM`
-  (`link_timing: ack_to_telegram:`, or `set_link_timing()`, 0 to 100 ms) sends the `0x01` on the ENQ, or after the delay,
-  and the rest of the frame that much later. Open frames that start with
-  `0x01` get the gap too; burst-sent requests carry no `0x01` and do not wait.
-  Both DEBUG lines then add the measured `01->rest`. #35's reporter's own
-  firmware sends the `0x01` at once and the rest one or two loop passes
-  later. On #35 a gap of 30 ms made no difference: alternating per read, 85
-  of 550 reads went unanswered at 30 ms and 86 of 550 at 0 ms (HW,
-  2026-11-17).
+Proofs: `proof_gwg_exchange.cpp`, `proof_gwg_read.cpp`,
+`proof_gwg_access_mode.cpp`, `proof_gwg_burst.cpp`,
+`proof_gwg_eeprom_pairs.cpp`, `proof_gwg_enq_misread.cpp`,
+`proof_gwg_enq_send_delay.cpp`, `proof_gwg_enq_ack_gap.cpp`,
+`proof_gwg_frame.cpp`, `proof_gwg_timeout_kind.cpp`,
+`proof_gwg_write_access.cpp`, `proof_gwg_dispatch_stall.cpp`, and the
+differential target (161 seeds, boundary seeds at the burst window's 80 and
+81 ms).
 
 ## Open questions
 
 | Question | Test |
 |---|---|
-| Does #35's controller keep the BES or the BEM coding map? | Read `eeprom` `0x03`, `0x08`, `0x0A`, `0x0D`, `0x13`, `0x14`, `0x1C`, `0x21` with frames logged; compare BES codings (02), (03), (04) with the panel |
-| Does any GWG unit serve `be`? | A unit with a BEM panel |
-| How does a GWG unit frame a KM-bus read? | The candidates under `kmbus_eeprom`, with the KM-bus probe |
-| Does #35's unit answer more reads with an ENQ-to-send delay? | A read every 5 s with frames logged, `ENQ_TO_SEND` 0 and 30 ms alternating for 2 h, the first 20 min after boot not counted; compare the unanswered reads of each |
-| Where does the write frame's `0x04` go? | A first `eeprom` write on a unit whose owner accepts the risk |
+| Does any GWG unit serve `be`? | uwen70's BEM: the same `be` reads as with the BES |
+| Does #35's controller keep the BES or the BEM coding map? | Read `eeprom` `0x03`, `0x08`, `0x0A`, `0x0D`, `0x13`, `0x14`, `0x1C`, `0x21` with frames logged; compare codings (02), (03), (04) with the panel |
+| How does a GWG unit frame a KM-bus read? | The candidates above, with the KM-bus probe |
+| What is the VR20's real baud rate? | A sweep 4400-5200 with a known answer (`virtual` `0xF8`) at each step |
+| Where does a write frame's `0x04` go? | A first non-EEPROM write on a unit whose owner accepts the risk |
+| Do two coding flags of `0x0005`, toggled back to back, both land? | uwen70's weekend test, restoring both |
+| Does the new GWG exchange behave as the old engine on the unit? | uwen70's weekend test firmware |

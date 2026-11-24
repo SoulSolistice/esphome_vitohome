@@ -2,7 +2,7 @@
 #ifndef VITOHOME_OPTOLINK_P300_H
 #define VITOHOME_OPTOLINK_P300_H
 
-// The P300 stack (design-optolink-layers.md, sections 4.1 and 5.2): the
+// The P300 stack (docs/p300_protocol.md): the
 // session with the device and its keepalive, one telegram at a time with the
 // device's ACK and its answer frame, the KW detour for a KW telegram, and the
 // open frame; one request in flight, its watchdog and one result callback,

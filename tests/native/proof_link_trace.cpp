@@ -1,5 +1,5 @@
-// The links' trace for the recorder (LinkSink, design-optolink-layers.md
-// 15.9), on a frozen clock: what each exchange reports, in order.
+// The links' trace for the recorder (LinkSink, docs/design_notes.md
+// section 9b), on a frozen clock: what each exchange reports, in order.
 //   KW)   begin, a stray byte, a read on the ENQ, chained; silence and the
 //         retry; the watchdog;
 //   P300) the handshake, a read the device NACKs, a restart whose EOT it

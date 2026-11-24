@@ -2,8 +2,7 @@
 #ifndef VITOHOME_OPTOLINK_GWG_H
 #define VITOHOME_OPTOLINK_GWG_H
 
-// The GWG stack (design-optolink-layers.md, sections 4.3 and 5.1;
-// docs/gwg_protocol.md): telegrams on an ENQ-paced line, the burst window
+// The GWG stack (docs/gwg_protocol.md): telegrams on an ENQ-paced line, the burst window
 // between them, per-address reads; one request in flight, its watchdog and one
 // result callback, as the KW exchange has them (optolink_exchange.h).
 //
@@ -40,7 +39,7 @@
 // Late-answer report: after a deadline, the bytes of the telegram and any
 // byte that follows within 2.5 s, until the next telegram goes out.
 //
-// Settable (design-optolink-layers.md, section 13): the timing points
+// Settable (docs/design_notes.md, section 3): the timing points
 // ENQ_TO_SEND and ACK_TO_TELEGRAM, 0 by default (the 01 and the telegram in
 // one write, in the ENQ's pass), and the answer deadline (LinkWindow), 250 ms
 // by default. Two variant switches change what is sent: the EOT before a

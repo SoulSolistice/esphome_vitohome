@@ -6,20 +6,9 @@ substitutions:
 
 esp32:
   board: esp32dev
-  # Pin the PlatformIO toolchain explicitly. As of ESPHome 2026.7.0 (this
-  # project's pin) the ESP32 default is `esp-idf`, so this pin now DIVERGES
-  # from the default on purpose: it selects the PlatformIO build this project
-  # actually ships and validates against. (The native `esp-idf` toolchain is
-  # covered separately by tests/test.esp32-idf-native.yaml.) The pin also
-  # keeps the upstream-canary meaningful: without it, under the native
-  # toolchain the PlatformIO-library-to-IDF-component converter
-  # (esphome/platformio/library.py::convert_libraries) treats ANY non-empty
-  # `cg.add_library(..., repository)` as a git remote and tries to
-  # `git clone` it -- including the vendored optolink engine's `file://`
-  # local-path library, which isn't its own git repo and failed with
-  # "does not appear to be a git repository" before the toolchain-conditional
-  # registration in components/vitohome/__init__.py::to_code landed. See
-  # design_notes.md §11 for the full writeup.
+  # The PlatformIO toolchain, pinned: the ESP32 default is the native
+  # `esp-idf` one, which tests/test.esp32-idf-native.yaml builds, so both stay
+  # covered (design_notes.md, section 11, "Build").
   toolchain: platformio
   framework:
     type: esp-idf

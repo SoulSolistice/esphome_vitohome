@@ -2,7 +2,7 @@
 #ifndef VITOHOME_OPTOLINK_CODEC_P300_H
 #define VITOHOME_OPTOLINK_CODEC_P300_H
 
-// The P300 codec (design section 4.1; openv wiki, Protokoll 300): a request
+// The P300 codec (docs/p300_protocol.md; openv wiki, Protokoll 300): a request
 // as a whole telegram, and the incremental parser of the answer frame.
 //
 //   41 LL TT FC AH AL DL [payload] CS

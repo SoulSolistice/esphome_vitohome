@@ -427,7 +427,7 @@ climate:
 
 Note only GWG **EEPROM writes are confirmed on hardware** (one unit, written
 and read back intact); `be` writes and the other write types are not. See
-[`docs/gwg_protocol.md`](docs/gwg_protocol.md#writes).
+[`docs/gwg_protocol.md`](docs/gwg_protocol.md#quirks).
 
 You normally will not write these by hand: `scripts/gen_catalog.py` reads the
 access mode out of Vitosoft's own `FCRead` field and emits `access:` on every
@@ -440,7 +440,7 @@ by Vitosoft. On the units reported so far, `physical`, `virtual`, `eeprom`,
 at all. What each mode did on which unit, and what is still open, is in
 [`docs/gwg_protocol.md`](docs/gwg_protocol.md). The full TYPE-byte table and
 the reasoning are in
-[`docs/design_notes.md`](docs/design_notes.md#gwg-access-modes-access).
+[`docs/gwg_protocol.md`](docs/gwg_protocol.md#access-modes).
 
 ### P300 only: `access: rpc`
 
@@ -520,7 +520,7 @@ behind one procedure at `0xA801`, each one call with the record index as its
 parameter. The generator fans it out like the Vitotronic archive -- "Letzter
 Fehler (WPR)" enabled, the other 29 records disabled -- as raw hex until the
 record layout is decoded. Details and the one open wire question are in
-[`docs/design_notes.md`](docs/design_notes.md#p300-remote-procedure-calls-access-rpc).
+[`docs/p300_protocol.md`](docs/p300_protocol.md#remote-procedure-calls-access-rpc).
 
 ### KW and P300: `access: gfa` (burner control)
 
@@ -580,7 +580,7 @@ line naming the chips Vitosoft lists each one for; where a parameter decodes
 differently per chip, each reading is its own entity. In the catalog editor,
 pick your chip under *Burner-control chip* (the finder's link presets it) and
 the other chips' burner-control datapoints are hidden. Details in
-[`docs/design_notes.md`](docs/design_notes.md#burner-control-reads-access-gfa).
+[`docs/kw_protocol.md`](docs/kw_protocol.md#burner-control-reads-access-gfa).
 
 ## Development
 
@@ -597,8 +597,7 @@ the other chips' burner-control datapoints are hidden. Details in
 
 vitohome is licensed under the GNU General Public License v3.0 (see
 [`LICENSE`](LICENSE)). It builds on VitoWiFi, InsideViessmannVitosoft and
-openv/vcontrold — see [`NOTICE.md`](NOTICE.md) and
-[`THIRD_PARTY.md`](components/vitohome/THIRD_PARTY.md).
+openv/vcontrold — see [`NOTICE.md`](NOTICE.md).
 
 This work would not have been possible without the "prior art" that was
 and is truly foundational. Many thanks to all of it.

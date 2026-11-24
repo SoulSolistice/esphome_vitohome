@@ -1,6 +1,6 @@
 #pragma once
 
-// The recorder (design-optolink-layers.md, section 15): the last bytes on the
+// The recorder (docs/design_notes.md, section 9b): the last bytes on the
 // line, the link's states and facts (LinkSink) and the result of every
 // request, with µs times, in a ring of fixed
 // size. It freezes some entries after the first failure it is set to watch,

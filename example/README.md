@@ -9,7 +9,7 @@ The official Viessmann XML catalogs are not complete and datapoints that are
 supported by the unit may not be included in the automatically generated
 configuration files.
 
-[`example/user_curated`](example/user_curated/) contains contributed device
+[`example/user_curated`](user_curated/) contains contributed device
 configurations that can serve as a starting point.
 
 Contributions there go in `example/user_curated/<device>/` as

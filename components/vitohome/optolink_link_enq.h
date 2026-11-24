@@ -2,7 +2,7 @@
 #ifndef VITOHOME_OPTOLINK_LINK_ENQ_H
 #define VITOHOME_OPTOLINK_LINK_ENQ_H
 
-// The ENQ-paced link (design-optolink-layers.md, section 5.1): who may speak
+// The ENQ-paced link (docs/kw_protocol.md): who may speak
 // when on a line where the device offers each turn with an ENQ. It moves the
 // exchange's telegram onto the wire and the answer off it, and knows nothing
 // of what the bytes mean.

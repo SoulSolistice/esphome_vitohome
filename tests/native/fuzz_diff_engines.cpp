@@ -2,7 +2,7 @@
 // reference engines (reference/, a frozen copy of today's) and once against
 // the live ones, on the same input and the same clock, and the two runs must
 // agree pass by pass. This is the acceptance check of the engine redesign
-// (design-optolink-layers.md, section 9): the same bytes at the same moments.
+// (docs/design_notes.md, section 3): the same bytes at the same moments.
 //
 // INPUT LAYOUT
 //

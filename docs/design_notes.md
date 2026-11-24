@@ -8,11 +8,12 @@ points rather than repeats:
 - **Authoring/decoding a datapoint, the converter table, two-address `select`,
   config-time validation rules** → [`converters.md`](converters.md).
 - **Quick start, YAML shape, how it works at a glance** → [`README.md`](../README.md).
-- **Exact modifications made to the vendored engine, and licensing** →
+- **Where the engine's behaviour differs from VitoWiFi's, and licensing** →
   [`THIRD_PARTY.md`](../components/vitohome/THIRD_PARTY.md) and
   [`NOTICE.md`](../NOTICE.md).
-- **VitoWiFi shortcomings written up as upstream proposals** →
-  [`THIRD_PARTY.md`](../components/vitohome/THIRD_PARTY.md), Part 2.
+- **Each protocol: wire format, state flow, timing, quirks** →
+  [`p300_protocol.md`](p300_protocol.md), [`kw_protocol.md`](kw_protocol.md),
+  [`gwg_protocol.md`](gwg_protocol.md).
 - **Catalog generation tooling** → [`scripts/README.md`](../scripts/README.md).
 - **What GWG units actually did on the wire, per access mode, and the open
   questions** → [`gwg_protocol.md`](gwg_protocol.md).
@@ -25,10 +26,12 @@ points rather than repeats:
 Three rules govern every factual claim in this codebase, and they are the reason
 the design is what it is:
 
-- **The wire engine is pinned to an exact commit, not a branch.** VitoWiFi is
-  vendored at `edc059a7`; an upstream change cannot silently alter decode — or
-  OTA — for every device on the next tag. Bumping it is a deliberate act that
-  re-runs the validation in §4.
+- **The wire engine is the project's own code.** It began as VitoWiFi at
+  `edc059a7`; every engine file has since been rewritten from the protocol and
+  the field evidence. A frozen copy of the engines before the rewrite
+  (`tests/native/reference/`) holds the new ones to the same bytes at the same
+  moments (§3), so each change on the wire is a deliberate one, listed in
+  `THIRD_PARTY.md`.
 - **The reverse-engineering write-ups are dated.** InsideViessmannVitosoft's
   docs are a map, not the territory — e.g. they describe per-language
   `Textresource_de.xml`/`Textresource_en.xml`; the 2026 definition export ships
@@ -37,20 +40,20 @@ the design is what it is:
   wraps its tables in an `ImportExportDataHolder` with an extra
   `DocumentServerDataSet` the docs don't mention (§8). Datapoint facts are
   verified against a *current* export, never recalled from the docs.
-- **Claims are labelled by evidence class.** Anything version-sensitive is stated
-  as *verified-against-source at `edc059a7`*, not from memory. Findings are
+- **Claims are labelled by evidence class.** A statement about VitoWiFi is
+  *verified against its source at `edc059a7`*, not from memory. Findings are
   distinguished as **hardware-confirmed** (replayed against real captures /
   observed on the unit) versus **model-derived** (correct by construction but not
   yet seen on this physical heater). The two are never silently merged.
 
 ---
 
-## 1. Architecture — VitoWiFi as a pure wire engine; decode in-component
+## 1. Architecture — the engine moves bytes; decode in the component
 
-The engine (`components/vitohome/optolink_*.h`) is used **only** as the
-P300/KW/GWG wire layer: framing, sequencing, ACK/NAK, CRC, retries. Every
-`Datapoint` is constructed with `optolink::noconv` and writes go through the
-raw-bytes overload. **All value decode and encode happens in the component**, in
+The engine (`components/vitohome/optolink_*.h`) is **only** the P300/KW/GWG
+wire layer: framing, sequencing, ACK/NACK, checksums, retries. Every
+`Datapoint` carries `optolink::noconv`, and a request carries raw bytes
+(`Request`). **All value decode and encode happens in the component**, in
 `decode.h`: read the raw little-endian bytes into a `uint64_t`, scale in
 `double`, and narrow to `float` only at the ESPHome state boundary
 (`publish_state`). The Python layer turns YAML into the three things the runtime
@@ -65,29 +68,20 @@ YAML ──Python codegen──▶ Datapoint(noconv) + scale + signed
 ```
 
 This buys a single, host-testable decode/encode path with no hardware in the
-loop, and it sidesteps two real hazards in the engine's own converter layer:
+loop. It was chosen against two hazards of VitoWiFi's converter layer, which
+the engine no longer has:
 
-### 1a. The `VariantValue` union is tagless
+### 1a. A tagless value union
 
-The engine returns decoded values through a **non-discriminated** union over
-`_uint8Val`/`_uint16Val`/`_uint32Val`/`_uint64Val`/`_floatVal`. Nothing records
-which member was written, so reading the wrong member returns whatever bit
-pattern is there — a silent garbage value, not an error. Choosing the correct
-member requires knowing the converter that produced it, i.e. exactly the
-information the union throws away. Decoding the raw bytes ourselves removes the
-guessing entirely -- and the vendored engine has since deleted `VariantValue`
-and the converter decode/encode layer outright (`THIRD_PARTY.md` items 13/15),
-so the hazard class no longer exists in-tree; this section records why the
-decode path was designed this way.
-
-> The canonical instance of this trap: an earlier revision called
-> `operator float()` on a `noconv` value, reading the `float` member over integer
-> bytes and publishing silent garbage. That is why the decode path is
-> converter-aware rather than "just cast to float."
+VitoWiFi returned decoded values through a **non-discriminated** union
+(`VariantValue`). Nothing recorded which member was written, so reading the
+wrong one returned whatever bit pattern was there: silent garbage, not an
+error. Calling `operator float()` on a `noconv` value did exactly that, which
+is why the decode path is converter-aware rather than "just cast to float".
 
 ### 1b. float32 loses bits on 4-byte counters
 
-The engine does converter arithmetic in `float`. A 32-bit counter can exceed
+VitoWiFi did converter arithmetic in `float`. A 32-bit counter can exceed
 float32's exact-integer ceiling of `2²⁴ = 16,777,216`, after which not every
 integer is representable. Burner-hours is the concrete, **hardware-confirmed**
 case: a raw seconds value of **212,197,680 s** (`0x0CA5E130`, little-endian
@@ -105,11 +99,16 @@ signedness rules.
 
 ## 2. The protocol layer (P300 / KW / GWG)
 
-| Protocol | `protocol:` value | Status |
-|---|---|---|
-| P300 / VS2 | `P300` (default) | **Hardware-confirmed** on a VScotHO1 (`0x20CB`). |
-| KW / VS1 | `KW` | **Hardware-confirmed** on a VScotHO1. |
-| GWG | `GWG` | **Reads hardware-confirmed** on three `0x2053` units (issues #13, #21, #35; first capture 2026-08-23, which exposed the ENQ-misread defect fixed in THIRD_PARTY.md #18). `physical`, `virtual`, `eeprom`, `xram` and `port` answer; `be` and `kmbus_eeprom` did not return data on the units that tried them. **EEPROM writes are confirmed** (#35, on the #13 unit); no other write type is. Per-mode status and open questions: [gwg_protocol.md](gwg_protocol.md). |
+| Protocol | `protocol:` value | Status | Reference |
+|---|---|---|---|
+| P300 / VS2 | `P300` (default) | **Hardware-confirmed** on a VScotHO1 (`0x20CB`) | [p300_protocol.md](p300_protocol.md) |
+| KW / VS1 | `KW` | **Hardware-confirmed** on a VScotHO1 | [kw_protocol.md](kw_protocol.md) |
+| GWG | `GWG` | **Reads and EEPROM writes hardware-confirmed** on three `0x2053` units (#13, #21, #35) | [gwg_protocol.md](gwg_protocol.md) |
+
+Each protocol document has the same layout: wire format, the engine's state
+flow, a timing table (what the device allows, what the engine uses, what is
+settable), the quirks found in the field, the engine's files and proofs, and
+the open questions. This section holds what the protocols share.
 
 - **8E2 at 4800 baud is mandatory, give or take a drifting clock.** `esphome
   config` rejects any data-bit/stop-bit/parity mismatch on the referenced
@@ -126,13 +125,13 @@ signedness rules.
   check failed correctly wired `usb_uart` heads.
 - **Protocol is selected at compile time.** Codegen emits exactly one
   `VITOHOME_PROTOCOL_*` flag from the `protocol:` option (no flag → P300, the
-  default and only hardware-exercised path). `protocol_select.h` resolves this
-  to `SelectedProtocol = optolink::P300 | KW | GWG`.
+  default). `protocol_select.h` resolves it to `SelectedProtocol` (the
+  protocol's tag) and `SelectedEngine<Port>` (`P300Exchange`, `KwExchange` or
+  `GwgExchange`).
 - **The hub is protocol-agnostic by construction.** Every operation becomes
   one `Request` (`read_request()` / `write_request()` in `address_space.h`
-  for an entity's space) for `SelectedEngine` (`protocol_select.h`): the KW
-  exchange (`optolink_kw.h`), or the P300 or GWG engine behind its adapter
-  (`optolink_adapter.h`). One `Result` comes back per request; the hub wraps
+  for an entity's space) for `SelectedEngine`. One `Result` comes back per
+  request; the hub wraps
   an answer in a `ResponseView { data, data_length, address, unserved_eeprom }`
   (`response_view.h`), so the entities never see the engine. On P300 the `address`
   field is the one **echoed in the response frame itself** (the device echoes
@@ -142,760 +141,26 @@ signedness rules.
   engine echoes the request's, and the check degenerates to a tautology. The
   uniform engine API is what makes adding/maintaining a second protocol cheap,
   and it is exercised host-side without hardware by
-  `tests/native/engine_compile_proof.cpp` (deliberately compiled without the
-  datapoint/converter translation units — the engine layer has no Datapoint
-  dependency).
+  `tests/native/engine_compile_proof.cpp` (the engine layer has no
+  `Datapoint` dependency).
 - **Link is verified at runtime.** After `begin()`, the hub watches for the first
   successful exchange within a window; it logs the established link, or, if
   the configured protocol never establishes one, an error — so a wrong
   `protocol:` surfaces at start-up, not as silent dead air. It also publishes
   the link offline and raises the component's error status, and it keeps
-  polling. It used to `mark_failed()` here, which a wrong `protocol:` deserves
-  and a boiler that is off at ESP boot does not: that needed a reboot of the
-  ESP to recover. The first answer clears the error, and identification is
+  polling: a boiler that is off at ESP boot looks the same as a wrong
+  `protocol:`, and must not need a reboot of the ESP. The first answer clears
+  the error, and identification is
   repeated on that link-up if it had ended as "unknown". While the link is
   offline, per-datapoint timeouts are logged at VERBOSE, not ERROR.
-- **Under GWG a timeout says little about the link.** GWG has no error telegram,
-  so an address the unit does not serve in the requested mode goes unanswered
-  (or answers `0xFF`). Only a request that never went out for want of an ENQ
-  counts towards OFFLINE (`GWGEngine::lastTimeoutWasUnsynced()`). Before that
-  rule, the silent `kmbus_eeprom` datapoints of issue #35 published the link
-  offline about 14 times in 6.5 minutes on a unit that kept sending ENQs.
-  On KW and P300 an open frame's timeout does not count either: silence is
-  the expected answer to most candidate frames.
-
-### GWG access modes (`access:`)
-
-GWG reads carry an access mode in the telegram's TYPE byte. Every other
-protocol here has exactly one read TYPE byte; GWG has eight, and the address
-space is *per mode* — address `0xF8` under `physical` and under `virtual` are
-two unrelated registers. A wrong access mode is therefore indistinguishable
-from a wrong address from the outside, which is why it is exposed rather than
-hard-coded.
-
-`sensor` entities take an optional `access:` under `protocol: GWG`:
-
-```yaml
-sensor:
-  - platform: vitohome
-    name: "GWG ident"
-    address: 0xF8
-    byte_length: 2
-    access: virtual        # default: physical
-```
-
-| `access:` | TYPE | vcontrold macro | Vitosoft `FCRead` |
-|---|---|---|---|
-| `physical` (default) | `0xCB` | `GETADDR` | `Physical_READ` |
-| `virtual` | `0xC7` | `GETVADDR` | `Virtual_READ` |
-| `eeprom` | `0xAE` | `GETEADDR` | `EEPROM_READ` |
-| `xram` | `0xC5` | `GETXADDR` | `XRAM_READ` |
-| `port` | `0x6E` | `GETPADDR` | `Port_READ` |
-| `be` | `0x9E` | `GETBADDR` | `BE_READ` |
-| `kmbus_eeprom` | `0x43` | `GETKMADDR` | `KMBUS_EEPROM_READ` |
-| `kmbus_ram` | `0x33` | **none** | **none** (but vogod has it) |
-
-Three independent sources agree on seven of the eight bytes: the openv wiki's
-`Protokoll-GWG` "Telegramm Typen" table; vcontrold's `<protocol name="GWG">`
-macros (`xml/{kw,300}/vcontrold.xml`), which wrap the same bytes in the same
-frame this engine emits — `SYNC; GET*ADDR $addr $hexlen 04; RECV $len`; and
-Viessmann's own Vitosoft data, which carries the mode per datapoint in
-`ecnEventType.xml`'s `FCRead`.
-
-**`kmbus_ram` (`0x33`) has no vcontrold macro and no Vitosoft datapoint** — zero
-of the 4143 across Vitosoft's 22 `GWG_*` tokens use it. It is not unsourced,
-though: `speters/vogod` declares the full GWG command-type set independently and
-includes `physicalKmbusRAMRead = 0x33`. So the byte is corroborated; what is
-missing is any datapoint that needs it. Only the raw lane's open frame sends it.
-
-**The `kmbus_eeprom` frame is a guess.** vcontrold's `getkmaddr` calls
-`GETKMDDR`, a macro it does not define, so the `GETKMADDR` in the table is
-only ever sent by its `getkmtestaddr` test command, as `01 43 ADDR 01 04`.
-vogod declares the byte and maps it to no operation. vitohome sends the
-generic frame, and #35's unit never answered it. Vitosoft's KM-bus
-datapoints carry a `PrefixRead` (`03 00 00 00 01 01`) that matches a KM-bus
-telegram header, so the controller may expect a whole telegram after `0x43`.
-The candidates and the open frame that tests them:
-[`gwg_protocol.md`](gwg_protocol.md#kmbus_eeprom).
-
-### The address is not the identity
-
-Under GWG the address space is *per mode*, and Vitosoft shows how sharply. In
-`GWG_VBES_00`, address `0x01` is **five different datapoints across four
-modes**: OEM ident (`kmbus_eeprom`), maximum boiler temperature (`eeprom`), and
-three separate outputs (`port`). So `access:` is not a diagnostic nicety here —
-omit it and the entity silently reads a different register.
-
-That is also why `physical` being the default is a footgun on GWG rather than a
-convenience: it is a mere 26% of a GWG device's datapoints (51 of 195 on
-`GWG_VBES_00`), behind both `kmbus_eeprom` and `eeprom`.
-
-### Bursting: several telegrams per ENQ
-
-The openv wiki says "before transmitting additional telegrams one must wait for
-the next 0x05", and vcontrold agrees — its GWG `getaddr` runs `SYNC` (send
-`EOT`, wait `ENQ`) before every command. Taken literally that caps the poll rate
-at **one datapoint per ENQ interval**, measured at 749–2070 ms (median 1229) on
-the 2026-08-23 capture; the observed rate matched, 92 requests in about two
-minutes. A 180-entity catalog would be a multi-minute sweep.
-
-Every implementation that has actually run on hardware does something looser:
-
-- **vogod** treats an ENQ as valid for **1500 ms** and, with a command pending
-  inside that window, sends without re-syncing — re-stamping the window at the
-  end of every completed transaction, so a queue runs back-to-back.
-- **dannerph** has an explicit burst mode: it ACKs the `0x05` once, then sends
-  further requests in the burst without a new sync.
-- **This project's KW link** already does it: `EnqLink` chains the next
-  telegram within its chain window with no fresh ENQ. GWG was the odd one out.
-
-**KW bursting is hardware-confirmed** (2026-08-24 capture, VScotHO1_72 `0x20CB`
-HW 03 SW 51, ESP32-C3, 56 entities). The device answers a long chain off a
-single sync: nine ENQ-delimited chains, **median 29 telegrams per ENQ, max 49**,
-and the `0x01` (ENQ-ACK) prefix appears on the first telegram of a chain and on
-no other — `_syncEnq()` emits it, `_syncRecv()` does not, exactly as intended.
-In steady state a whole 60 s poll cycle completes inside one chain: 29
-datapoints in 2.1–2.2 s, about 74 ms per datapoint. Strict
-one-telegram-per-ENQ would have needed 29 × ~1.2 s ≈ 35 s for the same cycle.
-
-That capture also measures the window the chain actually needs. The gap from a
-completed answer to the next request ran **22–42 ms (median 29, p90 35)** across
-235 transactions, against what was then a 50 ms budget — no breach, but only
-~8 ms of headroom. That measurement is what prompted the split below.
-
-GWG bursts too, on an 80 ms window (`GWGEngine::ENQ_VALIDITY_MS`). It started
-on vogod's 1500 ms and was 500 ms until the issue #35 unit (GWG_VBEM `0x2053`
-SW `0x1E`) showed where the device stops listening. In a 40 h log
-(2026-11-19/20) the burst-sent reads that left after the previous answer
-split like this:
-
-| Gap after the answer | Answered | Unanswered |
-|---|---|---|
-| under 80 ms | 109,520 | 1 |
-| 80–99 ms | 183 | 14 |
-| 100–139 ms | 7 | 29 |
-
-The late ones were all one read: per-bit DEBUG lines of the six binary sensors
-on the read before it took about 100 ms, in the hours when a second log client
-was attached. A miss costs more than the burst saves: the read is retried on
-the next ENQ, and 35 of those 44 retries went unanswered too, each a TIMEOUT.
-Past the window a request waits for the next ENQ, about 1.2 s.
-
-Because this contradicts the only written specification, it is **self-correcting
-rather than assumed**:
-
-- a real ENQ always wins — the burst path is reached only when the interface has
-  no bytes pending, so no buffered byte can be mistaken for a response and no
-  drain is needed;
-- the window is stamped only where the device demonstrably let us talk (an ENQ
-  we actually used, and a completed transaction), never by an ENQ we discarded
-  while idle;
-- any TIMEOUT invalidates it, so the next request re-syncs instead of riding a
-  window we no longer trust;
-- and `BURST_FAILURES_BEFORE_FALLBACK` (2) consecutive burst-sent requests going
-  unanswered disables bursting for the session, with a warning. A unit for which
-  the wiki is simply right therefore costs two transactions and then behaves
-  exactly as before.
-
-`GWGEngine::BURST_ENABLED = false` compiles it out entirely; both branches build
-and pass the proof suite (`tests/native/proof_gwg_burst.cpp` asserts the strict
-one-telegram-per-ENQ property instead when it is off).
-
-**GWG bursting is hardware-confirmed** (issue #21, GWG_VBEM `0x2053`
-SW `0x7A`), with one condition: a burst-sent GWG request must **not** carry the
-leading `0x01`. That byte acknowledges the device's ENQ, and a burst request
-answers none. With it left off, 25 of 25 burst-sent requests were answered;
-with it kept, 0 of 4, across two sessions. Omitting it is therefore the
-default (`GWGEngine::setBurstOmitsEnqAck()`, from a lambda
-`set_gwg_burst_omits_enq_ack()`). With the old default, the boot-time identification reads
-could already trip the fallback and lose the device id before any user
-action. If `GWG burst disabled` still shows up in a log, that unit differs —
-report it.
-
-**A silent datapoint is not a burst failure** (issue #35, Vitodens 200 WB2,
-GWG_VBEM `0x2053` SW `0x1E`). That unit answered every physical, eeprom, xram,
-port and be read in 23–50 ms, burst-sent or not (`be` with `0xFF` at every
-address, see [`gwg_protocol.md`](gwg_protocol.md#be)), but none of its 54
-`kmbus_eeprom` reads (the GFA behind the VR20 KM-Bus). Two of those in a row
-disabled bursting for good, although bursting was fine — the datapoint was
-silent. A burst-sent read that times out is now retried once on a fresh ENQ
-with the `0x01` sync: if the retry is answered, the burst failed (and counts
-towards the fallback); if the retry times out too, the datapoint is silent and
-the burst counter is left alone. Writes are never retried, because a lost
-answer does not mean a lost write; a burst-sent write timeout still counts.
-
-A silent burst-sent read is logged at DEBUG when it is retried
-(`GWG 0x… unanswered: enq age <=N ms (burst); retrying on the next ENQ`), so
-the retry is visible although no TIMEOUT follows when it is answered.
-
-The engine also reports what arrived around a timeout. Bytes drained at the
-deadline, and every non-ENQ byte up to the next request's ENQ (at most
-`GWGEngine::LATE_WATCH_MS`, 2500 ms), are logged once as a warning:
-
-```text
-GWG 0x006E: 0 of 1 byte(s) within the 250 ms deadline; 1 late byte(s), the first 640 ms after the request: 4B
-```
-
-GWG has no framing, so this is a diagnostic, not a decode: a data byte `0x05`
-and the device's idle ENQ cannot be told apart. The warning says whether the
-datapoint answers slowly (raise the deadline) or never (leave it out).
-
-The 250 ms answer deadline is the link's default (`LinkWindow::ANSWER_DEADLINE`),
-settable at run time from a lambda, between 50 and 2000 ms:
-
-```yaml
-button:
-  - platform: template
-    name: "GWG deadline 700 ms"
-    on_press:
-      - lambda: id(vito).set_link_window(vitohome::LinkWindow::ANSWER_DEADLINE, 700);
-```
-
-`id(vito).link_window(vitohome::LinkWindow::ANSWER_DEADLINE)` reads it back. The request watchdog grows
-by the same amount. This is a test aid, not a tuning knob: while a request
-waits, the device's idle ENQ (also `0x05`, every 749-2070 ms) can land inside
-the window and be read as the payload. Keep it under the shortest idle-ENQ gap
-(about 700 ms) for one-byte reads: above it, a silent datapoint reads as 5
-instead of timing out. Raising it is not needed to learn whether a datapoint
-answers late at all: the late-answer report already watches until the next
-ENQ at the default deadline.
-
-**Poll backoff.** An entity whose reads time out while the link answers others
-is polled less often: after `POLL_BACKOFF_AFTER` (3) timeouts in a row at 2x
-its interval, then 4x, 8x and at most 16x (`poll_backoff_interval()` in
-`poll_schedule.h`). A timeout counts towards the streak only if some other read
-was answered since the previous one, so a dead link does not back everything
-off. The first answer restores the interval. Every-cycle (0) and
-`never`-polled entities are untouched.
-
-#### The two windows, separated
-
-`VS1Engine` used one 50 ms `SYNC_WINDOW_MS` for two unrelated jobs. They are now
-distinct constants:
-
-| constant | used by | kind | value |
-|---|---|---|---|
-| `ENQ_ACK_WINDOW_MS` | `_syncEnq()` | protocol constraint — how fast we must answer the device's ENQ | 50 ms (unchanged) |
-| `CHAIN_WINDOW_MS` | `_syncRecv()` | throughput policy — how long a chain may pause | 500 ms |
-
-The 22–42 ms measurement above is what the second window has to cover, and it
-was sitting ~8 ms under the old ceiling. It started at vogod's 1500 ms. The
-device sets the upper bound: a VScotHO1_72 answers a chained telegram up to
-0.91 s after its answer and ignores one from 0.95 s, counted from the last
-answer however long the chain, the same sweeping up and down (chain-window
-probe, 2026-11-20). At 1500 ms a read due 1.43 s after a chain went out
-unheard and failed. Past 500 ms a request waits for the device's ENQ, 2.97 s
-after the answer. A `01` with a telegram outside an ENQ is never answered, at
-any gap from 61 to 1409 ms.
-
-Widening it needed one guard, because a long window and an empty queue would
-otherwise park `_syncRecv()` without reading the interface: **if any byte has
-arrived since the last answer, return to INIT instead of chaining.** On an idle
-KW bus that byte is the device's next ENQ, and sending across it would leave it
-buffered for `_receive()` to read as the next request's payload — the misread
-this engine exists to prevent.
-
-That guard also bounds the window in practice, which is the neat part: the
-window can only ever be ridden while the device has *not* spoken since the last
-answer, which is exactly the condition under which the old sync is still the
-current one. `GWGEngine::_init()`'s burst path runs on the same rule.
-
-Exceeding the window remains a **soft** failure — the chain ends and the next
-telegram waits for an ENQ — so the cost of being too tight is throughput, not
-correctness.
-
-### GWG EEPROM: one complement pair per address
-
-An EEPROM (`eeprom`, `0xAE`) read is not answered with LEN data bytes. Each
-address returns a **pair**: byte 0 is the one's complement of byte 1, byte 1 is
-the value, and `b0 + b1 == 0xFF`. This holds whether the telegram asks for one
-byte or two. The engine therefore reads an EEPROM datapoint byte-wise (one LEN-1
-telegram per address, chained in a burst), checks every pair, and delivers only
-the value bytes. A pair that does not check out fails the read with `CRC`; `FF FF`
-("address not in use") is delivered as `0xFF`. The evidence is in
-`GWGEngine::kEepromPairLength`. The decisive point: burner hours at `0x0017`
-stepped `E8 17` → `E7 18` between two days, so the second byte is the counter.
-
-A write carries the pair the same way: `01 AD ADDR ~V V 04`, one cell per frame
-and no length byte. What a VR20 does with a write is hardware-observed (#35):
-in the generic layout (`01 AD 16 01 29 04`) the unit acked `00` and read back
-`01:29`; with the EOT before the payload (`01 AD 16 01 04 29`) it read back
-`01:04`. It stores the two bytes after the address as the pair, so a length
-byte lands in the complement half and the next read fails its check. The
-frame with the complement works (#35, the #13 unit, `0x2053` SW `0x2B`,
-2026-11-13): `01 AD 16 CF 30 04` and `01 AD 16 D7 28 04` were acked `00` and
-read back as `CF:30` and `D7:28`, the first still `CF:30` 16 minutes later,
-and `0x96` followed both. Survival across a power cycle is not shown yet.
-The EOT switch below does not apply to EEPROM writes.
-
-`be` and `port` are read the same way, one LEN-1 telegram per address
-(`optolink::gwgCellLength()`), because they answer one byte per address
-whatever LEN asks for (#35).
-
-One VR20 serves 64 cells: `0x01`–`0x3F` answer, `0x00` and `0x40`–`0x7F` answer
-`FF FF`, and `0x80`–`0xFF` repeat the lower half (a dump of all 256 addresses,
-#35).
-
-### Identification under GWG
-
-GWG uses **the same identification scheme as P300/KW** — four bytes at `0xF8`
-meaning group, ident, hardware index, software index, in that order. The only
-differences are that it lives in the `virtual` access space, and that Vitosoft
-models it as one 4-byte block at `0xF8` (`block_length=4`, four 1-byte fields at
-byte positions 0–3, named `SystemIdent GG / GK / HX / SW`) rather than four
-addresses. vcontrold reads it the same way: `getDevType`, `0xF8`, len 4, on
-`GETVADDR`.
-
-The hub's existing state machine already fits: it reads the 4-byte block at
-`0x00F8` first and falls back to four 1-byte reads at `0xF8..0xFB`. Only the
-access mode was wrong — under GWG that read now goes out on `virtual`.
-
-One GWG-specific wrinkle: **the ident alone does not name the family.** `0x2053`
-covers four distinct unit families, discriminated by the *hardware index*:
-
-| ident | HW | family |
-|---|---|---|
-| `0x2053` | `0x01` | `GWG_VBEM` |
-| `0x2053` | `0x02` | `GWG_VBES` |
-| `0x2053` | `0x08` | `GWG_VWMS` |
-| `0x2053` | `0x10` | `GWG_VBT2` |
-| `0x2054` | `0x00` | `GWG_BT2` |
-
-(In Vitosoft terms: `Identification` is `0x2053` for all of them and
-`IdentificationExtension`'s high byte separates them, the low byte being the
-software index — `0x00`, `0x03`, `0x21`, `0x35`, `0x36`.) `ident_family_name()`
-takes the hardware index for this reason; reporting a bare `GWG_VBEM` for
-`0x2053`, as this component did and as vcontrold's enum comment still does, is
-wrong for three families out of four.
-
-In the field the hardware index has not separated them so far: every unit
-reported (issues #13, #21, #35) reads `0x01`, and at least two of them have a
-BES panel. See [`gwg_protocol.md`](gwg_protocol.md#identification).
-
-`scripts/gen_catalog.py --identify` needs no GWG special case — the hardware and
-software indices it already takes are exactly the discriminators, so
-`--identify 0x2053 --hw 0x02 --sw 0x00` resolves `GWG_VBES_00`.
-
-### Catalog generation
-
-`scripts/gen_catalog.py` handles all of this. It infers the protocol from the
-Vitosoft device token (`GWG_*`, `HV_GWG`; `--protocol` overrides), and under
-GWG it maps `FCRead` onto `access:` on every entity, inverts the reachability
-rule, emits everything read-only, and drops addresses above `0xFF`.
-
-The reachability inversion is the substantive part. On P300 the only readable
-function code is `Virtual_READ`; on GWG that is 3% of the data (6 of 195) and
-the rest is reachable on its own mode. Applying the P300 rule to a GWG device
-kept 8 of 195 datapoints *and mislabelled all 8* — they are `Virtual_READ`, but
-with no `access:` emitted the engine reads them as physical. With the GWG rules
-the same device yields 187 entities, each carrying its mode.
-
-Only `physical` has a vitohome hardware capture behind it. The rest are
-spec-plus-two-implementations rather than verified here, so `esphome config`,
-`compile` and a look at the values remain the last step.
-
-`access:` is accepted on `sensor`, `binary_sensor`, `text_sensor`, `number`,
-`select`, `switch` and `text`. `climate` and `event` do not take it — climate
-carries several addresses that could each want their own mode, and event is the
-error-history archive. `_final_validate` rejects a GWG mode under any other
-protocol rather than letting a silently-ignored option look configurable; the
-one non-GWG value, `access: rpc`, is P300's (§P300 remote procedure calls).
-
-### Writes
-
-**One mode drives both directions.** Vitosoft pairs every writable GWG
-datapoint as `(EEPROM_READ, EEPROM_WRITE)` or `(BE_READ, BE_WRITE)`, never
-across modes, so a separate `write_access` could only express wrong things.
-
-| mode | read | write |
-|---|---|---|
-| `physical` | `0xCB` | `0xC8` |
-| `virtual` | `0xC7` | `0xC4` |
-| `eeprom` | `0xAE` | `0xAD` |
-| `xram` | `0xC5` | `0xC3` |
-| `port` | `0x6E` | `0x6D` |
-| `be` | `0x9E` | `0x9D` |
-| `kmbus_eeprom` | `0x43` | — |
-| `kmbus_ram` | `0x33` | — |
-
-The KMBUS modes have no write TYPE byte at all, so `GWGEngine::write()` refuses
-them outright rather than substituting another mode — which would write to a
-different register file.
-
-**Nothing on a GWG unit is `physical`-writable.** Across all 22 Vitosoft GWG
-tokens the writable datapoints are `EEPROM_WRITE` (1082) and `BE_WRITE` (280),
-plus 17 unreachable `KBUS_VIRTUAL_WRITE` — and *zero* `PHYSICAL_WRITE`. Yet
-`0xC8` was the only write byte this engine could emit before the mode table,
-and dannerph's legacy path defaults to it too. That is the most economical
-explanation for why no GWG write was confirmed anywhere before the mode
-table, openv issue #467 included. (Re-read #467 alongside §the response deadline: its
-capture shows genuine answers at ~50 ms against a ~1230 ms idle-ENQ cadence, so
-its "writes only ever return `0x05`" is almost certainly *no answer at all*,
-with the next idle ENQ misread as the ack.)
-
-**One thing is still unknown: where the `0x04` sits in a write frame** other
-than EEPROM's (§GWG EEPROM).
-
-```
-this project   01 TYPE ADDR LEN <data...> 04      EOT last
-dannerph       01 | TYPE ADDR LEN 04 <data...>    EOT before the payload
-KW sibling     01 F4  ADDR LEN <data...>          no terminator at all
-```
-
-The wiki calls `0x04` the "Telegramm Ende Byte" and shows no write example.
-Neither GWG layout has hardware evidence, so the choice is a run-time switch
-(`GWGEngine::setWriteEotBeforePayload()`, from a lambda
-`set_gwg_write_eot_before_payload()`; default: EOT last) until a unit settles
-it. **Reads are byte-identical under both**, which is why this never surfaced.
-
-dannerph's implementation is the one independent source: its write puts the
-`0x04` before the payload. If a unit expects that layout, a write in this
-project's default layout is acknowledged and stores `0x04`: the unit takes the
-first data byte as its terminator and the trailing `0x04` as the value. A
-GWG write that reads back as `0x04` is the signature of the wrong layout, and
-what an A/B test looks for. The switch is run-time, not compile-time, so both
-layouts can be tried on one unit, against one address, in one session.
-
-**The identify read is always `virtual`** (see §Identification under GWG), not
-affected by any entity's `access:`.
-
-### P300 remote procedure calls (`access: rpc`)
-
-P300 has a third request beside READ (`0x01`) and WRITE (`0x02`): function code
-`0x07`, which Vitosoft names `Remote_Procedure_Call`. The request may carry a
-parameter, and its DataLength is the parameter's length (0 without one), not
-the answer's -- the controller decides how much it returns:
-
-```
-41 06 00 07 A0 10 01 00 BE                       call 0xA010 with parameter 00
-41 0A 01 07 A0 10 05 01 01 01 01 01 CC           the answer: 5 bytes, DataLength 05
-```
-
-**Hardware-confirmed** on VScotHO1_72 (P300, 2026-10-21, no LON module fitted):
-the unit answers function code `0x07`, and the answer's DataLength counts the
-**returned** bytes (`05`), not the parameter's length. Parameter `01` answered
-`01 00 00 00 00` the same way. The parser still takes the payload size from the
-frame length and the checksum (THIRD_PARTY #26); on this unit the two agree.
-
-Vitosoft uses it for two different things, both under the same `FCRead`:
-
-- **Readings.** The procedure answers with a value. Some take a parameter
-  (`PrefixRead`) naming one entry of a list: `Teilnehmerliste_LON_00..15` at
-  `0xA010`, sixteen read-only rows sharing one address, parameters `00`..`0F`,
-  declared as a 6-byte block with the 2-byte field "Anlage/TN" at position 0
-  (`HexByte2DecimalByte`). The VScotHO1_72 answers **5** bytes, one fewer
-  than the declared block; the generated entity reads only that 2-byte field,
-  so the shorter answer covers it. Others take none: `KesselfolgeIst` and five siblings at
-  `0xA100`..`0xA109` on a cascade controller, a 4-byte answer each. These become
-  entities with `access: rpc`, and `prefix:` where there is a parameter.
-- **Procedures.** A call with an effect: `RPCWink`,
-  `valmRPCClearErrorHistoryTable`, `BedienparameterA1M1FunktionReset`. Polling
-  one would run it every cycle. A parameter says nothing either way (the reset
-  takes the circuit as its parameter, the clear takes none). The access mode
-  does: the procedures are marked writable (AccessMode 2/3). One row breaks the
-  rule -- `mBusRPCDeleteReadTableEM2` is marked read-only -- and it is caught by
-  the answer size: a procedure answers nothing (BlockLength 0).
-
-In the 2026 export 1,010 events read by RPC and 896 of them carry a
-`PrefixRead`. A reading is therefore: P300, `Remote_Procedure_Call`, read-only,
-one record (BlockFactor <= 1 -- a multi-record RPC is one call per index; the
-fault buffers among them are fanned out, below), an answer of known size, and a
-`PrefixRead` that is absent or 1..4 bytes. KW and GWG have no RPC telegram at
-all.
-
-Across the 399 device tokens the readings fall into two groups, and the profiles
-split them there:
-
-| group | rows | where | profile |
-|---|---|---|---|
-| LON participant list, Vitocom LON identity (`0xA010`), `vlonRPCGetBinding`, `ddcRPCnvi*` | 1,731 | 106 device tokens | `full` only (§8k) |
-| `Kesselfolge*` (`0xA100`..`0xA109`) | 60 | 10 device tokens | default |
-| `mBusRPCCheckHW*`, M-Bus / RS485 scan state | 19 | 3 device tokens | default |
-| `ecnsysEventType~VCOMError` (`0xA020`) | 7 | 7 device tokens | default |
-
-The LON-bound ones carry LON network state (`_is_lon_bound_rpc`: the
-procedure at `0xA010`, a `vlon*` procedure, or an `nvi` input read by
-procedure). They are **answered without a LON module** -- the VScotHO1_72,
-which has none, answers the participant list -- but then hold only the unit's
-own defaults: entry `00`, its own number, read `01 01 01 01 01` (Anlage 1 /
-participant 1, the delivery setting), entry `01` read `01 00 00 00 00`, an
-empty slot. So they cost a telegram each and say nothing on a unit without a
-LON network, which is why they are left to `full`. The header of each affected catalog says how many were emitted and
-how many were left to `full`. The `mBusRPCCheckHW*` names say "check"; Vitosoft
-marks them read-only with a 1- or 2-byte answer, which is the reading shape, but
-none has been seen on a unit.
-
-The component side follows from that:
-
-- `access: rpc` is accepted on `sensor`, `binary_sensor` and `text_sensor` only,
-  never on a platform that writes; `prefix:` is optional (0..4 bytes, left out
-  for a call without a parameter). Nothing on the wire tells a procedure from a
-  reading, so the config cannot either: `access: rpc` belongs on an address the
-  catalog calls a reading. `_final_validate` rejects it under KW and GWG, and a
-  `prefix:` without `access: rpc`.
-- `length:` and `byte_offset:` keep their read meaning (the bytes decoded, from
-  the start of the answer or from inside it) but do not go on the wire.
-- The entity rides the ordinary read lane; only the telegram differs
-  (`VS2Engine::rpc()` instead of `read()`). A write to the same address does not
-  refresh it: an RPC answer is computed, not read from the memory the write
-  changed.
-- A procedure is a `button` of `type: action` (`VitoActionButton`). A press
-  queues it on the write lane, which sends the RPC call instead of a write --
-  the same telegram a reading sends, here for its effect. It is never polled
-  and never read back (reading it would run it again); once the controller
-  acknowledges, the hub re-reads every value (`refresh_all()`), since what a
-  procedure changes is elsewhere. From a lambda, `queue_raw_rpc(address,
-  parameter)` sends one (0..32 parameter bytes, empty allowed) and publishes
-  the answer like a raw read.
-
-**Actions in the catalogs.** The generator emits every procedure it can call as
-an action button, in `standard` and `full` (`minimal` keeps values, and an
-action is not one), `disabled_by_default` and under a warning comment. A
-procedure that resets settings or codings to their factory state, or deletes
-stored data, is emitted commented out under a DESTRUCTIVE note
-(`_is_destructive_action`, matched on the technical and the UI name); a
-`button:` section with no live action left is commented out with it, since an
-empty key is null and ESPHome rejects it. A call
-needs nothing but the parameter -- `PrefixWrite`, equal to `PrefixRead` wherever
-both are given, written `0E` or `0x0E` -- because `BlockLength` on these rows is
-the size of the answer, not a value. What a button cannot do is supply a value,
-so `_is_rpc_action` keeps the procedures that take none:
-
-| shape | examples | button |
-|---|---|---|
-| writable, answers nothing (BlockLength 0) | `valmRPCClearErrorHistoryTable`, `RPCWink`, `KesselfolgeFunktionNext`, `vlogRPCClearMemberList`, a Vitocom's read-out triggers | yes |
-| write-only `Array` of one byte, no borders, no unit | `BedienparameterA1M1FunktionReset` (`00`/`01`/`02` per circuit), `Konfi_FunktionReset_GWG`, the heat-pump resets and restart | yes |
-| borders, a unit or a numeric type | `RPCLesenFehlertabelle` (0..74), `RPCKonfigTrendingZeitintervall*` (seconds), `RPCSetImpulseCounter*` (`Int4`) | no: a setter |
-| read+write that answers | `RPCSetDigitalOutput*` | no: a setter |
-
-Where a procedure has no `PrefixWrite`, its parameter is Vitosoft's
-`FunctionValue`, a table extension the export keeps only in `DPDefinitions.xml`
-(`ecnTableExtensionValue`, Base64 of a .NET BinaryFormatter value;
-`loader._decode_ext_value`). It matters at `0xA050`, one procedure whose
-parameter picks the function: `WPR3_Konfi_FunktionNeustart` (restart) carries
-`15` as `PrefixWrite` and `0x15` as `FunctionValue`, but
-`Konfi_FunktionReset_GWG` ("Anlieferzustand Codierungen", every coding back to
-factory state) and `WPR3_Reset_Parameter_ALZ` name theirs, `0x00` and `0x2E`,
-only in `FunctionValue`. Before, the coding reset was emitted with no
-parameter at all, a call to `0xA050` that names no function. On every action
-that has both fields they agree; a `FunctionValue` that does not parse as one
-byte (hex with `0x`, else decimal) keeps the procedure out, as an unparsable
-`PrefixWrite` does (`_rpc_action_parameter`).
-
-A procedure that names no function in either field is left out where the
-export calls the same address with a parameter anywhere
-(`_rpc_selector_addresses`, over the whole export, since a device may link the
-bare sibling alone): `Konfi_ParameterFunktionReset` at `0xA050` and the
-Vitocom's `RPCLoeschenMBusTrendingKanal` at `0xA0A4`, whose sixteen siblings
-each name a channel. The catalog header counts them ("Procedures omitted").
-Before, the `(address, parameter)` de-duplication hid
-`Konfi_ParameterFunktionReset` behind the bare coding reset by accident.
-
-That is 984 buttons over the 201 shipped catalogs: three to eight on a
-controller (VScotHO1_72: the three circuit resets, the coding reset, clearing
-the fault history and the LON participant list), and most of the rest on the
-Vitocom gateways, whose read-out and configuration triggers are procedures
-too (`vitocom300_lan`: 215). No action has been run on this project's hardware.
-
-**RPC arrays: the heat-pump fault history.** A heat pump keeps its fault
-buffer behind one procedure: `ecnsysEventType~WPRError` at `0xA801` is
-BlockLength 240 / BlockFactor 30 (V200WO1A and the VBC700/702 units), `~WPR3Error`
-270 / 30 (the CU401B units). A record is not at an address of its own; each is
-one call to that procedure with the record's index as the parameter. The export
-gives no `PrefixRead` for them -- the index is the parameter. So they go through
-the same fan-out as the Vitotronic system archive (§7), which already turns a
-BlockFactor into slots: `_error_history_entries` takes the record shape from
-`_rpc_array_records` and emits one slot per record, all at the procedure's
-address with `prefix: [i]`, where the system archive steps the address. The
-slot convention is the archive's own: the newest (index 0) enabled, the other
-29 `disabled_by_default`, all on the fault-history poll interval. The records
-are shown as raw hex (`type: raw`, which takes a record of up to 48 bytes for an
-`access: rpc` answer, since its `length` is not sent): the WPR/WPR3 layout is
-not decoded, and "index 0 is the newest" is not confirmed on a unit. Left out:
-`WPR3MldgsHistExtTn1..3` (`0xA821`), which carry a `PrefixRead` *and* 30
-records, so a call needs both in an order the export does not state; and the
-`*ErrorIndex` rows, which are pointers, not history (§7's `_is_error_history`).
-
-**The answer's DataLength counts the returned bytes** (VScotHO1_72, 2026-10-21,
-see the frames above). The parser still takes the payload size from the frame
-length and the checksum, so an answer that repeated the parameter's length
-would be read too (THIRD_PARTY #26, `tests/native/proof_vs2_rpc.cpp` case C);
-that tolerance costs nothing and stays, since one unit does not speak for every
-controller.
-
-### Burner-control reads (`access: gfa`)
-
-A gas boiler's Vitotronic is not the only controller in it. The **burner
-control** (Gasfeuerungsautomat, GFA; "FA" in Vitosoft's menus) is a second one,
-with its own chip and its own address space, and the Vitotronic forwards reads
-into it. Vitosoft reads it with the access function `GFA_READ`: 273 linked
-events across 53 device tokens in 14 families (VScotHO1/HC1/HC2, VPend*,
-VPlus*, VDens*, VSorp, Vitovalor), all KW/P300, **none GWG**, and **no
-`GFA_WRITE` anywhere** in the export. VScotHO1_72 has 104 of them beside its 719
-`Virtual_READ` datapoints, and those 719 contain no fan speed, ionisation current,
-gas-valve drive or flame-formation time; only the burner control has them.
-
-**The telegram is a read with another type byte.** Over KW the frame is the
-read's, `<type> <addr hi> <addr lo> <len>`, answered by `<len>` raw bytes, with
-`0x6B` as the type instead of `0xF7`. Hardware, VScotHO1_72 (KW, burner control
-`0x24` = NEC), 2026-10-26, one session:
-
-```
-F7 76 50 01 -> 24    GFA_Kennung, the Vitotronic's mirror of the chip   13-81 ms
-F7 40 50 01 -> FF    the same address in the Vitotronic's own space     20 ms
-6B 40 50 01 -> 24    P80, the chip byte, in the burner control           61-90 ms
-F7 40 06 01 -> FF    / 6B 40 06 01 -> 0F    P06, fan speed actual
-F7 40 09 01 -> FF    / 6B 40 09 01 -> 10    P09, fan speed setpoint
-6B 40 0A 01 -> 1D    P10 fan PWM setpoint   6B 40 54 01 -> 06   P84 burner phase
-```
-
-So `0x6B` reaches a different space (FF versus the value at the same address),
-P80 there equals the Vitotronic's own copy, and repeated reads agree. The 0x6B
-reads took 56-90 ms against mostly 13-41 ms for 0xF7, which fits the Vitotronic
-forwarding each one (inference). Every 0x6B telegram in that session went out
-25 ms after the previous answer; `KW_GFA_GAP_MS` (`optolink_codec_kw.h`) keeps that pause for a
-chained GFA read, since it has never been tried without. A GFA read that opens a
-chain goes out on the ENQ like any read.
-
-**Over P300 the controller refuses it.** Sent as a P300 function code in the
-read frame, `41 05 00 6B 40 50 01 01`, it is answered with an ERROR frame
-that echoes the flags byte (VScotHO1_72, 2026-10-27):
-
-```
->>> 41 05 00 6B 40 50 01 01
-<<< 06 41 06 03 6B 40 50 01 05 0A      PacketType 03, error code 05
-```
-
-An address the unit does not serve answers code `01` (`0x00F0` in the same
-log, `0x7362` before), so `05` is a different refusal -- read here as "not a
-function of this protocol". `VS2Engine::gfaRead()` therefore takes the
-telegram to KW: it leaves P300 the way RESET does (EOT), answers the
-controller's next ENQ with `01 6B <addr> <len>`, collects the raw answer,
-chains further GFA reads onto that KW session (25 ms apart), and after
-`KW_LINGER_MS` without one, or at the first request that is not a GFA read,
-re-establishes P300 (EOT, ENQ, SYNC, ACK). An ENQ while the KW session idles
-is answered with SYNC straight away. The detour costs up to two ENQ waits
-(the controller offers one about every 2 s when idle), so the hub keeps GFA
-reads together: after one, the next queued GFA read is moved to the front of
-the read lane (address-space affinity, `dispatch_next_`).
-`tests/native/proof_vs2_gfa.cpp` pins the byte sequence.
-
-Confirmed on VScotHO1_72 (P300, 2026-10-27), raw GFA read of P80:
-
-```
->>> 04                  EOT, leaving P300
-<<< 06                  the controller ACKs the EOT first (dropped)
-<<< 05                  ENQ, 1.95 s later
->>> 01 6B 40 50 01
-<<< 24                  P80
->>> 04                  after KW_LINGER_MS
-<<< 05                  ENQ, 1.98 s later
->>> 16 00 00 / <<< 06   P300 again
-```
-
-4.4 s on the link, nearly all of it the two ENQ waits. The same address as a
-plain P300 read answers error code `01`, so the `24` comes from the burner
-control.
-
-**This is Vitosoft's own route.** Its function-code list has
-`GFA_READ = 201` (0xC9), but sent as a whole P300 flags byte
-(`41 05 00 C9 40 50 01 5F`) it is refused the same way as `0x6B`:
-`06 41 06 03 C9 40 50 01 05 68`, error code `05` (VScotHO1_72,
-2026-10-27; a VDensHO1 0x20C2 answers identically). An independent reading
-of Vitosoft's interface assemblies (not checked here) has 201 as its
-internal command number: the KW serializer turns it into `6B <addr> <len>`,
-and `VSKOStart` switches the interface to KW (`VSManager.ChangeInterface`)
-before the burner-control reads, `VSKOStop` restoring the previous one. The
-export fits: all 269 `VSKO_*` event types (and 4 unnamed ones) read with
-`GFA_READ`, under the `~35_FA_VSKO*` menus. Two shortcuts are reported not to
-work on that VDensHO1: `16 00 00` right after the EOT, before the ENQ (no
-ACK), and entering P300 on an idle ENQ without EOT (about 1 s slower).
-
-**An ignored KW telegram gets no answer.** VScotHO1_72 does not answer
-`01 7B 08 00 02` (PROZESS_READ, which Vitosoft defines only for Vitosorp):
-nothing comes back, and the controller offers its next ENQ about 2.25 s later
-(2026-10-28). Read as data, that `05` would be a one-byte answer. Both KW
-paths therefore allow the line to stay silent at most 1 s while an answer is
-due (`VS2Engine::KW_ANSWER_TIMEOUT_MS`, `KW_LINK_PARAMS.answer_timeout_ms`;
-answers take 13-140 ms), checked before the bytes are drained, and report
-TIMEOUT. A KW telegram queued while the link returns to P300 goes out on the
-ENQ that return waits for, instead of after a P300 handshake the detour would
-drop again (3.4 s against 2.1 s on the same unit).
-
-Error code `05` is the controller's answer to a function code it lacks. The
-P300 flags byte is a 3-bit message id over a 5-bit function code, so a
-Vitosoft function-code number sent whole lands on whatever its low five bits
-name. On that VDensHO1, Vitosoft's XRAM_READ (0x31), Port_READ (0x33),
-BE_READ (0x35), KBUS_MEMBERLIST_READ (0x5D) and KBUS_VIRTUAL_READ (0x5F) all
-drew `05`, like 0x6B and 0xC9 here. KMBUS_RAM_READ (0x41) and
-KMBUS_EEPROM_READ (0x43) were answered, but 0x41 is Virtual_READ (function 1)
-with message id 2 and returned exactly the virtual data, and 0x43 is
-Physical_READ (function 3). Function codes 3 (Physical_READ, RAM) and 5
-(EEPROM_READ; its `0x1000..0x11FF` window is the coding plug) do work there.
-No P300 or KW device in the export reads through either, so the catalogs
-gain nothing from them.
-
-**Spurious `FF`.** On that VDensHO1 a GFA read occasionally answers `FF` in
-place of the value, P80 included: about 0.5 % of reads with roughly 50 ms
-between them, 0.18 % with 150 ms. Not seen here yet. The hub publishes a GFA
-answer as it arrives, so a one-byte `FF` would show as a value.
-
-**The address space**, from the export:
-
-| range | content | example |
-|---|---|---|
-| `0x0000 + n` | coding parameters Cn of the burner control | C10 natural gas / LPG |
-| `0x4000 + n` | P-parameter n, decimal | P31 `0x401F`, P80 `0x4050`, P140 `0x408C` |
-| `0x4100 + n` | P256..P286, 16-bit, Vi chip only | P264 fan drive |
-| `0xC0E0..0xC72F` | two 49-entry fault histories of 16-byte records, Vi chip only | `VSKO_FH_HC_01` |
-
-The P-parameters are mostly live values: P00 momentary power, P05 gas-valve
-drive, P06/P09 fan speed actual/setpoint, P10 fan PWM, P13-P15 ionisation
-actual/base/setpoint, P17 flame formation time, P84 burner phase, P85-P88
-status, P81/P82 the burner control's software version, P101-P108 its coding
-plug. P70-P79 publish the min/max of the coding parameters.
-
-**Some parameters depend on the chip.** Vitosoft hangs the GFA datapoints of a
-device under per-chip menus (`60_Funktionskontrolle~35_FA_VSKO_NEC`, `_GFA`,
-`_Scot`, `_DOVER...`; `_ViCC` on the Vi-chip units). The chip is the byte at
-`0x7650` (and P80), which the hub logs at boot as `GFA=0x..`. Most addresses
-decode the same in every menu; a chip mostly decides which parameters exist
-(P31-P33 and P140-P148 are NEC-only). Three addresses do differ:
-`0x4005`, `0x4009` and `0x401A`. On VScotHO1_72, P09 is fan speed x30 rpm in
-the NEC, Scot and generic menus and x0.3922 % in the GFA-chip and Dover menus;
-the reference unit's P06 = 15 and P09 = 16 (450 / 480 rpm) read as a matching
-actual/setpoint pair.
-
-The component side:
-
-- `access: gfa` on `sensor`, `binary_sensor` and `text_sensor` only (no GFA
-  write exists), under KW and P300; `_final_validate` rejects it under GWG.
-  `length:`, `byte_offset:`, the converters and `bit_mask` mean what they mean
-  for any read.
-- The entity rides the ordinary read lane; only the telegram differs
-  (`gfaRead()` instead of `read()`). A write to the same address in the
-  Vitotronic's space does not refresh it: it is a different register.
-- `queue_raw_gfa_read(address, length)` reads one from a lambda and publishes
-  it like a raw read (the scan console's "Raw GFA read").
-- The catalog generator emits them under KW and P300 (`_is_gfa_read`) with
-  `access: gfa  # Vitosoft GFA_READ` and a `# vito: gfa=<chips>` tag: the
-  chips whose menu lists the datapoint on that device (`GFA_MENU_CHIPS`: the
-  bare `35_FA_VSKO` menu is Vitosoft's "Prozesswerte FA CES" = `23`, `_GFA`
-  `20`, `_Scot` `21`, `_DOVER...` `22`, `_NEC` `24`, `_ViCC...` `27`, `_OEFA`
-  `41`/`42`; the last two pairings are inferred). The field identity of a GFA
-  row includes how it decodes (`_gfa_decode_key`): rows that decode alike at
-  one address fold into one entity whose tag is the union of their chips (P06
-  is `VSKO_Scot_CES_P6` in four chips' menus and `VSKO_Scot_P6` in the
-  fifth), rows that do not stay apart (P09 rpm `gfa=21,23,24`, P09 %
-  `gfa=20,22`). A GFA row in no chip's menu gets no tag. On VScotHO1_72 that is
-  104 rows -> 77 entities. The chips are not the same set on every device of a
-  family (CES has five variants across 39 devices) and many rows sit in no menu
-  (all 94 of VScotHC1_200's), so they stay in each device's catalog rather than
-  in the per-chip `gfa/chip_<XX>.yaml` companions.
-- The catalog editor filters on the tag: its *Burner-control chip* selector
-  (preset from the finder's `gfa=` parameter) hides the GFA datapoints listed
-  for other chips only and keeps everything else; the *Burner control* tag chip
-  shows the GFA datapoints alone.
+- **Link health counts silence, not failed operations.** NACK and an error
+  frame are answers. A TIMEOUT counts towards OFFLINE, except under GWG, where
+  only a request that never went out for want of an ENQ counts
+  (`Result::never_sent`, [gwg_protocol.md](gwg_protocol.md#quirks)), and an
+  open frame's, whose silence is the expected answer to most candidates.
+- **All-`0xFF` warning (GWG).** GWG answers an address it does not serve in the
+  requested mode with `0xFF`; after 8 answers in a row that are `0xFF` in every
+  byte the hub warns once to check the `access:` mode.
 
 ### Access spaces: one model for `access:`
 
@@ -910,13 +175,15 @@ Vitotronic and in the burner control). The hub models that once:
 - One field per entity (`VitoEntityBase::space()`) and per raw-lane
   operation (`RawOp::space`). The codegen setters (`set_access()` for a GWG
   mode, `set_rpc_prefix()`, `set_gfa()`) set it; the raw-lane API keeps its
-  GWGAccessMode argument for lambdas, which maps to `OWN` off GWG as it
-  always did.
-- `send_read_()` / `send_write_()` are the only place a space becomes an
-  engine call, and hold the only protocol `#ifdef`s on the dispatch path.
-  Every lane goes through them: reads, writes, read-modify-writes,
-  identification (`GWG_VIRTUAL` on GWG), the raw console. A space a protocol
-  has no telegram for is refused like a packet the engine never builds.
+  GWGAccessMode argument for lambdas, which maps to `OWN` off GWG.
+- `access:` is accepted on `sensor`, `binary_sensor`, `text_sensor`,
+  `number`, `select`, `switch` and `text` (GWG modes), and `rpc` / `gfa` on
+  the three read-only platforms. `climate` and `event` do not take it.
+- `send_read_()` / `send_write_()` turn a space into a `Request`
+  (`read_request()` / `write_request()`, `address_space.h`), the only place on
+  the dispatch path that knows protocols. Every lane goes through them: reads,
+  writes, read-modify-writes, identification (`GWG_VIRTUAL` on GWG), the raw
+  console. A space a protocol has no telegram for is refused there.
 - The sibling refresh after a write compares spaces (same address, other
   space = other register) on every protocol, not only GWG.
 - Address-space affinity: after a read in a space with a switch cost (over
@@ -1087,37 +354,23 @@ Assistant gets them through the API, which sends at most one state per entity
 per `batch_delay` (100 ms by default): results closer together arrive as the
 last one. The log and an `on_value` automation on the device see each.
 
-Measured on a VScotHO1_72 (2026-11-19, `patches-stage-r/timed-frames-test.yaml`,
-reads of 00F8/4):
-
-| Link | Pause | Answered | Refused |
-|---|---|---|---|
-| KW | ENQ to the 01 | up to 200 ms | 255 ms: no answer |
-| KW | the 01 to the telegram | up to 255 ms | -- |
-| KW | `@now`, outside the ENQ | never | the device sends its next ENQ |
-| P300 | the 41 to the rest | up to 200 ms | 255 ms: NACK |
-| P300 | before the checksum | up to 255 ms | -- |
-| P300 | three of 100 ms in one telegram | yes | -- |
-
-The answer came 11 to 39 ms after the last byte. The KW engine answers an
-ENQ within `ENQ_ACK_WINDOW_MS` (50 ms), well inside the device's limit.
-
-On KW the device's next ENQ came 2.97 s (2968 to 2984 ms) after its last
-answer, and within 2.2 s on an idle bus. The engine does not wait for it: it
-chains the next telegram onto the answer. A timed frame is timed from an ENQ,
-so a KW frame that follows another takes about 3 s.
+What timed frames measured on the reference unit is in the timing tables of
+[kw_protocol.md](kw_protocol.md#timing) and
+[p300_protocol.md](p300_protocol.md#timing). A timed frame is timed from an
+ENQ, so on KW a frame that follows another takes about 3 s: the device's next
+ENQ comes 2.97 s after its answer.
 
 `unrestricted` needs `raw_queue_size`, and `unsafe_raw_writes` needs
 `unrestricted` (config errors). The layer is checked when the line arrives:
 `p300` on a P300 hub, `kw` on KW and P300, `gwg` on GWG. Entities stay on the
 checked `access:` model; nothing generic reaches a catalog.
 
-The engines gained one generic request each (`VS2Engine::request()` /
-`kwTelegram()`, `VS1Engine::telegram()`, `GWGEngine::telegram()`;
-THIRD_PARTY.md item 28), and each an open one (`frame()`, items 37 and 38); the existing reads and writes are those with fixed
-codes and build the same bytes. A packet now records its frame length and
-whether a payload rides when it is built, instead of deriving both from the
-type byte later -- which is what lets a byte without a name go out whole.
+In the engine a raw operation is an ordinary `Request`: a protocol's
+telegram with any code (`Lane::P300`, `KW`, `GWG`), or an open frame
+(`Lane::FRAME`). The entities' reads and writes are the same requests with
+fixed codes. A KW request on a P300 link takes the KW detour. A telegram
+records its length and whether a payload rides when it is built, which is what
+lets a code without a name go out whole.
 
 Fuzzing: `fuzz_raw_spec.cpp` (the line, round-tripped through its canonical
 form, frames included), `fuzz_gwg_session.cpp` and `fuzz_kw_session.cpp`
@@ -1136,63 +389,108 @@ then: an enumerator and its rows in `address_space.h`, its telegram in
 
 ---
 
-## 3. The vendored engine, and its replacement
+## 3. The engine: codec, link, exchange, port
 
-The `optolink/` subtree was a **vendored and modified** copy of VitoWiFi at
-`edc059a7`, de-branded into `esphome::vitohome::optolink`. The engine redesign
-replaced it with the component's own top-level `optolink_*.h` files and deleted
-the subtree; of VitoWiFi only the `Datapoint` class remains
-(`optolink_datapoint.h`, MIT notice kept). Every intentional
-divergence from upstream -- from the namespace rename and the `std::array`
-packet buffers through the protocol-level bugfixes and the dead-code sweeps --
-is itemised, numbered and classified (behavioral vs structural) in
-[`THIRD_PARTY.md`](../components/vitohome/THIRD_PARTY.md);
-licensing (MIT-into-GPLv3) is in [`NOTICE.md`](../NOTICE.md). That file is the
-single source of truth for the divergence list: a count and summary previously
-repeated here drifted out of date as items were added, so neither is repeated
-anymore. What belongs here are the **lessons from doing the vendoring**,
-because they generalise:
+The engine is four layers, all header-only files at the component's top level:
 
-- **CI green ≠ the vendored engine compiled.** Before the build wiring was fixed,
-  CI reported green while still pulling the *old external* library via
-  `cg.add_library(...)` — the vendored sources weren't in the build path at all.
-  Always verify the *actual* build path, not just the CI badge.
-- **ESPHome's component file-copier does not recurse into nested subdirectories.**
-  The engine is a nested tree (`protocol/vs2/…`, `datapoint/…`, `interface/…`),
-  which the copier won't carry. The fix is to register `optolink/` as a `file://`
-  PlatformIO library from the component directory (with `optolink/library.json`),
-  so PlatformIO — not the copier — pulls the whole tree on both frameworks. The
-  flat-vs-nested layout question was first settled in favour of **nested**;
-  the redesign made it **flat** again, and with no subdirectory left there is
-  no library to register on any toolchain.
-- **`ref: main` without `refresh: 0s` throttles re-pulls to one day.** A same-day
-  rebuild after pushing a fix will compile a cached, stale clone. Use
+| Layer | Knows | Does not know | Files |
+|---|---|---|---|
+| Codec | the bytes of one telegram and its answer | time, the UART, other telegrams | `optolink_codec_kw.h`, `_p300.h`, `_gwg.h` |
+| Link | who may speak when: ENQ, ACK, sync, chaining, deadlines | what the bytes mean | `optolink_link_enq.h` (`EnqLink`) |
+| Exchange | one request in flight, its steps, its watchdog, its result | byte layout | `optolink_exchange.h` + `optolink_kw.h`, `optolink_p300.h`, `optolink_gwg.h` |
+| Port | `available()`, `read()`, `write()`, the frame log, the recorder hook | protocols | `optolink_port.h` (`PortRef`), `vito_uart_interface.h` |
+
+`optolink_types.h` holds what they share, `optolink_clock.h` the clock (an
+injectable one on the host, §10). The KW exchange is `Exchange` over the KW
+codec and `EnqLink`. P300 and GWG keep their own state machines in their
+exchanges: P300 has a session and a nested KW detour, and GWG drops an ENQ read
+while idle, rides its burst window from an ENQ as well as from an answer,
+drains the line at the deadline and retries only burst-sent reads, each of
+which `EnqLink` would need a switch for. The state flows are drawn in the
+protocol documents.
+
+**One request, one result.** The hub submits a `Request` (a protocol's
+telegram by code, address, length and payload, or an open frame) and gets one
+`Result`: status, the answer, a P300 error frame's code, `never_sent` (GWG: no
+ENQ came), `unserved_eeprom` (a GWG `FF FF` cell), `retries`, and the timing of
+an ENQ-paced telegram. The result's pointers are valid inside the callback
+only. A submit from inside it is refused, since the request is still busy.
+
+**No heap.** The exchange is a hub member, the port a pointer with one static
+function table per port type, and every buffer is sized from `MAX_PAYLOAD`
+(64): the hub reads at most 48 bytes and writes at most 32. A request longer
+than a buffer is refused; an answer longer than it fails.
+
+**Timing points and windows.** Every quirk found in the field so far was about
+the time between two bytes, so the links have one mechanism for it rather than
+one setting per case. A timing point is a moment a link writes, held back by a
+settable number of ms (`TimingPoint`, `set_link_timing()`, YAML
+`link_timing:`); a window is how long it waits for something (`LinkWindow`,
+`set_link_window()`, GWG's answer deadline so far). The rules:
+
+1. The default is the pacing measured on the reference unit: 0 on P300 and
+   GWG, 20 and 25 ms on KW.
+2. Non-blocking: the link keeps its state with a "write due at" stamp, read
+   with a fresh clock, and the main loop runs fast while a write waits.
+3. Bytes that arrive during a wait are not an answer; they are dropped.
+4. A value other than the default is logged as a warning at boot and on every
+   change, so a forgotten setting shows in every log.
+5. The bounds (100 ms after an ENQ, 400 ms after an answer) stay inside the
+   device's limits and, together, inside the request watchdog. The Python
+   bounds and the C++ clamps are one set (`test_limits_agree.py`).
+
+**The trace.** Each exchange reports its state changes and the facts no state
+shows (bytes drained, a retry, a NACK, a refused EOT, ...) to a `LinkSink`,
+null by default; the recorder takes them (§9b).
+
+**Proving "the same bytes at the same moments".** The engine began as VitoWiFi
+at `edc059a7` and was rewritten in stages, each held to the bytes and passes of
+the one before:
+
+- `tests/native/reference/` is a frozen copy of the engines before the rewrite,
+  compiled only in the native tests.
+- The differential target (`fuzz_diff_engines.cpp`) runs each engine harness
+  twice, against the live engines and against the reference copy, on one
+  scripted device and one clock, and compares every pass's writes and every
+  result. It replays its seeds in 10 ms and in 1 ms steps and has boundary
+  seeds for the timing constants, since a change of a few ms would otherwise
+  pass. A deliberate change to the wire runs with its parameter off on the
+  live side (`kw_calls::kVs1Timing`, `P300Exchange<Port, 0, 0>`), and has its
+  own proof.
+- `proof_codec_equality.cpp` compares the codecs with the packet classes they
+  replaced, 7.4 million cases.
+- Once the reference outputs are recorded as fixtures, the copy goes.
+
+Of VitoWiFi only the `Datapoint` class remains (`optolink_datapoint.h`, MIT
+notice kept); attribution and licensing are in [`NOTICE.md`](../NOTICE.md).
+Two lessons from the vendored years generalise:
+
+- **ESPHome's component file copier does not recurse into subdirectories.**
+  Every engine file sits at the component's top level, so the component
+  registers no library on any toolchain.
+- **`ref: main` without `refresh: 0s` throttles re-pulls to one day.** A
+  same-day rebuild after pushing a fix compiles a cached, stale clone. Use
   `refresh: 0s` (or a pinned ref) during active iteration.
 
 ---
 
 ## 4. Config-time validation is load-bearing, not belt-and-braces
 
-The engine guards converter/length combinations with `assert()`, which is
-**compiled out under `NDEBUG`** — i.e. in every ESPHome release build. Worse, the
-upstream `noconv` length assert is **commented out** even in debug, so an
-out-of-range length would silently decode as `0`.
-
-That is why the converter/length cross-checks in the Python layer are the real
-guard: they turn a silent-wrong-data bug into an `esphome config` error before
-anything reaches the device. The actual length sets and the encodable-range rule
+The engine has no converter layer, and a runtime `assert()` would be compiled
+out under `NDEBUG` in every ESPHome release build anyway. The converter/length
+cross-checks in the Python layer are therefore the real guard: they turn a
+silent-wrong-data bug into an `esphome config` error before anything reaches
+the device. The actual length sets and the encodable-range rule
 live in [`converters.md`](converters.md); the principle to carry is that those
 checks are **load-bearing** and must stay in lockstep with `decode.h`. The
 config-time encodable-range check in `number.py` mirrors
 `decode.h::encode_scaled` *exactly* (round to nearest raw step, then range-check
 for byte width and sign), and the C++ `encode_scaled` itself range-checks
-unconditionally before transmitting — belt **and** braces, on purpose, precisely
-because the engine's own runtime guards vanish under `NDEBUG`.
+unconditionally before transmitting: belt **and** braces, on purpose.
 
-**When bumping the engine commit or adding a converter:** re-read the engine's
-converter source at the new revision, update the length sets to match, and add a
-`tests/unit/test_validators.py` case. The asserts there are the source of truth;
-do not infer the constraints.
+**When adding a converter:** update the length sets in `converters.md`,
+`decode.h` and the Python validators together, and add a
+`tests/unit/test_validators.py` case.
 
 ---
 
@@ -1218,8 +516,8 @@ The state model here is subtle and was the source of a real bug:
   able to **re-enqueue** a newer value (`write_queued_ = true`) even though the
   in-flight transaction can't be recalled. Every completion path — dispatch,
   write-ACK, mismatch-drop, error, watchdog — clears `write_in_flight_`
-  independently of `write_queued_`. (An earlier single-flag design dropped the
-  second write whenever `control()` fired during an in-flight transaction.)
+  independently of `write_queued_`. One flag for both drops the second write
+  whenever `control()` fires during an in-flight transaction.
 - **`pending_value_` can desync Home Assistant.** Publishing `pending_value_`
   while a write is in flight can show a state the device hasn't accepted; it must
   be managed together with `write_in_flight_`/`read_back`, not published blindly.
@@ -1234,31 +532,15 @@ The state model here is subtle and was the source of a real bug:
   but the unit may legitimately report an unchanged value. Confirm mode behaviour
   on the actual heater rather than assuming the software ACK means the mode
   changed.
-- **`select` uses the index-only `control(size_t)` override** preferred by
-  ESPHome 2026.5.0 (the string variant forwards to it; `Select::state` is
-  deprecated/removed in 2026.7.0). Options are an **ordered `{raw_value: label}`
+- **`select` uses the index-only `control(size_t)` override** (the string
+  variant forwards to it; `Select::state` is gone). Options are an **ordered `{raw_value: label}`
   map**, so the YAML author controls order; raw values are validated to fit the
   byte width and labels to be unique.
-- **The raw lane is uniformly higher-priority than `write_queue_` again — and
-  that is now correct.** History, because the shape of the fix matters:
-  `dispatch_next_()` originally checked `raw_queue_` ahead of `write_queue_`
-  unconditionally, which was fine while the lane only carried
-  `RawPurpose::SCAN` (interactive scan-console ops, which *should* jump ahead
-  of a queued write so range sweeps feel immediate). Once system-time sync
-  started riding the same lane (`RawPurpose::CLOCK_*`), that unconditional
-  priority let a background clock sync — up to three sequential round trips,
-  invisible to the user — stall a queued setpoint write for the whole sync. The
-  fix at the time split the priority by the *front op's purpose*: `SCAN` still
-  preempted `write_queue_`, `CLOCK_*` was checked after it. That left a known
-  residual, since a single FIFO cannot reorder: a `SCAN` enqueued *behind* a
-  not-yet-dispatched `CLOCK_*` still waited for it. The note ended by saying a
-  real fix would give `CLOCK_*` its own lane.
-  It got something better: clock sync is no longer a raw op at all. `VitoClock`
-  is an entity on the read/write lanes (see the raw-lane sizing section above),
-  so `raw_queue_` has exactly one tenant, the purpose tag and the arbitration it
-  required are both gone, and the unconditional `SCAN`-preempts-writes rule is
-  restored with nothing left to be wrong about. Writes still preempt reads, so
-  the clock's own write step is not starved either.
+- **The raw lane goes ahead of the write lane.** Its only tenant is the
+  interactive scan console, whose operations should jump a queued write so a
+  range sweep feels immediate. Clock sync is not a raw operation but an entity
+  on the read/write lanes (§5a), so a background sync never stalls a setpoint
+  write. Writes still preempt reads, so the clock's own write is not starved.
 
 ### 5a. The three lanes are sized-at-setup ring buffers, not deques
 
@@ -1302,15 +584,13 @@ than an auto-size.
 
 **`RawOp` has no default member initializers.** `RingBuffer<T>` static_asserts
 `is_trivially_default_constructible`, and one initializer makes the implicit
-default constructor non-trivial. An initializer on the access-space field broke
-the ESP32-C3 / ESP-IDF build (2026-08-24) while the native proofs stayed green:
-they never instantiate `RingBuffer<RawOp>`. Every construction site writes
+default constructor non-trivial; the native proofs would not see it, since they
+never instantiate `RingBuffer<RawOp>`. Every construction site writes
 `RawOp operation{};`, which value-initializes the enums to their 0 members.
 
-**Device-clock synchronization does not use this lane.** It used to, tagged with
-a `RawPurpose`, which coupled two unrelated tenants in one queue and forced a
-non-zero default. It is now `VitoClock` (`vito_clock.h`) — a hub-owned
-`VitoEntityBase` on the ordinary read/write lanes. The fit is exact rather than
+**Device-clock synchronization does not use this lane.** It is `VitoClock`
+(`vito_clock.h`), a hub-owned `VitoEntityBase` on the ordinary read/write
+lanes. The fit is exact rather than
 forced: `write_buf_` is 8 bytes and the clock datapoint (0x088E) is 8 bytes of
 BCD; `handle_response()` is the drift compare; and `wants_read_back()` — already
 true by default — makes the verify step the existing write-ACK read-back rather
@@ -1318,24 +598,19 @@ than bespoke code. `VitoEntityBase` inherits from nothing (the concrete types
 multiply-inherit their Home Assistant surface separately), so a pure subclass is
 a lane participant with no HA presence, which is exactly what clock sync is.
 
-Two failure modes disappeared with the move. A sweep filling the raw lane could
-starve a mid-chain clock write; and `raw_queue_size: 0` silently disabled time
-sync, which is why a validator once rejected that pair. The entity lanes are
+So a sweep filling the raw lane cannot starve a clock write, and
+`raw_queue_size: 0` does not disable time sync. The entity lanes are
 `reserve()`d to `entities_.size()` and the `read_queued_`/`write_queued_` flags
 admit an entity at most once, so a slot for the clock always exists.
 
-The lane *mechanics* under that claim are pinned by
+The lane *mechanics* are pinned by
 `tests/native/proof_ring_buffer.cpp::test_clock_chain_on_entity_lanes`; the
-*count* is not, and cannot be from a host proof — the derivation is inside
-`VitoHomeComponent::setup()`. That distinction had teeth: `setup()` sampled
-`entities_.size()` one line above the `VITOHOME_TIME_SYNC` block that registers
-the clock, so the lanes were reserved to `size() - 1` and the clock's priority
-read cost one due entity its slot on every boot
-(`read queue rejected 1 due entities (size=55, capacity=55)` against
-`Entities: 56`, hardware-observed on VScotHO1_72, 2026-07-16) while the proof
-stayed green. The count is now sampled after every `register_entity()` call, and
-`lanes_sized_` latches at that moment so a late registration is rejected loudly
-instead of silently re-opening the shortfall.
+*count* cannot be, since it is derived inside `VitoHomeComponent::setup()`. It
+is sampled after every `register_entity()` call, the clock's included, and
+`lanes_sized_` latches then, so a late registration is rejected loudly. A count
+taken one line too early reserves the lanes one short, and the clock's
+priority read then costs one due entity its slot on every boot
+(`read queue rejected 1 due entities`).
 
 **The clock address is a device property, not a constant** — source-confirmed
 against the Vitosoft `DPDefinitions.xml` link tables (399 `ecnDatapointType`
@@ -1391,32 +666,24 @@ for the overwhelming majority of real devices, including the one this component
 was developed against. `gen_catalog.py` skips `DateTimeBCD` entirely, so the
 clock is never a catalog datapoint either way.
 
-Two details make the move behaviour-preserving rather than merely tidy. The raw
-lane was dispatched **ahead** of the poll lane; an ordinary polled entity is
-not, so the clock would have queued behind every pending poll (~150 s on a full
-catalog — harmless for drift, which is measured against the live time source at
-response time, but a visible regression for `sync_on_boot`). So `VitoClock`
-opts out of the poll rotation (`wants_polling() == false`) and pushes to the
-**head** of the read lane via `request_priority_read()` from its own schedule.
-And because the read lane cannot fill, a second sync could no longer be rejected
-by a full queue the way the depth-1 raw lane implicitly rejected it — so the
+An ordinary polled entity would queue behind every pending poll (~150 s on a
+full catalog: harmless for drift, which is measured against the live time
+source at response time, but slow for `sync_on_boot`). So `VitoClock` opts out
+of the poll rotation (`wants_polling() == false`) and pushes to the **head** of
+the read lane via `request_priority_read()` from its own schedule. Because the
+read lane cannot fill, a second sync is not rejected by a full queue, so the
 chain guards itself with an explicit `Phase`
-(`IDLE`/`READING`/`WRITING`/`VERIFYING`),
-which is `RawPurpose::CLOCK_*` moved out of the shared lane and made local to
-its only user.
+(`IDLE`/`READING`/`WRITING`/`VERIFYING`).
 
-**The Phase guard creates a recovery obligation, and it was violated once.**
-`tick()` refuses to start while `phase_ != IDLE`, and — unlike polled entities
-— nothing ever re-queues the clock, so *every* path that ends a clock
-transaction without a `handle_response()` must notify `handle_error()` /
-`handle_write_error()` (whose whole job is resetting the phase). The engine
-error path always did; the hub's **response-address-mismatch drop** in
-`on_response_()` did not — it cleared `read_queued_`/`write_in_flight_` and
-returned, so one crossed response during `READING`/`VERIFYING` wedged
-`phase_` permanently and time sync died silently until reboot (2026-07 audit
-finding, fixed the same week: the mismatch path now notifies exactly as
-`on_error_()` does). The rule for any future completion path: clearing the
-bookkeeping flags is not enough — the entity must hear about it.
+**The Phase guard is a recovery obligation.** `tick()` refuses to start while
+`phase_ != IDLE`, and nothing re-queues the clock, so *every* path that ends a
+clock transaction without a `handle_response()` must notify `handle_error()` /
+`handle_write_error()`, whose job is resetting the phase. The hub's
+response-address-mismatch drop in `on_response_()` notifies exactly as
+`on_error_()` does; without it one crossed response during `READING` or
+`VERIFYING` wedges `phase_` and time sync dies silently until reboot. The rule
+for any future completion path: clearing the bookkeeping flags is not enough,
+the entity must hear about it.
 
 **The API is deliberately not the deque subset.** `reserve()` is **one-shot**
 (a second call is rejected, `reserve(0)` permanently initializes an unused
@@ -1435,15 +702,12 @@ is none: one loop removes from a lane or changes its head (`push_front`,
 `move_to_front`, `remove`), and a producer on another task can only append,
 which never changes the head of a non-empty lane.
 
-This replaced `consume_front_if(consumer)`, which ran the hand-off under the
-lock. It guarded against a second consumer that does not exist, and cost a
-non-recursive mutex held across engine calls: a FAILED raw result published
-from inside it deadlocked when an automation queued the next raw operation
-(external review, 2026-10-28), after which a source-scanning test had to keep
-every consumer free of calls leading out of the hub. That test
-(`tests/unit/test_queue_lock_discipline.py`) now checks that the locked
-hand-off stays gone and that the one remaining locked predicate
-(`move_first_to_front_if`) stays clean.
+A hand-off under the lock would hold a non-recursive mutex across engine
+calls, and a FAILED raw result published from inside it deadlocks when an
+automation queues the next raw operation.
+`tests/unit/test_queue_lock_discipline.py` checks that no locked hand-off
+returns and that the one locked predicate (`move_first_to_front_if`) stays
+free of calls leading out of the hub.
 
 Every mutating call is `[[nodiscard]]`; a rejected push **must roll back its
 companion bookkeeping** (`read_queued_`/`write_queued_`) rather than leave an
@@ -1451,14 +715,12 @@ entity marked queued but absent — the scheduler, `request_write()` and the
 read-back path all follow that set-flag-then-push-then-roll-back pattern.
 
 **A priority read for an entity that is already queued moves it.** The
-`read_queued_` flag allows one copy per entity, so `request_priority_read()`
-used to return early when the entity's ordinary poll was already waiting in
-the lane -- and the "priority" read then ran at the poll's position. Hardware,
-VScotHO1_72, 2026-10-15: a write ACKed during a poll cycle that already held
-the writer got its read-back 2.3 s later, after the whole cycle. Now
-`move_to_front()` moves the queued copy to the head, keeping the order of the
-rest (O(n) under the lock, n bounded by the entity count). An entity flagged
-but not in the lane has its read in flight; there is nothing to move.
+`read_queued_` flag allows one copy per entity, so `move_to_front()` moves the
+queued copy to the head, keeping the order of the rest (O(n) under the lock, n
+bounded by the entity count). Otherwise a write ACKed during a poll cycle that
+already holds the writer gets its read-back after the whole cycle (2.3 s on
+VScotHO1_72). An entity flagged but not in the lane has its read in flight;
+there is nothing to move.
 
 **Synchronization scope, stated precisely.** Each ring serializes its own
 operations through `esphome::Mutex` (FreeRTOS-backed on ESP32; an inline no-op
@@ -1486,8 +748,9 @@ EEPROM `0x0005` is eight independent coding flags (K10..K17); `0x001E` is two
 4-bit switching points. Across the 2026 export there are 238 such fields, none
 spanning two bytes. Before `bit_mask`, every *writable* one was emitted as a
 whole-byte `number` / `select` / `switch`: choosing "1 ohne Nachlauf" on
-`GWG_K13Speichernachlauf` wrote `0x01` and cleared the other seven flags. On the
-read side, as soon as any sibling flag was set, the byte matched no option.
+`GWG_K13Speichernachlauf` wrote `0x01` and cleared the other seven flags, and
+on the read side, as soon as any sibling flag was set, the byte matched no
+option.
 
 `bit_mask` (converters.md, *Bit fields*) fixes both sides.
 
@@ -1514,11 +777,11 @@ watchdog, an empty payload -- ends in `rmw_abort_()`: `write_in_flight_` is
 cleared, the entity gets `handle_write_error()`, and *nothing is written*. A
 blind fallback write is exactly the corruption this exists to prevent.
 
-**GWG "not in use".** An EEPROM `FF FF` pair is delivered as `0xFF`
-(THIRD_PARTY.md #24), indistinguishable from "all eight flags set". Merging into
-it and writing it back would turn an unserved address into a served one, so the
-engine latches the fact (`GWGEngine::lastReadHadUnservedEeprom()`,
-THIRD_PARTY.md #25) and the hub refuses. Ordinary reads are unchanged.
+**GWG "not in use".** An EEPROM `FF FF` pair is delivered as `0xFF`,
+indistinguishable from "all eight flags set". Merging into it and writing it
+back would turn an unserved address into a served one, so the result flags it
+(`Result::unserved_eeprom`) and the hub refuses. Ordinary reads are
+unchanged.
 
 **Read-back check.** After the ACK the hub reads the byte back anyway
 (`read_back`). The bits outside the mask must equal what was written; a
@@ -1560,9 +823,10 @@ VScotHO1_72, 2026-10-14, with the frame log on:
 | write during a poll burst, `0x7951` | toggled mid-cycle: read → write → ACK, then the queued polls resume | read and write adjacent, ahead of the polls |
 | 1-byte write at a 2-byte block base, `0x7951` / `0x7953` | see below | **destructive** -- byte 1 overwritten |
 
-Still open: multi-bit masks, the read-back warning path, and all of GWG. Note
-that the `refresh_all()` button only marks entities due: they are queued on the
-next hub tick, so pressing it does not by itself produce a busy bus.
+Still open: multi-bit masks, the read-back warning path, and bit fields on
+GWG (a plain EEPROM write is confirmed there). The `refresh_all()` button only
+marks entities due: they are queued on the next hub tick, so pressing it does
+not by itself produce a busy bus.
 
 **A write narrower than its block corrupts the rest of the block.** The
 `Neptun_*` outputs are bit `0x01` of byte 0 of 2-byte blocks (byte 1 is the
@@ -1590,9 +854,9 @@ while party mode was on cleared `0x2330`: the next read-modify-write on it read
 economy are mutually exclusive), not a merge problem -- the read-modify-write
 read the device's real state, which is exactly its job -- but HA showed the
 party switch ON for those seconds, because nothing re-reads an entity whose
-register another entity's write changed. (Re-reading every entity on the
-*written block* is now done -- *Sibling refresh* below; a device-side link
-between two different registers like this one stays out of reach.)
+register another entity's write changed. The entities on the *written block*
+are re-read (*Sibling refresh* below); a device-side link between two
+different registers like this one stays out of reach.
 
 #### Whole-block read-modify-write (block mode)
 
@@ -1638,11 +902,11 @@ usual read-back.
 
 **Read coalescing.** Entities that read one datapoint and differ only in what
 they take from it (coding flags of one byte, fields of one block, a sensor and
-a text_sensor on one register) used to send one telegram each. In the generated
-catalogs 14,453 of 82,650 entities (17%) repeat another entity's read. When a
-poll read completes, the hub now takes every other entity that is *waiting in
-the read lane for the same telegram* out of the lane and hands it the same
-outcome (`share_read_response_` / `share_read_error_`).
+a text_sensor on one register) share one telegram: in the generated catalogs
+14,453 of 82,650 entities (17%) repeat another entity's read. When a poll read
+completes, the hub takes every other entity that is *waiting in the read lane
+for the same telegram* out of the lane and hands it the same outcome
+(`share_read_response_` / `share_read_error_`).
 
 - "The same telegram" is `VitoEntityBase::reads_same_datapoint()`: access
   space, address, length, and for `access: rpc` the parameter. Byte offset, bit
@@ -1660,7 +924,7 @@ outcome (`share_read_response_` / `share_read_error_`).
   sibling refresh), so the stale value stands for one transaction.
 - `VitoClock` neither shares nor is skipped: it does not poll, and it runs its
   own state machine on its reads.
-- The sibling refresh above needs one telegram for the whole group now: the
+- The sibling refresh above needs one telegram for the whole group: the
   writer's read-back is shared with the siblings queued behind it.
 
 Not verified on hardware. The hub has no host harness; the two building blocks
@@ -1668,10 +932,10 @@ Not verified on hardware. The hub has no host harness; the two building blocks
 the hub code is compile-checked.
 
 **Interior shape, deprecated.** `byte_offset` with `state_address` (block read
-at the base, field written to its own interior address) still validates, but
-warns at `esphome config`: the interior address is not a declared write
-address (§8g), and the write is narrower than the datapoint. Kept so existing
-configs keep building; the generator no longer emits it.
+at the base, field written to its own interior address) validates with a
+warning at `esphome config`: the interior address is not a declared write
+address (§8g), and the write is narrower than the datapoint. The generator does
+not emit it.
 
 **Status: hardware-confirmed on P300.** On the host,
 `test_decode.cpp::test_block_field` is exhaustive over blocks of 1..6 bytes,
@@ -1713,12 +977,11 @@ number go to NaN only after three consecutive read errors; the fault `event`
 records a silent baseline on its first read; the connectivity sensor is
 edge-published once the link is up; `device_id` publishes after identification.
 
-The one exception was `climate`, whose state is a PAIR read from two registers.
-It published after the setpoint read with the `setup()` placeholder mode
-(`OFF`), and again with the real mode 120 ms later -- a "Mode: OFF" blip in HA
-history on every reboot, which an automation on "climate turned off" sees
-(hardware logs 2026-10-14). It now publishes nothing until both channels have
-been read once (`VitoClimate::ready_()`). A first mode read that matches no
+`climate`'s state is a pair read from two registers, so it publishes nothing
+until both channels have been read once (`VitoClimate::ready_()`). Published
+after the setpoint read alone, it showed the placeholder mode `OFF` and the
+real mode 120 ms later: a "Mode: OFF" blip in HA history on every reboot,
+which an automation on "climate turned off" sees. A first mode read that matches no
 preset still counts as read, so a device in an unmapped Betriebsart does not
 hide the whole climate; the log says the coarse mode is unconfirmed.
 
@@ -1727,7 +990,7 @@ hide the whole climate; the log says the coarse mode is unconfirmed.
 answer) make an entity report "unknown": sensor and number publish NaN,
 binary_sensor calls `invalidate_state()`. A good read clears the count; a failed
 write never counts. select, switch, text, text_sensor and climate keep their
-last value, because ESPHome 2026.9 has no public way to report those types as
+last value, because ESPHome has no public way to report those types as
 unknown; the hub's connectivity sensor shows a lost link for all of them.
 
 **The climate's placeholder mode** is HEAT where a preset derives HEAT (or the
@@ -1736,12 +999,11 @@ first mode read matches no preset: a circuit in an unmapped Betriebsart
 (holiday program, external switching) is mostly still heating. HEAT is offered
 to Home Assistant only where a preset can write it.
 
-Commands follow the same rule (external review, 2026-10-28). `control()` used
-to set and publish the new setpoint, preset and mode as soon as the write was
-queued -- before `ready_()` at boot, and kept after a failed write until the
-next poll. It now only queues: the read-back publishes the device's view, or
-with `read_back: false` the acknowledged write does; a failed write is logged
-and changes nothing. `tests/unit/test_climate_publish_contract.py` keeps
+Commands follow the same rule. `control()` only queues: the read-back
+publishes the device's view, or with `read_back: false` the acknowledged write
+does; a failed write is logged and changes nothing. Publishing on queueing
+would show a state before `ready_()` at boot, and keep it after a failed write
+until the next poll. `tests/unit/test_climate_publish_contract.py` keeps
 `control()` free of state changes.
 
 Not a component issue, recorded because it looked like one: `esphome logs`
@@ -1854,7 +1116,7 @@ The load-bearing fact for anyone **adding new datapoints**:
   recovered by decoding `0x20CB` differently.
 - **`VScotHO1` is a Vitosoft internal token, not a marketing name.** The product
   name is not in the token; it is a table extension of the type
-  (`ProductName` / `ShortName`, §8k), and for about half the types only. On the
+  (`ProductName` / `ShortName`, §8l), and for about half the types only. On the
   reference unit `VScotHO1_72` ("Projekt Neptun") is the
   **Vitotronic 200 controller in a Vitodens 300-W (type B3HA)** — corroborated by
   the `Neptun_Durchfluss_*` / `Neptun_Volumenstromgrenzwert_*` flow-sensor
@@ -1870,16 +1132,15 @@ The load-bearing fact for anyone **adding new datapoints**:
   the wire is ground truth and the software index is fixed at runtime.)
 - **Any future auto-identify feature must match the full tuple** (`0xF8`–`0xFB`,
   plus `0x00F0` for the two families F0 subdivides, above), never `0x20CB` alone, or it loads the wrong datapoint set
-  for any family with software-index variants. The `0xFA`/`0xFB` reads on this
-  unit are **model-derived** — verify on a first run.
+  for any family with software-index variants.
 
 ---
 
-## 7. Error-history layout (corrected)
+## 7. Error-history layout
 
-The old `esphome_vitoconnect` config read 3 bytes at `0x7507` as
-`[code, day, month]`. That layout was a guess and is **wrong**. The authoritative
-layout comes from InsideViessmannVitosoft's own decoder
+The `esphome_vitoconnect` config reads 3 bytes at `0x7507` as
+`[code, day, month]`, a guess that is **wrong**. The layout comes from
+InsideViessmannVitosoft's own decoder
 (`Viessmann2MQTT.py`, `DateTimeFromBCD`): a slot is **9 bytes** — `[0]` = error
 code, followed by an 8-byte packed-BCD timestamp:
 
@@ -1898,11 +1159,8 @@ implausible years (`< 1990`) so an all-zero slot doesn't decode as year 0. The
 falling back to code-only when the timestamp is empty/invalid.
 
 **Error history is catalog-driven, and a unit can carry TWO DIFFERENT
-archives — not two addresses for one.** An earlier revision of this section
-claimed VScotHO1_72 "has no event at `0x7507`" and crowned `FehlerHisFA01`
-"Letzter Fehler"; on hardware that read the **wrong archive**, and the claim
-is retracted (see `_is_error_history` in `scripts/vitocatalog/special.py`,
-which records the correction). The current, hardware-confirmed picture on VScotHO1_72:
+archives, not two addresses for one** (`_is_error_history` in
+`scripts/vitocatalog/special.py`). Hardware-confirmed on VScotHO1_72:
 
 - `ecnsysEventType~Error` at **`0x7507`** is the Vitotronic **system** fault
   history — BlockLength 90 / BlockFactor 10, i.e. ten 9-byte slots at
@@ -1933,8 +1191,8 @@ self-describing sensor-status enums.
 **Heat pumps.** The WPR and WPR3 fault buffers are remote procedure arrays, not
 address ranges: thirty 8-byte (WPR) or 9-byte (WPR3) records at `0xA801`, each
 one call with the record index as the parameter. The same slot fan-out emits
-them, as raw hex -- see §P300 remote procedure calls. What the export says about
-the record, and what it does not:
+them, as raw hex ([p300_protocol.md](p300_protocol.md#remote-procedure-calls-access-rpc)).
+What the export says about the record, and what it does not:
 
 - **Not this layout.** `MappingType`, whose value list `DPDefinitions.xml`
   carries (`NoMap=0; PhaseCT=1; HydroCT=2; ErrorHistory=3;
@@ -2098,83 +1356,13 @@ therefore publishes a spurious `0.00 °C` at boot. Use `has_state()`.
 
 ---
 
-### 8c. There is no evidence for any P300 read-length cap
+### 8c. P300 read length
 
-`MAX_P300_READ_LENGTH = 37` is inherited lore. Every attempt to justify it has
-failed.
-
-* The openv [Protokoll 300](https://github.com/openv/openv/wiki/Protokoll-300)
-  specification describes the length byte as the count of bytes between `0x41`
-  and the checksum, and names **no maximum**.
-* vcontrold defines no read wider than 9 bytes — but that is
-  [a documented limitation of vcontrold itself](https://github.com/openv/openv/wiki/vcontrold.xml).
-* This document previously cited a 40-byte read at `0x7362` failing on P300 while
-  succeeding on KW. **That was a misdiagnosis** (see §8g): `0x7362` is not a
-  datapoint. A *two-byte* read at the same address fails with a byte-identical
-  error telegram.
-
-A **42-byte read succeeds on P300** (`0x7360`, 2026-07-10):
-
-```
->>> 41:05:00:01:73:60:2A:03                (0x2A = 42 bytes)
-<<< 06:41:2F:01:01:73:60:2A:<42 bytes>:2B  (length byte 0x2F = 47)
-```
-
-22 and 32 were proven the same day. `37` is therefore not merely uncited — it is
-**below a read that demonstrably works**.
-
-And there is a plausible account of where it came from. The response to a 32-byte
-read opens `41:25:...` — length byte `0x25` = **37**, because the P300 length byte
-counts `5 + payload`. Someone reading a telegram length byte as a data length
-would land on exactly 37. Speculative, but it is the only story that fits the
-number.
-
-`MAX_P300_READ_LENGTH` is now **48**: the ceiling we are willing to *attempt*. It
-covers every block the catalogs emit (widest is the 42-byte `Beschriftung_*`
-block, proven) and matches `RAW_READ_MAX`, so the raw scan console can test any
-block read before you enable the entity that performs it. Bytes 43..48 are
-unverified. Raise it with evidence, not lore.
-
-The console's read cap was raised from 32 to 48 for exactly that reason: it could
-not test the reads the generator emits, which is why this question stayed open a
-session longer than it needed to. A raw read stores no payload, so the only real
-limits are the engines' packet-length arithmetic (safe well past 200) and the
-dump buffer (grown 160 → 208; `RAW_DUMP_MAX_HEX` also raised to 48, or the
-console elides the very bytes you asked for). Raw *writes* stay capped at 32:
-they carry an inline payload.
-
----
+Moved: [p300_protocol.md](p300_protocol.md#read-length).
 
 ### 8d. GWG addresses a single byte
 
-Source-confirmed, and it invalidates every generated catalog under
-`protocol: GWG`.
-
-The GWG codec (`gwg_encode()`) carries one address byte and **rejects** any
-address above `0xFF` — a guard inherited verbatim from upstream `edc059a7`
-(the `addr & 0xFF` serialisation below the guard is unreachable for an
-over-range address). An earlier revision of this section claimed the high byte
-was discarded silently; that was wrong against both the vendored copy and
-upstream, and is corrected here. The rejection is memory-safe but *terminal*:
-a packet the engine refuses to build never leaves the hub's dispatch lane, so
-one such entity at the front of the read or write queue stalls that lane —
-and everything queued behind it — permanently.
-
-vcontrold agrees. Its GWG device — `<device ID="2053" name="GWG_VBEM"
-protocol="GWG"/>` — overrides **all 26** of its addresses onto a single byte
-(`0x00`, `0x01`, `0x05`, `0x22`, `0x3F`, `0x41`, `0x63`, …) rather than reusing
-the 16-bit addresses the same commands use on KW/P300. GWG has its own address
-space.
-
-So the Vitosoft catalogs, which carry 16-bit addresses, **do not apply to GWG at
-all**. The hub's `FINAL_VALIDATE_SCHEMA` now rejects any `address`,
-`state_address` or `target_address` above `0xFF` when `protocol: GWG`. This is a
-hard error, not a warning: unlike the P300 length question, the permanent
-lane stall is a property of code we ship and is unconditionally wrong.
-
-This check immediately proved that `tests/common.yaml` had been addressing
-garbage under the GWG wrapper since it was written (`0x0800` → `0x00`). GWG now
-has its own `tests/common-gwg.yaml`.
+Moved: [gwg_protocol.md](gwg_protocol.md#wire-format).
 
 ---
 
@@ -2246,12 +1434,12 @@ Blast radius: 72 entities across 28 catalogs, every one a `Beschriftung*`
 
 Fixed on both sides:
 
-* `text_sensor` types `ascii` and `utf16` now accept `byte_offset` +
+* `text_sensor` types `ascii` and `utf16` accept `byte_offset` +
   `byte_length`, the same aligned-block shape `sensor`, `binary_sensor` and
   `enum` already used. Without `byte_offset` the schema is unchanged.
 * the generator (`scripts/vitocatalog/`) emits `address: <block base>`, `length: <block>`,
   `byte_offset`, `byte_length` — and a **comment instead of an entity** when the
-  block read would exceed `MAX_TEXT_BLOCK_LENGTH`. It no longer performs address
+  block read would exceed `MAX_TEXT_BLOCK_LENGTH`. It performs no address
   arithmetic anywhere.
 
 **Confirmed the same day.** The raw scan console read the block base:
@@ -2532,17 +1720,16 @@ Vitosoft attaches datapoints to a device in two places:
    `ecnEventTypeEventTypeGroupLink`. Vitosoft shows a device through these
    menus.
 
-The generator used to read (1) only; (2) served `--order group` alone. In the
-2026 export **150 devices carry datapoints only in their menus: 2,854 in all,
+In the 2026 export **150 devices carry datapoints only in their menus: 2,854 in all,
 2,685 Optolink-reachable, 2,448 at an address the device has no other
 datapoint for** (the other 400 are alternative names for an address it has,
 which the field de-duplication folds). Examples: `V200CO1x` lacked its whole
 `(A0)..(B5)` heating-circuit coding block (`0x27A0..`, 161 datapoints);
 `CU401B_S` its compressor run hours (`0x0580`) and annual performance factors
 (JAZ, `0x1680..0x1682`); VScotHO1_72 one (`nviBoilerCmd_BLR_value`, `0xA300`).
-`Catalog.events_for()` now takes both (`--no-menu-datapoints` restores the old
-set); regenerated, 130 of the 201 catalogs gain 2,404 entities (standard
-profile), the set of catalogs is unchanged.
+`Catalog.events_for()` takes both (`--no-menu-datapoints` reads the direct
+table alone); the menus add 2,404 entities to 130 of the 201 catalogs
+(standard profile).
 
 The menus are strictly per device, not shared templates: each of the 18,018
 groups carries exactly one `DataPointTypeId`, and its path names that device --
@@ -2572,11 +1759,9 @@ parts -- and carry no datapoint knowledge.
 
 ### 8k. `standard` leaves out LON inputs
 
-Until 0012 the `standard` and `full` profiles produced exactly the same
-entities (80,462 over all 201 catalogs): `standard` only dropped the 600
-datapoints with a conversion the generator cannot decode (`DateBCD`,
-`DateTimeBCD`, `IPAddress`), and `full` turns those into comments, not
-entities. `standard` now also leaves out **LON network-variable inputs**
+`standard` leaves out the datapoints with a conversion the generator cannot
+decode (`DateBCD`, `DateTimeBCD`, `IPAddress`; `full` turns them into
+comments) and **LON network-variable inputs**
 (`nvi[A-Z]*`, 3,606 datapoints: 3,565 linked directly, 41 via the menus).
 The controller mirrors its LON objects into memory, so they answer over
 Optolink -- VScotHO1_72 reads `0xA300` (`nviBoilerCmd_BLR_value`) as `00 FF` --
@@ -2588,7 +1773,7 @@ LON master, so `full` keeps them; the catalog header says how many were left
 out. `minimal` leaves them out too.
 
 The same profiles leave out the **LON-bound remote procedure readings**
-(`access: rpc`, see §P300 remote procedure calls): the participant list at
+(`access: rpc`, [p300_protocol.md](p300_protocol.md#remote-procedure-calls-access-rpc)): the participant list at
 `0xA010` on 105 device tokens, the Vitocom LON identity, `vlon*` and LON inputs
 read by procedure. Without a LON module they are still answered, but hold
 only the unit's own defaults and empty slots (VScotHO1_72, 2026-10-21: own
@@ -2596,7 +1781,7 @@ number `01 01`, entry `01` empty), which carries no information. `full` keeps
 them. The unit's own readings (boiler sequence, M-Bus module state) stay in
 `standard`.
 
-### 8k. Table extensions: what Vitosoft keeps outside its columns
+### 8l. Table extensions: what Vitosoft keeps outside its columns
 
 Vitosoft adds fields to its tables without new columns: `ecnTableExtension`
 names a field (table, field name, data type) and `ecnTableExtensionValue` holds
@@ -2611,7 +1796,7 @@ extensions (`_WANTED_EXTENSIONS`):
 
 | Field | Use |
 |---|---|
-| `ecnEventType.FunctionValue` | the parameter of a procedure without `PrefixWrite` (§P300 remote procedure calls) |
+| `ecnEventType.FunctionValue` | the parameter of a procedure without `PrefixWrite` ([p300_protocol.md](p300_protocol.md#remote-procedure-calls-access-rpc)) |
 | `ecnEventType.Option` | `Schnellcheck` -> the `quickcheck` tag |
 | `ecnEventTypeGroup.LogicalGroupMapping` | a menu's circuit -> `circuit=` tag |
 | `ecnDatapointType.ShortName` / `ProductName` | the catalog header, `index.csv`, `resolve.json`, the finder |
@@ -2636,7 +1821,7 @@ operator act is not settled, and the rules are partly shared across device
 families -- on VScotHO1_72 they reference an Ecotronic solar address -- so they
 would be hints at best.
 
-### 8l. Weekly programs by MappingType
+### 8m. Weekly programs by MappingType
 
 Vitosoft names the reader it uses for a block in `MappingType` (an
 `ecnEventType` table extension, flattened into `ecnEventType.xml`). Its weekly
@@ -2644,7 +1829,7 @@ programs come in three shapes, all 7 days:
 
 | MappingType | Events | Block | Addressing | Catalog |
 |---|---|---|---|---|
-| 1 PhaseCT | 25 (boiler `Schaltzeiten_*`, `Vitotwin_*_Zeitprogramm_*`, Ecotronic, OpenTherm) | 56 bytes, 7 records of 8 | per byte: day n at base + n*8 | `text`, decoded and writable (§ Schaltzeiten) |
+| 1 PhaseCT | 25 (boiler `Schaltzeiten_*`, `Vitotwin_*_Zeitprogramm_*`, Ecotronic, OpenTherm) | 56 bytes, 7 records of 8 | per byte: day n at base + n*8 | `text`, decoded and writable (converters.md, *Schaltzeiten*) |
 | 2 HydroCT, 10 HydroPhaseCTLF | 5 + 1 (`WPR_Tagesprogramm_*` at 0x9000..0x901C, `HO2B_Lueftung_Schaltzeiten`) | 168 bytes, 7 records of 24 | per record: day n at base + n | read-only `type: raw` per day |
 | 5..8 HydroPhaseCT(WW/ZP/PSP) | 10 (`NKU_Tagesprogramm_*` 0x9200..0x9318, `WPR3_*` 0x9350..0x93F8) | 168 bytes, 56 records of 3 | per record: day n at base + n*8 | read-only `type: raw` per day |
 
@@ -2678,7 +1863,7 @@ chosen tradeoff.) Suggested tiers: live measurements ~60 s, monotonic counters
 
 **Transient-error tolerance.** `sensor` and `number` publish NAN (HA
 "unavailable") only after **three consecutive failed reads**; a single CRC
-glitch or timeout no longer blanks an hourly-polled entity until its next
+glitch or timeout does not blank an hourly-polled entity until its next
 poll, and a successful publish resets the streak. Failed **writes** never
 blank state at all — the device value did not change — which is why the hub
 dispatches read errors to `handle_error()` and write errors to
@@ -2702,10 +1887,18 @@ made any entity whose interval *equals* the hub tick fire or not fire depending 
 whether this tick's jitter happened to exceed the previous tick's — a coin flip.
 Two 2026-07-09 hardware logs, **from the same firmware binary**, disagreed: one
 dropped the entire 60 s tier on its second tick, the other never did. A host
-simulation with realistic non-monotonic jitter drops 5 of 12 ticks under the old
-formula and 0 of 12 under the new one (`tests/native/proof_scheduler.cpp`, which
-also pins the drift-free progression, the long-stall re-anchor, and the
-`millis()` wrap).
+simulation with realistic non-monotonic jitter drops 5 of 12 ticks when
+re-anchored on `now` and 0 of 12 anchored on the schedule
+(`tests/native/proof_scheduler.cpp`, which also pins the drift-free
+progression, the long-stall re-anchor, and the `millis()` wrap).
+
+**Poll backoff.** An entity whose reads time out while the link answers others
+is polled less often: after `POLL_BACKOFF_AFTER` (3) timeouts in a row at 2x
+its interval, then 4x, 8x and at most 16x (`poll_backoff_interval()` in
+`poll_schedule.h`). A timeout counts towards the streak only if some other read
+was answered since the previous one, so a dead link does not back everything
+off. The first answer restores the interval. Every-cycle (0) and
+`never`-polled entities are untouched.
 
 ---
 
@@ -2717,34 +1910,23 @@ for Optolink is the **P300 ACK byte**. On KW, `0x06` is an ordinary data byte,
 so the debugger splits telegrams mid-frame — visible in the 2026-07-09 logs as
 `>>> 01:F4:23:06` followed by `>>> 01:24` for a single write to `0x2306`.
 
-The adapter can reconstruct the boundaries and needs no delimiter.
+The port (`vito_uart_interface.h`) knows the boundaries and needs no delimiter.
 `log_frames: true` on the hub sets `-DVITOHOME_LOG_FRAMES`, and
 `vito_uart_interface.h` then logs one line per telegram under the
 `vitohome.frames` tag. **Both directions are buffered**, and each is flushed on
 the first of: traffic in the opposite direction, an inter-byte gap over 30 ms, or
 a full buffer. A write hands its bytes to the UART before it logs anything, so
-no log line delays a telegram. With the line logged ahead of the bytes, #35
-measured 3-6 ms from reading the ENQ to sending (ESP32-S2, log streamed over
-WiFi).
+no log line delays a telegram (logged ahead of the bytes, the line cost 3-6 ms
+between ENQ and send on #35).
 
-Buffering TX is not optional, though the first cut assumed otherwise ("one
-`write()` == one telegram, on every protocol"). That holds for VS1/KW and GWG and
-is **false for VS2/P300**: `_sendStart()`, `_sendPacket()` and `_sendCRC()` are
-three states of the VS2 send machine, each issuing its own `write()` one `loop()`
-apart. A single request reached the log as three lines.
-
-The 30 ms constant comes off the wire, not from taste. At 4800 8E2 a byte occupies
-12 bits (1 start + 8 data + 1 even-parity + 2 stop) = 2.5 ms. Measured on P300: the gap between the three TX pieces of one
-telegram is 18–20 ms, while the gap between the master's ACK (`0x06`) and the next
-telegram's `PACKETSTART` is ~35 ms. 30 ms therefore joins a telegram and separates
-the ACK from it, and is still far below KW's ~2.2 s idle-sync cadence.
-
-The ACK is separated only when the next request waits for the next `loop()`.
-When the hub dispatches the next request straight after acknowledging an
-answer -- identification steps, the clock read followed by the first poll --
-the two share one line (`>>> 06:41:05:00:01:76:50:01:CD`, VScotHO1_72,
-2026-10-21). Read the leading `06` as the ACK of the previous answer; the
-telegram after it is complete.
+Buffering TX is needed because one telegram is several writes: the P300
+exchange writes the `41`, the body and the checksum one write each, and an
+ENQ-paced KW telegram is the `01` and the telegram. The 30 ms flush gap is 12
+byte times at 4800 8E2 (1 start + 8 data + 1 parity + 2 stop = 2.5 ms): it
+joins the pieces of a telegram, written in one pass, and stays far below KW's
+~2.2 s idle ENQ. Whether our `06` and the next telegram share a line depends
+on loop timing (`>>> 06:41:05:00:01:76:50:01:CD`): read a leading `06` as the
+ACK of the previous answer. For exact gaps use the recorder (§9b).
 
 It is a build flag rather than a runtime setter so a production firmware carries
 no buffers and no per-byte branch; `frame_tick()` degrades to an empty inline.
@@ -2801,32 +1983,26 @@ not vouch for a later one:
 
 ```
 host C++ : decode/encode tests           tests/native/test_decode.cpp   (916,696 checks)
-host C++ : VS2 transaction harness        tests/native/test_vs2_transaction.cpp (8/8)
-host C++ : engine / GWG compile-proofs    engine_compile_proof.cpp, proof_gwg_poke.cpp
-host C++ : VS2 parser zero-payload (OOB)  tests/native/proof_vs2_zero_payload.cpp
-host C++ : VS2 remote procedure call      tests/native/proof_vs2_rpc.cpp
-host C++ : VS2 parser fuzz corpus         tests/native/fuzz_parser_vs2.cpp  (replay; libFuzzer via fuzz.sh)
-host C++ : decode.h fuzz corpus           tests/native/fuzz_decode.cpp      (replay; libFuzzer via fuzz.sh)
+host C++ : P300 transaction harness      tests/native/test_p300_transaction.cpp (8/8)
+host C++ : engine proofs, per protocol   tests/native/proof_{kw,p300,gwg}_*.cpp, proof_hub_requests.cpp
+host C++ : differential target           tests/native/fuzz_diff_engines.cpp (live engines vs the reference copy)
+host C++ : simulators, field traces      tests/native/proof_sim*.cpp
+host C++ : recorder, link trace          tests/native/proof_recorder.cpp, proof_link_trace.cpp
+host C++ : fuzz corpora (replay)         tests/native/fuzz_*.cpp  (libFuzzer via fuzz.sh)
 python   : validators + catalog generator tests/unit/  (pytest)
-lint     : ruff check / ruff format
+lint     : ruff check / ruff format, clang-tidy
 format   : clang-format  (pinned v22.1.8)
-config   : esphome config   (all eight test.*.yaml under tests/: six in the compile matrix, two in compile-idf-native)
-compile  : esphome compile  (esp-idf AND arduino)
+config   : esphome config   (every tests/test.*.yaml)
+compile  : esphome compile  (esp-idf AND arduino, PlatformIO and the native ESP-IDF toolchain, ESP8266)
 run      : esphome run       (real heater — the definitive gate)
 ```
 
-**Every host binary is built with ASan + UBSan**, and this is a rule rather
-than a per-target choice because it did not used to be one. The sanitizers
-were opt-in, and the split had settled in the wrong place: five binaries
-carried them and roughly seventeen did not — including *every* engine proof in
-`build_and_run_protocols.sh`, i.e. the whole of the VS1/GWG sync, burst and
-access-mode work. That is the code that consumes bytes off a noisy optical
-link, where garbled RX is the normal case rather than the exceptional one, and
-it is where both memory-safety defects this project has found actually lived
-(the zero-payload OOB write in the P300 parser, and THIRD_PARTY.md #16's
-RESPONSE payload guards). Both were caught by someone hand-writing the single
-input that trips them; neither would have needed to be thought of if the
-proofs around them had been instrumented. The flag set lives in one exported
+**Every host binary is built with ASan + UBSan.** The engines consume bytes off
+a noisy optical link, where garbled RX is the normal case, and that is where
+both memory-safety defects this project has found lived (the zero-payload
+out-of-bounds write in the P300 parser, and VitoWiFi's RESPONSE payload
+guards); both would have been caught by instrumented proofs without anyone
+hand-writing the input that trips them. The flag set lives in one exported
 `$SAN` variable in `build_and_run.sh` (inherited by the chained protocol
 script, so there is no second copy to drift) and on the `test_decode` line in
 `ci.yml`.
@@ -2837,18 +2013,28 @@ without it an undefined-behaviour hit is reported *into a green build* — the
 same failure mode the `-Werror` note in `build_and_run.sh` describes for
 warnings. ASan aborts on its own; UBSan has to be told to.
 
+**No proof sleeps.** Every engine is a `millis()`-deadline state machine, and a
+proof that sleeps races what it measures: the tightest window, a GWG answer
+deadline of 250 ms, is two adjacent statements in a test but not a safe bet on
+a loaded host. `optolink_clock.h`'s host branch is a freezable clock
+(`optolink_test_clock_freeze` / `_advance` / `_release`), and every proof
+advances it by exact amounts, so deadlines are asserted as equalities. The
+suite passed with 400 ms of real sleep injected into every advance,
+which showed that it depends on the injected clock and not on the wall clock.
+The real-time branch reads `steady_clock`, since a stepped `system_clock`
+would break the differences every reading is used for.
+
 Two coverage layers compose to give wire→decode→value end-to-end without the
 ESPHome framework:
 
 - **`test_decode.cpp` (916,696 checks, most of them exhaustive sweeps)** locks down the *value* layer — the
   precision fix, BCD/datetime, sign-extend, encode round-trips, `raw_fits`
   boundaries.
-- **The VS2 transaction harness (8/8)** locks down the *transaction* layer the
-  upstream library never unit-tested — request/ACK/response and, critically,
-  **fragment reassembly** (both `0x23xx` reads arrive split on hardware). Its
-  fixtures are golden-master vectors lifted from live firmware captures and
-  recompiled against the actual in-tree engine; the write vectors are
-  hardware-confirmed Betriebsart switches. Detail and the vector table are in
+- **The P300 transaction harness (8/8)** locks down the *transaction* layer:
+  request/ACK/response and **fragment reassembly** (both `0x23xx` reads arrive
+  split on hardware). Its fixtures are golden-master vectors lifted from live
+  captures; the write vectors are hardware-confirmed Betriebsart switches.
+  Detail and the vector table are in
   [`tests/native/README.md`](../tests/native/README.md).
 
 ### 10a. What the host harness deliberately cannot reach
@@ -2864,8 +2050,8 @@ proof file.
 The consequence is a real, named boundary rather than an accident. The hub layer
 is covered by:
 
-- the ESP-IDF compile gate (all 22 `components/vitohome/` translation units,
-  under each protocol build),
+- the compile gate (every `components/vitohome/` translation unit, under
+  each protocol build),
 - the Python validation suite, for everything decidable at config time, and
 - `esphome run` on the real heater.
 
@@ -2881,13 +2067,10 @@ elsewhere in this file as obligations rather than as tested facts:
 2. **The hub's in-flight state** — who has the bus is one value,
    `in_flight_op_` (`OpType`: an entity's read, write or read-before-write,
    an identification read, a raw-console operation, or nothing), plus the
-   entity for the first three. It used to be an entity pointer, an operation
-   type and one bool each for identification and the raw console, set and
-   cleared on every path by hand; the watchdog carried a branch for the
-   combinations that mean nothing. Now `set_in_flight_()` and
-   `take_in_flight_()` are the only writers, so the pair cannot disagree, and
-   that branch is gone. `tests/unit/test_queue_lock_discipline.py` fails if
-   the hub's source assigns either field directly.
+   entity for the first three. `set_in_flight_()` and `take_in_flight_()` are
+   the only writers, so the pair cannot disagree;
+   `tests/unit/test_queue_lock_discipline.py` fails if the hub's source
+   assigns either field directly.
 
 3. **Read-modify-write atomicity** (§5b, bit fields and whole blocks) --
    between an `RMW_READ` response and the dispatch of its merged write,
@@ -2899,30 +2082,17 @@ elsewhere in this file as obligations rather than as tested facts:
    Guaranteed by the structure of `dispatch_next_()` and stated as an editing
    contract next to `rmw_pending_` in `vitohome.h`.
 
-4. **The RPC dispatch** (§P300 remote procedure calls) -- an `access: rpc`
-   entity goes out as `VS2Engine::rpc()` on the read lane, an action button
-   as the same call on the write lane (which is also what lets it queue with
-   no write payload, `request_write()`), and `refresh_siblings_()` skips RPC
-   entities. The engine side is host-proven (`proof_vs2_rpc.cpp`); the hub's
-   choice of telegram is covered only by the compile gate.
+4. **The RPC dispatch** ([p300_protocol.md](p300_protocol.md#remote-procedure-calls-access-rpc)):
+   an `access: rpc` entity goes out as a P300 request with function code `07`
+   on the read lane, an action button as the same request on the write lane
+   (which is also what lets it queue with no write payload,
+   `request_write()`), and `refresh_siblings_()` skips RPC entities. The
+   engine side is host-proven (`proof_p300_rpc.cpp`); the hub's choice of
+   telegram is covered only by the compile gate.
 
-If hub-level host testing is ever taken on, these four are the first things to
-point it at.
-
-Three findings the transaction build surfaced, each now a permanent lesson:
-
-1. **Namespace collides with the umbrella class name** — it must be fully
-   qualified; `using namespace` is ambiguous. (Resolved at the source by renaming
-   the umbrella template to `OptolinkEngine` during vendoring; see THIRD_PARTY.md.)
-2. **Packets were non-copyable** while they owned a `malloc` buffer, so the
-   callback extracts the payload rather than copying. The `std::array` buffer swap
-   makes them trivially copyable again — the copy operators are now restored.
-3. **A write-ack's `data()` is `nullptr` by design, but `dataLength()` still
-   returns the echoed length** — a naive `data()[0..dataLength())` segfaults (ASan
-   caught it instantly). The correct consumer guard is `if (data())` before
-   reading payload, which both the harness and the hub use. This is the exact
-   non-discriminated-read class the architecture exists to avoid, now
-   machine-checked.
+`proof_hub_requests.cpp` covers the requests the hub builds for each space
+and protocol, against the reference engines' calls. If hub-level host testing
+is ever taken on, these four are the first things to point it at.
 
 Two limits worth re-stating because they are recurring footguns:
 
@@ -2941,8 +2111,9 @@ Two limits worth re-stating because they are recurring footguns:
 machine driven directly by untrusted input, and the input is untrusted in the
 ordinary sense rather than the adversarial one: a noisy optical head produces
 garbled framing as normal operation. It is also the only code in the tree with
-a track record — the zero-payload OOB write (THIRD_PARTY.md #12) and the
-RESPONSE payload guards next door in the packet (#16). Both were found by
+a track record — the zero-payload out-of-bounds write
+(`proof_vs2_zero_payload.cpp`) and VitoWiFi's RESPONSE payload guards next door
+in the packet. Both were found by
 someone hand-writing the single input that trips them, which is exactly the
 method that does not scale to sequences nobody imagined.
 
@@ -2980,20 +2151,18 @@ Two things that came out of building it are worth keeping:
   `READ`+`REQUEST` frame can complete with `dataLength() == 255` while six
   bytes were written — and `data()` is non-null for it, since only `fc ==
   WRITE` returns null. A consumer reading `data()[0..dataLength())` would run
-  261 bytes into a 256-byte buffer. Nothing can reach it today because
-  `VS2Engine::_receive()` forwards only RESPONSE frames, a guard added for a
-  different reason entirely (#9: upstream published an ERROR frame's payload as
-  data). That coupling is now pinned by an oracle instead of resting on the
-  coincidence of two unrelated decisions.
-- **An RPC answer is the one delivered frame whose DataLength is not trusted**
-  (THIRD_PARTY.md #26): the parser takes its size from the frame length, and the
+  past the buffer. Nothing reaches it because the exchange delivers only
+  RESPONSE frames (an error frame is DEVICE_ERROR), and an oracle pins that
+  coupling instead of leaving it to two unrelated decisions.
+- **An RPC answer is the one delivered frame whose DataLength is not trusted**:
+  the parser takes its size from the frame length, and the
   oracle checks the length the engine delivers, not `dataLength()`. Two seeds pin
   it: `rpc_resp_param_len` (DataLength repeats the parameter's length) and
   `rpc_resp_len255` (a 250-byte answer, length byte `0xFF`). The second caught
-  a real out-of-bounds write when it was added: the payload index was computed
-  from `length()`, which wraps to 0 at `0xFF`, so the first byte landed 250
-  bytes before the buffer. It is now computed from `payloadLength()`, and
-  `proof_vs2_rpc.cpp` case F pins the same frame through the engine.
+  a real out-of-bounds write when it was added: a payload index computed from
+  the length byte wraps to 0 at `0xFF` and lands the first byte 250 bytes
+  before the buffer. The index comes from the payload length, and
+  `proof_p300_rpc.cpp` pins the same frame through the engine.
 - **What the coverage says.** A gcov build replayed over a campaign corpus
   reaches **100% of the parser's 42 branches** (measured before the RPC
   answer branch existed; the two RPC seeds cover it, no campaign has been run
@@ -3003,10 +2172,9 @@ Two things that came out of building it are worth keeping:
   is not buying much beyond a short one. Two things account for the uncovered
   remainder, and neither is a gap in the corpus. `P300Parser::reset()` is
   engine-driven rather than byte-driven and is covered by
-  `proof_vs2_guards.cpp` (#10). The `!_packet.setLength(b)` branch was
-  unreachable while `kMaxFrame` was 256; since the buffers are sized from
-  `MAX_PAYLOAD` (THIRD_PARTY.md #35) it fires on every length byte above
-  `kMaxFrame - 1`, and a campaign should reach it.
+  `proof_p300_guards.cpp`. The length-overflow branch fires on every length
+  byte past the buffer sized from `MAX_PAYLOAD` (§3), and a campaign should
+  reach it.
 - **An oracle that never fires is indistinguishable from one that cannot**, so
   both classes were negative-controlled: reverting the zero-payload fix makes
   the corpus trap under ASan, and removing the CHECKSUM step's reset wedges the
@@ -3052,16 +2220,16 @@ failed to re-encode", and on the `00:00-24:00` seed the swap moves `0xC0` into
 the ON slot, where it reads as disabled and the byte compare fails.
 
 **A harness whose parameter range is narrower than the caller's is not testing
-the caller.** The output-capacity range was first capped at 96, chosen as
-comfortably more than the longest canonical Schaltzeiten string (47 + NUL). It
-silently made one branch unreachable: `format_raw_dump`'s `" ...(N bytes)"`
+the caller.** An output-capacity range capped at 96, comfortably more than the
+longest canonical Schaltzeiten string (47 + NUL), silently makes one branch
+unreachable: `format_raw_dump`'s `" ...(N bytes)"`
 elision is only considered once the hex run has been written, and 48 bytes of
 hex need 7 + 144 characters, so with a 96-byte ceiling the buffer was always
 full first and no input could get there. The real caller passes
 `char buffer[208]`. gcov found it; no amount of fuzzing would have, because the
 input space never contained the case. The range is now 1..256, spanning every
-buffer a real caller passes, and coverage went from 99.35% to 100% of
-`decode.h`'s 308 branches (94.2% of lines). The remaining uncovered lines are
+buffer a real caller passes, and covers 100% of `decode.h`'s 308 branches
+(94.2% of lines). The remaining uncovered lines are
 null-pointer guards and `snprintf`-failure paths unreachable from a caller with
 real buffers; they are left uncovered rather than padded with calls that cannot
 happen in production.
@@ -3070,183 +2238,73 @@ happen in production.
 
 ## 11. Open items / forward work
 
-- **Remote procedure calls on hardware (§P300 remote procedure calls).**
-  Confirmed on VScotHO1_72 (P300, 2026-10-21): the unit answers function code
-  `0x07`, and an answer's DataLength counts the returned bytes; the participant
-  list answers 5 bytes against a declared block of 6, and is answered without
-  a LON module. Still open: the heat-pump record layout and whether index 0 is
-  the newest record (a CU401B_S test package exists, reads only); whether the
-  parameterless readings (`Kesselfolge*`, the M-Bus `mBusRPCCheckHW*` "check")
-  are side-effect-free to poll; no action button has been pressed on a unit;
-  and "Anlage/TN" (`HexByte2DecimalByte`) is two separate decimal bytes, which
-  the generated `noconv` sensor publishes as one 16-bit number (`01 01` reads
-  257). Left out until the export or a capture says how: `WPR3MldgsHistExtTn1..3`
-  (a parameter *and* 30 records) and the `*ErrorIndex` tables.
-- **F0 on a unit (§6).** The hub reads `0x00F0` (2 bytes) at boot and links it
-  raw; the finder and `--identify` read it as Vitosoft's datapoint does, one
-  little-endian Int compared with the decimal ranges. The reference unit does
-  not serve it: VScotHO1_72 (P300, boot of 2026-10-27) answers
-  `41 05 00 01 00 F0 02 F8` with the error frame `06 41 06 03 01 00 F0 01 01 FC`
-  (code `01`, address not served), and identification finishes without F0 --
-  the fail-soft path, confirmed. Open: a capture from a `VScotHO1_200*` /
-  `VScotHC1_200*` unit confirming the read, and what the other families answer
-  there.
-- **Bit-field writes on hardware (§5b).** Confirmed on VScotHO1_72 (P300) on
-  2026-10-14: fail-closed, the read / merge / write / read-back sequence,
-  preservation of non-zero neighbouring bits, and adjacency during a poll burst.
-  Still to do: a multi-bit mask, and on a GWG unit -- after its plain EEPROM
-  write is confirmed -- two flags of `0x0005` toggled back-to-back, and an
-  `FF FF` address being refused. A 1-byte write into a 2-byte block was shown to
-  overwrite byte 1 (§5b, §8g).
-- **The burner-control chip read at boot (§6).** Confirmed on VScotHO1_72.
-  P300, boot of 2026-10-27: after `F8`/4 (`20 CB 03 51`) the hub reads `7650`/1
-  and gets `06 41 06 01 01 76 50 01 24 F3`, and logs `Device identification:
-  0x20CB (VScotHO1) HW=0x03 SW=0x51 GFA=0x24 (NEC)` (repeated in
-  `dump_config`). KW, same unit, 2026-10-26: `F7 76 50 01 -> 24`, the same
-  byte (§2, burner-control reads). Over both protocols `0x7650` equals P80,
-  the chip byte in the burner control's own space (`6B 40 50 01 -> 24`). A
-  VDensHO1 (0x20C2, P300) reportedly answers `0x7650` with `20`, again equal
-  to its P80 (second-hand, not our capture). Open: whether the 10 devices
-  with a GFA history but no declared `GFA_Kennung` (`V100KC4B`, `V200…`,
-  `V300…`) answer there at all.
+Protocol questions, each with its test, are in the open-question tables of
+[p300_protocol.md](p300_protocol.md#open-questions),
+[kw_protocol.md](kw_protocol.md#open-questions) and
+[gwg_protocol.md](gwg_protocol.md#open-questions). What is left here is the
+rest.
+
+**Waiting for a unit**
+
+- **F0 (§6).** The hub reads `0x00F0` raw; the reference unit does not serve it
+  (error frame, code `01`), and identification finishes without it, the
+  fail-soft path. Open: a capture from a `VScotHO1_200*` / `VScotHC1_200*` unit,
+  and what the other families answer there.
+- **The burner-control chip at boot (§6).** `0x7650` equals P80 over both
+  protocols on the reference unit (`0x24`, NEC), and reportedly on a VDensHO1
+  (`0x20`). Open: whether the 10 devices with a GFA history but no declared
+  `GFA_Kennung` (`V100KC4B`, `V200…`, `V300…`) answer there at all.
 - **RF level sign (§8i).** `ecnUnit.dBm` values are emitted negated, on the
   strength of the German "-dBm" label and the unsigned `Byte` type. Unverified:
   the reference unit has no RF participant.
-- **Whole-block read-modify-write (§5b, block mode).** Confirmed on
-  VScotHO1_72 (P300) on 2026-10-15: bit field and interior field, preservation
-  of the other byte both ways, whole-block read-back, sibling refresh. Still to
-  do: the bit field with a non-zero neighbouring byte, a block wider than 2
-  bytes, and anything on GWG (the generator emits no block-mode write for any
-  GWG token in the 2026 export, so block mode is P300-only in practice).
-- **GWG hardware verification.** GWG is implemented and host-proven, and as of
-  2026-08-23 has one capture from a live GWG unit. That capture confirmed the
-  request framing (`01 CB <addr> <len> 04`) and the `RECV $len` completion rule
-  on the wire, and exposed the ENQ-misread defect now fixed (THIRD_PARTY.md #18,
-  `proof_gwg_enq_misread.cpp`). It did **not** establish a datapoint map: several
-  addresses returned values that are not physically consistent (a non-monotonic
-  2-byte "operating hours" counter at `0x17`, an unstable 3-byte identifier at
-  `0x0F8`, a static flow temperature at `0x29`). Discriminating a framing bug
-  from a wrong address there is the open experiment; the `access:` option (see
-  §GWG access modes) is the tool for it — a wrong *access mode* looks exactly
-  like a wrong address from the outside.
+- **Bit-field writes (§5b).** Confirmed on P300 with single-bit masks. Open: a
+  multi-bit mask, the read-back warning path, and on GWG two flags of `0x0005`
+  toggled back to back and an `FF FF` cell refused.
+- **Whole-block read-modify-write (§5b).** Confirmed on P300. Open: the bit
+  field with a non-zero neighbouring byte, and a block wider than 2 bytes. The
+  generator emits no block-mode write for GWG.
+- **Heat-pump fault records (§7).** The byte layout is in no file; one captured
+  record with the controller's own reading of it settles it.
 
-  **All three are explained by the access mode** (checked 2026-08-24 against
-  vcontrold and Vitosoft, which agree). None of them is a physical-mode
-  datapoint, and this project was reading all three on physical:
+**Engine and recorder**
 
-  | addr | actual mode | Vitosoft name | vcontrold |
-  |---|---|---|---|
-  | `0x17` | `eeprom` | `GWG BEMK50Brennerlaufzeit` | `getBrennerStunden1`/`geteaddr` |
-  | `0x0F8` | `virtual` | `GWG SystemIdent GG/HX/SW/GK` | `getDevType`/`getvaddr` |
-  | `0x29` | `be` | `GWG Vorlaufmaximaltemperatur HKB BEM` | — |
+- **The reference copy goes** once its outputs are recorded as fixtures
+  (`tests/native/reference/`, §3); until then it is what the differential
+  target compares against.
+- **Recorder:** keeping a frozen ring across a restart (RTC memory: 8 KB on
+  ESP32, 512 bytes on ESP8266), and a `freeze_on: resync` trigger.
+- **Sharing the UART** with `uart_mux`, `serial_proxy` or `tcp_uart`: the
+  engine owns the port, so another user needs a way to pause and resume it.
+- **A NACK retry on P300.** The telegram after a NACK now waits out the
+  device's last `15`; whether a NACKed telegram should also go once more is
+  open until the cause of the first-after-re-SYNC NACKs is known.
 
-  `0x0F8..0x0FB` is the range `identify_device:` reads, so the boot ident was
-  affected too; that read now goes out on `virtual` under GWG. The remaining
-  work is confirmation on the unit, not investigation: generate the catalog for
-  the matching `GWG_*` token and compare.
-  GWG reads, bursting and the EEPROM complement pairs have since been
-  hardware-confirmed (issue #21, 2026-10-10..13; §2), EEPROM writes too
-  (issue #35, 2026-11-13); other GWG write types have not.
-  Note the vendored
-  engine now
-  deliberately diverges from upstream here: upstream's completion check waited
-  for the request-frame length (5 bytes) instead of the datapoint length, so no
-  GWG read of length != 5 could ever have completed — fixed and host-proven
-  (`proof_gwg_read.cpp`, THIRD_PARTY.md #8; the read side is source-confirmed
-  against vcontrold's GWG framing, the write-ack side is model-derived).
-  The KW sibling had the same completion bug on **writes**: upstream waited
-  for `datapoint.length()` bytes where the device acks with a single `0x00`
-  -- hardware-confirmed by a live VScotHO1_72 capture in which the 8-byte
-  clock write to `0x088E` was acked but reported as a timeout. Fixed and
-  host-proven (`proof_vs1_write.cpp`, THIRD_PARTY.md #11); 1-byte writes were
-  never affected, which is why Betriebsart writes always worked.
-- **`Convert4BytesToFloat`** (IEEE-754 datapoints) is not yet a converter; such
-  datapoints are surfaced by the catalog generator as commented hints rather than
-  decoded wrongly. Note this is *not* the same as `sec2hour`, which reads 4 bytes
-  as a `uint32`. (`RotateBytes` and `HexByte2UTF16Byte` were previously in this
-  commented-hint set and are now handled — the big-endian `rotatebytes` converter
-  and the `type: utf16` text_sensor, both host-tested in `test_decode.cpp`; the
-  `rotatebytes` preset's registry shape and length rule are additionally pinned
-  in `tests/unit/test_validators.py`.)
-- **ESP32 build has two independent axes worth not conflating:**
-  `esp32.framework.type` (`arduino`/`esp-idf` — which runtime SDK the code is
-  compiled against; every test config here already uses `esp-idf`) and
-  `esp32.toolchain` (`platformio`/`esp-idf` — which *build system* orchestrates
-  the compile). The second one is what the rest of this entry is about.
-  - **What happened.** ESPHome 2026.5.0 shipped a native ESP-IDF toolchain
-    that drives `idf.py`/CMake directly instead of wrapping PlatformIO,
-    opt-in alongside the existing default. That default has since flipped
-    from `platformio` to `esp-idf` — first on `dev`, and as of **2026.7.0** in
-    stable too (the project's pin, `requirements.txt`, has since moved to 2026.9.1) (verified in the installed
-    `esp32/__init__.py`: `CONF_TOOLCHAIN` defaults to `Toolchain.ESP_IDF`), so
-    the native toolchain is now what an unpinned config gets. The flip first
-    broke the `upstream-canary` workflow on `dev`: under
-    the native toolchain, our vendored optolink engine's `file://`
-    PlatformIO-library registration
-    (`components/vitohome/__init__.py::to_code`) gets routed through
-    ESPHome's PlatformIO-library-to-IDF-component converter
-    (`esphome/platformio/library.py::convert_libraries`), which treats *any*
-    non-empty `repository` string as a git remote — no `file://` case — and
-    tries (and fails) to `git clone` a local directory.
-  - **Two separate, complementary fixes, not one.**
-    (1) `tests/test.esp32-idf.yaml` / `tests/test.esp32-arduino.yaml` pin
-    `toolchain: platformio` explicitly. As of 2026.7.0 this is no longer a
-    no-op: the default is now `esp-idf`, so the pin actively selects the
-    PlatformIO path this project ships and validates against rather than
-    tracking the upstream default. (Before 2026.7.0 it matched the default;
-    the flip is what made it load-bearing.) This keeps the canary testing
-    what this project ships, not an unrelated upstream default change.
-    (2) `esp32.toolchain: esp-idf` is *also* now genuinely supported, not
-    just avoided — `to_code` has a toolchain-conditional branch:
-    `esp32.add_idf_component(name="optolink", path=optolink_dir)` (writing a
-    real, standard ESP-IDF Component Manager `path:` dependency) when
-    `CORE.using_toolchain_esp_idf`, the old `file://` library registration
-    otherwise. The vendored engine's nested `protocol/`/`datapoint/`
-    subtrees were never going to reach either build "for free" regardless of
-    toolchain — ESPHome's own component file copier
-    (`loader.py`'s `ComponentManifest.resources`) only copies files sitting
-    directly in a component's top-level directory, which is why the engine
-    needed the `file://` trick under `platformio` in the first place. A new
-    `optolink/CMakeLists.txt` is the CMake-side twin of `optolink/library.json`
-    for the native toolchain (ESP-IDF's build doesn't read PlatformIO
-    manifests at all). One real bug was caught building this, not just
-    anticipated: the project-wide `-I<component_dir>` flag that makes
-    `#include "optolink/optolink.h"` resolve is silently dropped under the
-    native toolchain (`build_gen/espidf.py::get_project_cmakelists` emits only
-    the flags `framework_helpers.py::get_project_compile_flags` returns — `-D`
-    defines and non-`-Wl,` `-W` warnings, re-verified on 2026.7.0; `-I` is
-    filtered out), so `optolink/CMakeLists.txt` exposes its own parent
-    directory via
-    `INCLUDE_DIRS ".."` instead — "main" already implicitly `REQUIRES`
-    optolink via the `path:` dependency, and ESP-IDF auto-propagates a
-    required component's public `INCLUDE_DIRS` to the requiring component.
-  - **Validation.** (1) is config-level and trivially verified. (2) is
-    validated by two full, successful native compiles in sandbox — both
-    `framework.type: esp-idf` and `framework.type: arduino` combined with
-    `toolchain: esp-idf`, each ending in "Successfully compiled program."
-    with real `firmware.factory.bin` output, not just codegen succeeding.
-    Reproducible with `esphome compile tests/test.esp32-idf-native.yaml`.
-    Neither has been run on real hardware — treat "compiles cleanly" as
-    exactly that claim. (As of 2026.7.0 the native toolchain is the default,
-    so an unpinned deployment *does* use this path, and it is compiled on
-    every push by the `compile-idf-native` CI job below — but CI is still not
-    hardware.) `esp32.add_idf_component(path=...)` has
-    no other call site anywhere in ESPHome's own component tree as of this
-    writing (every other user of that function passes `name=`/`ref=` for a
-    registry or git component) — the mechanism is real, documented ESP-IDF
-    functionality and now proven by two clean builds here, but this project
-    is among the first to exercise this exact path inside ESPHome's codegen.
-  - **Now a CI job.** `esp32.toolchain: esp-idf` reached stable in 2026.7.0
-    (as the default), so `tests/test.esp32-idf-native.yaml` is compiled on
-    every push by the `compile-idf-native` job in `ci.yml`. It is a dedicated
-    job rather than a `compile`-matrix leg because the native toolchain does
-    not use PlatformIO: it caches its SDK under `~/.cache/esphome/idf` (the
-    `compile` matrix keys its cache on `~/.platformio`, which is empty here).
-    The SDK download is several GB on a cold cache, so the cache key is the
-    ESPHome pin (`requirements.txt`), matching the matrix's pattern. Still
-    local-friendly via `esphome compile tests/test.esp32-idf-native.yaml`.
-  - **Not yet filed upstream.** No existing esphome/esphome issue for the
-    `file://`-as-git gap was found when checked. The surrounding module is
-    under active development — a closely related git-ref bug in the same
-    code path was fixed in a PR the same week this was diagnosed — so this
-    looks like a genuine, recently-introduced, so-far-unreported gap.
+**Generator and config**
+
+- **`Convert4BytesToFloat`** (IEEE-754) is not a converter; such datapoints
+  are commented hints. No committed catalog carries one.
+- **`HexByte2DecimalByte`** has no decoder: "Anlage/TN" (two decimal bytes)
+  reads as one 16-bit number (`01 01` is 257).
+- **The vestigial `Converter` argument** of every generated
+  `Datapoint(...)` line (`noconv`) could go from the codegen and
+  `optolink_datapoint.h`; it changes every generated line but no behaviour.
+- **Detecting the operating unit and modules** (BES or BEM, a mixer) to pick a
+  catalog or hide entities at run time. It needs a reliable signal first: the
+  hardware index does not separate BES and BEM on the units seen (§6,
+  [gwg_protocol.md](gwg_protocol.md#identification)). ESPHome fixes the set of
+  entities at compile time, so detection can only suggest a catalog or stop
+  polling entities, not add new ones.
+
+**Build**
+
+- **Two independent ESP32 settings.** `esp32.framework.type` (`arduino` /
+  `esp-idf`) is the SDK the code is compiled against; `esp32.toolchain`
+  (`platformio` / `esp-idf`) the build system. Since ESPHome 2026.7 the default
+  toolchain is `esp-idf`. `tests/test.esp32-idf.yaml` and
+  `tests/test.esp32-arduino.yaml` pin `platformio`, so both toolchains stay
+  covered: `tests/test.esp32-idf-native.yaml` builds the native one in its own
+  CI job (`compile-idf-native`, cached on the SDK under
+  `~/.cache/esphome/idf`). No library is registered on either, since every
+  engine file sits at the component's top level (§3). Neither toolchain has run
+  on hardware from this project's CI; the reference unit runs firmware built
+  with the native one.

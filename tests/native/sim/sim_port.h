@@ -1,10 +1,9 @@
 #pragma once
 
 // Device simulators for the native tests: a controller behind the port that
-// answers what the engine sends, on the host test clock (design section
-// 16.5). Unlike FakeOptolink, which plays a script, a simulator reacts: it
-// sends its ENQs, parses each telegram and answers from its memory, so a test
-// states what the device is, not which bytes arrive when.
+// answers what the engine sends, on the host test clock (tests/native/README.md). Unlike FakeOptolink, which plays a
+// script, a simulator reacts: it sends its ENQs, parses each telegram and answers from its memory, so a test states
+// what the device is, not which bytes arrive when.
 //
 // SimPort is the port side every simulator shares: what the engine writes
 // reaches on_byte() at once; what the device sends is scheduled with a due

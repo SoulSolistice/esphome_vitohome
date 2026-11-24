@@ -2,7 +2,7 @@
 #ifndef VITOHOME_OPTOLINK_EXCHANGE_H
 #define VITOHOME_OPTOLINK_EXCHANGE_H
 
-// The exchange (design-optolink-layers.md, section 6): one request in flight,
+// The exchange (docs/design_notes.md, section 3): one request in flight,
 // its codec and its link, its watchdog and its result.
 //
 //   submit()   the codec checks and encodes the request, the link takes the
