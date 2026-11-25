@@ -1,5 +1,5 @@
 # =============================================================================
-# vitohome field program: P300 audit, version 1
+# vitohome field program: P300 audit, version 2
 # =============================================================================
 # The P300 link at its defaults under a steady poll load, for hours: run it
 # overnight and send the log (README.md here). Every `stats_interval` it logs
@@ -8,8 +8,10 @@
 # at once. Read-only.
 #
 # Each poll cycle (`poll_interval`) reads the identification bytes and a
-# block, back to back in the session, and the burner control (GFA) over the
-# KW detour. Sensors in your own file are polled as well.
+# block, back to back in the session. The burner control (GFA) goes over the
+# KW detour, about 4.4 s on the link for its two ENQ waits, so it is read every
+# `gfa_interval` only. Sensors in your own file are polled as well; a GFA one
+# among them costs a detour at its own interval.
 #
 # The datapoints are vars (defaults below); give your own in the include.
 # =============================================================================
@@ -18,6 +20,8 @@ defaults:
   uart_id: optolink_uart
   vitohome_source: github://SoulSolistice/esphome_vitohome@main
   poll_interval: 5s
+  # A KW detour each time: at 5 s it would take most of the link's time.
+  gfa_interval: 60s
   stats_interval: 10min
   # 8 bytes an entry; ESP32: up to 512 with persist, 4096 without.
   recorder_size: "256"
@@ -28,7 +32,7 @@ defaults:
   block_address: "0x00F8"
   block_length: "8"
   gfa_address: "0x7650"
-  diag_program: audit-p300/1
+  diag_program: audit-p300/2
 
 packages:
   common: !include common.yaml
@@ -81,6 +85,7 @@ sensor:
     length: 1
     converter: noconv
     access: gfa
+    update_interval: ${gfa_interval}
 
 text_sensor:
   # More than a number holds: the block as hex.

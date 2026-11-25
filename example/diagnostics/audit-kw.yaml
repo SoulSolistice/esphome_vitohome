@@ -1,5 +1,5 @@
 # =============================================================================
-# vitohome field program: KW audit, version 1
+# vitohome field program: KW audit, version 2
 # =============================================================================
 # The KW link at its defaults under a steady poll load, for hours: run it
 # overnight and send the log (README.md here). Every `stats_interval` it logs
@@ -7,9 +7,10 @@
 # retry, timeout and error freezes the recorder, which dumps its last entries
 # at once. Read-only.
 #
-# Each poll cycle (`poll_interval`) reads the identification bytes, a block
-# and the burner control (GFA): five telegrams, chained on one ENQ. Sensors in
-# your own file are polled as well.
+# Each poll cycle (`poll_interval`) reads the identification bytes and a
+# block, chained on one ENQ, and the burner control (GFA) every `gfa_interval`,
+# as the P300 audit does, so the two compare. Sensors in your own file are
+# polled as well.
 #
 # The datapoints are vars (defaults below); give your own in the include.
 # =============================================================================
@@ -18,6 +19,7 @@ defaults:
   uart_id: optolink_uart
   vitohome_source: github://SoulSolistice/esphome_vitohome@main
   poll_interval: 5s
+  gfa_interval: 60s
   stats_interval: 10min
   # 8 bytes an entry; ESP32: up to 512 with persist, 4096 without.
   recorder_size: "256"
@@ -28,7 +30,7 @@ defaults:
   block_address: "0x00F8"
   block_length: "8"
   gfa_address: "0x7650"
-  diag_program: audit-kw/1
+  diag_program: audit-kw/2
 
 packages:
   common: !include common.yaml
@@ -81,6 +83,7 @@ sensor:
     length: 1
     converter: noconv
     access: gfa
+    update_interval: ${gfa_interval}
 
 text_sensor:
   # More than a number holds: the block as hex.

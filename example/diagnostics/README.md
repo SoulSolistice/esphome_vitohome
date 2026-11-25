@@ -82,6 +82,7 @@ own in `vars:` when your unit serves other ones.
 | `physical_address`, `eeprom_address`, `be_address`, `port_address` | GWG | `05`, `17`, `00`, `00` | one address in each access mode |
 | `uart_id` | all | `optolink_uart` | |
 | `poll_interval`, `stats_interval` | audits | 5 s, 10 min | |
+| `gfa_interval` | KW, P300 audits | 60 s | the GFA read; on P300 each one is a KW detour of about 4.4 s |
 | `recorder_size`, `recorder_persist` | audits | 256, false | ESP32 (not C2/C61): up to 512 entries kept across a restart |
 | `log_frames` | audits | false | every frame in the log; a larger log |
 
