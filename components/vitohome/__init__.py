@@ -1705,6 +1705,12 @@ async def to_code(config):
         cg.add_build_flag("-DVITOHOME_LOG_FRAMES")
 
     var = cg.new_Pvariable(config[CONF_ID])
+    # Size entities_ ahead of every platform's register_entity(), before the
+    # first await: a platform resumes as soon as the hub variable exists, and
+    # an await here (the UART's variable, when the UART comes later in the
+    # config) would let its register_entity() statements go first. The
+    # capacity is _final_validate's upper bound (_entity_capacity_upper_bound).
+    cg.add(var.reserve_entities(config[_CONF_ENTITY_CAPACITY]))
     # A setter, not a define: a new commit then rebuilds main.cpp only.
     cg.add(var.set_source_revision(component_revision()))
     await cg.register_component(var, config)
@@ -1716,12 +1722,6 @@ async def to_code(config):
     # register_hub_sensor for what would change if multiple hubs were allowed.
     CORE.data.setdefault("vitohome", {})[_HUB_VAR] = var
     CORE.add_job(_emit_hub_sensor_tables)
-
-    # Size entities_ once, ahead of every platform's register_entity() statement.
-    # The hub's to_code runs before the platforms' (they DEPENDENCIES=["vitohome"]),
-    # so this setter call is emitted first and runs first. _final_validate injected
-    # the capacity (a safe upper bound); see _entity_capacity_upper_bound.
-    cg.add(var.reserve_entities(config[_CONF_ENTITY_CAPACITY]))
 
     # Identification reads 0xF8..0xFB once at boot (plus the burner-control
     # chip at 0x7650 on P300/KW). Default ON for every protocol, all
