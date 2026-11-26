@@ -18,7 +18,8 @@
 //                telegram -> KW_DROP, an open frame -> FRAME_SEND, a
 //                telegram -> the line drained, quiet for QuietMs after a
 //                NACK, 41 .. CS in this pass; ANSWER_TO_NEXT after our 06
-//   SEND_ACK     one byte per pass: 06 -> RECEIVE, 15 -> IDLE and NACK
+//   SEND_ACK     one byte per pass: 06 -> RECEIVE, 15 -> IDLE and NACK; the
+//                first telegram after a SYNC goes again from IDLE, once
 //   RECEIVE      the answer through the parser (P300Parser)
 //   RECEIVE_ACK  06, FRAME_TO_ACK after the frame -> IDLE
 //   KW_DROP      as RESET, 04 -> KW_ENQ
@@ -47,6 +48,12 @@
 // next write after a 15 waits until the line has been quiet for QuietMs:
 // the EOT, instead of 3 s later, in which a request waiting meanwhile ran
 // into its watchdog, and the next telegram, which was NACKed too.
+//
+// The first telegram after a SYNC is NACKed now and then, an address the
+// device serves (2026-11-25: 2 in about 14,900 SYNCs after a KW detour, the
+// 15 150-190 ms after the checksum instead of 30-40 ms; the telegram after
+// it answered). That one goes out once more, after the quiet; a NACK
+// otherwise, or of the second try, is the result. Not with QuietMs 0.
 //
 // The timing points (TimingPoint) are 0 by default: the pacing without them,
 // the next pass for ENQ_TO_SYNC, FRAME_TO_ACK and ANSWER_TO_NEXT, the ENQ's
@@ -308,6 +315,7 @@ class P300Exchange {
     kw_ = false;
     frame_ = false;
     retries_ = 0;
+    nack_retried_ = false;
     error_len_ = 0;
     kw_dropped_ = false;
     busy_ = true;
@@ -417,6 +425,7 @@ class P300Exchange {
   void init_ack_() {
     if (port_->available()) {
       if (port_->read() == ACK) {
+        synced_ = true;
         this->set_state_(State::IDLE);
         return;
       }
@@ -464,6 +473,8 @@ class P300Exchange {
   void send_start_() {
     if (port_->write(&P300_START, 1) == 1) {
       last_ms_ = now_;
+      after_sync_ = synced_;
+      synced_ = false;
       this->set_state_(State::SEND_PACKET);
       this->send_packet_();
     }
@@ -498,6 +509,14 @@ class P300Exchange {
       sink_.fact(LinkFact::NACK);
       this->note_heard_();
       this->set_state_(State::IDLE);
+      if (QuietMs != 0 && after_sync_ && !nack_retried_) {
+        // IDLE sends it again once the line is quiet; a fresh watchdog.
+        sink_.fact(LinkFact::RETRY);
+        nack_retried_ = true;
+        ++retries_;
+        request_ms_ = now_;
+        return;
+      }
       this->fail_(OptolinkResult::NACK);
     }
   }
@@ -742,6 +761,7 @@ class P300Exchange {
       result.data = data;
       result.length = length;
       result.retries = retries_;
+      result.retry_after_nack = nack_retried_;
       on_result_(result);
     }
     busy_ = false;
@@ -753,6 +773,7 @@ class P300Exchange {
       result.status = status;
       result.address = address_;
       result.retries = retries_;
+      result.retry_after_nack = nack_retried_;
       if (status == OptolinkResult::DEVICE_ERROR && error_len_ != 0) {
         result.error_code = error_code_;
         result.error_code_length = error_len_;
@@ -792,6 +813,11 @@ class P300Exchange {
   uint8_t kw_retries_left_{0};
   uint8_t retries_{0};
   bool kw_dropped_{false};
+  // A SYNC since the last telegram; whether the one in flight is the first
+  // after it, and whether it went again after a NACK.
+  bool synced_{false};
+  bool after_sync_{false};
+  bool nack_retried_{false};
   // The last device byte an EOT waits out.
   uint32_t heard_ms_{0};
   bool heard_{false};

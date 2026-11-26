@@ -2,8 +2,8 @@
 // section 9b), on a frozen clock: what each exchange reports, in order.
 //   KW)   begin, a stray byte, a read on the ENQ, chained; silence and the
 //         retry; the watchdog;
-//   P300) the handshake, a read the device NACKs, a restart whose EOT it
-//         refuses;
+//   P300) the handshake, a read the device NACKs, its retry too, a restart
+//         whose EOT it refuses;
 //   GWG)  a read on the ENQ, a burst-sent read met by the deadline and its
 //         retry, bytes after a deadline, bursting off.
 // Each state is named by the exchange's state_name(). That the trace
@@ -139,7 +139,12 @@ int main() {
     expect(trace, "SEND_START SEND_PACKET SEND_CRC SEND_ACK", "P300: the telegram in one pass");
     io.feed({0x15});
     pump(e);
-    expect(trace, "*nack IDLE", "P300: NACKed");
+    expect(trace, "*nack IDLE *retry", "P300: NACKed, the first after the SYNC: the retry");
+    advance(e, optolink::P300_QUIET_MS);
+    expect(trace, "SEND_START SEND_PACKET SEND_CRC SEND_ACK", "P300: the telegram again after the quiet");
+    io.feed({0x15});
+    pump(e);
+    expect(trace, "*nack IDLE", "P300: NACKed again");
     // Past the quiet a NACK asks for, so the restart's EOT goes at once.
     advance(e, optolink::P300_QUIET_MS);
     e.begin();

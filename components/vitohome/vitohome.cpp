@@ -983,10 +983,14 @@ void VitoHomeComponent::on_result_(const optolink::Result &result) {
 #ifdef VITOHOME_RECORDER
   this->recorder_.result(result.status, result.address);
 #endif
-  // A KW telegram the device met with silence, sent again on its next ENQ:
-  // rare (on a VScotHO1_72 about 4 in 1000 on KW, 9 in 1000 for the first
-  // telegram of a P300 detour), so each one is worth a line.
-  if (result.retries != 0) {
+  // A telegram sent again, each worth a line: a KW one the device met with
+  // silence, on its next ENQ (on a VScotHO1_72 about 4 in 1000 on KW, 9 in
+  // 1000 for the first telegram of a P300 detour), or the first P300 one
+  // after a SYNC, NACKed (about 1 in 7000 SYNCs).
+  if (result.retry_after_nack) {
+    ESP_LOGI(TAG, "0x%04X: NACKed after the SYNC, sent again: %s", result.address,
+             result.status == optolink::OptolinkResult::OK ? "answered" : optolink::errorToString(result.status));
+  } else if (result.retries != 0) {
     ESP_LOGI(TAG, "0x%04X: no answer, sent again on the next ENQ: %s", result.address,
              result.status == optolink::OptolinkResult::OK ? "answered" : optolink::errorToString(result.status));
   }

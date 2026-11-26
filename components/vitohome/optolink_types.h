@@ -230,9 +230,11 @@ struct Result {
   bool never_sent;
   // A GWG EEPROM cell answered FF FF (not in use), delivered as FF.
   bool unserved_eeprom;
-  // How often the telegram went out again after silence (KW, and KW over the
-  // P300 detour).
+  // How often the telegram went out again: after silence (KW, and KW over the
+  // P300 detour), or after a NACK (P300, retry_after_nack).
   uint8_t retries;
+  // P300: the first telegram after a SYNC was NACKed and went out again.
+  bool retry_after_nack;
   Timing timing;
 };
 
@@ -257,7 +259,8 @@ enum class LinkTrace : uint8_t { STATE, FACT };
 enum class LinkFact : uint8_t {
   // Bytes read and thrown away; arg: how many.
   DRAINED,
-  // A telegram met by silence goes out again.
+  // A telegram met by silence goes out again; on P300 also the first
+  // telegram after a SYNC, NACKed.
   RETRY,
   // GWG: bytes after the answer deadline; arg: how many.
   LATE,

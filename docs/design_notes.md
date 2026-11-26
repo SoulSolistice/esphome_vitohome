@@ -2301,9 +2301,6 @@ rest.
   API drops lines or an ESP8266 runs short of RAM for the YAML runner.
 - **Sharing the UART** with `uart_mux`, `serial_proxy` or `tcp_uart`: the
   engine owns the port, so another user needs a way to pause and resume it.
-- **A NACK retry on P300.** The telegram after a NACK now waits out the
-  device's last `15`; whether a NACKed telegram should also go once more is
-  open until the cause of the first-after-re-SYNC NACKs is known.
 
 **Generator and config**
 

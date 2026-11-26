@@ -23,7 +23,8 @@ Evidence labels:
 | The KW detour (burner control) | HW, 2026-10-27 |
 | Timing points | HW, 2026-11-23 |
 | The EOT again after the device's 15 | HW, 2026-11-24 |
-| The telegram after a NACK waits | built; not yet seen on a natural NACK |
+| The telegram after a NACK waits | HW, 2026-11-25 |
+| The first telegram after a SYNC again after a NACK | built, 2026-11-26 |
 
 ## Wire format
 
@@ -82,7 +83,7 @@ stateDiagram-v2
   IDLE --> FRAME_SEND: open frame
   SEND --> SEND_ACK: 41 .. CS, one pass
   SEND_ACK --> RECEIVE: 06
-  SEND_ACK --> IDLE: 15 (NACK)
+  SEND_ACK --> IDLE: 15 (NACK; the first telegram after a SYNC again, once)
   RECEIVE --> RECEIVE_ACK: frame complete
   RECEIVE --> RESET: checksum or frame error
   RECEIVE_ACK --> IDLE: 06 (FRAME_TO_ACK after the frame)
@@ -170,10 +171,16 @@ defaults stay 0), the EOT probe 2026-11-24. The settable points are YAML
    - The telegram after a NACK waits the same way. Sent at once, it was
      refused too, so NACKs came in pairs (0x0816 1 ms after the NACK of
      0x2500, 2026-11-24); a telegram 47 ms after the last `15` was answered.
-2. **The first telegram after a re-SYNC is sometimes NACKed.** 5 in 14.8 h,
-   each the first P300 telegram after a re-SYNC that followed a KW detour,
-   and one pair after a timed frame. VitoWiFi did not retry a NACK either.
-   The cause is open.
+2. **The first telegram after a re-SYNC is sometimes NACKed**, an address
+   the device serves. 2 in about 14,900 re-SYNCs after a KW detour in 20.7 h
+   (2026-11-25, GFA read every 5 s), both `0x5525`, the first sensor after
+   the detour, so address and position are not told apart.
+   - The `15` came 187 and 155 ms after the checksum; an ACK comes after
+     30-40 ms. The telegram after it, 300 ms later, was answered.
+   - The engine sends that telegram once more after the quiet. A NACK of any
+     other telegram, or of the second try, is the result; the hub logs
+     `NACKed after the SYNC, sent again`.
+   - The cause is open.
 3. **The detour's first telegram meets silence 0.5-0.9 % of the time**
    (20 of 2,228 in 3.7 h, 23 of 2,825 in 4.7 h), chained ones never. The
    engine sends it once more on the next ENQ, as on KW; 45 of 45
@@ -373,8 +380,7 @@ Proofs: `proof_p300_eot_refused.cpp`, `proof_p300_frame.cpp`,
 
 | Question | Test |
 |---|---|
-| Why is the first telegram after a re-SYNC sometimes NACKed? | The recorder, `freeze_on: error`, overnight: the gap between the device's `06` and our telegram in each case |
-| Does the wait after a NACK rescue the second telegram on a natural NACK? | A long stress run: NACK pairs against the baseline |
+| Why is the first telegram after a re-SYNC sometimes NACKed, and is its second try always answered? | The recorder, `freeze_on: retry`, on a long audit with the GFA read every 5 s |
 | What is the layout of a heat-pump fault record, and is index 0 the newest? | One captured record with the controller's own reading (CU401B_S) |
 | Are `Kesselfolge*` and `mBusRPCCheckHW*` free of side effects? | A read on a cascade controller and an M-Bus module |
 | Does an action button do what it says? | One harmless procedure, pressed on purpose |

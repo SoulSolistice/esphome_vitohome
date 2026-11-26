@@ -16,7 +16,13 @@
 //      not later;
 //   G) with QuietMs 0 the detour's 15 is ignored: TIMEOUT after the ENQ wait;
 //   H) the telegram after a NACK waits until QuietMs after the device's last
-//      15 and is answered; with QuietMs 0 it goes out at once.
+//      15 and is answered; with QuietMs 0 it goes out at once;
+//   I) the first telegram after the SYNC NACKed: once more QuietMs after the
+//      device's last 15, answered OK with retries 1, the facts NACK and
+//      RETRY; with QuietMs 0 the NACK is the result;
+//   J) a NACK of a later telegram is the result, retries 0;
+//   K) the keepalive's SYNC counts as one;
+//   L) the second try NACKed too: NACK, retries 1.
 //
 // Built by build_and_run_protocols.sh.
 
@@ -46,6 +52,18 @@ struct Seen {
   int count = 0;
   OptolinkResult status = OptolinkResult::CONTINUE;
   Bytes data;
+  uint8_t retries = 0;
+  bool after_nack = false;
+};
+
+// The link facts.
+struct Facts {
+  std::vector<optolink::LinkFact> seen;
+  static void emit(void *self, optolink::LinkTrace trace, uint8_t value, uint16_t) {
+    if (trace == optolink::LinkTrace::FACT)
+      static_cast<Facts *>(self)->seen.push_back(static_cast<optolink::LinkFact>(value));
+  }
+  optolink::LinkSink sink() { return optolink::LinkSink{&Facts::emit, this}; }
 };
 
 template<class E> void pump(E &e, int n = 8) {
@@ -63,6 +81,8 @@ template<class E> void watch(E &e, Seen &seen) {
     ++seen.count;
     seen.status = r.status;
     seen.data.assign(r.data, r.data + (r.data != nullptr ? r.length : 0));
+    seen.retries = r.retries;
+    seen.after_nack = r.retry_after_nack;
   });
 }
 
@@ -81,20 +101,49 @@ template<class E> bool handshake(E &e, FakeOptolink &io) {
   return eot && sync;
 }
 
-// A read of 0x00F8 the device NACKs.
+// The read of 0x00F8 as sent.
+const Bytes kRead00F8 = {0x41, 0x05, 0x00, 0x01, 0x00, 0xF8, 0x04, 0x02};
+
+// A read of 0x00F8 the device NACKs; its second try too, as the first
+// telegram after the SYNC.
 template<class E> bool nacked_read(E &e, FakeOptolink &io, Seen &seen) {
+  const int before = seen.count;
   if (!kw_calls::read(e, 0x00F8, 4))
     return false;
   pump(e);
-  const bool sent = !io.written().empty() && io.written()[0] == 0x41;
+  const bool sent = io.written() == kRead00F8;
   io.clear_written();
   io.feed({0x15});
   pump(e);
-  return sent && seen.count == 1 && seen.status == OptolinkResult::NACK;
+  if (seen.count == before) {
+    advance(e, optolink::P300_QUIET_MS);
+    if (io.written() != kRead00F8)
+      return false;
+    io.clear_written();
+    io.feed({0x15});
+    pump(e);
+  }
+  return sent && seen.count == before + 1 && seen.status == OptolinkResult::NACK;
 }
 
 // The ACK and answer frame of a read of 0x5525, 2 bytes: 0A 00.
 const Bytes kAnswer5525 = {0x06, 0x41, 0x07, 0x01, 0x01, 0x55, 0x25, 0x02, 0x0A, 0x00, 0x8F};
+const Bytes kRead5525 = {0x41, 0x05, 0x00, 0x01, 0x55, 0x25, 0x02, 0x82};
+
+// A read of 0x5525 answered.
+template<class E> bool answered_read(E &e, FakeOptolink &io, Seen &seen) {
+  const int before = seen.count;
+  if (!kw_calls::read(e, 0x5525, 2))
+    return false;
+  pump(e);
+  const bool sent = io.written() == kRead5525;
+  io.clear_written();
+  io.feed(kAnswer5525);
+  pump(e);
+  // The engine's 06 after the frame.
+  io.clear_written();
+  return sent && seen.count == before + 1 && seen.status == OptolinkResult::OK;
+}
 
 }  // namespace
 
@@ -326,6 +375,106 @@ int main() {
     check(kw_calls::read(e0, 0x5525, 2), "H: QuietMs 0: the next read queued");
     pump(e0);
     check(!io0.written().empty() && io0.written()[0] == 0x41, "H: QuietMs 0: sent at once");
+  }
+
+  // --- I ------------------------------------------------------------------
+  {
+    FakeOptolink io;
+    Engine e(&io);
+    Seen seen;
+    Facts facts;
+    watch(e, seen);
+    e.set_sink(facts.sink());
+    e.begin();
+    check(handshake(e, io), "I: P300 link up");
+    check(kw_calls::read(e, 0x5525, 2), "I: the first read after the SYNC");
+    pump(e);
+    check(io.written() == kRead5525, "I: sent");
+    io.clear_written();
+    advance(e, 187);
+    io.feed({0x15});
+    pump(e);
+    check(seen.count == 0, "I: NACKed: no result yet");
+    advance(e, 260);
+    io.feed({0x15});
+    pump(e);
+    advance(e, optolink::P300_QUIET_MS - 1);
+    check(io.written().empty(), "I: nothing before QuietMs after the last 15");
+    advance(e, 1);
+    check(io.written() == kRead5525, "I: the read again at QuietMs");
+    io.feed(kAnswer5525);
+    pump(e);
+    check(seen.count == 1 && seen.status == OptolinkResult::OK && seen.data == Bytes({0x0A, 0x00}), "I: answered OK");
+    check(seen.retries == 1 && seen.after_nack, "I: retries 1, after a NACK");
+    int nacks = 0;
+    int retries = 0;
+    for (const auto fact : facts.seen) {
+      nacks += fact == optolink::LinkFact::NACK;
+      retries += fact == optolink::LinkFact::RETRY;
+    }
+    check(nacks == 1 && retries == 1, "I: the facts NACK and RETRY");
+
+    FakeOptolink io0;
+    EngineOld e0(&io0);
+    Seen seen0;
+    watch(e0, seen0);
+    e0.begin();
+    check(handshake(e0, io0), "I: QuietMs 0: P300 link up");
+    check(kw_calls::read(e0, 0x5525, 2), "I: QuietMs 0: the first read after the SYNC");
+    pump(e0);
+    io0.feed({0x15});
+    pump(e0);
+    check(seen0.count == 1 && seen0.status == OptolinkResult::NACK && seen0.retries == 0,
+          "I: QuietMs 0: NACK, not sent again");
+  }
+
+  // --- J ------------------------------------------------------------------
+  {
+    FakeOptolink io;
+    Engine e(&io);
+    Seen seen;
+    watch(e, seen);
+    e.begin();
+    check(handshake(e, io), "J: P300 link up");
+    check(answered_read(e, io, seen), "J: the first read after the SYNC answered");
+    check(kw_calls::read(e, 0x00F8, 4), "J: the next read");
+    pump(e);
+    check(io.written() == kRead00F8, "J: sent");
+    io.clear_written();
+    io.feed({0x15});
+    pump(e);
+    check(seen.count == 2 && seen.status == OptolinkResult::NACK, "J: NACKed: the result at once");
+    check(seen.retries == 0 && !seen.after_nack, "J: retries 0");
+  }
+
+  // --- K ------------------------------------------------------------------
+  {
+    FakeOptolink io;
+    Engine e(&io);
+    Seen seen;
+    watch(e, seen);
+    e.begin();
+    check(handshake(e, io), "K: P300 link up");
+    check(answered_read(e, io, seen), "K: a read answered");
+    advance(e, optolink::P300_KEEPALIVE_MS + 1);
+    check(io.written() == Bytes({0x16, 0x00, 0x00}), "K: the keepalive's SYNC");
+    io.clear_written();
+    io.feed({0x06});
+    pump(e);
+    check(nacked_read(e, io, seen), "K: the read after it NACKed, sent again, NACKed");
+    check(seen.retries == 1 && seen.after_nack, "K: retries 1");
+  }
+
+  // --- L ------------------------------------------------------------------
+  {
+    FakeOptolink io;
+    Engine e(&io);
+    Seen seen;
+    watch(e, seen);
+    e.begin();
+    check(handshake(e, io), "L: P300 link up");
+    check(nacked_read(e, io, seen), "L: the first read after the SYNC NACKed twice");
+    check(seen.count == 1 && seen.retries == 1 && seen.after_nack, "L: NACK, retries 1");
   }
 
   std::printf("p300 eot refused: %d failure(s)\n", g_fail);

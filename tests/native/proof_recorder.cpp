@@ -12,7 +12,8 @@
 //   (7) on a port with the hub's hook, a KW read on the KW exchange: its
 //       ENQ, 01 + telegram, answer and result, one pass each;
 //   (8) with the link's trace as well (LinkSink), a P300 read the device
-//       NACKs: the states of a pass on one line, the fact with its own;
+//       NACKs, its second try too: the states of a pass on one line, the
+//       facts with their own;
 //   (9) freeze on a retry: a KW read met by silence, answered on the next
 //       ENQ; frozen_by_failure() once its after-entries are in, which the
 //       hub's dump_on_freeze waits for;
@@ -295,6 +296,11 @@ int main() {
     pump(1);
     uart.feed({0x15});
     pump(1);
+    // The first telegram after the SYNC: once more after the quiet.
+    optolink::optolink_test_clock_advance(optolink::P300_QUIET_MS);
+    pump(1);
+    uart.feed({0x15});
+    pump(1);
     const auto lines = dump(rec);
     auto at = [&lines](const char *text) {
       for (std::size_t i = 0; i < lines.size(); ++i)
@@ -310,8 +316,12 @@ int main() {
               lines[start + 6].find("p5 ~ SEND_ACK") != std::string::npos,
           "(8) the telegram: states and bytes in their order, one pass");
     const int nack = at("p6 * nack");
-    check(nack > 0 && at("p6 <<< 15") == nack - 1 && at("p6 ~ IDLE") == nack + 1 && at("p6 = nack @00F8") == nack + 2,
-          "(8) the 15, the fact, IDLE, the result");
+    check(nack > 0 && at("p6 <<< 15") == nack - 1 && at("p6 ~ IDLE") == nack + 1 && at("p6 * retry") == nack + 2,
+          "(8) the 15, the fact, IDLE, the retry");
+    check(at("p7 >>> 41") > nack, "(8) the telegram again");
+    const int last = at("p8 * nack");
+    check(last > 0 && at("p8 <<< 15") == last - 1 && at("p8 ~ IDLE") == last + 1 && at("p8 = nack @00F8") == last + 2,
+          "(8) its 15, the fact, IDLE, the result");
   }
 
   // (9)
