@@ -442,7 +442,8 @@ The TYPE bytes come from the openv wiki's `Protokoll-GWG` table, and all but
 `kmbus_ram` (`0x33`) are corroborated twice over — by vcontrold's GWG macros and
 by Vitosoft. On the units reported so far, `physical`, `virtual`, `eeprom`,
 `xram` and `port` answer; `be` answers `0xFF` everywhere and `kmbus_eeprom` not
-at all. What each mode did on which unit, and what is still open, is in
+at all, so the generated catalogs leave the `kmbus_eeprom` datapoints out.
+What each mode did on which unit, and what is still open, is in
 [`docs/gwg_protocol.md`](docs/gwg_protocol.md). The full TYPE-byte table and
 the reasoning are in
 [`docs/gwg_protocol.md`](docs/gwg_protocol.md#access-modes).

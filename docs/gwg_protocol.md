@@ -132,8 +132,16 @@ device it kept 8 datapoints and read all 8 on the wrong mode.
 ### `kmbus_eeprom`
 
 - These reach the LGM29 over the VR20's KM-bus. On #35 all 54 went unanswered,
-  with no late bytes either. The owner says the KM-bus itself works (the pump
-  answers there).
+  with no late bytes either; a 15.7 h audit there sent 1,470 of them and got
+  no answer to any. The owner says the KM-bus itself works (the pump answers
+  there).
+- The generated catalogs leave these datapoints out
+  (`GWG_UNANSWERED_FCREAD` in `scripts/vitocatalog/constants.py`);
+  `gen_catalog.py --no-reachable-only` brings them back, with their
+  `access: kmbus_eeprom`.
+- Vitosoft 300 (SID1, `vsmInterfaceCore` 1.4.0.0) has no GWG transport: on a
+  GWG unit it reports the device and starts no communication, so its
+  `KMBUS_EEPROM_READ` rows are not a frame Vitosoft is known to send.
 - Cost while silent: about one ENQ gap plus a 250 ms retry per read, so 54 of
   them overran a 60 s poll cycle until poll backoff set in.
 - vitohome sends the generic frame `01 43 ADDR LEN 04`. No source shows a
@@ -157,7 +165,7 @@ device it kept 8 datapoints and read all 8 on the wrong mode.
 
   | Frame | Idea |
   |---|---|
-  | `01 43 01 01 04` | the generic frame (what the catalog sends) |
+  | `01 43 01 01 04` | the generic frame (what `access: kmbus_eeprom` sends) |
   | `01 33 01 01 04` | the generic `kmbus_ram` frame |
   | `01 43 03 00 00 00 01 01 01 01 04` | the prefix, then address and length |
   | `01 43 03 00 00 00 01 01 01 04` | the prefix before the address, no length byte |

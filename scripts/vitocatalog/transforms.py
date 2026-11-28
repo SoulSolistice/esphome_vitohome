@@ -18,6 +18,7 @@ from .constants import (
     DIV,
     FCREAD_TO_GWG_ACCESS,
     FCWRITE_TO_GWG_ACCESS,
+    GWG_UNANSWERED_FCREAD,
     MAX_P300_READ_LENGTH,
     MAX_RMW_BLOCK,
     NON_NUMERIC_CONVERSIONS,
@@ -162,7 +163,8 @@ def _is_reachable(ev: Event, protocol: str = PROTO_P300) -> bool:
     GWG: Virtual_READ is only a small share of a GWG device's datapoints (6 of
     195 on GWG_VBES_00); the bulk are physical/eeprom/kmbus_eeprom/be/xram/port,
     each reachable on its own access mode via `access:`. So under GWG,
-    reachable means "FCRead maps to an access mode we can emit".
+    reachable means "FCRead maps to an access mode we can emit", less the
+    modes no unit answers (GWG_UNANSWERED_FCREAD: kmbus_eeprom).
 
     Either way an empty FCRead (no access row) is unknown and kept: on P300 the
     token-derived address is read as a normal virtual read, on GWG on the engine
@@ -172,7 +174,7 @@ def _is_reachable(ev: Event, protocol: str = PROTO_P300) -> bool:
     """
     fc = (getattr(ev, "fc_read", "") or "").strip().lower()
     if protocol == PROTO_GWG:
-        return fc == "" or fc in FCREAD_TO_GWG_ACCESS
+        return fc == "" or (fc in FCREAD_TO_GWG_ACCESS and fc not in GWG_UNANSWERED_FCREAD)
     return fc in ("", "virtual_read") or _is_gfa_read(ev, protocol) or _is_rpc_reading(ev, protocol)
 
 

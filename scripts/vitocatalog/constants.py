@@ -269,6 +269,12 @@ FCREAD_TO_GWG_ACCESS = {
     "kmbus_eeprom_read": "kmbus_eeprom",
 }
 
+# FCRead values that map to an access mode but that no GWG unit answers, so
+# the reachable-only catalogs leave them out. KMBUS_EEPROM_READ: on issue #35
+# (0x2053 SW 0x1E, a BES) every read timed out, 1,470 in 15.7 h, and so did
+# each framing the KM-bus probe tried (docs/gwg_protocol.md, kmbus_eeprom).
+GWG_UNANSWERED_FCREAD = frozenset({"kmbus_eeprom_read"})
+
 # Vitosoft FCWrite -> the same `access:` values, GWG only.
 #
 # The openv wiki gives a write TYPE byte for six of the eight modes (VIRTUAL

@@ -616,7 +616,8 @@ def generate(
         if protocol == PROTO_GWG:
             out.append(f"# FCRead filter ON (GWG): {dropped_unreachable} datapoint(s) whose access")
             out.append("# method is not one this engine can select via `access:` (KBUS_VIRTUAL_READ")
-            out.append("# and friends) were omitted. Re-run with --no-reachable-only to include them.")
+            out.append("# and friends) or is one no GWG unit answers (KMBUS_EEPROM_READ) were")
+            out.append("# omitted. Re-run with --no-reachable-only to include them.")
         else:
             out.append(f"# FCRead filter ON: {dropped_unreachable} datapoint(s) whose access method this")
             out.append("# engine has no read for (PROZESS/KBUS/OT, and remote procedures")

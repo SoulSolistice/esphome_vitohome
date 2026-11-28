@@ -74,7 +74,8 @@ rule (on P300 only ``Virtual_READ`` is readable; on GWG that is a small share of
 the data and the rest is readable on its own mode), maps ``FCWrite`` the same
 way so writable datapoints become number/select/switch in the mode they also
 read in (see FCWRITE_TO_GWG_ACCESS; the KMBUS modes have no write TYPE byte and
-stay read-only), and drops addresses above 0xFF.
+stay read-only), and drops addresses above 0xFF and the KMBUS_EEPROM_READ
+datapoints, which no GWG unit answers (GWG_UNANSWERED_FCREAD).
 
 Include the emitted file from your device YAML::
 

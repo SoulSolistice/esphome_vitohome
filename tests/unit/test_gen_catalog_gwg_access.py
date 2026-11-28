@@ -27,6 +27,7 @@ from vitocatalog.constants import (  # noqa: E402
     _WEEKDAYS,
     FCREAD_TO_GWG_ACCESS,
     FCWRITE_TO_GWG_ACCESS,
+    GWG_UNANSWERED_FCREAD,
     PROTO_GWG,
     PROTO_KW,
     PROTO_P300,
@@ -113,12 +114,20 @@ def test_p300_reachability_unchanged():
         assert not _is_reachable(_ev(fc), PROTO_P300)
 
 
-def test_gwg_reachability_covers_every_access_mode():
+def test_gwg_reachability_covers_every_answered_access_mode():
     # The exact inversion: Physical_READ is unreachable on P300 and reachable
     # on GWG, where it is in fact the default mode.
     for fc in FCREAD_TO_GWG_ACCESS:
-        assert _is_reachable(_ev(fc), PROTO_GWG)
+        assert _is_reachable(_ev(fc), PROTO_GWG) == (fc not in GWG_UNANSWERED_FCREAD)
     assert _is_reachable(_ev(""), PROTO_GWG)
+
+
+def test_kmbus_eeprom_is_left_out_but_keeps_its_access():
+    # No GWG unit answers it, so the reachable-only catalogs omit it; with
+    # --no-reachable-only it still carries its own mode, not the physical default.
+    assert {"kmbus_eeprom_read"} == GWG_UNANSWERED_FCREAD
+    assert not _is_reachable(_ev("KMBUS_EEPROM_READ"), PROTO_GWG)
+    assert _access_for(_ev("KMBUS_EEPROM_READ"), PROTO_GWG) == "kmbus_eeprom"
 
 
 def test_gwg_still_drops_non_access_mode_reads():
